@@ -284,9 +284,10 @@ async fn ak1_ak2_gleich_bewertete_quellen_netto_und_mit_fremdem_commit() {
     assert!(mit_nachladen > 0, "keine Variante paarte mit Pfadangabe anders — die Probe prüft die Klasse nicht");
 }
 
-/// Ein Git-Skript für `Lage::git_skript`: jeder Patch-Lauf von `diff-tree` lässt das Stück von `pfad` weg.
+/// Ein Git-Skript für `Lage::git_skript`: jeder Patch-Lauf von `diff-tree` lässt das erste Stück von `pfad` weg (im
+/// Folge-Lauf also nur das des ersten Commits).
 fn ohne_stueck(pfad: &str) -> String {
-    format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*|*diff-tree*--name*) ;; *diff-tree*) $echt \"$@\" | awk '/^diff --git /{{weg = ($0 == \"diff --git a/{pfad} b/{pfad}\")}} !weg'; exit 0;; esac")
+    format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*|*diff-tree*--name*) ;; *diff-tree*) $echt \"$@\" | awk '/^diff --git /{{weg = ($0 == \"diff --git a/{pfad} b/{pfad}\" && !gesehen++)}} !weg'; exit 0;; esac")
 }
 
 /// AK 3 (Netto), N7.10 Regel: streng (500) nur, wenn der Netto-Patch-Lauf dieselbe Angabe hat wie die Netto-Liste. Ein
@@ -319,11 +320,12 @@ async fn ak3_netto_streng_nur_bei_gleicher_angabe() {
     assert_eq!(datei("a.txt")["patch"], json!("@@ -1 +1 @@\n-a3\n+a4\n"), "{d}");
 }
 
-/// AK 3 (Folge): `b.txt` ist Folge (K1, fremder Commit F, K2 ändern es). Ein Git-Skript lässt jedes Stück von `b.txt` weg.
+/// AK 3 (Folge): `b.txt` ist Folge (K1, fremder Commit F, K2 ändern es). Ein Git-Skript lässt das Stück von `b.txt` im
+/// Schritt K1 weg; das von K2 kommt an.
 /// - Karte #1: der Folge-Patch-Lauf hat dieselbe Angabe wie die Folge-Liste → 500 „hat 0 von 1 Stücken“.
 /// - Karte #2: dazu `gross2` (über 3.000 Zeilen), das auch F ändert — Folge-Pfad, aber nicht im Patch-Lauf; dessen Angabe
-///   ist kleiner als die der Folge-Liste → 200, der **ganze** Folge-Eintrag `b.txt` `nachladen` (jeder Schritt, ohne
-///   Patch), `a.txt` (netto) behält seinen Patch.
+///   ist kleiner als die der Folge-Liste → 200, der **ganze** Folge-Eintrag `b.txt` `nachladen` (auch der Schritt K2,
+///   dessen Stück da ist; Mutant „nur der Schritt“), `a.txt` (netto) behält seinen Patch.
 #[tokio::test]
 async fn ak3_folge_ganz_nachladen_streng_nur_bei_gleicher_angabe() {
     let l = Lage::neu();
