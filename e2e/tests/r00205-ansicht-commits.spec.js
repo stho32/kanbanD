@@ -376,7 +376,7 @@ test.describe('R00205 Ansicht „Commits“', () => {
       await expect(zeileMit(page, kurz(eigenes.k3)).locator('.cl-mehr')).toHaveCount(0);
       gitAls(eigenes.r, 'Ada Autorin', '2026-03-12T09:00:00+00:00', 'branch', 'drei-b', eigenes.k3);
       await page.locator(NEU_LESEN).click();
-      await expect(zeileMit(page, kurz(eigenes.k3)).getByRole('button', { name: '1 weitere Zweige zeigen' })).toHaveText('+1 weitere');
+      await expect(zeileMit(page, kurz(eigenes.k3)).getByRole('button', { name: '1 weiteren Zweig zeigen' })).toHaveText('+1 weitere');
       await expect(zeileMit(page, kurz(eigenes.r1)).locator('.cl-mehr')).toHaveCount(0);
     } finally { fs.rmSync(basis, { recursive: true, force: true }); }
   });
