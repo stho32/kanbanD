@@ -478,7 +478,7 @@ pub fn patch_text(dateien: &mut [Diffdatei]) -> String {
 
 /// Ein Name, wie Git ihn in Kopfzeilen schreibt (`core.quotepath=off`): mit Anführungszeichen, `"`, `\` und
 /// Steuerzeichen maskiert, sobald eines davon vorkommt — so beginnt keine Zeile des Texts mit einem fremden Namen.
-fn zitiert(name: &str) -> String {
+pub(crate) fn zitiert(name: &str) -> String {
     if !name.chars().any(|c| c == '"' || c == '\\' || c.is_control()) {
         return name.to_string();
     }

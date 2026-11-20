@@ -203,6 +203,8 @@ pub enum Objekt {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadaten {
     pub erster_elternteil: Option<String>,
+    /// Zahl der Elternteile: mehr als einer heißt Merge (ADR-0032 N6.5)
+    pub elternzahl: usize,
     pub titel: String,
     pub autor: String,
     pub datum: String,
@@ -287,7 +289,8 @@ fn log_lesen(aus: &[u8]) -> Option<HashMap<String, Metadaten>> {
         let datum = text(felder.next()?);
         let nachricht = text(felder.next()?);
         let erster_elternteil = eltern.split(' ').next().filter(|e| !e.is_empty()).map(String::from);
-        let mut m = Metadaten { erster_elternteil, titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, plus: 0, minus: 0, dateien: 0 };
+        let elternzahl = eltern.split(' ').filter(|e| !e.is_empty()).count();
+        let mut m = Metadaten { erster_elternteil, elternzahl, titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, plus: 0, minus: 0, dateien: 0 };
         if !felder.next()?.is_empty() {
             return None;
         }
@@ -346,6 +349,40 @@ pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, pfade: &[&[u
         None => args.extend(["--root", "--no-commit-id", "--end-of-options", vergleich.commit]),
     }
     git_teil(wurzel, Befehl::DiffTree, &args, pfade, None, bytegrenze, frist)
+}
+
+/// Ein Lauf `diff-tree --stdin` über viele Commits (ADR-0032 N6.2): Namen (`--raw -z --no-renames`, ohne
+/// Umbenennungserkennung, also mit beiden Pfaden einer Umbenennung) oder Liste, Zähler und Patch wie [`diff_tree`]. Je
+/// Vergleich eine Zeile `<commit> <erster Elternteil>` auf `stdin` — der Elternteil ausdrücklich, damit ein Merge gegen
+/// seinen ersten Elternteil gelesen wird (N6.5); ohne Elternteil `<commit>` allein gegen den leeren Baum (`--root`).
+/// Die Ausgabe trägt vor den Einträgen jedes Commits, der etwas ändert, seinen Hash als Kopf.
+pub fn diff_tree_viele(wurzel: &Path, vergleiche: &[Vergleich], art: Vielart, pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
+    let mut args = vec!["--stdin", "--root", "-r", "--ignore-submodules=none"];
+    args.extend_from_slice(match art {
+        Vielart::Namen => &["--no-renames", "--raw", "-z"][..],
+        Vielart::Diff(Diffart::Roh) => &["-M50%", "-l1000", "--raw", "-z"],
+        Vielart::Diff(Diffart::Zahlen) => &["-M50%", "-l1000", "--numstat", "-z"],
+        Vielart::Diff(Diffart::Patch) => &["-M50%", "-l1000", "-p", "--full-index", "--submodule=short"],
+    });
+    let eingabe: String = vergleiche.iter().map(|v| match v.eltern {
+        Some(e) => format!("{} {e}\n", v.commit),
+        None => format!("{}\n", v.commit),
+    }).collect();
+    git_teil(wurzel, Befehl::DiffTree, &args, pfade, Some(eingabe.as_bytes()), bytegrenze, frist)
+}
+
+/// Welcher Lauf über viele Commits: der Namenslauf oder ein Lauf wie beim Diff eines Commits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Vielart {
+    Namen,
+    Diff(Diffart),
+}
+
+/// Die Erst-Eltern-Linie ab `letzter` (ADR-0032 N6.1): `rev-list --first-parent --parents --max-count=<hoechstens>`, je
+/// Zeile `<commit> <eltern>…`, neuester zuerst.
+pub fn linie(wurzel: &Path, letzter: &str, hoechstens: usize, frist: Instant) -> Result<Vec<u8>, Arbeitsrepofehler> {
+    let anzahl = format!("--max-count={hoechstens}");
+    lesen(wurzel, Befehl::RevList, &["--first-parent", "--parents", &anzahl, "--end-of-options", letzter], None, frist)
 }
 
 /// Höchstzahl der Zeilen von `rev-list` (ADR-0032 N3.4); darüber wird der Lauf abgebrochen, nie gekürzt.
