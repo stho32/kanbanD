@@ -917,3 +917,10 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1071 Nacharbeit 1: Wortlaute Standardanwendung, Netzabbruch ohne (0) | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1072 Nacharbeit 1: esc an den Rückfall-Senken, wartetAuf roh | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-20 | Karte #215 R00210 (Alle Änderungen der Aufgabe in der Review-Seite) | B1073 Nacharbeit 1: Tests S9, AK 2 verzögert, Tab-Folge, Gate | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1059 Abnahme-Proben rot am heutigen Stand, Ruhezustand des Chips festhalten | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1060 Dienst und Route der Auflösung entfernen → 404 | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1061 Oberfläche ohne Auflösung und ohne „wartet auf“ | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1062 e2e-Tests auf Herkunft als Text umbauen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1063 README: Herkunft ist ein Verweis ohne Auflösung | Standard | 0,5-1h | 0,0h | 0,0h | autonom |
+| 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1064 Legacy-Probe an Kopien der vier Board-Ordner | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1065 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

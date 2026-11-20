@@ -1,6 +1,6 @@
 ---
 id: R00212
-status: Neu
+status: Erledigt
 datum: 2026-11-20
 ---
 
@@ -56,29 +56,29 @@ Ausgangslage (herstellbar mit Git und der API): Ordner `K` mit Register `kd` (Re
 
 ### Endpunkt
 
-- [ ] **AK 1** Gegeben die Ausgangslage. Wenn `GET /api/herkunft` (auch mit Abfrage `?x=1`) aufgerufen wird, dann ist die Antwort 404, und `GET /api/endpunkte` sowie README nennen `/api/herkunft` nicht. Heute: 200 mit `kd:I0007` aufgelöst.
+- [x] **AK 1** Gegeben die Ausgangslage. Wenn `GET /api/herkunft` (auch mit Abfrage `?x=1`) aufgerufen wird, dann ist die Antwort 404, und `GET /api/endpunkte` sowie README nennen `/api/herkunft` nicht. Heute: 200 mit `kd:I0007` aufgelöst.
 
 ### Chip
 
-- [ ] **AK 2** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und danach #1 im Aufgabenfenster, dann ist jeder Chip `kd:I0007` und `kd:R00014` ein `span.org` ohne `href` und ohne `title`, auf der Karte und im Fenster. Kein Element `.org` der Seite hat ein `href` oder einen `title` mit „Quelle“ oder „Editor“. Im Netzwerkmitschnitt vom Laden bis nach einem Neuladen gibt es keine Anfrage an `/api/herkunft`. #3 zeigt „ohne Herkunft“ wie heute. Mit einer zweiten Anwendung `lc` im Register zeigt eine Herkunft `I0007` ohne Kürzel „I0007 · mehrdeutig“ mit dem heutigen `title`, `kd:I0007` bleibt ohne Zusatz. Ein Klick auf den Chip `kd:I0007` der Karte #1 öffnet das Aufgabenfenster von #1 (wie ein Klick auf den Titel) und löst keine Navigation und keinen `vscode:`-Aufruf aus; ein Klick auf den Chip im Aufgabenfenster tut nichts.
-- [ ] **AK 2a** Im Aufgabenfenster von #1 ist kein `.org` fokussierbar (`tabIndex` < 0 und kein `href`); die Tab-Folge nennt je Herkunft nur den Knopf ‚Herkunft kd:I0007 entfernen‘ und dann das Feld ‚Neue Herkunft‘. Der Text `kd:I0007` steht im Fenster als eigener Text hinter der Beschriftung ‚origins‘ (Lesereihenfolge: Beschriftung, Chip, ×).
-- [ ] **AK 3** Gegeben die Ausgangslage, Hell und Dunkel. Im Ruhezustand sind `color`, `background-color`, `border`, `font-family`, `font-size`, `padding` und `text-decoration-line` gleich den Werten vor der Karte, `height` ist **16 px** (Wert von `.org`, wie der heutige `span.org` und `org leer`; der `a.org` mit 24 px Mindestgröße entfällt mit dem Link). Gemessen auf Karte und im Fenster, hell und dunkel. Fährt die Maus über den Chip, ändert sich keiner dieser Werte. Im Fenster ist `cursor` nicht `pointer`; auf der Karte ist `cursor` gleich dem der Karte selbst (kein eigener Wert am Chip).
+- [x] **AK 2** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und danach #1 im Aufgabenfenster, dann ist jeder Chip `kd:I0007` und `kd:R00014` ein `span.org` ohne `href` und ohne `title`, auf der Karte und im Fenster. Kein Element `.org` der Seite hat ein `href` oder einen `title` mit „Quelle“ oder „Editor“. Im Netzwerkmitschnitt vom Laden bis nach einem Neuladen gibt es keine Anfrage an `/api/herkunft`. #3 zeigt „ohne Herkunft“ wie heute. Mit einer zweiten Anwendung `lc` im Register zeigt eine Herkunft `I0007` ohne Kürzel „I0007 · mehrdeutig“ mit dem heutigen `title`, `kd:I0007` bleibt ohne Zusatz. Ein Klick auf den Chip `kd:I0007` der Karte #1 öffnet das Aufgabenfenster von #1 (wie ein Klick auf den Titel) und löst keine Navigation und keinen `vscode:`-Aufruf aus; ein Klick auf den Chip im Aufgabenfenster tut nichts.
+- [x] **AK 2a** Im Aufgabenfenster von #1 ist kein `.org` fokussierbar (`tabIndex` < 0 und kein `href`); die Tab-Folge nennt je Herkunft nur den Knopf ‚Herkunft kd:I0007 entfernen‘ und dann das Feld ‚Neue Herkunft‘. Der Text `kd:I0007` steht im Fenster als eigener Text hinter der Beschriftung ‚origins‘ (Lesereihenfolge: Beschriftung, Chip, ×).
+- [x] **AK 3** Gegeben die Ausgangslage, Hell und Dunkel. Im Ruhezustand sind `color`, `background-color`, `border`, `font-family`, `font-size`, `padding` und `text-decoration-line` gleich den Werten vor der Karte, `height` ist **16 px** (Wert von `.org`, wie der heutige `span.org` und `org leer`; der `a.org` mit 24 px Mindestgröße entfällt mit dem Link). Gemessen auf Karte und im Fenster, hell und dunkel. Fährt die Maus über den Chip, ändert sich keiner dieser Werte. Im Fenster ist `cursor` nicht `pointer`; auf der Karte ist `cursor` gleich dem der Karte selbst (kein eigener Wert am Chip).
 
 ### „wartet auf“
 
-- [ ] **AK 4** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und #2 im Aufgabenfenster, dann gibt es auf der Karte #2 kein Element `.wartet` und keinen Text „wartet auf“, und das Fenster hat keine Zeile „wartet auf“. Das Label `braucht:2` an #1 ist auf der Karte sichtbar. Auf keiner Karte und in keinem Fenster steht ein Rest davon: kein `.wartet`, kein Zeichen ⧗, keine Zeile ‚wartet auf‘ im Fenster, kein leeres `.k` ohne Wert; `braucht:2` an #1 steht als `.lbl` auf der Karte und im Feld Labels im Fenster.
+- [x] **AK 4** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet und #2 im Aufgabenfenster, dann gibt es auf der Karte #2 kein Element `.wartet` und keinen Text „wartet auf“, und das Fenster hat keine Zeile „wartet auf“. Das Label `braucht:2` an #1 ist auf der Karte sichtbar. Auf keiner Karte und in keinem Fenster steht ein Rest davon: kein `.wartet`, kein Zeichen ⧗, keine Zeile ‚wartet auf‘ im Fenster, kein leeres `.k` ohne Wert; `braucht:2` an #1 steht als `.lbl` auf der Karte und im Feld Labels im Fenster.
 
 ### Herkunft lesen und schreiben
 
-- [ ] **AK 5** Gegeben die Ausgangslage. Wenn per API und Oberfläche geschrieben wird, dann gilt wie heute:
+- [x] **AK 5** Gegeben die Ausgangslage. Wenn per API und Oberfläche geschrieben wird, dann gilt wie heute:
   - `PATCH /api/aufgaben/3` mit `herkunft: [kd:I0007, R00014]` (nur `kd` im Register) ergibt 200, genau einen Commit und `origins` in der Datei in dieser Reihenfolge;
   - `herkunft: [X1]` und `herkunft: [zz:I0001]` (unbekanntes Kürzel) ergeben 400 mit derselben Meldung wie vor der Karte, ohne Commit;
   - `kd:I0009` über das Feld „Neue Herkunft“ erscheint als Chip; „entfernen“ und danach „Rückgängig“ stellen ihn an derselben Stelle wieder her (R00185).
-- [ ] **AK 6** Gegeben die Ausgangslage und an #1 ein Zeiteintrag von 30 Minuten. Wenn im Board-Filter `origin:kd:I0007` und danach `origin:"thin air"` steht und der Export `GET /api/berichte/zeiten.csv` geladen wird, dann zeigt der erste Filter genau #1, der zweite genau #3, und die CSV ist bytegleich zur CSV des Programms vor der Karte auf demselben Ordner (Spalte Herkunft der Zeile von #1: `kd:I0007, kd:R00014` bzw. so, wie das Programm vor der Karte sie schreibt).
+- [x] **AK 6** Gegeben die Ausgangslage und an #1 ein Zeiteintrag von 30 Minuten. Wenn im Board-Filter `origin:kd:I0007` und danach `origin:"thin air"` steht und der Export `GET /api/berichte/zeiten.csv` geladen wird, dann zeigt der erste Filter genau #1, der zweite genau #3, und die CSV ist bytegleich zur CSV des Programms vor der Karte auf demselben Ordner (Spalte Herkunft der Zeile von #1: `kd:I0007, kd:R00014` bzw. so, wie das Programm vor der Karte sie schreibt).
 
 ### Altbestand
 
-- [ ] **AK 7** Gegeben Kopien der Ordner `~/Projekte/Kanban-Boards/JoinPuyaApp-Kanbanboard`, `localchatA-Kanbanboard`, `kanbanD-Kanbanboard` und `goaltreetoolA-Kanbanboard` in der eigenen Ablage (Stand 2026-11-20 zusammen 363 Aufgaben mit 547 Herkunftseinträgen). Wenn erst das Programm vor der Karte und dann dieses auf jeder Kopie startet und `GET /api/aufgaben` sowie das Board gelesen werden, dann:
+- [x] **AK 7** Gegeben Kopien der Ordner `~/Projekte/Kanban-Boards/JoinPuyaApp-Kanbanboard`, `localchatA-Kanbanboard`, `kanbanD-Kanbanboard` und `goaltreetoolA-Kanbanboard` in der eigenen Ablage (Stand 2026-11-20 zusammen 363 Aufgaben mit 547 Herkunftseinträgen). Wenn erst das Programm vor der Karte und dann dieses auf jeder Kopie startet und `GET /api/aufgaben` sowie das Board gelesen werden, dann:
   - liefert jeder Lauf 200 ohne defekte Datei, und im Log steht keine Fehler- oder Warnzeile;
   - ist die Liste `herkunft` jeder Aufgabe in beiden Läufen gleich (Zahl der Aufgaben mit Herkunft und der Einträge gleich der Zählung mit `grep` über `origins:`);
   - bleibt die Zahl der Commits gleich (`git rev-list --count HEAD`), und alle Dateien sind bytegleich (SHA-256 über `git ls-files`);

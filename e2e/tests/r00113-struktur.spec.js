@@ -342,7 +342,9 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
       expect(namen).toEqual(NAMEN_ZU_ERLEDIGEN);
       const eins = liste.getByRole('listitem', { name: '#1 eins, Fehler, seit 0 Stunden in Zu erledigen', exact: true });
       await expect(eins.getByRole('button', { name: /Neue E-Mail/ })).toHaveCount(1);
-      await expect(eins.getByRole('link').first()).toHaveAccessibleName(/\S/);
+      // R00212: die Herkunft ist Text — die Karte trägt keinen Link mehr (vorher der Editor-Link des aufgelösten Chips)
+      await expect(eins.getByRole('link')).toHaveCount(0);
+      await expect(eins.locator('.org')).not.toHaveCount(0);
       expect(await eins.ariaSnapshot()).toContain('fällig 28.10.2026');
       expect(namen[0]).not.toMatch(/\d{1,2}\.\d{1,2}\.|bug/);
     });
