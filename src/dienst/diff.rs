@@ -2,7 +2,7 @@
 //! Patch-Lauf mit Bytegrenze, einzeln nachladen; live aus dem Arbeits-Repository, nur lesend, ohne die Sperre.
 
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Vergleich};
-use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Verteilung, dateiliste, diffdatei, lauf_der_liste, patches_zuordnen, roh_lesen, zahlen_mit_pfaden};
+use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Verteilung, abschliessen, dateiliste, diffdatei, lauf_der_liste, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, zahlen_mit_pfaden};
 use std::path::Path;
 use std::time::Instant;
 
@@ -57,9 +57,20 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassun
     }
     let (im_lauf, mit_pfadangabe) = lauf_der_liste(&mut dateien, gesamt);
     hinweise.extend(dateien.iter().filter(|d| d.pfad_zu_lang()).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }));
-    if !im_lauf.is_empty() {
-        let pfade: Vec<&[u8]> = if mit_pfadangabe { im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().map(Vec::as_slice)).collect() } else { vec![] };
+    if im_lauf.is_empty() {
+        return Ok(Diffinhalt { dateien, hinweise });
+    }
+    if mit_pfadangabe {
+        // abgeschlossen gegen die gelesene Liste vor der Kappe: der Lauf sieht ganze Einträge, Git paart wie dort (N7.7);
+        // die Angabe ist Teil der Liste und bleibt so unter 1 MB (N5.5 S1)
+        let bezug: Vec<Diffdatei> = roh_lesen(&roh.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?.into_iter().map(|r| diffdatei(r, None)).collect();
+        let pfade_bezug: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
+        let angabe = abschliessen(im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().cloned()), &pfade_bezug);
+        let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_PATCH_LAUF, frist)?;
+        patches_zuordnen_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
+    } else {
+        let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &[], GRENZE_PATCH_LAUF, frist)?;
         patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
     }
     Ok(Diffinhalt { dateien, hinweise })

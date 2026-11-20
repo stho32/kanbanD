@@ -925,3 +925,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1064 Legacy-Probe an Kopien der vier Board-Ordner | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-20 | Karte #226 R00212 (Herkunft als Text ohne Auflösung) | B1065 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1053 Abnahme-Proben rot am heutigen Stand | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1054 Liste mit Pfadangabe gegen die gelesene Liste abschließen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
