@@ -121,7 +121,7 @@ pub fn abschnitte_z(aus: &[u8], koepfe: &[&str], form: Zform) -> Option<Vec<Absc
         abschnitte.last()?;
         let pfade = match form {
             Zform::Roh => 1 + usize::from(roh_mit_zwei_pfaden(feld)),
-            Zform::Zahlen => if feld.ends_with(b"\t") { 2 } else { 0 },
+            Zform::Zahlen => if zahlen_ohne_pfad(feld) { 2 } else { 0 },
         };
         pos += laenge + 1;
         for _ in 0..pfade {
@@ -132,6 +132,12 @@ pub fn abschnitte_z(aus: &[u8], koepfe: &[&str], form: Zform) -> Option<Vec<Absc
         }
     }
     Some(abschnitte)
+}
+
+/// Ist ein Zähler-Eintrag `<plus>\t<minus>\t` mit leerem Pfad (eine Umbenennung, die Pfade folgen als eigene Felder)?
+/// Nach Feldern, nicht nach dem letzten Zeichen: ein Name darf auf einen Tabulator enden.
+fn zahlen_ohne_pfad(feld: &[u8]) -> bool {
+    feld.splitn(3, |b| *b == b'\t').nth(2).is_some_and(<[u8]>::is_empty)
 }
 
 /// Hat ein Roh-Eintrag zwei Pfade (Status `R` oder `C` mit Zahl)?
@@ -380,6 +386,18 @@ mod tests {
         assert_eq!(a.iter().map(|a| a.kopf).collect::<Vec<_>>(), [0, 1, 2]);
         let z = crate::modell::zahlen_mit_pfaden(&aus.as_bytes()[a[1].bereich.clone()]).unwrap();
         assert_eq!(z, [(Some((1, 0)), vec![b"a.txt".to_vec(), C.as_bytes().to_vec()])]);
+    }
+
+    // Code-Review B5 (#214): ein Name, der auf einen Tabulator endet, ist keine Umbenennung — auch binär (`-\t-\t`)
+    #[test]
+    fn abschnitte_zahlen_name_mit_tab_am_ende() {
+        let aus = format!("{A}\x001\t1\tx\t\x00-\t-\tb\t\x00{B}\x000\t0\t\x00r\t\x00s\t\x00");
+        let a = abschnitte_z(aus.as_bytes(), &[A, B], Zform::Zahlen).unwrap();
+        assert_eq!(a.iter().map(|a| a.kopf).collect::<Vec<_>>(), [0, 1]);
+        let z = crate::modell::zahlen_mit_pfaden(&aus.as_bytes()[a[0].bereich.clone()]).unwrap();
+        assert_eq!(z, [(Some((1, 1)), vec![b"x\t".to_vec()]), (None, vec![b"b\t".to_vec()])]);
+        let z = crate::modell::zahlen_mit_pfaden(&aus.as_bytes()[a[1].bereich.clone()]).unwrap();
+        assert_eq!(z, [(Some((0, 0)), vec![b"r\t".to_vec(), b"s\t".to_vec()])]);
     }
 
     // ADR-0032 N6.2: im Patch ist ein Kopf eine eigene Zeile; eine Inhaltszeile mit Hash dahinter ist keiner

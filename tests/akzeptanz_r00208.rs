@@ -896,7 +896,7 @@ async fn b2_typwechsel_mit_gleichem_blob() {
 // B5 Abnahme-Probe: ein Dateiname mit Tab am Ende in K1, F und K2 → 200 mit Folge und beiden Schritten; Varianten
 // Umbenennung und binär (heute 500: `ends_with(b"\t")` hielt den Eintrag für eine Umbenennung)
 #[tokio::test]
-#[ignore = "erwartet rot: B5 der Nacharbeit 1 (#214)"]
+#[ignore = "erwartet rot: B1-Klasse (Umbenennung r.txt → r\\t → s\\t über fremde Änderung), Nacharbeit 1 (#214)"]
 async fn b5_dateiname_mit_tab_am_ende() {
     let l = ausgangslage();
     l.schreiben("x\t", &zeilen("x", 5));
