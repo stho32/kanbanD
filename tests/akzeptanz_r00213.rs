@@ -422,3 +422,22 @@ async fn ak2_datei_rueckfall_mit_der_angabe_des_bezugs() {
     let patches: Vec<&str> = f["schritte"].as_array().unwrap().iter().map(|s| s["patch"].as_str().unwrap_or("")).collect();
     assert_eq!(patches, ["@@ -1 +1 @@\n-b0\n+b1\n", "@@ -1 +1 @@\n-b-fremd\n+b2\n"], "{f}");
 }
+
+/// AK 2: liegt das Stück auch im Rückfall hinter 8 MB, antwortet `datei=` mit 200, `gross` ohne Patch und dem Hinweis
+/// `zu_gross_zum_anzeigen` — Karte K1 legt `riesig` mit über 8 MB Patch an, ein fremder Commit ändert `f.txt`, K2 `k2`.
+#[tokio::test]
+async fn ak2_datei_hinter_8_mb_gross() {
+    let l = Lage::neu();
+    l.baum(&[("f.txt", "f\n".into())], "A");
+    let riesig: String = (0..320_000).map(|i| format!("riesige Zeile {i:>12}\n")).collect();
+    let k1 = l.baum(&[("f.txt", "f\n".into()), ("riesig", riesig.clone())], "K1");
+    l.baum(&[("f.txt", "f2\n".into()), ("riesig", riesig.clone())], "F");
+    let k2 = l.baum(&[("f.txt", "f2\n".into()), ("riesig", riesig), ("k2", "k2\n".into())], "K2");
+    let lauf = l.starten(&[(1, vec![k1, k2])], &[]);
+    let (s, t) = holen(&lauf.adresse, 1, "datei=riesig").await;
+    assert_eq!(s, 200, "{t}");
+    let d: Value = serde_json::from_str(&t).unwrap();
+    let f = &dateien(&d)[0];
+    assert_eq!((&f["gross"], &f["patch"], &f["plus"]), (&json!(true), &Value::Null, &json!(320_000)), "{f}");
+    assert!(d["hinweise"].as_array().unwrap().contains(&json!({"art": "zu_gross_zum_anzeigen", "datei": "riesig"})), "{d}");
+}

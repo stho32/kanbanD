@@ -942,3 +942,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1079 Folge-Eintrag ganz nachladen, streng nur bei gleicher Angabe | Standard | 1h | 0,2h | 0,2h | autonom |
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1080 datei=: Rückfall mit genau der Angabe des Bezugs | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1081 ArgumenteZuLang an vier Stellen | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1082 Zufallsprobe, Mutanten, Gate (Lastprobe R00208 offen, Nachtbetrieb) | Standard | 1-2h | 0,6h | 0,6h | autonom |
