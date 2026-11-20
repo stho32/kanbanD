@@ -380,6 +380,22 @@ pub fn patches_zuordnen_im_bezug(dateien: &mut [Diffdatei], im_lauf: &[usize], b
     ergebnis
 }
 
+/// Verbindet die Zähler eines Laufs, dessen Pfadangabe gegen den Bezug abgeschlossen ist (`abschliessen`), mit den
+/// getroffenen Einträgen dieses Bezugs (`getroffen`, in seiner Reihenfolge; ADR-0032 N7.7): Git zeigt genau diese
+/// Einträge mit genau diesen Pfaden. `Err`, wenn die Ausgabe davon abweicht — dann hat Git anders gepaart als der Bezug.
+pub fn zahlen_im_bezug(getroffene: &mut [Diffdatei], zahlen: Vec<Zaehler>) -> Result<(), String> {
+    if zahlen.len() != getroffene.len() {
+        return Err(format!("Zähler: {} Einträge, der Bezug trifft {}", zahlen.len(), getroffene.len()));
+    }
+    for (d, (z, pfade)) in getroffene.iter_mut().zip(zahlen) {
+        if pfade != d.pfade_roh {
+            return Err(format!("Zähler passen nicht zur Datei „{}“", d.name()));
+        }
+        (d.plus, d.minus, d.binaer) = (z.map_or(0, |z| z.0), z.map_or(0, |z| z.1), z.is_none());
+    }
+    Ok(())
+}
+
 /// Die Teile hintereinander in einem Puffer genau ihrer Größe.
 fn zusammen<'a>(teile: impl Iterator<Item = &'a [u8]> + Clone) -> Vec<u8> {
     let mut puffer = Vec::with_capacity(teile.clone().map(<[u8]>::len).sum());
@@ -781,6 +797,26 @@ mod tests {
         // eine Datei des Laufs, die der Bezug nicht kennt, ist ein Fehler
         let mut f = vec![neu("q", "M")];
         assert!(patches_zuordnen_im_bezug(&mut f, &[0], &bezug, &[b"q".to_vec()], b"", false, Verteilung::Liste, Fassung::Patch).is_err());
+    }
+
+    // R00211 AK 5 (m4): die Zähler eines Laufs mit abgeschlossener Angabe gehören genau zu den getroffenen Einträgen des
+    // Bezugs — paart Git anders (Typwechsel `d/x` → `d/x/inner` neu gepaart), ist das ein Fehler, auch wenn der gesuchte
+    // Eintrag selbst unter den Zählern steht
+    #[test]
+    fn zaehler_nur_ueber_die_getroffenen_des_bezugs() {
+        let p = |n: &[&str]| n.iter().map(|x| x.as_bytes().to_vec()).collect::<Vec<_>>();
+        let mut bezug = vec![neu("b", "D"), neu("d/x", "D")];
+        zahlen_im_bezug(&mut bezug, vec![(Some((0, 10)), p(&["b"])), (None, p(&["d/x"]))]).unwrap();
+        assert_eq!(bezug.iter().map(|d| (d.plus, d.minus, d.binaer)).collect::<Vec<_>>(), [(0, 10, false), (0, 0, true)]);
+        // neu gepaart: d/x steht dabei, aber Git zeigt einen Eintrag mehr
+        let mut e = vec![neu("d/x", "D")];
+        assert!(zahlen_im_bezug(&mut e, vec![(Some((0, 11)), p(&["d/x"])), (Some((0, 0)), p(&["b", "d/x/inner"]))]).is_err());
+        // derselbe Eintrag mit anderen Pfaden
+        let mut f = vec![neu("d/x", "D")];
+        assert!(zahlen_im_bezug(&mut f, vec![(Some((0, 1)), p(&["d/x", "d/x/inner"]))]).is_err());
+        // einer fehlt
+        let mut g = vec![neu("b", "D"), neu("d/x", "D")];
+        assert!(zahlen_im_bezug(&mut g, vec![(Some((0, 11)), p(&["d/x"]))]).is_err());
     }
 
     // ADR-0032 N5.2 Regel 1: die Hashes werden auf Gleichheit verglichen — ein gekürzter Hash (Präfix des vollen) ist

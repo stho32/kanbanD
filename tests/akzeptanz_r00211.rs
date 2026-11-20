@@ -274,3 +274,25 @@ async fn ak2_d_liste_ueber_der_kappe() {
     assert_eq!((&dx["status"], &dx["minus"]), (&json!("D"), &json!(11)));
     assert_eq!(dx["patch"].as_str().unwrap().lines().filter(|z| z.starts_with('-')).count(), 11, "{dx}");
 }
+
+/// Eigene Variante zu AK 1 (Mutant m3): Zwilling als Umbenennung im Typwechsel — Vorgänger `s` = X und `m/a` = X; K legt
+/// die Datei `m` und `c` an, beide X + `z`: zwei Umbenennungen mit demselben Blob-Paar. `datei=m` trifft über `m/` auch
+/// die Quelle `m/a` und so die andere Umbenennung, deren Stück vor dem von `m` steht; nur im Bezug zugeordnet bekommt `m`
+/// sein eigenes Stück.
+#[tokio::test]
+async fn ak1_e_umbenennungs_zwilling_im_typwechsel() {
+    let l = Lage::neu();
+    l.schreiben("s", &x());
+    l.schreiben("m/a", &x());
+    l.commit("Vorgänger");
+    l.loeschen("s");
+    l.loeschen("m");
+    l.schreiben("m", &format!("{}z\n", x()));
+    l.schreiben("c", &format!("{}z\n", x()));
+    let k = l.commit("K");
+    let stuecke = l.stuecke(&k);
+    let lauf = l.starten(&k);
+    let liste = liste_pruefen(&lauf.adresse, &k, &stuecke).await;
+    assert_eq!(dateien(&liste).iter().map(|f| (f["status"].as_str().unwrap(), name(f))).collect::<Vec<_>>(), [("R", "c"), ("R", "m")], "{liste}");
+    datei_auf_jeden_namen(&lauf.adresse, &k, &liste, &stuecke).await;
+}
