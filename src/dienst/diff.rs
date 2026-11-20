@@ -67,7 +67,13 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassun
         let pfade_bezug: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
         let angabe = abschliessen(im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().cloned()), &pfade_bezug);
         let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
-        let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_PATCH_LAUF, frist)?;
+        // startet Git mit der Angabe nicht (Vorabgrenze oder E2BIG, N7.9): alle Dateien des Laufs einzeln nachzuladen
+        let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_PATCH_LAUF, frist))? else {
+            for &i in &im_lauf {
+                dateien[i].nachladen = true;
+            }
+            return Ok(Diffinhalt { dateien, hinweise });
+        };
         // ein Lauf mit Pfadangabe ist kein Beleg (N7.8): Git paart gleich bewertete Quellen je nach Matrix anders, und ein
         // getroffener Eintrag hinter dem Schnitt der Liste fehlt im Bezug — wer kein Stück hat, ist `nachladen`, nie 500
         nicht_zugeordnet_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung);
@@ -435,6 +441,79 @@ mod tests {
 
     fn anfrage(c1: &str, format: Diffformat) -> Diffanfrage {
         Diffanfrage { commit: Some(format!("kd:{c1}")), anwendung: None, datei: None, format, bekannt: None }
+    }
+
+    /// Ein Pfadteil von 1.506 Zeichen (sieben Ordner zu 214): jeder Name darunter macht eine Pfadangabe lang.
+    fn lang() -> String {
+        vec!["n".repeat(214); 7].join("/") + "/"
+    }
+
+    /// Ein Arbeits-Repository mit einem Commit K gegen seinen Vorgänger: `<lang>a` und `<lang>b` geändert, dazu `gross`
+    /// mit 3.001 Zeilen neu — die Liste läuft mit Pfadangabe. K hängt an #1.
+    fn stand_mit_pfadangabe() -> (tempfile::TempDir, Kanban, String, PathBuf) {
+        let (tmp, k, _) = stand();
+        let r = tmp.path().canonicalize().unwrap().join("R");
+        let lang = lang();
+        std::fs::create_dir_all(r.join(&lang)).unwrap();
+        std::fs::write(r.join(format!("{lang}a")), "a\n").unwrap();
+        std::fs::write(r.join(format!("{lang}b")), "b\n").unwrap();
+        git(&r, &["add", "-A"]);
+        git(&r, &["commit", "-qm", "vorher"]);
+        std::fs::write(r.join(format!("{lang}a")), "a2\n").unwrap();
+        std::fs::write(r.join(format!("{lang}b")), "b2\n").unwrap();
+        std::fs::write(r.join("gross"), (0..3001).map(|i| format!("g{i}\n")).collect::<String>()).unwrap();
+        git(&r, &["add", "-A"]);
+        git(&r, &["commit", "-qm", "K"]);
+        let kk = git(&r, &["rev-parse", "HEAD"]);
+        let board = tmp.path().canonicalize().unwrap().join("board");
+        std::fs::write(board.join("aufgaben/0001-a.md"), format!("---\nid: 1\ntitle: a\ncommits:\n  - kd:{kk}\n---\n")).unwrap();
+        git(&board, &["add", "-A"]);
+        git(&board, &["commit", "-qm", "K"]);
+        (tmp, k, kk, r)
+    }
+
+    fn rumpf(antwort: Diffantwort) -> String {
+        let Diffantwort::Rumpf { rumpf, .. } = antwort else { panic!("kein Rumpf") };
+        String::from_utf8(rumpf.bytes.clone()).unwrap()
+    }
+
+    // R00211 AK 12 (ADR-0032 N7.9): die Pfadangabe der Liste liegt über der (im Test kleinen) Vorabgrenze — Git startet
+    // für diesen Lauf nicht; die Liste antwortet 200 (JSON und `format=patch`), alle Dateien des Laufs `nachladen` ohne
+    // Patch; `datei=` auf jede (Zähler mit Angabe ebenfalls über der Grenze) fällt ohne Angabe zurück: 200 mit Patch.
+    // Vor dem Fix: 500 „git: …“ (die Liste reichte `ArgumenteZuLang` weiter).
+    #[test]
+    fn liste_ueber_der_vorabgrenze_nachladen() {
+        let (_tmp, k, kk, r) = stand_mit_pfadangabe();
+        let lang = lang();
+        let frist = || Instant::now() + Duration::from_secs(10);
+        // die Grenze: ein Lauf ohne Pfadangabe passt, jede Angabe mit einem Namen über 1.500 Zeichen nicht
+        crate::git::arbeitsrepo::vorabgrenze_setzen(Some(0));
+        let vergleich = Vergleich { eltern: Some("HEAD~"), commit: "HEAD" };
+        let f = arbeitsrepo::diff_tree(&r, vergleich, Diffart::Patch, &[], GRENZE_EINZELN, frist()).unwrap_err();
+        let Arbeitsrepofehler::ArgumenteZuLang(m) = f else { panic!("{f:?}") };
+        let ohne: usize = m.split_whitespace().nth(2).unwrap().parse().unwrap();
+        let grenze = ohne + 1000;
+        crate::git::arbeitsrepo::vorabgrenze_setzen(Some(grenze));
+        let vorher = arbeitsrepo::aufrufe();
+        let antwort = k.diff_lesen(1, &Diffanfrage { commit: Some(format!("kd:{kk}")), anwendung: None, datei: None, format: Diffformat::Json, bekannt: None }, frist());
+        let starts_klein = arbeitsrepo::aufrufe() - vorher;
+        let d: serde_json::Value = serde_json::from_str(&rumpf(antwort.unwrap_or_else(|f| panic!("Liste: {f:?}")))).unwrap();
+        for n in ["a", "b"] {
+            let f = d["dateien"].as_array().unwrap().iter().find(|f| f["neu"] == format!("{lang}{n}")).unwrap();
+            assert_eq!((&f["nachladen"], &f["patch"]), (&serde_json::json!(true), &serde_json::Value::Null), "{n}");
+        }
+        let text = rumpf(k.diff_lesen(1, &Diffanfrage { commit: Some(format!("kd:{kk}")), anwendung: None, datei: None, format: Diffformat::Patch, bekannt: None }, frist()).unwrap_or_else(|f| panic!("Liste patch: {f:?}")));
+        assert!(text.contains("# kanbanD: Patch fehlt"), "{text}");
+        for (n, hunk) in [("a", "@@ -1 +1 @@\n-a\n+a2\n"), ("b", "@@ -1 +1 @@\n-b\n+b2\n")] {
+            let anfrage = Diffanfrage { commit: Some(format!("kd:{kk}")), anwendung: None, datei: Some(format!("{lang}{n}")), format: Diffformat::Json, bekannt: None };
+            let e: serde_json::Value = serde_json::from_str(&rumpf(k.diff_lesen(1, &anfrage, frist()).unwrap_or_else(|f| panic!("datei={n}: {f:?}")))).unwrap();
+            assert_eq!((e["dateien"].as_array().unwrap().len(), &e["dateien"][0]["patch"]), (1, &serde_json::json!(hunk)), "{n}");
+        }
+        // kein Git-Prozess für den abgewiesenen Lauf: mit voller Grenze startet die Liste genau einen mehr
+        crate::git::arbeitsrepo::vorabgrenze_setzen(None);
+        let vorher = arbeitsrepo::aufrufe();
+        k.diff_lesen(1, &Diffanfrage { commit: Some(format!("kd:{kk}")), anwendung: None, datei: None, format: Diffformat::Json, bekannt: None }, frist()).unwrap();
+        assert_eq!(arbeitsrepo::aufrufe() - vorher, starts_klein + 1);
     }
 
     // R00206 AK 20 (f), ADR-0032 N5.1 Regel 2: der fertige Rumpf belegt das Budget noch im Platz der Lesegrenze — der
