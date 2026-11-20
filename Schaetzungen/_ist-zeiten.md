@@ -884,3 +884,8 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1022 Einstieg aus der Liste und Rückweg | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1023 Breite, Ziele, Knöpfe, Kontrast und Tastatur messen und nachziehen | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1024 Probe im echten Programm, Mutanten, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1030 Nacharbeit 1: Präfix ohne Kürzel nie wörtlich | Nacharbeit | 0,3-0,5h | 0,25h | 0,25h | autonom |
+| 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1031 Nacharbeit 1: Nachladen mit Lauf-Kennung und Abbruch | Nacharbeit | 0,3-0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1032 Nacharbeit 1: Fokus übersteht das Neuzeichnen | Nacharbeit | 0,2-0,3h | 0,15h | 0,15h | autonom |
+| 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1033 Nacharbeit 1: Hover-Kontrast und Titel | Nacharbeit | 0,1-0,2h | 0,05h | 0,05h | autonom |
+| 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1034 Nacharbeit 1: Marken, Kopf sichtbar, „auf Zweig“ | Nacharbeit | 0,3-0,5h | 0,1h | 0,1h | autonom |
