@@ -35,22 +35,46 @@ pub struct Signal {
 /// Der Schlüssel des gerechneten Standardsignals „fällig“ — nicht einrichtbar, nicht setzbar.
 pub const SIGNAL_FAELLIG: &str = "due";
 
-/// Eine registrierte Anwendung: ihr Arbeits-Repository mit WBS und Anforderungen, angesprochen über das Kürzel.
+/// Eine registrierte Anwendung, angesprochen über das Kürzel: ihr Repository (ADR-0034 Regel 1), dazu bis S2 die Pfade zu
+/// WBS und Anforderungen, die die Factory und die WBS-Funktionen noch lesen (N2). Jeder Pfad darf fehlen (leer).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Anwendung {
     pub kuerzel: String,
     pub name: String,
+    /// Ordner im Arbeits-Repository, absolut oder relativ zum kanbanD-Ordner; leer = Rückfall auf `wbs`/`anforderungen`
+    #[serde(default)]
+    pub repository: String,
+    #[serde(default)]
     pub wbs: String,
+    #[serde(default)]
     pub anforderungen: String,
 }
 
-/// `sources`: `wbs`/`requirements` sind die Standardanwendung ohne Kürzel, `applications` das Register.
+impl Anwendung {
+    /// Der Startordner der Wurzel nach [`startordner`].
+    pub fn startordner(&self) -> Option<String> {
+        startordner(&self.repository, &self.wbs, &self.anforderungen)
+    }
+}
+
+/// `sources`: `repository` (bzw. bis S2 `wbs`/`requirements`) ist die Standardanwendung ohne Kürzel, `applications` das Register.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Quellen {
+    #[serde(default)]
+    pub repository: String,
+    #[serde(default)]
     pub wbs: String,
+    #[serde(default)]
     pub anforderungen: String,
     #[serde(default)]
     pub anwendungen: Vec<Anwendung>,
+}
+
+impl Quellen {
+    /// Der Startordner der Standardanwendung nach [`startordner`].
+    pub fn startordner(&self) -> Option<String> {
+        startordner(&self.repository, &self.wbs, &self.anforderungen)
+    }
 }
 
 /// Inhalt von `kanbanD.md`: gilt für den ganzen Ordner.
@@ -70,6 +94,15 @@ impl Einstellungen {
 
     pub fn signal(&self, schluessel: &str) -> Option<&Signal> {
         self.signale.iter().find(|s| s.schluessel == schluessel)
+    }
+
+    /// Schreibregel und Antwortform des Registers (ADR-0034 N2 Regel 1, 2): `repository` ist je Anwendung und in den
+    /// Quellen der Startordner — das gesetzte Repository, sonst der Rückfall auf `wbs`/`anforderungen`, sonst leer.
+    pub fn repository_ergaenzen(&mut self) {
+        self.quellen.repository = self.quellen.startordner().unwrap_or_default();
+        for a in &mut self.quellen.anwendungen {
+            a.repository = a.startordner().unwrap_or_default();
+        }
     }
 }
 
@@ -130,5 +163,27 @@ mod tests {
         for (repository, w, anforderungen, erwartet) in zeilen {
             assert_eq!(startordner(repository, w, anforderungen).as_deref(), erwartet, "{repository:?} {w:?} {anforderungen:?}");
         }
+    }
+
+    /// N2 Regel 1: `repository` wird ergänzt, `wbs`/`anforderungen` bleiben, wie sie sind; ohne Pfad bleibt es leer.
+    #[test]
+    fn repository_ergaenzen_je_anwendung_und_in_den_quellen() {
+        let a = |k: &str, repository: &str, wbs: &str| Anwendung { kuerzel: k.into(), name: k.into(), repository: repository.into(), wbs: wbs.into(), anforderungen: String::new() };
+        let mut e = Einstellungen::default();
+        e.quellen = Quellen { repository: String::new(), wbs: "plan/wbs.md".into(), anforderungen: "anf".into(), anwendungen: vec![a("kd", "", "/r/D/P/kd.md"), a("lc", "/r", "/r/D/P/lc.md"), a("xx", " ", "")] };
+        e.repository_ergaenzen();
+        assert_eq!((e.quellen.repository.as_str(), e.quellen.wbs.as_str(), e.quellen.anforderungen.as_str()), ("plan", "plan/wbs.md", "anf"));
+        let r: Vec<(&str, &str)> = e.quellen.anwendungen.iter().map(|a| (a.repository.as_str(), a.wbs.as_str())).collect();
+        assert_eq!(r, [("/r/D/P", "/r/D/P/kd.md"), ("/r", "/r/D/P/lc.md"), ("", "")]);
+    }
+
+    /// Die heutige Factory schickt `{kuerzel, name, wbs, anforderungen}` ohne `repository`, ein neuer Schreiber nur
+    /// `{kuerzel, name, repository}` — beide Formen kommen an (N2 Regel 2).
+    #[test]
+    fn beide_formen_kommen_an() {
+        let alt: Quellen = serde_json::from_str(r#"{"wbs": "w", "anforderungen": "a", "anwendungen": [{"kuerzel": "pa", "name": "P", "wbs": "/r/p.md", "anforderungen": "/r/a"}]}"#).unwrap();
+        assert_eq!((alt.repository.as_str(), alt.anwendungen[0].repository.as_str(), alt.anwendungen[0].wbs.as_str()), ("", "", "/r/p.md"));
+        let neu: Quellen = serde_json::from_str(r#"{"repository": "/r", "anwendungen": [{"kuerzel": "kd", "name": "K", "repository": "/r"}]}"#).unwrap();
+        assert_eq!((neu.wbs.as_str(), neu.anwendungen[0].wbs.as_str(), neu.anwendungen[0].anforderungen.as_str()), ("", "", ""));
     }
 }

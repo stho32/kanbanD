@@ -722,7 +722,8 @@ async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<
     responses((status = 200, description = "Erfolg", body = crate::modell::Einstellungen), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn einstellungen_lesen(State(app): State<App>) -> Result<Response, Fehler> {
-    let e = blockierend(&app, |k| k.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))).await?;
+    let mut e = blockierend(&app, |k| k.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))).await?;
+    e.repository_ergaenzen();
     Ok(Json(e).into_response())
 }
 

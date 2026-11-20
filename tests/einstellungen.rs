@@ -56,7 +56,8 @@ async fn stilllegen_sperrt_die_person_fuer_schreibende_aufrufe() {
     assert_eq!(senden(Method::POST, &lauf.adresse, "api/aufgaben", "cl", json!({"titel": "x"})).await.0, 400);
 }
 
-// R00091: lesen in der Form, die PUT annimmt — zurückgeschrieben ändert sich nichts
+// R00091: lesen in der Form, die PUT annimmt — zurückgeschrieben ändert sich nichts. R00209 (ADR-0034 N2 Regel 2): ein
+// Register in alter Form bekommt beim ersten Rundlauf sein `repository` (ein Commit), danach ändert der Rundlauf nichts.
 #[tokio::test]
 async fn einstellungen_lesen_und_unveraendert_zurueck() {
     let tmp = tempfile::tempdir().unwrap();
@@ -65,8 +66,11 @@ async fn einstellungen_lesen_und_unveraendert_zurueck() {
     assert_eq!(s, 200);
     assert_eq!(e, einstellungen(&lauf.adresse).await);
     assert!(e["personen"].is_array() && e["klassen"].is_array() && e["signale"].is_array() && e["quellen"].is_object());
-    let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
     let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", e).await;
+    assert_eq!((s, r["geaendert"].as_bool()), (200, Some(true)), "alte Form: repository ergänzt");
+    assert!(lies(tmp.path(), "kanbanD.md").contains("sources:\n  repository: plan\n  wbs: plan/wbs.md\n  requirements: anf/\n"));
+    let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", einstellungen(&lauf.adresse).await).await;
     assert_eq!((s, r["geaendert"].as_bool()), (200, Some(false)));
     assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), vorher);
 }

@@ -800,7 +800,7 @@ mod tests {
     #[test]
     fn qualifizierte_herkunft_braucht_ein_registriertes_kuerzel() {
         let mut mit = e();
-        mit.quellen.anwendungen = vec![crate::modell::Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), wbs: "/x/plan.md".into(), anforderungen: "".into() }];
+        mit.quellen.anwendungen = vec![crate::modell::Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), repository: String::new(), wbs: "/x/plan.md".into(), anforderungen: "".into() }];
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
         assert_eq!(a.aendern(&aend(r#"{"herkunft":["KD:i0007","R00014"]}"#), &mit, &geltung()).unwrap(), vec!["Herkunft"]);
         assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);

@@ -360,7 +360,7 @@ mod tests {
     // ADR-0032 Punkt 3: Zeitgrenze → 503 ohne Verweis; fehlendes Repository und kein Commit → 400 mit dem Verweis der Anfrage
     #[test]
     fn meldungen_des_arbeits_repositorys() {
-        let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), wbs: "/r/app.md".into(), anforderungen: String::new() };
+        let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), repository: String::new(), wbs: "/r/app.md".into(), anforderungen: String::new() };
         assert!(matches!(repo_fehler(Arbeitsrepofehler::Zeitgrenze, "kd:3f2a9c1", &kd), Fehler::Zeitgrenze(m) if m.contains("10 s") && m.contains("nichts geschrieben")));
         assert!(matches!(repo_fehler(Arbeitsrepofehler::RepositoryFehlt("Ordner fehlt: /r".into()), "kd:3f2a9c1", &kd), Fehler::Verweis { meldung, verweis, fehlt: false } if meldung.contains("/r") && meldung.contains("„kd“") && verweis == "kd:3f2a9c1"));
         assert!(matches!(repo_fehler(Arbeitsrepofehler::KeinCommit, "kd:0000000", &kd), Fehler::Verweis { verweis, fehlt: false, .. } if verweis == "kd:0000000"));
@@ -396,8 +396,8 @@ mod tests {
 
     /// Der Plan, wie ihn die Prüfung baute: `voll` nur für offene Paare gefüllt (die Probe steht in tests/commits_ersetzen_dienst.rs).
     fn plan(a: &Aufgabe, paare: &[(&str, &str)]) -> Result<Ersetzungsplan, Fehler> {
-        let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), wbs: "/r/app.md".into(), anforderungen: String::new() };
-        let register = Anwendungen::aus(&crate::modell::Quellen { wbs: String::new(), anforderungen: String::new(), anwendungen: vec![kd] });
+        let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), repository: String::new(), wbs: "/r/app.md".into(), anforderungen: String::new() };
+        let register = Anwendungen::aus(&crate::modell::Quellen { repository: String::new(), wbs: String::new(), anforderungen: String::new(), anwendungen: vec![kd] });
         let rumpf = serde_json::json!({"ersetzungen": paare.iter().map(|(a, n)| serde_json::json!({"alt": a, "neu": n})).collect::<Vec<_>>()});
         let paare = ersetzungen_lesen(&rumpf, &register).map_err(ersetzungsfehler)?;
         let offen = urteil(a, &paare)?;

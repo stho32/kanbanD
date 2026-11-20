@@ -31,7 +31,12 @@ pub fn lesen(text: &str) -> Result<Einstellungen, Formatfehler> {
         }
     }
     if let Some(s) = yaml::zuordnung(&m, "sources") {
-        e.quellen = Quellen { wbs: yaml::text(s, "wbs").unwrap_or_default(), anforderungen: yaml::text(s, "requirements").unwrap_or_default(), anwendungen: anwendungen_lesen(s)? };
+        e.quellen = Quellen {
+            repository: yaml::text(s, "repository").unwrap_or_default(),
+            wbs: yaml::text(s, "wbs").unwrap_or_default(),
+            anforderungen: yaml::text(s, "requirements").unwrap_or_default(),
+            anwendungen: anwendungen_lesen(s)?,
+        };
     }
     Ok(e)
 }
@@ -65,8 +70,8 @@ pub(crate) fn klassen_schreiben(klassen: &[Klasse]) -> String {
     s
 }
 
-/// `sources.applications` — je Kürzel `{name, wbs, requirements}`, nach Kürzel sortiert. Pfade werden nicht geprüft:
-/// ein fehlender Pfad macht die Anwendung unerreichbar, nicht die Datei defekt.
+/// `sources.applications` — je Kürzel `{name, repository, wbs, requirements}`, jeder Pfad darf fehlen; nach Kürzel sortiert.
+/// Pfade werden nicht geprüft: ein fehlender Pfad macht die Anwendung unerreichbar, nicht die Datei defekt.
 fn anwendungen_lesen(quellen: &serde_yaml::Mapping) -> Result<Vec<Anwendung>, Formatfehler> {
     let Some(register) = yaml::zuordnung(quellen, "applications") else { return Ok(vec![]) };
     let mut anwendungen = register
@@ -74,7 +79,13 @@ fn anwendungen_lesen(quellen: &serde_yaml::Mapping) -> Result<Vec<Anwendung>, Fo
         .map(|(k, v)| {
             let kuerzel = yaml::wert_als_text(k).ok_or_else(|| Formatfehler("Kürzel unter sources.applications ist kein Text".into()))?;
             let a = v.as_mapping().ok_or_else(|| Formatfehler(format!("sources.applications.{kuerzel} ist keine Zuordnung")))?;
-            Ok(Anwendung { name: yaml::text(a, "name").unwrap_or_else(|| kuerzel.clone()), wbs: yaml::text(a, "wbs").unwrap_or_default(), anforderungen: yaml::text(a, "requirements").unwrap_or_default(), kuerzel })
+            Ok(Anwendung {
+                name: yaml::text(a, "name").unwrap_or_else(|| kuerzel.clone()),
+                repository: yaml::text(a, "repository").unwrap_or_default(),
+                wbs: yaml::text(a, "wbs").unwrap_or_default(),
+                anforderungen: yaml::text(a, "requirements").unwrap_or_default(),
+                kuerzel,
+            })
         })
         .collect::<Result<Vec<_>, Formatfehler>>()?;
     anwendungen.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
@@ -89,9 +100,17 @@ fn anwendungen_schreiben(anwendungen: &[Anwendung]) -> String {
     sortiert.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
     let mut s = String::from("\n  applications:");
     for a in sortiert {
-        s.push_str(&format!("\n    {}: {{name: {}, wbs: {}, requirements: {}}}", yaml::skalar(&a.kuerzel), yaml::skalar(&a.name), yaml::skalar(&a.wbs), yaml::skalar(&a.anforderungen)));
+        s.push_str(&format!("\n    {}: {{name: {}, {}}}", yaml::skalar(&a.kuerzel), yaml::skalar(&a.name), pfade(&a.repository, &a.wbs, &a.anforderungen).join(", ")));
     }
     s
+}
+
+/// Die Pfade einer Anwendung, wie sie in der Datei stehen (ADR-0034 N2 Regel 1): `repository` immer, `wbs` und
+/// `requirements` nur, wenn sie nicht leer sind.
+fn pfade(repository: &str, wbs: &str, anforderungen: &str) -> Vec<String> {
+    let mut p = vec![format!("repository: {}", yaml::skalar(repository))];
+    p.extend([("wbs", wbs), ("requirements", anforderungen)].into_iter().filter(|(_, w)| !w.is_empty()).map(|(k, w)| format!("{k}: {}", yaml::skalar(w))));
+    p
 }
 
 pub fn schreiben(e: &Einstellungen) -> String {
@@ -113,9 +132,8 @@ pub fn schreiben(e: &Einstellungen) -> String {
         s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&g.schluessel), yaml::skalar(&g.bezeichnung), yaml::skalar(&g.farbe)));
     }
     s.push_str(&format!(
-        "\nsources:\n  wbs: {}\n  requirements: {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
-        yaml::skalar(&e.quellen.wbs),
-        yaml::skalar(&e.quellen.anforderungen),
+        "\nsources:\n  {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
+        pfade(&e.quellen.repository, &e.quellen.wbs, &e.quellen.anforderungen).join("\n  "),
         anwendungen_schreiben(&e.quellen.anwendungen)
     ));
     s
@@ -134,7 +152,7 @@ mod tests {
             ],
             klassen: vec![Klasse { schluessel: "bug".into(), bezeichnung: "Fehler".into(), farbe: "#b04a8c".into() }],
             signale: vec![Signal { schluessel: "mail".into(), bezeichnung: "Neue E-Mail".into(), farbe: "blue".into() }],
-            quellen: Quellen { wbs: "Dokumentation/Planung/kanbanD.md".into(), anforderungen: "".into(), anwendungen: vec![] },
+            quellen: Quellen { repository: "Dokumentation/Planung".into(), wbs: "Dokumentation/Planung/kanbanD.md".into(), anforderungen: "".into(), anwendungen: vec![] },
         }
     }
 
@@ -153,7 +171,7 @@ mod tests {
     }
 
     fn anwendung(k: &str, wbs: &str) -> Anwendung {
-        Anwendung { kuerzel: k.into(), name: format!("App {k}"), wbs: wbs.into(), anforderungen: format!("/r/{k}") }
+        Anwendung { kuerzel: k.into(), name: format!("App {k}"), repository: format!("/r/{k}/repo"), wbs: wbs.into(), anforderungen: format!("/r/{k}") }
     }
 
     #[test]
@@ -161,15 +179,47 @@ mod tests {
         let mut e = beispiel();
         e.quellen.anwendungen = vec![anwendung("kd", "/home/x/kanbanD/plan.md"), anwendung("kc", "C:/y: z.md")];
         let t = schreiben(&e);
-        assert!(t.contains("\n  applications:\n    kc: {name: App kc, wbs: \"C:/y: z.md\", requirements: /r/kc}\n    kd: {name: App kd, wbs: /home/x/kanbanD/plan.md, requirements: /r/kd}\n---"), "{t}");
+        assert!(t.contains("\n  applications:\n    kc: {name: App kc, repository: /r/kc/repo, wbs: \"C:/y: z.md\", requirements: /r/kc}\n    kd: {name: App kd, repository: /r/kd/repo, wbs: /home/x/kanbanD/plan.md, requirements: /r/kd}\n---"), "{t}");
         let gelesen = lesen(&t).unwrap();
         assert_eq!(gelesen.quellen.anwendungen.iter().map(|a| a.kuerzel.as_str()).collect::<Vec<_>>(), vec!["kc", "kd"]);
         assert_eq!(gelesen.quellen.wbs, "Dokumentation/Planung/kanbanD.md", "Standardanwendung bleibt, wie sie war");
         assert_eq!(schreiben(&gelesen), t);
         let knapp = lesen("---\nsources:\n  applications:\n    kd: {}\n---\n").unwrap();
-        assert_eq!(knapp.quellen.anwendungen, vec![Anwendung { kuerzel: "kd".into(), name: "kd".into(), wbs: "".into(), anforderungen: "".into() }]);
+        assert_eq!(knapp.quellen.anwendungen, vec![Anwendung { kuerzel: "kd".into(), name: "kd".into(), repository: "".into(), wbs: "".into(), anforderungen: "".into() }]);
         assert!(lesen("---\nsources:\n  applications:\n    kd: 5\n---\n").is_err());
         assert!(!schreiben(&beispiel()).contains("applications"), "ohne Register keine leere Zeile");
+    }
+
+    /// R00209 FA „Schreiben“ (ADR-0034 N2 Regel 1): `repository` immer, `wbs`/`requirements` nur, wenn nicht leer —
+    /// je Anwendung und in `sources`; die neue Form liest sich zurück, wie sie geschrieben wurde.
+    #[test]
+    fn repository_immer_wbs_und_requirements_nur_wenn_nicht_leer() {
+        let mut e = beispiel();
+        e.quellen = Quellen {
+            repository: "/r".into(),
+            wbs: "".into(),
+            anforderungen: "".into(),
+            anwendungen: vec![
+                Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), repository: "/r".into(), wbs: "".into(), anforderungen: "".into() },
+                Anwendung { kuerzel: "lc".into(), name: "Lokal".into(), repository: "".into(), wbs: "".into(), anforderungen: "".into() },
+                Anwendung { kuerzel: "pa".into(), name: "Probe".into(), repository: "/r/D/P".into(), wbs: "/r/D/P/pa.md".into(), anforderungen: "".into() },
+            ],
+        };
+        let t = schreiben(&e);
+        assert!(t.contains("\nsources:\n  repository: /r\n  applications:\n    kd: {name: kanbanD, repository: /r}\n    lc: {name: Lokal, repository: \"\"}\n    pa: {name: Probe, repository: /r/D/P, wbs: /r/D/P/pa.md}\n---"), "{t}");
+        assert_eq!(lesen(&t).unwrap(), e);
+        e.quellen.anwendungen.clear();
+        e.quellen.anforderungen = "anf".into();
+        assert!(schreiben(&e).contains("\nsources:\n  repository: /r\n  requirements: anf\n---"), "{}", schreiben(&e));
+    }
+
+    /// Ein Altbestand (nur `wbs`/`requirements`) liest sich ohne `repository` — den Rückfall rechnet das Modell, nicht der Leser.
+    #[test]
+    fn altbestand_liest_sich_ohne_repository() {
+        let e = lesen("---\nsources:\n  wbs: plan/wbs.md\n  requirements: anf/\n  applications:\n    kd: {name: K, wbs: /r/D/P/kd.md, requirements: /r/A}\n---\n").unwrap();
+        assert_eq!((e.quellen.repository.as_str(), e.quellen.wbs.as_str()), ("", "plan/wbs.md"));
+        assert_eq!((e.quellen.anwendungen[0].repository.as_str(), e.quellen.anwendungen[0].wbs.as_str()), ("", "/r/D/P/kd.md"));
+        assert_eq!(e.quellen.anwendungen[0].startordner().as_deref(), Some("/r/D/P"));
     }
 
     #[test]

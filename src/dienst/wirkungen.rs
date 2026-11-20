@@ -194,7 +194,7 @@ mod tests {
     use crate::modell::{Anwendung, Quellen};
 
     fn register() -> Anwendungen {
-        Anwendungen::aus(&Quellen { wbs: "plan.md".into(), anforderungen: String::new(), anwendungen: vec![Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), wbs: "/x/plan.md".into(), anforderungen: String::new() }] })
+        Anwendungen::aus(&Quellen { repository: String::new(), wbs: "plan.md".into(), anforderungen: String::new(), anwendungen: vec![Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), repository: String::new(), wbs: "/x/plan.md".into(), anforderungen: String::new() }] })
     }
 
     fn eingabe(json: &str) -> WirkungEingabe {

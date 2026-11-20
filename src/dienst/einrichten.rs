@@ -48,12 +48,14 @@ impl Einrichtung {
 
     fn einstellungen(&self) -> Einstellungen {
         let agenten = self.agenten.iter().map(|a| Person { kuerzel: a.kuerzel.clone(), name: a.name.trim().into(), art: Art::Agent, aktiv: true });
-        Einstellungen {
+        let mut e = Einstellungen {
             personen: std::iter::once(self.ich()).chain(agenten).collect(),
             klassen: vec![],
             signale: vec![],
-            quellen: Quellen { wbs: self.quellen.wbs.trim().into(), anforderungen: self.quellen.anforderungen.trim().into(), anwendungen: vec![] },
-        }
+            quellen: Quellen { repository: self.quellen.repository.trim().into(), wbs: self.quellen.wbs.trim().into(), anforderungen: self.quellen.anforderungen.trim().into(), anwendungen: vec![] },
+        };
+        e.repository_ergaenzen();
+        e
     }
 
     fn board(&self) -> Board {
@@ -140,6 +142,16 @@ mod tests {
         assert_eq!(s.personen[1].art, Art::Agent);
         assert_eq!(e.board().slug, "entwicklung");
         assert_eq!(e.board().spalten.len(), 3);
+    }
+
+    /// R00209 Hinweis „Der erste Start“: die Quellen laufen durch dieselbe Schreibregel — mit WBS steht `repository` daneben.
+    #[test]
+    fn erste_einrichtung_schreibt_repository_der_quellen() {
+        let mut e = gut();
+        e.quellen = Quellen { wbs: " Dokumentation/Planung/app.md ".into(), ..Default::default() };
+        let q = e.einstellungen().quellen;
+        assert_eq!((q.repository.as_str(), q.wbs.as_str()), ("Dokumentation/Planung", "Dokumentation/Planung/app.md"));
+        assert_eq!(gut().einstellungen().quellen.repository, "", "ohne Pfad bleibt es leer");
     }
 
     #[test]

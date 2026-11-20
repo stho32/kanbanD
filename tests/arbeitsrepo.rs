@@ -9,7 +9,7 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 fn anwendung(wbs: &str, anforderungen: &str) -> Anwendung {
-    Anwendung { kuerzel: "kd".into(), name: "KD".into(), wbs: wbs.into(), anforderungen: anforderungen.into() }
+    Anwendung { kuerzel: "kd".into(), name: "KD".into(), repository: String::new(), wbs: wbs.into(), anforderungen: anforderungen.into() }
 }
 
 fn stand(r: &Repo) -> (String, String) {

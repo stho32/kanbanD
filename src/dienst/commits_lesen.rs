@@ -357,8 +357,8 @@ mod tests {
     const K1: &str = "3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e";
 
     fn register(standard: bool) -> Anwendungen {
-        let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), wbs: "/r/app.md".into(), anforderungen: String::new() };
-        Anwendungen::aus(&Quellen { wbs: if standard { "/s/app.md".into() } else { String::new() }, anforderungen: String::new(), anwendungen: vec![kd] })
+        let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), repository: String::new(), wbs: "/r/app.md".into(), anforderungen: String::new() };
+        Anwendungen::aus(&Quellen { repository: String::new(), wbs: if standard { "/s/app.md".into() } else { String::new() }, anforderungen: String::new(), anwendungen: vec![kd] })
     }
 
     // R00204 AK 12: Einträge mit verletzter Form starten kein Git — der Zähler bleibt bei 0

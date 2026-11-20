@@ -278,7 +278,6 @@ async fn binden_wie_die_factory(adresse: &str, eintrag: &Value) -> Result<String
 }
 
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak06_factory_bindet_traegt_signal_ein_und_erkennt_wieder() {
     let l = Lage::neu();
     let lauf = l.starten();
@@ -297,7 +296,6 @@ async fn ak06_factory_bindet_traegt_signal_ein_und_erkennt_wieder() {
 // ---- AK 7: Altbestand öffnet, wie er ist ------------------------------------------------------------------------------
 
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak07_start_und_lesen_schreiben_nichts() {
     let l = Lage::neu();
     let alt = format!("---\npeople:\n  sh: {{name: Stefan, kind: human}}\nclasses: {{}}\nsources:\n  wbs: {}\n  requirements: {}\n  applications:\n    kd: {{name: kanbanD, wbs: {}, requirements: {}}}\n---\n", l.wbs(), l.anf(), l.wbs(), l.anf());

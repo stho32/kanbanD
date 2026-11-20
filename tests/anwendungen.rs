@@ -23,7 +23,8 @@ async fn register_mit_zwei_anwendungen_stabil_sortiert_in_einem_commit() {
     let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", e.clone()).await;
     assert_eq!((s, r["geaendert"].as_bool()), (200, Some(true)));
     let datei = lies(tmp.path(), "kanbanD.md");
-    assert!(datei.contains("sources:\n  wbs: plan/wbs.md\n  requirements: anf/\n  applications:\n    kc: {name: Kasse, wbs: /a/kc/plan.md, requirements: \"\"}\n    kd: {name: kanbanD, wbs: /a/kd/plan.md, requirements: /a/kd/anf}\n---"), "{datei}");
+    // R00209 (ADR-0034 N2 Regel 1): `repository` immer, als Startordner ergänzt; leere Pfade entfallen
+    assert!(datei.contains("sources:\n  repository: plan\n  wbs: plan/wbs.md\n  requirements: anf/\n  applications:\n    kc: {name: Kasse, repository: /a/kc, wbs: /a/kc/plan.md}\n    kd: {name: kanbanD, repository: /a/kd, wbs: /a/kd/plan.md, requirements: /a/kd/anf}\n---"), "{datei}");
     assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap(), vorher + 1);
     let (_, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", einstellungen(&lauf.adresse).await).await;
     assert_eq!(r["geaendert"], false, "Rundlauf ändert nichts");

@@ -155,12 +155,22 @@ fn normalisieren(neu: &mut Einstellungen) {
         a.anforderungen = a.anforderungen.trim().into();
     }
     neu.quellen.anwendungen.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
+    neu.repository_ergaenzen();
+}
+
+/// Was mit einem Register in alter Form geschieht, wenn sich sonst nichts ändert (ADR-0034 N2 Regel 2): `PUT
+/// /api/einstellungen` stellt es um (das ergänzte `repository` ist die eine Änderung beim ersten Mal, R00209 AK 9),
+/// eine Aktion an einer Person lässt es stehen (ohne Änderung kein Commit, R00091).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Altform {
+    Umstellen,
+    Stehenlassen,
 }
 
 impl Kanban {
     /// Der eine Schreibweg der Einstellungen: unter der Sperre lesen, `aendern` anwenden, normalisieren, prüfen und
     /// nur bei einer Änderung committen. `aendern` liefert die Commit-Nachricht und ein Ergebnis.
-    fn einstellungen_aendern<T>(&self, wer: &Person, aendern: impl FnOnce(&mut Einstellungen) -> Result<(String, T), Fehler>) -> Result<(bool, T), Fehler> {
+    fn einstellungen_aendern<T>(&self, wer: &Person, altform: Altform, aendern: impl FnOnce(&mut Einstellungen) -> Result<(String, T), Fehler>) -> Result<(bool, T), Fehler> {
         let _sperre = self.gesperrt();
         let alt = self.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))?;
         let mut neu = alt.clone();
@@ -168,7 +178,11 @@ impl Kanban {
         normalisieren(&mut neu);
         einstellungen_pruefen(&alt, &neu)?;
         personen_pruefen(wer.art, &alt.personen, &neu.personen)?;
-        if neu == alt {
+        let mut vergleich = alt.clone();
+        if altform == Altform::Stehenlassen {
+            vergleich.repository_ergaenzen();
+        }
+        if neu == vergleich {
             return Ok((false, ergebnis));
         }
         self.aktion(wer, &nachricht, &[Schritt::schreiben(einstellungen::DATEI, einstellungen::schreiben(&neu))])?;
@@ -176,7 +190,7 @@ impl Kanban {
     }
 
     pub fn einstellungen_setzen(&self, wer: &Person, neu: Einstellungen) -> Result<bool, Fehler> {
-        self.einstellungen_aendern(wer, |e| {
+        self.einstellungen_aendern(wer, Altform::Umstellen, |e| {
             *e = neu;
             Ok(("Einstellungen geändert".into(), ()))
         })
@@ -186,7 +200,7 @@ impl Kanban {
     /// Eine Person anlegen (R00091); ein vorhandenes Kürzel ist ein Konflikt, die Regeln prüft `einstellungen_pruefen`.
     pub fn person_anlegen(&self, wer: &Person, n: &Personenangabe) -> Result<Person, Fehler> {
         let p = Person { kuerzel: n.kuerzel.trim().into(), name: n.name.trim().into(), art: n.art, aktiv: n.aktiv.unwrap_or(true) };
-        let (_, p) = self.einstellungen_aendern(wer, |e| {
+        let (_, p) = self.einstellungen_aendern(wer, Altform::Stehenlassen, |e| {
             if e.person(&p.kuerzel).is_some() {
                 return Err(Fehler::Konflikt(format!("Kürzel „{}“ gibt es schon", p.kuerzel)));
             }
@@ -198,7 +212,7 @@ impl Kanban {
 
     /// Name, Art oder aktiv einer Person ändern; unbekannt → 404.
     pub fn person_aendern(&self, wer: &Person, kuerzel: &str, a: &PersonAenderung) -> Result<Person, Fehler> {
-        let (_, p) = self.einstellungen_aendern(wer, |e| {
+        let (_, p) = self.einstellungen_aendern(wer, Altform::Stehenlassen, |e| {
             let p = e.personen.iter_mut().find(|p| p.kuerzel == kuerzel).ok_or_else(|| Fehler::NichtGefunden(format!("Person „{kuerzel}“ steht nicht in kanbanD.md")))?;
             let tat = if a.aktiv == Some(false) && p.aktiv { "stillgelegt" } else { "geändert" };
             a.anwenden(p);
@@ -242,7 +256,7 @@ mod tests {
     }
 
     fn anwendung(k: &str, name: &str) -> Anwendung {
-        Anwendung { kuerzel: k.into(), name: name.into(), wbs: "/a/plan.md".into(), anforderungen: "".into() }
+        Anwendung { kuerzel: k.into(), name: name.into(), repository: "".into(), wbs: "/a/plan.md".into(), anforderungen: "".into() }
     }
 
     #[test]

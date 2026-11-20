@@ -143,9 +143,9 @@ mod tests {
 
     /// Register mit `kd` und `xx`; mit `standard` dazu die Standardanwendung (sources.wbs).
     fn register(standard: bool) -> Anwendungen {
-        let anwendung = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), wbs: format!("/{k}/app.md"), anforderungen: String::new() };
+        let anwendung = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), repository: String::new(), wbs: format!("/{k}/app.md"), anforderungen: String::new() };
         let wbs = if standard { "/r/Dokumentation/Planung/app.md" } else { "" };
-        Anwendungen::aus(&Quellen { wbs: wbs.into(), anforderungen: String::new(), anwendungen: vec![anwendung("kd"), anwendung("xx")] })
+        Anwendungen::aus(&Quellen { repository: String::new(), wbs: wbs.into(), anforderungen: String::new(), anwendungen: vec![anwendung("kd"), anwendung("xx")] })
     }
 
     fn fehler(text: &str, anwendungen: &Anwendungen) -> Verweisfehler {

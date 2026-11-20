@@ -175,7 +175,11 @@ impl Kanban {
     pub fn zustand(&self) -> Result<Zustand, Fehler> {
         let mut defekte = vec![];
         let einstellungen = match self.ordner.einstellungen() {
-            Ok(e) => e,
+            // die Antwortform des Registers: `repository` als Startordner (ADR-0034 N2 Regel 2) — gelesen, nicht geschrieben
+            Ok(e) => e.map(|mut e| {
+                e.repository_ergaenzen();
+                e
+            }),
             Err(Fehler::Defekt(f)) => {
                 defekte.push(DefekteDatei::neu(crate::format::einstellungen::DATEI, f));
                 None

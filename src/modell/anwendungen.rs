@@ -40,8 +40,8 @@ pub struct Anwendungen(Vec<Anwendung>);
 impl Anwendungen {
     pub fn aus(quellen: &Quellen) -> Anwendungen {
         let mut alle = vec![];
-        if !quellen.wbs.is_empty() || !quellen.anforderungen.is_empty() {
-            alle.push(Anwendung { kuerzel: String::new(), name: String::new(), wbs: quellen.wbs.clone(), anforderungen: quellen.anforderungen.clone() });
+        if quellen.startordner().is_some() {
+            alle.push(Anwendung { kuerzel: String::new(), name: String::new(), repository: quellen.repository.clone(), wbs: quellen.wbs.clone(), anforderungen: quellen.anforderungen.clone() });
         }
         alle.extend(quellen.anwendungen.iter().cloned());
         Anwendungen(alle)
@@ -80,8 +80,8 @@ mod tests {
     use super::*;
 
     fn quellen(wbs: &str, kuerzel: &[&str]) -> Quellen {
-        let anwendungen = kuerzel.iter().map(|k| Anwendung { kuerzel: k.to_string(), name: k.to_uppercase(), wbs: format!("/{k}/plan.md"), anforderungen: String::new() }).collect();
-        Quellen { wbs: wbs.into(), anforderungen: String::new(), anwendungen }
+        let anwendungen = kuerzel.iter().map(|k| Anwendung { kuerzel: k.to_string(), name: k.to_uppercase(), repository: String::new(), wbs: format!("/{k}/plan.md"), anforderungen: String::new() }).collect();
+        Quellen { repository: String::new(), wbs: wbs.into(), anforderungen: String::new(), anwendungen }
     }
 
     #[test]
@@ -117,5 +117,8 @@ mod tests {
         assert_eq!(a.alle().iter().map(|x| x.kuerzel.as_str()).collect::<Vec<_>>(), vec!["", "kd"]);
         assert!(a.registriert("kd") && !a.registriert("xx") && !a.registriert(""));
         assert_eq!(Anwendungen::aus(&quellen("", &[])).alle().len(), 0);
+        let nur_repository = Quellen { repository: "/r".into(), ..Default::default() };
+        assert_eq!(Anwendungen::aus(&nur_repository).alle()[0].repository, "/r", "R00209: eine Standardanwendung mit nur repository zählt");
+        assert_eq!(Anwendungen::aus(&Quellen { repository: "  ".into(), ..Default::default() }).alle().len(), 0);
     }
 }

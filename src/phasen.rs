@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn gebunden_sind_die_genannten_registrierten_oder_die_einzige() {
-        let a = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), wbs: String::new(), anforderungen: String::new() };
+        let a = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), repository: String::new(), wbs: String::new(), anforderungen: String::new() };
         let register = [a("kc"), a("kd")];
         let mut b = board(&[]);
         b.anwendungen = Some(vec!["kd".into(), "xx".into()]);
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn ausdruecklich_leere_liste_bindet_auch_die_einzige_nicht() {
-        let a = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), wbs: String::new(), anforderungen: String::new() };
+        let a = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), repository: String::new(), wbs: String::new(), anforderungen: String::new() };
         let register = [a("kd")];
         let mut b = board(&[]);
         b.anwendungen = None;
