@@ -7,7 +7,7 @@ const { REITER, reiterDerAufgabe, reiterSchluessel } = require('../../web/reiter
 test('REITER: Schlüssel und Beschriftungen in Anzeigereihenfolge (R00145) — „Anhänge“ ist keine Ansicht mehr', () => {
   assert.deepStrictEqual(REITER, [
     ['inhalt', 'Inhalt'], ['zeiten', 'Zeiten'], ['details', 'Details'],
-    ['datei', 'Datei'], ['kosten', 'Kosten'], ['verlauf', 'Verlauf'],
+    ['datei', 'Datei'], ['kosten', 'Kosten'], ['commits', 'Commits'], ['verlauf', 'Verlauf'],
   ]);
   assert.strictEqual(REITER.some(([k]) => k === 'anhaenge'), false, 'kein Eintrag „Anhänge“');
 });
@@ -53,4 +53,23 @@ test('rueckfallAnsicht: die eine Rückfallregel (R00145 FA 2) — vorhandener Sc
   assert.strictEqual(rueckfallAnsicht(ohneKosten, 'kosten'), 'inhalt', 'fehlendes Etikett fällt auf Inhalt');
   assert.strictEqual(rueckfallAnsicht(ohneKosten, 'anhaenge'), 'inhalt', 'entfallene Ansicht fällt auf Inhalt');
   assert.strictEqual(rueckfallAnsicht(ohneKosten, 'unbekannt'), 'inhalt', 'unbekannter Schlüssel fällt auf Inhalt');
+});
+
+test('reiterDerAufgabe (R00205 FA 1): „Commits“ steht nur mit mindestens einem Verweis, ohne Kosten zwischen „Datei“ und „Verlauf“', () => {
+  assert.deepStrictEqual(reiterSchluessel({ commits: ['kd:a41e0c5'] }), ['inhalt', 'zeiten', 'details', 'datei', 'commits', 'verlauf']);
+  for (const leer of [{}, { commits: [] }, { commits: null }]) {
+    assert.strictEqual(reiterSchluessel(leer).includes('commits'), false, JSON.stringify(leer));
+  }
+});
+
+test('reiterDerAufgabe (R00205 FA 1): mit Kosten steht „Commits“ zwischen „Kosten“ und „Verlauf“', () => {
+  const schluessel = reiterSchluessel({ cost: { currency: 'USD', amount: 1.63 }, commits: ['kd:a41e0c5', 'kd:b'] });
+  assert.deepStrictEqual(schluessel, ['inhalt', 'zeiten', 'details', 'datei', 'kosten', 'commits', 'verlauf']);
+  assert.deepStrictEqual(reiterDerAufgabe({ commits: ['x'] }).find(([k]) => k === 'commits'), ['commits', 'Commits']);
+});
+
+test('rueckfallAnsicht (R00205 FA 1): fällt der letzte Verweis weg, gilt „Inhalt“ — dieselbe Regel wie für jede entfallende Ansicht', () => {
+  const { rueckfallAnsicht } = require('../../web/reiter.js');
+  assert.strictEqual(rueckfallAnsicht(reiterSchluessel({ commits: ['kd:a'] }), 'commits'), 'commits');
+  assert.strictEqual(rueckfallAnsicht(reiterSchluessel({ commits: [] }), 'commits'), 'inhalt');
 });
