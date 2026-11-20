@@ -500,6 +500,10 @@ async fn ak11_einzeln_nachladen() {
     let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}&datei=fehlt.txt"), None).await;
     assert_eq!(a.status, 404, "{}", a.text);
     assert!(a.json()["fehler"].as_str().unwrap().contains("Dateiliste zu groß"), "{}", a.text);
+    // auch die Liste liest die Dateiliste mit Grenze: der endlose Lauf endet bei 1 MB, nicht an der Gesamtgrenze
+    let start = Instant::now();
+    let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}"), None).await;
+    assert!(a.status != 503 && start.elapsed() < Duration::from_secs(5), "{} nach {:?}", a.status, start.elapsed());
 }
 
 // ---- AK 12: format=patch und ETag · US-8 ------------------------------------------------------------------------------
@@ -571,7 +575,8 @@ async fn ak13_zeitgrenze_und_503() {
     let lauf4 = l.starten(&[("PATH", &pfad)]);
     let start = Instant::now();
     assert_eq!(holen(&lauf4.adresse, 1, &format!("commit=kd:{}", l.x1), None).await.status, 503);
-    assert!(start.elapsed() <= Duration::from_secs(15), "{:?}", start.elapsed());
+    // der dritte Prozess endet mit der Gesamtgrenze bei 10 s, nicht nach seinen vollen 4 s (das wären 12 s)
+    assert!(start.elapsed() < Duration::from_millis(11_500), "{:?}", start.elapsed());
     tokio::time::sleep(Duration::from_millis(500)).await;
     let gestartet: Vec<String> = lies(&l.a.basis, "pids").split_whitespace().map(String::from).collect();
     assert_eq!(gestartet.len(), 3, "Wurzel, cat-file, metadaten (gekürzt): {gestartet:?}");
