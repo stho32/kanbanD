@@ -392,7 +392,7 @@ async fn die_beschreibung_nennt_jeden_pfad_und_abfrageparameter() {
     assert_eq!(routen, 89);
     assert_eq!(mit_pfad, MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect::<BTreeSet<_>>(), "die 64 Routen der Tabelle");
     assert_eq!(abfragen, [
-        "get /api/aufgaben: board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte",
+        "get /api/aufgaben: board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte",
         "get /api/aufgaben/{nr}/diff: commit, anwendung, datei, format",
         "get /api/berichte/bewegungen: board",
         "get /api/berichte/verlauf: board",

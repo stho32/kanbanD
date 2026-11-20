@@ -419,8 +419,9 @@ pub struct Aufgabe {
     pub geschaetzte_minuten: Option<u32>,
     /// `braucht` (R00214, ADR-0035 Punkt 4): abgeleitet aus den Labels `braucht:<n>` in deren Reihenfolge, nur lesbar —
     /// steht in `GET /api/aufgaben` und `GET /api/aufgaben/{nr}`, ohne Abhängigkeit `[]`; geschrieben wird über `labels`
-    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
-    #[schema(read_only)]
+    // `deserialize_with` statt `skip_deserializing`: utoipa ließe das Feld sonst aus dem Schema weg (utoipa-gen 6, serde.rs:51).
+    #[serde(default, deserialize_with = "nie_gelesen", skip_serializing_if = "Option::is_none")]
+    #[schema(schema_with = braucht_schema)]
     pub braucht: Option<Vec<Abhaengigkeit>>,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
@@ -498,6 +499,27 @@ pub struct Aufgabenaenderung {
     #[serde(default, rename = "braucht", deserialize_with = "mitgeschickt")]
     #[schema(ignore)]
     pub braucht_mitgeschickt: bool,
+}
+
+/// Schema von `braucht` von Hand: `readOnly` am Feld selbst. `#[schema(read_only)]` setzt es in utoipa 6 nur an die
+/// Elemente, und `Array` hat kein eigenes `read_only` — deshalb über die flach geschriebene Zusatz-Tabelle.
+fn braucht_schema() -> utoipa::openapi::schema::Array {
+    use utoipa::PartialSchema;
+    use utoipa::openapi::extensions::Extensions;
+    use utoipa::openapi::schema::{ArrayBuilder, SchemaType, Type};
+    let mut nur_lesbar = Extensions::default();
+    nur_lesbar.insert("readOnly".into(), serde_json::Value::Bool(true));
+    ArrayBuilder::new()
+        .schema_type(SchemaType::from_iter([Type::Array, Type::Null]))
+        .items(Abhaengigkeit::schema())
+        .extensions(Some(nur_lesbar))
+        .description(Some("nur lesbar, abgeleitet aus den Labels `braucht:<n>` in deren Reihenfolge (R00214, ADR-0035): [{nummer, titel, erledigt}] — steht in GET /api/aufgaben und GET /api/aufgaben/{nr}, ohne Abhängigkeit []; geschrieben wird über labels, braucht im Rumpf → 400"))
+        .build()
+}
+
+/// Ein nur lesbares Feld: was immer ankommt, wird überlesen.
+fn nie_gelesen<'de, D: serde::Deserializer<'de>, T>(d: D) -> Result<Option<T>, D::Error> {
+    serde::de::IgnoredAny::deserialize(d).map(|_| None)
 }
 
 pub(crate) fn mitgeschickt<'de, D: serde::Deserializer<'de>>(d: D) -> Result<bool, D::Error> {
