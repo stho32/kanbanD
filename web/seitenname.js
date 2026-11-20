@@ -22,6 +22,7 @@
     if (ansicht.startsWith('berichte')) return 'Berichte';
     if (ansicht === 'wbs') return 'WBS';
     if (ansicht === 'einrichten') return 'Einrichten';
+    if (ansicht === 'review') return 'Review';
     return 'Board';
   }
 
@@ -37,6 +38,7 @@
   /** Text der verborgenen Überschrift erster Ebene: „Board · Entwicklung“, „Berichte · Burndown“, im ersten Start „Einrichten“. */
   function seitenUeberschrift(seite) {
     if (seite.ersterStart) return 'Einrichten';
+    if (seite.ansicht === 'review' && seite.review) return `Review #${seite.review.nummer} · ${seite.review.kurz}`;
     const teile = [seitenNameVon(seite.ansicht), zusatz(seite)].filter(Boolean);
     return teile.join(' · ');
   }

@@ -34,7 +34,7 @@ const aufgefuellt = (anfang, laenge) => anfang + 'x'.repeat(laenge - anfang.leng
 
 /** Das Arbeits-Repository R (R00204 „Ausgangslage“): K1–K4 auf main, W1 auf karte/1 im Worktree, V1 verwaist, R1 nur auf o/x,
  *  V2 verwaist und danach gelöscht, `o/main` = K4 mit `o/HEAD`. Dazu die Commits der Breitendaten (#4). */
-function arbeitsRepositoryBauen(basis) {
+function arbeitsRepositoryBauen(basis, { breiten = true } = {}) {
   const r = path.join(basis, 'R'), wt = path.join(basis, 'R-karte-1');
   fs.mkdirSync(path.join(r, 'Dokumentation/Planung'), { recursive: true });
   fs.writeFileSync(path.join(r, 'Dokumentation/Planung/app.md'), '# App\n');
@@ -55,7 +55,7 @@ function arbeitsRepositoryBauen(basis) {
   gitAls(r, ADA, TITEL_PFAD, 'update-ref', 'refs/remotes/o/x', h.r1);
   gitAls(r, ADA, '2026-03-05T09:00:00+00:00', 'checkout', '-q', '--detach', 'main');
   h.v2 = dateiCommit(r, ADA, '2026-03-05T09:00:00+00:00', 'w.txt', 1, 'w.txt anlegen');
-  breitenCommits(r, h);
+  if (breiten) breitenCommits(r, h);
   gitAls(r, ADA, '2026-03-05T09:00:00+00:00', 'checkout', '-q', 'main');
   gitAls(r, ADA, '2026-03-05T09:00:00+00:00', 'update-ref', 'refs/remotes/o/main', h.k4);
   gitAls(r, ADA, '2026-03-05T09:00:00+00:00', 'symbolic-ref', 'refs/remotes/o/HEAD', 'refs/remotes/o/main');
@@ -173,4 +173,4 @@ function geteiltesRepository() {
   return geteilt;
 }
 
-module.exports = { geteiltesRepository, arbeitsRepositoryBauen, ausgangslage, ausgangslageVorbereiten, basisAnlegen, gitAls, aufgabeDatei, AUTOR_LANG };
+module.exports = { geteiltesRepository, arbeitsRepositoryBauen, ausgangslage, ausgangslageVorbereiten, basisAnlegen, gitAls, dateiCommit, aufgabeDatei, AUTOR_LANG, EINSTELLUNGEN_KOPF };

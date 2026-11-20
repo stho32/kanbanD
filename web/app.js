@@ -199,7 +199,8 @@ function anwendungDerSeite() {
   if (!anwendung) return '';
   return anwendung.name;
 }
-const vMain = () => vSeitenUeberschrift() + vHaupt();
+/** Die Review-Seite trägt ihre Überschrift erster Ebene selbst im Kopf („Review“, R00207 FA 5). */
+const vMain = () => (S.ui.view === 'review' ? vReview() : vSeitenUeberschrift() + vHaupt());
 
 function vHaupt() {
   if (S.ui.first) return vFirst();
@@ -932,6 +933,14 @@ function commitsStatusBehalten(vorher) {
   vorher.textContent = neu.textContent;
 }
 
+/** „i von n“ der Review-Seite bleibt derselbe Knoten (`aria-live`, R00207 FA 3): nur so sagt ein Bildschirmleser den Schritt an. */
+function ansageBehalten(vorher, id) {
+  const neu = document.getElementById(id);
+  if (!vorher || !neu || vorher === neu) return;
+  neu.replaceWith(vorher);
+  if (vorher.textContent !== neu.textContent) vorher.textContent = neu.textContent;
+}
+
 /** Vor jedem Zeichnen: ist „Commits“ die gezeigte Ansicht und für diese Aufgabe noch nichts gelesen, beginnt das Lesen jetzt (einmal);
     ist es nicht die gezeigte Ansicht, fällt der Zustand weg — das nächste Öffnen liest neu. Ein Live-Ereignis liest nie neu. */
 function commitsAnstossen() {
@@ -959,17 +968,322 @@ async function commitsLesen(nr) {
   render();
 }
 
+/* ── Review-Seite eines Commits (R00207, ADR-0033): eigene Adresse, zwei Anfragen beim Öffnen, Diffbereich als stehende Insel ── */
+
+/** Marke am Verlaufseintrag einer Review-Seite, die aus der Ansicht „Commits“ geöffnet wurde: der Eintrag davor ist das Fenster. */
+const REVIEW_AUS_DER_LISTE = { kdReviewAusListe: true };
+const reviewAusDerListe = () => Boolean(history.state) && history.state.kdReviewAusListe === true;
+/** Fristen des Diffs (ADR-0033 Punkt 3, ADR-0032 N4.1/N5.1): bis zum Kopf und für den Rumpf. */
+const DIFF_FRIST_KOPF_MS = 15000;
+const DIFF_FRIST_RUMPF_MS = 60000;
+/** Bis zu dieser Breite stehen „Zurück“ und „Vor“ als Symbolknöpfe (R00207 FA 3). */
+const reviewSchmal = () => matchMedia('(max-width:640px)').matches;
+
+/** Liest den Diff mit eigener Frist: 15 s bis zum Kopf, 60 s für den Rumpf. Fehler haben die Form von `api` (`status`, `message`,
+    `daten`); eine abgelaufene Frist zählt als Zeitgrenze (503). Ein Abbruch durch den Browser gibt das Budget des Servers frei. */
+async function diffHolen(pfad) {
+  const abbruch = new AbortController();
+  let frist = setTimeout(() => abbruch.abort(), DIFF_FRIST_KOPF_MS);
+  const fristFehler = () => Object.assign(new Error('Das Programm antwortete nicht innerhalb der Frist'), { status: 503, daten: null });
+  try {
+    let r;
+    try {
+      r = await fetch(pfad, { signal: abbruch.signal });
+    } catch (_) {
+      throw abbruch.signal.aborted ? fristFehler() : Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null });
+    }
+    clearTimeout(frist);
+    frist = setTimeout(() => abbruch.abort(), DIFF_FRIST_RUMPF_MS);
+    let text;
+    try { text = await r.text(); } catch (_) { throw abbruch.signal.aborted ? fristFehler() : Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null }); }
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+    if (!r.ok) throw Object.assign(new Error((json && json.fehler) || r.statusText), { status: r.status, daten: json });
+    return json;
+  } finally {
+    clearTimeout(frist);
+  }
+}
+
+const fehlerVon = g => ({ status: g.status || 0, fehler: g.message, daten: g.daten || null });
+
+/** Vor jedem Zeichnen: ist die Review-Seite gezeigt und ihre Adresse neu, beginnt das Lesen jetzt (einmal je Adresse); ein Wechsel
+    des Commits derselben Aufgabe liest nur den Diff. Ist sie nicht gezeigt, fällt ihr Zustand weg. Ein Live-Ereignis liest nie. */
+function reviewAnstossen() {
+  if (S.ui.view !== 'review') {
+    if (S.ui.review) S.ui.fokusNachListe = { nr: S.ui.review.nr, verweis: S.ui.review.herkunft };
+    S.ui.review = null;
+    return;
+  }
+  const hash = location.hash, adresse = adresseLesen(hash);
+  const a = adresse.review;
+  let r = S.ui.review;
+  if (!a || (r && r.adresse === hash)) return;
+  const gleicheSeite = Boolean(r) && r.nr === a.nummer && r.basis === a.basis && r.slug === adresse.slug;
+  if (!gleicheSeite) {
+    r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null };
+    S.ui.reviewHerkunft = null;
+  }
+  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, fokusOffen: true, laufend: null, schlange: [] });
+  if (a.ungueltig) { r.diff = null; reviewFokus(r); return; }
+  if (!gleicheSeite) reviewListeLesen(r);
+  r.diff = null;
+  if (!a.commit) reviewErsterCommit(r);
+  else if (a.commit.includes(':')) reviewDiffLesen(r, a.commit);
+  else reviewPraefixAufloesen(r);
+}
+
+/** Ein Präfix ohne Kürzel aus einem geteilten Link (R00207 AK 2): die API kennt Präfixe nur mit Kürzel (R00206 FA 2). Ist die Liste
+    da, wird er über die Hashes der Einträge mit Diff zum vollen Verweis; passt er zu keinem oder zu mehreren, geht er wörtlich hinaus
+    und die API sagt, was ihm fehlt. Gezählt wird danach wie immer über den vollen Hash der Antwort (Rand a). */
+function reviewPraefixAufloesen(r) {
+  if (!r.commit || r.commit.includes(':') || r.diff || !r.liste || r.liste.status === 'laedt') return;
+  const praefix = r.commit.toLowerCase();
+  const passend = r.liste.status === 'da' ? r.liste.eintraege.filter(e => e.hash && e.hash.toLowerCase().startsWith(praefix)) : [];
+  reviewDiffLesen(r, passend.length === 1 ? passend[0].verweis : r.commit);
+}
+
+/** Liest `GET …/commits`; die Antwort gilt nur, solange dieselbe Seite steht und niemand inzwischen neu gelesen hat. */
+async function reviewListeLesen(r) {
+  const lauf = r.liste = { status: 'laedt' };
+  let ergebnis;
+  try {
+    const antwort = await api('GET', `/api/aufgaben/${r.nr}/commits`);
+    ergebnis = { status: 'da', eintraege: antwort.commits };
+  } catch (g) {
+    ergebnis = { status: 'fehler', fehler: fehlerVon(g) };
+  }
+  if (S.ui.review !== r || r.liste !== lauf) return;
+  r.liste = ergebnis;
+  reviewErsterCommit(r);
+  reviewPraefixAufloesen(r);
+  reviewFokus(r);
+  render();
+}
+
+/** `…/review` ohne Verweis: sobald die Liste da ist, zeigt die Seite den ersten Commit mit Diff und ersetzt die Adresse (Rand c: bleibt). */
+function reviewErsterCommit(r) {
+  if (r.commit || r.ungueltig || !r.liste || r.liste.status !== 'da') return;
+  const f = folge(r.liste.eintraege, null);
+  if (f.art !== 'erster') return;
+  reviewAdresseErsetzen(r, f.erster);
+  r.commit = f.erster;
+  r.adresse = location.hash;
+  reviewDiffLesen(r, f.erster);
+}
+
+/** Ersetzt die Adresse der Seite durch die mit `verweis`, ohne Verlaufseintrag; die Marke „aus der Liste“ bleibt. */
+function reviewAdresseErsetzen(r, verweis) {
+  history.replaceState(history.state, '', reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: verweis }));
+  adresseGefolgt = location.hash;
+}
+
+/** Liest den Diff zu `verweis`; eine Antwort für einen inzwischen verlassenen Commit wird verworfen (ADR-0014). */
+async function reviewDiffLesen(r, verweis) {
+  const lauf = r.diff = { status: 'laedt', verweis };
+  let ergebnis;
+  try {
+    const antwort = await diffHolen(`/api/aufgaben/${r.nr}/diff?commit=${encodeURIComponent(verweis)}`);
+    ergebnis = { status: 'da', verweis, antwort };
+  } catch (g) {
+    ergebnis = { status: 'fehler', verweis, fehler: fehlerVon(g) };
+  }
+  if (S.ui.review !== r || r.diff !== lauf) return;
+  r.diff = ergebnis;
+  if (ergebnis.status === 'da') reviewDateienAufbauen(r, ergebnis.antwort);
+  reviewFokus(r);
+  render();
+}
+
+/** Dateien und Klappen beim Aufbau: der Plan des Budgets, oder das Bild, das dieser Commit auf dieser Seite zuletzt hatte. */
+function reviewDateienAufbauen(r, antwort) {
+  const hash = antwort.commits[0].hash;
+  r.dateien = antwort.dateien.slice();
+  r.hinweise = (antwort.hinweise || []).slice();
+  const plan = aufklappPlan(r.dateien, r.hinweise);
+  const gemerkt = r.klappenJe[hash];
+  r.staende = r.dateien.map((d, i) => ({ offen: gemerkt ? gemerkt[i] : (plan[i] || (d.status !== 'D' && dateiZustand(d, r.hinweise) !== 'patch')), laden: null, fehler: null }));
+}
+
+/** Was die Seite gerade zeigt (R00207 FA 2, 4, 8): eine Meldung, das Laden oder den Diff samt Folge. */
+function reviewBild(r) {
+  if (r.ungueltig) return { art: 'ungueltig' };
+  const liste = r.liste || { status: 'laedt' };
+  if (liste.status === 'fehler' && fehlerArt(liste.fehler, 'commits') === 'aufgabe_unbekannt') return { art: 'unbekannt' };
+  if (!r.commit) {
+    if (liste.status === 'fehler') return { art: 'liste_fehler' };
+    if (liste.status === 'da' && folge(liste.eintraege, null).art === 'keine') return { art: 'keine', eintraege: liste.eintraege };
+    return { art: 'laedt' };
+  }
+  if (!r.diff || r.diff.status === 'laedt') return { art: 'laedt' };
+  if (r.diff.status === 'fehler') return { art: 'diff_fehler' };
+  const c = r.diff.antwort.commits[0];
+  const f = liste.status === 'da' ? folge(liste.eintraege, c.hash) : null;
+  return { art: 'diff', commit: c, folge: f && f.art === 'keine' ? { art: 'fremd', erster: null } : f, liste };
+}
+
+/** Fokus nach dem Aufbau (R00207 FA 13), einmal je Adresse und nach „Erneut versuchen“: auf die Meldung, den Commit-Kopf, den
+    Blätterknopf der Richtung (fehlt er am Rand, den anderen) oder den Rückweg. Solange noch gelesen wird, wartet er. */
+function reviewFokus(r) {
+  if (!r.fokusOffen) return;
+  const b = reviewBild(r);
+  if (b.art === 'laedt' || (b.art === 'diff' && b.liste.status === 'laedt')) return;
+  r.fokusOffen = false;
+  if (b.art !== 'diff') { S.ui.fokus = '#rv-meld'; return; }
+  if (b.liste.status === 'fehler') { S.ui.fokus = '#rv-ctitel'; return; }
+  const f = b.folge;
+  const richtung = r.richtung;
+  r.richtung = null;
+  if (richtung && f.art === 'folge') {
+    const andere = richtung === 'vor' ? 'zurueck' : 'vor';
+    S.ui.fokus = f[richtung] ? `#rv-${richtung}` : `#rv-${andere}`;
+    return;
+  }
+  S.ui.fokus = '#rv-rueckweg';
+}
+
+/** Schlüssel der Insel (ADR-0033 Punkt 4): Aufgabe und voller Hash des gezeigten Diffs; ohne Diff keiner. */
+function reviewInselSchluessel() {
+  const r = S.ui.review;
+  if (S.ui.view !== 'review' || !r || !r.diff || r.diff.status !== 'da') return null;
+  return `${r.nr}:${r.diff.antwort.commits[0].hash}`;
+}
+
+/** Die Insel des letzten Zeichnens, wenn sie zum gezeigten Diff gehört: sie bleibt derselbe Knoten. */
+let inselGehalten = null;
+
+/** Klappen des gezeigten Commits merken, damit Zurück und Vor dasselbe Bild ergeben. */
+function reviewKlappenMerken(r) {
+  if (r.diff && r.diff.status === 'da') r.klappenJe[r.diff.antwort.commits[0].hash] = r.staende.map(s => s.offen);
+}
+
+/** Zeichnet nur den Abschnitt einer Datei in der Insel neu (Aufklappen, Einklappen, Nachladen). */
+function reviewDateiNeu(r, i) {
+  const alt = document.getElementById('rv-d' + i);
+  if (alt) alt.outerHTML = dateiHtml(r.dateien[i], i, r.staende[i], r.hinweise, esc);
+  reviewKlappenMerken(r);
+}
+
+/** Nachladen einer Datei (ADR-0033 Punkt 6): höchstens eine Anfrage `datei=` zur Zeit; weitere warten sichtbar und starten von
+    selbst, sobald die vorige zu Ende ist — auch mit Fehler. Nie eine Wiederholung ohne Klick. */
+function reviewNachladen(r, i) {
+  const st = r.staende[i];
+  if (st.laden === 'laeuft' || st.laden === 'wartet') return;
+  st.offen = true;
+  if (r.laufend !== null) { st.laden = 'wartet'; r.schlange.push(i); reviewDateiNeu(r, i); return; }
+  reviewDateiLaden(r, i);
+}
+
+async function reviewDateiLaden(r, i) {
+  const st = r.staende[i], d = r.dateien[i], c = r.diff.antwort.commits[0];
+  const verweis = (r.diff.antwort.anwendung ? `${r.diff.antwort.anwendung}:` : '') + c.hash;
+  r.laufend = i;
+  st.laden = 'laeuft';
+  st.fehler = null;
+  reviewDateiNeu(r, i);
+  let antwort = null, fehler = null;
+  try {
+    antwort = await diffHolen(`/api/aufgaben/${r.nr}/diff?commit=${encodeURIComponent(verweis)}&datei=${encodeURIComponent(d.neu ?? d.alt)}`);
+  } catch (g) {
+    fehler = fehlerVon(g);
+  }
+  if (S.ui.review !== r || r.laufend !== i) return;
+  r.laufend = null;
+  const neu = antwort && zuordnen(r.dateien, i, antwort.dateien);
+  if (neu) {
+    r.dateien[i] = neu;
+    r.hinweise.push(...(antwort.hinweise || []).filter(h => h.art === 'zu_gross_zum_anzeigen'));
+    st.laden = null;
+  } else {
+    st.laden = 'fehler';
+    const f = fehler || { status: 404, fehler: 'Die Datei fehlt in der Antwort' };
+    st.fehler = { art: fehlerArt(f, 'diff'), status: f.status, text: esc(f.status === 0 ? 'keine Verbindung zum Programm' : f.fehler || 'unbekannter Fehler') };
+  }
+  const fokusInDerDatei = document.activeElement && document.activeElement.closest && document.activeElement.closest('#rv-d' + i);
+  reviewDateiNeu(r, i);
+  if (fokusInDerDatei || document.activeElement === document.body) S.ui.fokus = '#rv-dk' + i;
+  const naechste = r.schlange.shift();
+  if (naechste !== undefined) reviewDateiLaden(r, naechste);
+  render();
+}
+
+/** Die Seite (Hauptbereich) aus dem Zustand; der Kopf steht in `#kopf` (vReviewKopf). */
+function vReview() {
+  const r = S.ui.review;
+  if (!r) return '<div class="rv" id="review"></div>';
+  const b = reviewBild(r);
+  const erneut = ziel => knopf('Erneut versuchen', 'review-erneut', ziel, 'rv-erneut');
+  const zurListe = knopf('Zur Liste der Commits', 'review-liste');
+  let inhalt;
+  if (b.art === 'ungueltig') inhalt = meldungHtml({ rolle: 'status', kopf: 'Verweis ungültig.', text: 'Die Adresse nennt keinen Commit in gültiger Form.', knoepfe: zurListe });
+  else if (b.art === 'unbekannt') inhalt = meldungHtml({ rolle: 'status', kopf: `Aufgabe #${r.nr} gibt es nicht.`, knoepfe: knopf(r.basis === 'board' ? 'Zum Board' : 'Zu den Aufgaben', 'review-weg') });
+  else if (b.art === 'liste_fehler') inhalt = meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(commitsFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe });
+  else if (b.art === 'keine') inhalt = keineHtml(b.eintraege, esc);
+  else if (b.art === 'laedt') inhalt = `<p class="rv-laedt" role="status" aria-busy="true">${r.commit ? `Liest den Diff von ${esc(kurzVerweis(r.commit))} …` : 'Liest die Commits der Aufgabe …'}</p>`;
+  else if (b.art === 'diff_fehler') inhalt = diffFehlerHtml(r.diff.fehler, r.commit, esc);
+  else inhalt = reviewDiffHtml(r, b);
+  return `<div class="rv" id="review">${inhalt}</div>`;
+}
+
+function reviewDiffHtml(r, b) {
+  const antwort = r.diff.antwort, c = b.commit;
+  const kurz = (antwort.anwendung ? `${antwort.anwendung}:` : '') + c.hash.slice(0, 7);
+  let navigation = '';
+  if (b.liste.status === 'fehler') navigation = `<div class="rv-lfehl" role="alert"><p>Die Liste der Commits ließ sich nicht lesen; das Blättern ist nicht möglich.</p>${knopf('Erneut versuchen', 'review-erneut', 'liste', 'rv-erneut')}</div>`;
+  else if (b.folge && b.folge.art === 'folge') navigation = blaetternHtml(b.folge, esc(kurz), reviewSchmal());
+  else if (b.folge) navigation = fremdHtml(kurz, esc);
+  const offen = r.staende.some(s => s.offen);
+  const alle = r.dateien.length ? knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') : '';
+  const summe = `<div class="sum"><span>${dateienWort(c.dateien)} · <span class="pl">+${tausender(c.plus)}</span> <span class="mi">−${tausender(c.minus)}</span></span>${alle}</div>`;
+  const eintrag = b.liste.status === 'da' ? b.liste.eintraege.find(e => e.hash && e.hash.toLowerCase() === c.hash.toLowerCase()) : null;
+  const leer = !r.dateien.length;
+  const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc) + (leer ? '<p class="rv-leer">Dieser Commit ändert keine Dateien.</p>' : dateilisteHtml(r.dateien, esc));
+  const schluessel = reviewInselSchluessel();
+  const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc);
+  return `<div class="rv-leiste">${navigation}${summe}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
+}
+
+/** Kopf der Review-Seite (Artboard `#diff-fenster`): Rückweg „← #nr“, „Review“ als h1, Titel der Aufgabe, „liest nur“. */
+function vReviewKopf() {
+  const r = S.ui.review;
+  const a = r && aufgabe(r.nr);
+  const rueckweg = a ? `<a class="rv-rueck" id="rv-rueckweg" href="${esc(adresseBilden({ sicht: r.basis, slug: r.slug, nummer: r.nr }))}" data-act="review-zurueck">← #${r.nr}</a>` : '';
+  return `<header class="kz rv-kz" data-stufe="${S.ui.stufe}"><div class="kz-reihe">${rueckweg}<h1 class="rv-h1">Review</h1><span class="rv-titel">${a ? esc(a.titel) : ''}</span><span class="rv-liest">liest nur</span></div></header>`;
+}
+
+/** Zurück ins Aufgabenfenster mit der Ansicht „Commits“ (FA 10): aus der Liste geöffnet ein Schritt zurück, sonst ersetzt. */
+function reviewZurueck() {
+  const r = S.ui.review;
+  if (!r) return;
+  S.ui.tab = 'commits';
+  if (reviewAusDerListe()) { history.back(); return; }
+  history.replaceState(null, '', adresseBilden({ sicht: r.basis, slug: r.slug, nummer: r.nr }));
+  adresseGewechselt();
+}
+
+/** Öffnet die Review-Seite aus der Ansicht „Commits“ mit einem neuen Verlaufseintrag samt Marke (ADR-0033 Punkt 2). */
+function reviewOeffnen(verweis) {
+  const u = S.ui;
+  if (!u.offen || (u.view !== 'board' && u.view !== 'aufgaben')) return;
+  u.reviewHerkunft = verweis || null;
+  history.pushState(REVIEW_AUS_DER_LISTE, '', reviewAdresseBilden({ basis: u.view, slug: u.slug, nummer: u.offen, commit: verweis || null }));
+  adresseGewechselt();
+}
+
 /** Zeichnet den Hauptbereich neu und lässt dabei die Personenwahl des Stundenzettels als denselben Knoten stehen, damit ein
     fremdes Live-Ereignis eine offene Liste nicht schließt und der Fokus nicht springt (R00201 AK 9). Chromium schließt die
     Liste schon, wenn der Knoten nur verschoben wird (auch mit `moveBefore`, geprobt in Chromium 159): er darf seinen Platz im
     Dokument nicht verlassen. Darum bleibt der Pfad von #main bis zur Liste stehen; ersetzt werden die Geschwister auf jeder Stufe,
     an der Liste die Einträge und die Wahl. Zeichnet die neue Ansicht den Pfad anders, wird wie sonst alles ersetzt. */
-function hauptbereichErsetzen(html, personenwahlVorher) {
+function hauptbereichErsetzen(html, personenwahlVorher, inselVorher = null) {
   const hauptbereich = $('#main');
   const vorlage = document.createElement('template');
   vorlage.innerHTML = html;
-  const personenwahlNeu = vorlage.content.querySelector('#' + PERSONENWAHL);
-  const altPfad = pfadZu(personenwahlVorher, hauptbereich);
+  // Die Insel der Review-Seite (ADR-0033 Punkt 4) bleibt auf demselben Weg stehen wie die Personenwahl: ihr Pfad bleibt, der
+  // Platzhalter mit demselben Schlüssel wird nicht eingesetzt — Klappen, Nachgeladenes, Textauswahl und Leseposition bleiben.
+  const bleibend = inselVorher || personenwahlVorher;
+  const personenwahlNeu = bleibend && vorlage.content.querySelector('#' + bleibend.id);
+  const altPfad = pfadZu(bleibend, hauptbereich);
   const neuPfad = pfadZu(personenwahlNeu, vorlage.content);
   if (!pfadeGleichenSich(altPfad, neuPfad)) {
     hauptbereich.replaceChildren(vorlage.content);
@@ -984,8 +1298,8 @@ function hauptbereichErsetzen(html, personenwahlVorher) {
     altEltern = altKnoten;
     neuEltern = neuKnoten;
   });
-  personenwahlAbgleichen(personenwahlVorher, personenwahlNeu);
-  geschwisterErsetzen(altEltern, personenwahlVorher, neuEltern, personenwahlNeu);
+  if (!inselVorher) personenwahlAbgleichen(personenwahlVorher, personenwahlNeu);
+  geschwisterErsetzen(altEltern, bleibend, neuEltern, personenwahlNeu);
 }
 
 /** Elemente von der Wurzel (ausgeschlossen) bis `knoten`; leer, wenn `knoten` fehlt oder nicht unter der Wurzel liegt. */
@@ -1402,6 +1716,7 @@ function render() {
   if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
   reiterRueckfallImFenster(aktiv);
   commitsAnstossen();
+  reviewAnstossen();
   document.title = fenstertitel();
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
@@ -1430,6 +1745,9 @@ function render() {
   const tagVorher = document.getElementById(PERSONEN_TAG);
   const commitsStatusVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(COMMITS_STATUS) : null;
   const personenwahlVorher = document.getElementById(PERSONENWAHL);
+  const inselAlt = document.getElementById('rv-insel');
+  inselGehalten = inselAlt && inselAlt.dataset.insel === reviewInselSchluessel() ? inselAlt : null;
+  const reviewPosVorher = document.getElementById('rv-pos');
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -1438,14 +1756,16 @@ function render() {
   S.neuzeichnen = true;
   try {
     $('#kopf').innerHTML = vKopf();
-    hauptbereichErsetzen(vMain(), personenwahlVorher);
+    hauptbereichErsetzen(vMain(), personenwahlVorher, inselGehalten);
     $('#main').dataset.sicht = sicht;
     $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
     $('#over').dataset.offen = String(S.ui.offen || '');
     meldungsknotenBehalten(meldungVorher);
     datumsknotenBehalten(tagVorher);
     commitsStatusBehalten(commitsStatusVorher);
+    ansageBehalten(reviewPosVorher, 'rv-pos');
   } finally {
+    inselGehalten = null;
     S.neuzeichnen = false;
   }
   hinweisEinpassen();
@@ -1725,8 +2045,17 @@ function ersterTabbarer(bereich) {
 
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
-  const seite = { ansicht: S.ui.view, boardTitel: boardTitelDerSeite(), anwendung: anwendungDerSeite() };
+  const seite = { ansicht: S.ui.view, boardTitel: boardTitelDerSeite(), anwendung: anwendungDerSeite(), review: reviewTitel() };
   return fenstertitelName(seite, { zaehler: alleLaufenden().length, wbsStand: S.wbs && prozente(S.wbs.stand).gruen, wbsName: S.wbs && S.wbs.name });
+}
+
+/** Nummer und Kurzform des gezeigten Commits für den Fenstertitel der Review-Seite (R00207 FA 5). */
+function reviewTitel() {
+  const r = S.ui.review;
+  if (S.ui.view !== 'review' || !r) return null;
+  const c = r.diff && r.diff.status === 'da' && r.diff.antwort.commits[0];
+  const kurz = c ? (r.diff.antwort.anwendung ? `${r.diff.antwort.anwendung}:` : '') + c.hash.slice(0, 7) : kurzVerweis(r.commit || '');
+  return { nummer: r.nr, kurz };
 }
 
 /** Selektor des Stifts einer Teilaufgabe im Aufgabenfenster — nach dem Bearbeiten kehrt der Fokus dorthin zurück (R00177). */
@@ -2195,6 +2524,77 @@ async function aktion(a, arg, wert) {
         if (!u.commits || u.commits.status === 'laedt') break;
         u.fokus = '#commits-neu';
         commitsLesen(u.offen);
+        break;
+      }
+      case 'review-oeffnen': reviewOeffnen(arg); return;
+      case 'review-zurueck':
+      case 'review-liste': reviewZurueck(); return;
+      case 'review-weg': {
+        const r = u.review;
+        if (r) location.hash = adresseBilden({ sicht: r.basis, slug: r.slug, nummer: null });
+        return;
+      }
+      case 'review-blaettern': {
+        const r = u.review, b = r && reviewBild(r);
+        const ziel = b && b.art === 'diff' && b.folge && b.folge.art === 'folge' && b.folge[arg];
+        if (!ziel) break;
+        reviewKlappenMerken(r);
+        r.richtung = arg;
+        reviewAdresseErsetzen(r, ziel);
+        break;
+      }
+      case 'review-erster': {
+        const r = u.review, b = r && reviewBild(r);
+        if (!b || !b.folge || !b.folge.erster) break;
+        reviewKlappenMerken(r);
+        r.richtung = 'vor';
+        reviewAdresseErsetzen(r, b.folge.erster);
+        break;
+      }
+      case 'review-erneut': {
+        const r = u.review;
+        if (!r) break;
+        r.fokusOffen = true;
+        if (arg === 'liste' && (!r.liste || r.liste.status !== 'laedt')) reviewListeLesen(r);
+        if (arg === 'diff' && r.commit && (!r.diff || r.diff.status !== 'laedt')) reviewDiffLesen(r, r.commit);
+        break;
+      }
+      case 'review-klappe': {
+        const r = u.review, i = +arg;
+        if (!r || !r.staende || !r.staende[i]) break;
+        r.staende[i].offen = !r.staende[i].offen;
+        reviewDateiNeu(r, i);
+        u.fokus = '#rv-dk' + i;
+        break;
+      }
+      case 'review-datei': {
+        const r = u.review, i = +arg;
+        if (!r || !r.staende || !r.staende[i]) break;
+        if (!r.staende[i].offen) { r.staende[i].offen = true; reviewDateiNeu(r, i); }
+        u.fokus = '#rv-dk' + i;
+        render();
+        const kopf = document.getElementById('rv-dk' + i);
+        if (kopf) kopf.scrollIntoView({ block: 'start' });
+        return;
+      }
+      case 'review-alle': {
+        const r = u.review;
+        if (!r || !r.staende) break;
+        const zuklappen = r.staende.some(st => st.offen);
+        r.staende.forEach((st, i) => {
+          const soll = zuklappen ? false : dateiZustand(r.dateien[i], r.hinweise) === 'patch';
+          if (st.offen === soll) return;
+          st.offen = soll;
+          reviewDateiNeu(r, i);
+        });
+        u.fokus = '#rv-alle';
+        break;
+      }
+      case 'review-nachladen': {
+        const r = u.review, i = +arg;
+        if (!r || !r.staende || !r.staende[i]) break;
+        reviewNachladen(r, i);
+        u.fokus = '#rv-dk' + i;
         break;
       }
       case 'commits-klappe': {
@@ -3164,6 +3564,8 @@ document.addEventListener('click', e => {
     S.titelKlick = setTimeout(() => act('oeffnen', el.dataset.arg), 250);
     return;
   }
+  // Ein Review-Verweis mit Umschalt-, Strg- oder Meta-Taste bleibt ein Link (neuer Tab, neues Fenster; ADR-0033 Punkt 2)
+  if (el.tagName === 'A' && el.dataset.act === 'review-oeffnen' && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });
@@ -3285,7 +3687,9 @@ if (window.visualViewport) {
 }
 window.addEventListener('resize', () => {
   const stufeGewechselt = stufeAusBreite(innerWidth) !== S.ui.stufe;
-  if (stufeGewechselt) render();
+  // Die Blätterknöpfe der Review-Seite wechseln bei 640 px zwischen Text und Symbol samt Namen (R00207 FA 3)
+  const reviewGewechselt = S.ui.view === 'review' && Boolean(document.querySelector('#review .bl-k .t')) === reviewSchmal();
+  if (stufeGewechselt || reviewGewechselt) render();
   else { popPlatzieren(); tippPlatzieren(); }
 });
 document.addEventListener('keydown', e => {
