@@ -13,6 +13,7 @@ mod bindung;
 mod commits;
 mod commits_lesen;
 pub use commits_lesen::GESAMTGRENZE;
+pub mod antwortbudget;
 pub mod diff;
 mod zweigcache;
 mod lesegrenze;
@@ -85,6 +86,12 @@ pub struct Kanban {
     zweigcache: Mutex<zweigcache::Zweigcache>,
     /// höchstens 4 Lesevorgänge in Arbeits-Repositories gleichzeitig (Nacharbeit #211, Security Muss 3)
     lesegrenze: lesegrenze::Lesegrenze,
+    /// Platz aller Antworten 200 von `GET …/diff`, bis der Client sie gelesen hat (ADR-0032 N5.1)
+    antwortbudget: antwortbudget::Antwortbudget,
+    /// Testnaht (R00206 B1015): läuft einmal direkt nach dem Belegen des Antwortbudgets, mit der Zahl belegter Plätze der
+    /// Lesegrenze
+    #[cfg(test)]
+    nach_dem_belegen: Mutex<Option<Box<dyn FnOnce(usize) + Send>>>,
     /// Testnaht (R00204 B1001): läuft einmal zwischen Zweigliste und zweiter Fingerabdruck-Probe
     #[cfg(test)]
     vor_der_probe: Mutex<Option<Box<dyn FnOnce() + Send>>>,
@@ -140,7 +147,9 @@ impl Schritt {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(),
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(),
+            #[cfg(test)]
+            nach_dem_belegen: Mutex::default(),
             #[cfg(test)]
             vor_der_probe: Mutex::default(),
             #[cfg(test)]

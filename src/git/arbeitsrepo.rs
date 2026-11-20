@@ -809,10 +809,12 @@ mod tests {
     }
 
     // R00206 AK 9 (Modul), ADR-0032 N4.4 Regel 1: genau `bytegrenze` Byte sind ganz, ein Byte mehr ist ein Teil mit genau
-    // `bytegrenze` Byte — mit der Grenze für einzeln geladene Dateien (20.971.520) und einer kleinen
+    // `bytegrenze` Byte — mit der Grenze für den Patch einer einzeln geladenen Datei (8.388.608, ADR-0032 N5.1), der für
+    // die Dateiliste von `datei=` (20.971.520) und einer kleinen
     #[test]
     fn bytegrenze_genau_und_eins_mehr() {
-        for grenze in [20_971_520usize, 1000] {
+        assert_eq!((crate::modell::GRENZE_EINZELN, crate::modell::GRENZE_DATEILISTE_EINZELN), (8_388_608, 20_971_520));
+        for grenze in [8_388_608usize, 20_971_520, 1000] {
             let ganz = teil_ausfuehren(erzeuge(grenze), Duration::from_secs(20), grenze).unwrap();
             assert_eq!((ganz.ausgabe.len(), ganz.abgeschnitten), (grenze, false), "genau {grenze}");
             let teil = teil_ausfuehren(erzeuge(grenze + 1), Duration::from_secs(20), grenze).unwrap();

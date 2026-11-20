@@ -23,6 +23,12 @@ pub struct Lesegrenze {
 pub struct Platz<'a>(&'a Lesegrenze);
 
 impl Lesegrenze {
+    /// Wie viele Plätze belegt sind.
+    #[cfg(test)]
+    pub fn belegt(&self) -> usize {
+        *self.belegt.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
     /// Ein Platz, sobald einer frei ist — `None`, wenn bis `frist` keiner frei wurde.
     pub fn betreten(&self, frist: Instant) -> Option<Platz<'_>> {
         let mut belegt = self.belegt.lock().unwrap_or_else(|p| p.into_inner());

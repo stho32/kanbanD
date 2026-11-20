@@ -2,7 +2,7 @@
 //! Patch-Lauf mit Bytegrenze, einzeln nachladen; live aus dem Arbeits-Repository, nur lesend, ohne die Sperre.
 
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Vergleich};
-use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Hinweis, Verteilung, dateiliste, diffdatei, lauf_der_liste, patches_zuordnen, roh_lesen, zahlen_mit_pfaden};
+use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Verteilung, dateiliste, diffdatei, lauf_der_liste, patches_zuordnen, roh_lesen, zahlen_mit_pfaden};
 use std::path::Path;
 use std::time::Instant;
 
@@ -37,16 +37,17 @@ impl From<Arbeitsrepofehler> for Inhaltsfehler {
 }
 
 /// Der Inhalt des Diffs: `gesamt` ist die wahre Zahl der Dateien (`commits[0].dateien`).
-pub fn inhalt_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, auswahl: Auswahl, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
+/// `fassung`: für JSON nur `patch`, für `format=patch` nur die Stücke (ADR-0032 N5.1 Regel 7).
+pub fn inhalt_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, auswahl: Auswahl, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
     match auswahl {
-        Auswahl::Liste => liste_lesen(wurzel, vergleich, gesamt, frist),
-        Auswahl::Datei(name) => datei_lesen(wurzel, vergleich, name, frist),
+        Auswahl::Liste => liste_lesen(wurzel, vergleich, gesamt, fassung, frist),
+        Auswahl::Datei(name) => datei_lesen(wurzel, vergleich, name, fassung, frist),
     }
 }
 
 /// Die Liste: zwei Läufe der Dateiliste (je 1 MB), Kappe, Zeilengrenze und Pfadlänge, dann ein Patch-Lauf (4 MB) für
 /// die übrigen Dateien — die großen erreichen ihn nie, die Pfadangabe bleibt unter 1 MB (ADR-0032 N4.3, N5.5 S1).
-fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
+fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
     let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, &[], GRENZE_DATEILISTE, frist)?;
     let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &[], GRENZE_DATEILISTE, frist)?;
     let mut dateien = dateiliste(&roh.ausgabe, roh.abgeschnitten, &zahlen.ausgabe, zahlen.abgeschnitten).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?;
@@ -59,21 +60,22 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, frist: Instant)
     if !im_lauf.is_empty() {
         let pfade: Vec<&[u8]> = if mit_pfadangabe { im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().map(Vec::as_slice)).collect() } else { vec![] };
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_PATCH_LAUF, frist)?;
-        patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste).map_err(Inhaltsfehler::Form)?;
+        patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
     }
     Ok(Diffinhalt { dateien, hinweise })
 }
 
 /// Eine Datei: die Dateiliste ungekappt bis 20 MB (nur `--raw -z`), der Name gegen `neu` (bei gelöschten `alt`) —
-/// nur Pfade aus dieser Liste erreichen Git, wörtlich; dann Zähler und Patch bis 20 MB für genau diese Pfade. Die
+/// nur Pfade aus dieser Liste erreichen Git, wörtlich; dann Zähler und Patch bis 8 MB für genau diese Pfade. Die
 /// Pfadangabe trifft auch `foo/…`: Zähler verbinden sich über die Pfade, Stücke über die Blob-Hashes (ADR-0032 N5.2).
-fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
-    let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, &[], GRENZE_EINZELN, frist)?;
-    let liste = roh_lesen(&roh.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?;
-    let treffer: Vec<_> = liste.into_iter().map(|r| diffdatei(r, None)).filter(|d| d.name() == name).collect();
+fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
+    let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, &[], GRENZE_DATEILISTE_EINZELN, frist)?;
+    let treffer: Vec<_> = roh_lesen(&roh.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?.into_iter().map(|r| diffdatei(r, None)).filter(|d| d.name() == name).collect();
     if treffer.is_empty() {
         return Err(Inhaltsfehler::DateiFehlt { liste_abgeschnitten: roh.abgeschnitten });
     }
+    // die Dateiliste ist nur Zwischenstand: frei vor dem Patch-Lauf (ADR-0032 N5.1 Regel 6)
+    drop(roh);
     let pfade: Vec<Vec<u8>> = treffer.iter().flat_map(|d| d.pfade_roh.clone()).collect();
     let pfade: Vec<&[u8]> = pfade.iter().map(Vec::as_slice).collect();
     let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &pfade, GRENZE_DATEILISTE, frist)?;
@@ -86,7 +88,7 @@ fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, frist: Instant) 
     }
     let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_EINZELN, frist)?;
     let alle: Vec<usize> = (0..dateien.len()).collect();
-    patches_zuordnen(&mut dateien, &alle, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln).map_err(Inhaltsfehler::Form)?;
+    patches_zuordnen(&mut dateien, &alle, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln, fassung).map_err(Inhaltsfehler::Form)?;
     let hinweise = dateien.iter().filter(|d| d.gross).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }).collect();
     Ok(Diffinhalt { dateien, hinweise })
 }
@@ -96,6 +98,7 @@ fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, frist: Instant) 
 use super::Kanban;
 use super::commits_lesen::GESAMTGRENZE;
 use crate::fehler::Fehler;
+use super::antwortbudget::Rumpf;
 use crate::git::arbeitsrepo::Objekt;
 use crate::modell::{Anwendungen, Commitzustand, GRENZEN_VERSION, HASH_MAX, Verweisform, patch_text, titel_kuerzen, verweis_lesen};
 use serde::Serialize;
@@ -163,18 +166,19 @@ pub struct Diff {
     pub hinweise: Vec<Hinweis>,
 }
 
-/// Was der Dienst liefert: 304 ohne Rumpf oder den Diff, je mit `ETag`, wenn der Verweis einen vollen Hash trägt.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Was der Dienst liefert: 304 ohne Rumpf oder den fertigen Rumpf (JSON-Bytes bzw. Patch-Text) mit seinem Platz im
+/// Antwortbudget, je mit `ETag`, wenn der Verweis einen vollen Hash trägt.
+#[derive(Debug)]
 pub enum Diffantwort {
     Unveraendert(String),
-    Json { etag: Option<String>, diff: Diff },
-    Text { etag: Option<String>, text: String },
+    Rumpf { etag: Option<String>, format: Diffformat, rumpf: Rumpf },
 }
 
 impl Kanban {
     /// `GET /api/aufgaben/{nr}/diff` — liest die Aufgabe ohne Sperre und schreibt nie. Alles, was ohne Git geht (Form,
     /// Verweis an der Karte, Register, `ETag`), kommt vor dem ersten Git-Aufruf; Git läuft nur bis `frist` (Eintritt in
-    /// den Handler + [`GESAMTGRENZE`]), danach 503 — nie eine Teilantwort.
+    /// den Handler + [`GESAMTGRENZE`]), danach 503 — nie eine Teilantwort. Der fertige Rumpf belegt noch im Platz der
+    /// Lesegrenze seinen Platz im Antwortbudget, ohne Warten; passt er nicht, sofort 503 (ADR-0032 N5.1).
     pub fn diff_lesen(&self, nr: u32, anfrage: &Diffanfrage, frist: Instant) -> Result<Diffantwort, Fehler> {
         let aufgabe = self.ordner().aufgabe(nr)?;
         let form = Verweisform::lesen(&anfrage.commit).map_err(|f| Fehler::Verweis { meldung: f.meldung, verweis: f.verweis, fehlt: false })?;
@@ -206,13 +210,31 @@ impl Kanban {
         let m = arbeitsrepo::metadaten(&wurzel, &[voll.as_str()], frist).map_err(repo_fehler)?.remove(&voll).ok_or_else(|| Fehler::Intern(format!("git: keine Metadaten zu {voll}")))?;
         let vergleich = Vergleich { eltern: m.erster_elternteil.as_deref(), commit: &voll };
         let auswahl = anfrage.datei.as_deref().map_or(Auswahl::Liste, Auswahl::Datei);
-        let inhalt = inhalt_lesen(&wurzel, vergleich, m.dateien, auswahl, frist).map_err(|f| inhaltsfehler(f, nr))?;
+        let fassung = match anfrage.format {
+            Diffformat::Json => Fassung::Patch,
+            Diffformat::Patch => Fassung::Stuecke,
+        };
+        let mut inhalt = inhalt_lesen(&wurzel, vergleich, m.dateien, auswahl, fassung, frist).map_err(|f| inhaltsfehler(f, nr))?;
         let commit = Diffcommit { verweis: gespeichert.to_string(), anwendung: anwendung.kuerzel.clone(), hash: voll.clone(), titel: titel_kuerzen(&m.titel), autor: m.autor, datum: m.datum, plus: m.plus, minus: m.minus, dateien: m.dateien };
-        Ok(match anfrage.format {
-            Diffformat::Json => Diffantwort::Json { etag, diff: Diff { anwendung: anwendung.kuerzel.clone(), commits: vec![commit], dateien: inhalt.dateien, hinweise: inhalt.hinweise } },
-            Diffformat::Patch => Diffantwort::Text { etag, text: patch_text(&inhalt.dateien) },
-        })
+        let bytes = match anfrage.format {
+            Diffformat::Json => json(&Diff { anwendung: anwendung.kuerzel.clone(), commits: vec![commit], dateien: inhalt.dateien, hinweise: inhalt.hinweise })?,
+            Diffformat::Patch => patch_text(&mut inhalt.dateien).into_bytes(),
+        };
+        let rumpf = self.antwortbudget.belegen(bytes).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Diff in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
+        #[cfg(test)]
+        if let Some(haken) = self.nach_dem_belegen.lock().unwrap().take() {
+            haken(self.lesegrenze.belegt());
+        }
+        Ok(Diffantwort::Rumpf { etag, format: anfrage.format, rumpf })
     }
+}
+
+/// Der Diff als JSON-Bytes (wie `axum::Json`), das Ziel vorab auf die geschätzte Größe reserviert.
+fn json(diff: &Diff) -> Result<Vec<u8>, Fehler> {
+    let geschaetzt = diff.dateien.iter().map(|d| d.patch.as_ref().map_or(0, |p| p.len() + p.len() / 16) + 512).sum::<usize>() + 4096;
+    let mut bytes = Vec::with_capacity(geschaetzt);
+    serde_json::to_writer(&mut bytes, diff).map_err(|f| Fehler::Intern(format!("JSON: {f}")))?;
+    Ok(bytes)
 }
 
 /// 404 mit dem Zustand des Verweises, wie die Liste ihn nennt (ADR-0032 N4.2).
@@ -241,7 +263,7 @@ fn abbruch(f: Arbeitsrepofehler) -> Fehler {
 fn inhaltsfehler(f: Inhaltsfehler, nr: u32) -> Fehler {
     match f {
         Inhaltsfehler::Git(g) => repo_fehler(g),
-        Inhaltsfehler::DateiFehlt { liste_abgeschnitten: true } => Fehler::NichtGefunden(format!("Dateiliste zu groß: die Datei steht nicht in den ersten {} MB der Dateiliste des Commits an #{nr}", crate::modell::GRENZE_EINZELN >> 20)),
+        Inhaltsfehler::DateiFehlt { liste_abgeschnitten: true } => Fehler::NichtGefunden(format!("Dateiliste zu groß: die Datei steht nicht in den ersten {} MB der Dateiliste des Commits an #{nr}", GRENZE_DATEILISTE_EINZELN >> 20)),
         Inhaltsfehler::DateiFehlt { liste_abgeschnitten: false } => Fehler::NichtGefunden(format!("die Datei steht nicht in der Dateiliste des Commits an #{nr} — datei= nennt neu, bei gelöschten alt, buchstäblich")),
         Inhaltsfehler::Form(m) => Fehler::Intern(format!("git: {m}")),
     }
@@ -262,4 +284,81 @@ fn etag(verweis: &str, anfrage: &Diffanfrage) -> String {
         h = h.wrapping_mul(0x0000_0100_0000_01b3);
     }
     format!("\"diff-{h:016x}\"")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::process::Command;
+    use std::sync::{Arc, Mutex};
+    use std::time::Duration;
+
+    fn git(r: &Path, args: &[&str]) -> String {
+        let a = Command::new("git").arg("-C").arg(r).args(["-c", "user.name=T", "-c", "user.email=t@example.org"]).args(args).output().unwrap();
+        assert!(a.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&a.stderr));
+        String::from_utf8_lossy(&a.stdout).trim().to_string()
+    }
+
+    /// Ein Arbeits-Repository mit einem Commit (`a.txt`, 3 Zeilen), der an #1 hängt.
+    fn stand() -> (tempfile::TempDir, Kanban, String) {
+        let tmp = tempfile::tempdir().unwrap();
+        let basis = tmp.path().canonicalize().unwrap();
+        let (r, board): (PathBuf, PathBuf) = (basis.join("R"), basis.join("board"));
+        std::fs::create_dir_all(r.join("Planung")).unwrap();
+        std::fs::write(r.join("Planung/app.md"), "# App\n").unwrap();
+        git(&r, &["init", "-q", "-b", "main"]);
+        git(&r, &["add", "-A"]);
+        git(&r, &["commit", "-qm", "c0"]);
+        std::fs::write(r.join("a.txt"), "1\n2\n3\n").unwrap();
+        git(&r, &["add", "-A"]);
+        git(&r, &["commit", "-qm", "c1"]);
+        let c1 = git(&r, &["rev-parse", "HEAD"]);
+        std::fs::create_dir_all(board.join("aufgaben")).unwrap();
+        std::fs::create_dir_all(board.join("boards")).unwrap();
+        std::fs::write(board.join("kanbanD.md"), format!("---\npeople:\n  entw1: {{name: E, kind: agent}}\nclasses: {{}}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n    kd: {{name: KD, wbs: {}/Planung/app.md, requirements: \"\"}}\n---\n", r.display())).unwrap();
+        std::fs::write(board.join("aufgaben/0001-a.md"), format!("---\nid: 1\ntitle: a\ncommits:\n  - kd:{c1}\n---\n")).unwrap();
+        std::fs::write(board.join("boards/fabrik.md"), "# Fabrik\n\n## Entwicklung\n\n- [#1](../aufgaben/0001-a.md)\n").unwrap();
+        git(&board, &["init", "-q"]);
+        git(&board, &["add", "-A"]);
+        git(&board, &["commit", "-qm", "Fabrik"]);
+        (tmp, Kanban::neu(board), c1)
+    }
+
+    fn anfrage(c1: &str, format: Diffformat) -> Diffanfrage {
+        Diffanfrage { commit: format!("kd:{c1}"), datei: None, format, bekannt: None }
+    }
+
+    // R00206 AK 20 (f), ADR-0032 N5.1 Regel 2: der fertige Rumpf belegt das Budget noch im Platz der Lesegrenze — der
+    // Haken direkt nach dem Belegen sieht genau einen belegten Platz (Mutant „Reservieren nach Verlassen des Platzes“)
+    #[test]
+    fn belegt_im_platz_der_lesegrenze() {
+        let (_tmp, k, c1) = stand();
+        for format in [Diffformat::Json, Diffformat::Patch] {
+            let gesehen = Arc::new(Mutex::new(None));
+            let g = gesehen.clone();
+            *k.nach_dem_belegen.lock().unwrap() = Some(Box::new(move |belegt| *g.lock().unwrap() = Some(belegt)));
+            let frei = k.antwortbudget.frei();
+            let antwort = k.diff_lesen(1, &anfrage(&c1, format), Instant::now() + Duration::from_secs(10)).unwrap();
+            assert_eq!(*gesehen.lock().unwrap(), Some(1), "{format:?}: belegt, während der Platz gehalten wird");
+            let Diffantwort::Rumpf { rumpf, .. } = antwort else { panic!("kein Rumpf") };
+            assert_eq!(k.antwortbudget.frei(), frei - rumpf.bytes.len().div_ceil(1024) * 1024, "{format:?}: Budget belegt");
+            drop(rumpf);
+            assert_eq!(k.antwortbudget.frei(), frei);
+        }
+    }
+
+    // R00206 AK 20 (b), ADR-0032 N5.1 Regel 3: passt der Rumpf nicht mehr ins Budget, sofort 503 „Antwortbudget …“ —
+    // ohne auf frei werdenden Platz zu warten
+    #[test]
+    fn volles_budget_ist_sofort_503() {
+        let (_tmp, k, c1) = stand();
+        let alles = k.antwortbudget.belegen(vec![0; k.antwortbudget.frei()]).unwrap();
+        let start = Instant::now();
+        let f = k.diff_lesen(1, &anfrage(&c1, Diffformat::Json), Instant::now() + Duration::from_secs(10)).unwrap_err();
+        assert!(matches!(&f, Fehler::Ausgelastet(m) if m == "Antwortbudget von 64 MB belegt — Diff in einigen Sekunden erneut laden"), "{f:?}");
+        assert!(start.elapsed() < Duration::from_secs(2), "ohne Warten: {:?}", start.elapsed());
+        drop(alles);
+        assert!(k.diff_lesen(1, &anfrage(&c1, Diffformat::Patch), Instant::now() + Duration::from_secs(10)).is_ok());
+    }
 }

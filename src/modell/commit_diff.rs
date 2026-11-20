@@ -16,8 +16,11 @@ pub const GRENZE_ZEILEN: u64 = 3_000;
 pub const GRENZE_PATCH_LAUF: usize = 4_194_304;
 /// Längster Pfad einer Datei, der in einen Patch-Lauf kommt (Byte, wie `PATH_MAX`); darüber `gross` (ADR-0032 N5.5 S1).
 pub const PFAD_HOECHSTENS: usize = 4096;
-/// Ausgabe von Git für eine einzeln geladene Datei (20 MB binär) — auch die Dateiliste von `datei=` liest bis hierher.
-pub const GRENZE_EINZELN: usize = 20_971_520;
+/// Ausgabe des Patch-Laufs einer einzeln geladenen Datei (8 MB binär, ADR-0032 N5.1 Regel 6): die größte Antwort
+/// (JSON höchstens etwa das Sechsfache) passt so ins Antwortbudget von 64 MB.
+pub const GRENZE_EINZELN: usize = 8_388_608;
+/// Dateiliste (`--raw -z`) für `datei=` (20 MB binär) — nur Zwischenstand im Bau, vor dem Patch-Lauf frei (N5.1 Regel 6).
+pub const GRENZE_DATEILISTE_EINZELN: usize = 20_971_520;
 /// Version der Grenzen im `ETag`: ändert sich eine Grenze, ändert sich jede Antwort.
 pub const GRENZEN_VERSION: u32 = 1;
 
@@ -261,6 +264,14 @@ fn passt(d: &Diffdatei, teil: usize, stueck: &[u8]) -> bool {
     }
 }
 
+/// Welche Fassung des Patches eine Datei behält (ADR-0032 N5.1 Regel 7): für JSON nur `patch` (ab `@@`), für
+/// `format=patch` nur die ganzen `stuecke` mit den Kopfzeilen von Git — nie beide, jede wäre eine Kopie.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Fassung {
+    Patch,
+    Stuecke,
+}
+
 /// Wie die Patches des Laufs verteilt werden: in der Liste mit der Grenze je Datei und `nachladen` nach einem Abbruch,
 /// einzeln geladen ohne Grenze je Datei und `gross` nach einem Abbruch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -277,7 +288,7 @@ pub enum Verteilung {
 /// keinen Patch — in der Liste `nachladen` (die getroffene dazu `gross`, wenn schon mehr als 256 KB ihres Patch-Texts
 /// gelesen waren), einzeln geladen `gross`. `Err`, wenn im ganzen Lauf einer Datei ein Stück fehlt oder vor dem Schnitt
 /// ein Stück übrig bleibt, das zu einer Datei des Laufs gehört (die Zählprüfung, auch im abgeschnittenen Lauf).
-pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung) -> Result<(), String> {
+pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Result<(), String> {
     let alle = stuecke(aus);
     let ganze = if abgeschnitten { alle.len().saturating_sub(1) } else { alle.len() };
     let mut benutzt = vec![false; ganze];
@@ -307,23 +318,42 @@ pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8]
             break;
         }
         let d = &mut dateien[i];
-        let text: Vec<u8> = eigene.iter().flat_map(|&k| hunks(alle[k]).iter().copied()).collect();
-        d.stuecke = Some(eigene.iter().flat_map(|&k| alle[k].iter().copied()).collect());
-        if d.binaer || text.is_empty() {
-            continue;
-        }
-        if verteilung == Verteilung::Liste && text.len() > GRENZE_PATCH_DATEI {
+        let laenge: usize = eigene.iter().map(|&k| hunks(alle[k]).len()).sum();
+        if !d.binaer && verteilung == Verteilung::Liste && laenge > GRENZE_PATCH_DATEI {
             d.gross = true;
             continue;
         }
-        d.nicht_utf8 |= std::str::from_utf8(&text).is_err();
-        d.patch = Some(String::from_utf8_lossy(&text).into_owned());
+        if fassung == Fassung::Stuecke {
+            d.stuecke = Some(zusammen(eigene.iter().map(|&k| alle[k])));
+        }
+        if d.binaer || laenge == 0 {
+            continue;
+        }
+        // Stücke enden an Zeilenenden: der Text ist gültiges UTF-8, wenn jedes Stück es ist
+        d.nicht_utf8 |= eigene.iter().any(|&k| std::str::from_utf8(hunks(alle[k])).is_err());
+        if fassung == Fassung::Patch {
+            d.patch = Some(text(zusammen(eigene.iter().map(|&k| hunks(alle[k])))));
+        }
     }
     let gehoert_einer = |k: usize| im_lauf.iter().any(|&i| (0..dateien[i].stueckzahl()).any(|t| gehoert(&dateien[i], t, alle[k])));
     if let Some(k) = (0..ganze).find(|&k| !benutzt[k] && gehoert_einer(k)) {
         return Err(format!("Patch-Lauf: Stück {k} gehört zu einer Datei des Laufs, steht aber nicht an ihrer Stelle"));
     }
     Ok(())
+}
+
+/// Die Teile hintereinander in einem Puffer genau ihrer Größe.
+fn zusammen<'a>(teile: impl Iterator<Item = &'a [u8]> + Clone) -> Vec<u8> {
+    let mut puffer = Vec::with_capacity(teile.clone().map(<[u8]>::len).sum());
+    for t in teile {
+        puffer.extend_from_slice(t);
+    }
+    puffer
+}
+
+/// Bytes als Text: gültiges UTF-8 ohne Kopie, sonst ersatzweise dekodiert.
+fn text(bytes: Vec<u8>) -> String {
+    String::from_utf8(bytes).unwrap_or_else(|f| String::from_utf8_lossy(f.as_bytes()).into_owned())
 }
 
 /// Gehört das Stück als Teil `teil` zur Datei (ADR-0032 N5.2 Regel 2)? Mit Zeile `index <alt>..<neu>` (`--full-index`)
@@ -427,12 +457,12 @@ fn abbrechen(d: &mut Diffdatei, verteilung: Verteilung) {
 
 /// Die Antwort als Text (`format=patch`, R00206 FA 9): je Datei die Stücke von Git mit ihren Kopfzeilen; fehlt der
 /// Patch (`gross`, `nachladen`), eine Kopfzeile wie die von Git und eine Zeile `# kanbanD: Patch fehlt (…)`. Nicht UTF-8
-/// ersatzweise; zum Lesen, nicht für `git apply`.
-pub fn patch_text(dateien: &[Diffdatei]) -> String {
-    let mut text = String::new();
+/// ersatzweise; zum Lesen, nicht für `git apply`. Die Stücke werden dabei genommen (jedes ist nach dem Übertragen frei).
+pub fn patch_text(dateien: &mut [Diffdatei]) -> String {
+    let mut text = String::with_capacity(dateien.iter().map(|d| d.stuecke.as_ref().map_or(256, Vec::len)).sum());
     for d in dateien {
-        match &d.stuecke {
-            Some(s) if !d.gross && !d.nachladen => text.push_str(&String::from_utf8_lossy(s)),
+        match d.stuecke.take() {
+            Some(s) if !d.gross && !d.nachladen => text.push_str(&self::text(s)),
             _ => {
                 let (alt, neu) = (d.alt.as_deref().unwrap_or(d.name()), d.neu.as_deref().unwrap_or(d.name()));
                 text.push_str(&format!("diff --git {} {}\n", zitiert(&format!("a/{alt}")), zitiert(&format!("b/{neu}"))));
@@ -635,7 +665,7 @@ mod tests {
     fn typwechsel_aus_zwei_stuecken() {
         let mut d = vec![neu("t.txt", "T"), neu("u.txt", "M")];
         let aus = format!("{}{}{}", stueck(&d[0], 0, "@@ -1 +0,0 @@\n-x\n"), stueck(&d[0], 1, "@@ -0,0 +1 @@\n+ziel\n\\ No newline at end of file\n"), stueck(&d[1], 0, "@@ -1 +1 @@\n-a\n+b\n"));
-        patches_zuordnen(&mut d, &[0, 1], aus.as_bytes(), false, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut d, &[0, 1], aus.as_bytes(), false, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!(d[0].patch.as_deref(), Some("@@ -1 +0,0 @@\n-x\n@@ -0,0 +1 @@\n+ziel\n\\ No newline at end of file\n"));
         assert_eq!(d[1].patch.as_deref(), Some("@@ -1 +1 @@\n-a\n+b\n"));
     }
@@ -645,9 +675,9 @@ mod tests {
     fn verschobene_zuordnung_ist_ein_fehler() {
         let mut d = vec![neu("a.txt", "A"), neu("b.txt", "M")];
         let aus = format!("{}{}", stueck(&d[1], 0, "@@ -1 +1 @@\n-a\n+b\n"), stueck(&d[0], 0, "@@ -0,0 +1 @@\n+a\n"));
-        assert!(patches_zuordnen(&mut d, &[0, 1], aus.as_bytes(), false, Verteilung::Liste).is_err());
+        assert!(patches_zuordnen(&mut d, &[0, 1], aus.as_bytes(), false, Verteilung::Liste, Fassung::Patch).is_err());
         let mut d = vec![neu("a.txt", "M")];
-        assert!(patches_zuordnen(&mut d, &[0], b"", false, Verteilung::Liste).is_err(), "Stück fehlt ohne Abbruch");
+        assert!(patches_zuordnen(&mut d, &[0], b"", false, Verteilung::Liste, Fassung::Patch).is_err(), "Stück fehlt ohne Abbruch");
     }
 
     // ADR-0032 N5.2, Code-Review M1: die Pfadangabe `foo` trifft auch `foo/bar` — dessen Stück ist fremd und wird
@@ -659,15 +689,18 @@ mod tests {
         let aus = format!("{}{}{}", stueck(&d[0], 0, "@@ -0,0 +1 @@\n+datei\n"), stueck(&fremd, 0, "@@ -1,2 +0,0 @@\n-1\n-2\n"), stueck(&d[1], 0, "@@ -1 +0,0 @@\n-foo2 inhalt\n"));
         for (abgeschnitten, schnitt) in [(false, aus.len()), (true, aus.len() - 3)] {
             let mut e = d.clone();
-            patches_zuordnen(&mut e, &[0, 1], &aus.as_bytes()[..schnitt], abgeschnitten, Verteilung::Liste).unwrap();
+            patches_zuordnen(&mut e, &[0, 1], &aus.as_bytes()[..schnitt], abgeschnitten, Verteilung::Liste, Fassung::Patch).unwrap();
             assert_eq!(e[0].patch.as_deref(), Some("@@ -0,0 +1 @@\n+datei\n"));
             let erwartet = if abgeschnitten { (None, true) } else { (Some("@@ -1 +0,0 @@\n-foo2 inhalt\n"), false) };
             assert_eq!((e[1].patch.as_deref(), e[1].nachladen), erwartet, "abgeschnitten {abgeschnitten}");
         }
         // einzeln geladen: nur die gesuchte Datei, das fremde Stück davor zählt nicht
         let aus = format!("{}{}", stueck(&fremd, 0, "@@ -1,2 +0,0 @@\n-1\n-2\n"), stueck(&d[0], 0, "@@ -0,0 +1 @@\n+datei\n"));
-        patches_zuordnen(&mut d, &[0], aus.as_bytes(), false, Verteilung::Einzeln).unwrap();
-        assert_eq!((d[0].patch.as_deref(), d[0].stuecke.as_deref().map(|s| s.starts_with(b"diff --git a/foo b/foo\n"))), (Some("@@ -0,0 +1 @@\n+datei\n"), Some(true)));
+        let mut e = d.clone();
+        patches_zuordnen(&mut e, &[0], aus.as_bytes(), false, Verteilung::Einzeln, Fassung::Patch).unwrap();
+        assert_eq!((e[0].patch.as_deref(), e[0].stuecke.is_none()), (Some("@@ -0,0 +1 @@\n+datei\n"), true));
+        patches_zuordnen(&mut d, &[0], aus.as_bytes(), false, Verteilung::Einzeln, Fassung::Stuecke).unwrap();
+        assert_eq!((d[0].patch.is_none(), d[0].stuecke.as_deref()), (true, Some(&aus.as_bytes()[aus.find("diff --git a/foo b/foo\n").unwrap()..])));
     }
 
     // ADR-0032 N5.2 Regel 1: die Hashes werden auf Gleichheit verglichen — ein gekürzter Hash (Präfix des vollen) ist
@@ -678,10 +711,10 @@ mod tests {
         let voll = stueck(&d[0], 0, "@@ -1 +1 @@\n-a\n+b\n");
         let gekuerzt = voll.replace(&format!("index {}..{}", d[0].blobs.0, d[0].blobs.1), &format!("index {}..{}", &d[0].blobs.0[..7], &d[0].blobs.1[..7]));
         assert_ne!(gekuerzt, voll);
-        assert!(patches_zuordnen(&mut d, &[0], gekuerzt.as_bytes(), false, Verteilung::Liste).is_err(), "gekürzter Hash passt nicht");
+        assert!(patches_zuordnen(&mut d, &[0], gekuerzt.as_bytes(), false, Verteilung::Liste, Fassung::Patch).is_err(), "gekürzter Hash passt nicht");
         let laenger = voll.replace(&format!("..{} ", d[0].blobs.1), &format!("..{}0 ", d[0].blobs.1));
-        assert!(patches_zuordnen(&mut d, &[0], laenger.as_bytes(), false, Verteilung::Liste).is_err(), "längerer Hash passt nicht");
-        patches_zuordnen(&mut d, &[0], voll.as_bytes(), false, Verteilung::Liste).unwrap();
+        assert!(patches_zuordnen(&mut d, &[0], laenger.as_bytes(), false, Verteilung::Liste, Fassung::Patch).is_err(), "längerer Hash passt nicht");
+        patches_zuordnen(&mut d, &[0], voll.as_bytes(), false, Verteilung::Liste, Fassung::Patch).unwrap();
         assert!(d[0].patch.is_some());
     }
 
@@ -694,13 +727,13 @@ mod tests {
         let aus = teile.concat();
         for (abgeschnitten, schnitt) in [(false, aus.len()), (true, aus.len() - 3)] {
             let mut e = d.clone();
-            let f = patches_zuordnen(&mut e, &[0, 1, 2], &aus.as_bytes()[..schnitt], abgeschnitten, Verteilung::Liste);
+            let f = patches_zuordnen(&mut e, &[0, 1, 2], &aus.as_bytes()[..schnitt], abgeschnitten, Verteilung::Liste, Fassung::Patch);
             assert!(f.is_err(), "abgeschnitten {abgeschnitten}: {:?}", e.iter().map(|d| (d.patch.is_some(), d.nachladen)).collect::<Vec<_>>());
         }
         // richtig geordnet und abgeschnitten: ganz, ganz, nachladen
         let aus = [0, 1, 2].iter().map(|&i| stueck(&d[i], 0, "@@ -0,0 +1 @@\n+x\n")).collect::<String>();
         let mut e = d.clone();
-        patches_zuordnen(&mut e, &[0, 1, 2], &aus.as_bytes()[..aus.len() - 3], true, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut e, &[0, 1, 2], &aus.as_bytes()[..aus.len() - 3], true, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!(e.iter().map(|d| (d.patch.is_some(), d.nachladen)).collect::<Vec<_>>(), [(true, false), (true, false), (false, true)]);
     }
 
@@ -712,10 +745,10 @@ mod tests {
         let m = datei(Rohdatei { modus_alt: "100644".into(), modus_neu: "100755".into(), hash_alt: gleich.clone(), hash_neu: gleich.clone(), status: 'M', zahl: None, pfade: vec![b"m.sh".to_vec()] }, Some((0, 0)));
         let mut d = vec![r(b"a\"b\n.txt", b"\xe4 neu"), m];
         let aus = "diff --git \"a/a\\\"b\\n.txt\" \"b/\\344 neu\"\nsimilarity index 100%\nrename from \"a\\\"b\\n.txt\"\nrename to \"\\344 neu\"\ndiff --git a/m.sh b/m.sh\nold mode 100644\nnew mode 100755\n";
-        patches_zuordnen(&mut d, &[0, 1], aus.as_bytes(), false, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut d, &[0, 1], aus.as_bytes(), false, Verteilung::Liste, Fassung::Stuecke).unwrap();
         assert!(d.iter().all(|d| d.stuecke.is_some() && d.patch.is_none()));
         let mut falsch = vec![r(b"a\"b\n.txt", b"anders")];
-        assert!(patches_zuordnen(&mut falsch, &[0], aus.split("diff --git a/m.sh").next().unwrap().as_bytes(), false, Verteilung::Liste).is_err(), "anderer Name, anderes Stück");
+        assert!(patches_zuordnen(&mut falsch, &[0], aus.split("diff --git a/m.sh").next().unwrap().as_bytes(), false, Verteilung::Liste, Fassung::Patch).is_err(), "anderer Name, anderes Stück");
         assert_eq!(entquotet(b"\"t\\tb\\\\\\001\""), b"t\tb\\\x01");
         assert_eq!(entquotet(b"ohne"), b"ohne");
     }
@@ -732,10 +765,10 @@ mod tests {
             let mut d = vec![neu("g.txt", "A")];
             let aus = einzeilig(&d[0], n);
             assert_eq!(hunks(aus.as_bytes()).len(), n + 16);
-            patches_zuordnen(&mut d, &[0], aus.as_bytes(), false, Verteilung::Liste).unwrap();
+            patches_zuordnen(&mut d, &[0], aus.as_bytes(), false, Verteilung::Liste, Fassung::Patch).unwrap();
             assert_eq!((d[0].gross, d[0].patch.is_some()), (gross, !gross), "{n}");
             let mut d = vec![neu("g.txt", "A")];
-            patches_zuordnen(&mut d, &[0], aus.as_bytes(), false, Verteilung::Einzeln).unwrap();
+            patches_zuordnen(&mut d, &[0], aus.as_bytes(), false, Verteilung::Einzeln, Fassung::Patch).unwrap();
             assert_eq!((d[0].gross, d[0].patch.is_some()), (false, true), "einzeln {n}");
         }
     }
@@ -749,26 +782,26 @@ mod tests {
         let aus = teile.concat();
         let schnitt = teile[0].len() + teile[1].len() + 15;
         let mut d = vier.clone();
-        patches_zuordnen(&mut d, &[0, 1, 2, 3], &aus.as_bytes()[..schnitt], true, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut d, &[0, 1, 2, 3], &aus.as_bytes()[..schnitt], true, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!(d.iter().map(|d| (d.patch.is_some(), d.nachladen, d.gross)).collect::<Vec<_>>(), [(true, false, false), (true, false, false), (false, true, false), (false, true, false)]);
         let genau = teile[0].len() + teile[1].len();
         let mut d = vier.clone();
-        patches_zuordnen(&mut d, &[0, 1, 2, 3], &aus.as_bytes()[..genau], true, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut d, &[0, 1, 2, 3], &aus.as_bytes()[..genau], true, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!(d.iter().map(|d| d.nachladen).collect::<Vec<_>>(), [false, true, true, true], "am Schnitt: das letzte Stück gilt nicht als ganz");
         let zwei = vec![neu("r", "A"), neu("s", "A")];
         let riesig = einzeilig(&zwei[0], 300_000);
         let mut d = zwei.clone();
-        patches_zuordnen(&mut d, &[0, 1], &riesig.as_bytes()[..280_000], true, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut d, &[0, 1], &riesig.as_bytes()[..280_000], true, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!(d.iter().map(|d| (d.gross, d.nachladen)).collect::<Vec<_>>(), [(true, true), (false, true)]);
         let mut d = zwei.clone();
-        patches_zuordnen(&mut d, &[0, 1], &riesig.as_bytes()[..200_000], true, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut d, &[0, 1], &riesig.as_bytes()[..200_000], true, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!(d.iter().map(|d| (d.gross, d.nachladen)).collect::<Vec<_>>(), [(false, true), (false, true)], "unter 256 KB gelesen: nur nachladen");
         let mut d = vec![zwei[0].clone()];
-        patches_zuordnen(&mut d, &[0], &riesig.as_bytes()[..280_000], true, Verteilung::Einzeln).unwrap();
+        patches_zuordnen(&mut d, &[0], &riesig.as_bytes()[..280_000], true, Verteilung::Einzeln, Fassung::Patch).unwrap();
         assert_eq!((d[0].gross, d[0].nachladen, d[0].patch.is_some()), (true, false, false));
         // das angefangene Stück einer fremden Datei macht die getroffene nicht groß
         let mut d = vec![zwei[1].clone()];
-        patches_zuordnen(&mut d, &[0], &riesig.as_bytes()[..280_000], true, Verteilung::Liste).unwrap();
+        patches_zuordnen(&mut d, &[0], &riesig.as_bytes()[..280_000], true, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!((d[0].gross, d[0].nachladen), (false, true));
     }
 
@@ -782,11 +815,16 @@ mod tests {
         let mut aus = format!("diff --git a/b.bin b/b.bin\nnew file mode 100644\nindex {H}..{}\nBinary files /dev/null and b/b.bin differ\ndiff --git a/m.sh b/m.sh\nold mode 100644\nnew mode 100755\n", d[0].blobs.1).into_bytes();
         aus.extend_from_slice(format!("diff --git a/l.txt b/l.txt\nindex {}..{} 100644\n--- a/l.txt\n+++ b/l.txt\n", d[2].blobs.0, d[2].blobs.1).as_bytes());
         aus.extend_from_slice(b"@@ -1 +1 @@\n-a\r\n+\xe4\r\n");
-        patches_zuordnen(&mut d, &[0, 1, 2], &aus, false, Verteilung::Liste).unwrap();
+        let mut s = d.clone();
+        patches_zuordnen(&mut d, &[0, 1, 2], &aus, false, Verteilung::Liste, Fassung::Patch).unwrap();
         assert_eq!((d[0].patch.is_some(), d[1].patch.is_some()), (false, false));
         assert_eq!(d[2].patch.as_deref(), Some("@@ -1 +1 @@\n-a\r\n+\u{fffd}\r\n"));
         assert!(d[2].nicht_utf8 && !d[1].nicht_utf8);
-        assert!(d[0].stuecke.as_ref().is_some_and(|s| s.ends_with(b"differ\n")));
+        assert!(d.iter().all(|d| d.stuecke.is_none()), "für JSON nur patch (ADR-0032 N5.1 Regel 7)");
+        patches_zuordnen(&mut s, &[0, 1, 2], &aus, false, Verteilung::Liste, Fassung::Stuecke).unwrap();
+        assert!(s[0].stuecke.as_ref().is_some_and(|s| s.ends_with(b"differ\n")));
+        assert!(s[2].nicht_utf8 && s.iter().all(|d| d.patch.is_none() && d.stuecke.is_some()), "für den Text nur die Stücke");
+        assert_eq!(patch_text(&mut s).as_bytes(), String::from_utf8_lossy(&aus).as_bytes());
     }
 
     // ADR-0032 N5.5 S1: ein Pfad über 4.096 Byte kommt in keinen Lauf (`gross`); die Pfadangabe bleibt bei höchstens
@@ -822,7 +860,7 @@ mod tests {
         d[1].gross = true;
         d[2].nachladen = true;
         d[3].nachladen = true;
-        assert_eq!(patch_text(&d), format!("{a}diff --git a/gross.txt b/gross.txt\n# kanbanD: Patch fehlt (gross)\ndiff --git \"a/n\\nx\" \"b/n\\nx\"\n# kanbanD: Patch fehlt (nachladen), laden mit &datei=\"n\\nx\"\ndiff --git a/weg.txt b/weg.txt\n# kanbanD: Patch fehlt (nachladen), laden mit &datei=weg.txt\n"));
+        assert_eq!(patch_text(&mut d), format!("{a}diff --git a/gross.txt b/gross.txt\n# kanbanD: Patch fehlt (gross)\ndiff --git \"a/n\\nx\" \"b/n\\nx\"\n# kanbanD: Patch fehlt (nachladen), laden mit &datei=\"n\\nx\"\ndiff --git a/weg.txt b/weg.txt\n# kanbanD: Patch fehlt (nachladen), laden mit &datei=weg.txt\n"));
         assert_eq!(zitiert("esc\u{1b}"), "\"esc\\033\"");
         assert_eq!(zitiert("ä ö"), "ä ö");
     }

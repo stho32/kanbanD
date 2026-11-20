@@ -5,7 +5,7 @@ mod gemeinsam;
 use gemeinsam::git_am;
 use kanband::dienst::diff::{Auswahl, Diffinhalt, Inhaltsfehler, inhalt_lesen};
 use kanband::git::arbeitsrepo::{self, Vergleich};
-use kanband::modell::{Diffdatei, Hinweis, patch_text};
+use kanband::modell::{Diffdatei, Fassung, Hinweis, patch_text};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -30,9 +30,13 @@ fn commit(r: &Path, nachricht: &str) -> String {
 }
 
 fn lesen(r: &Path, h: &str, auswahl: Auswahl) -> Result<Diffinhalt, Inhaltsfehler> {
+    lesen_als(r, h, auswahl, Fassung::Patch)
+}
+
+fn lesen_als(r: &Path, h: &str, auswahl: Auswahl, fassung: Fassung) -> Result<Diffinhalt, Inhaltsfehler> {
     let frist = Instant::now() + Duration::from_secs(10);
     let m = arbeitsrepo::metadaten(r, &[h], frist).unwrap().remove(h).unwrap();
-    inhalt_lesen(r, Vergleich { eltern: m.erster_elternteil.as_deref(), commit: h }, m.dateien, auswahl, frist)
+    inhalt_lesen(r, Vergleich { eltern: m.erster_elternteil.as_deref(), commit: h }, m.dateien, auswahl, fassung, frist)
 }
 
 fn liste(r: &Path, h: &str) -> Diffinhalt {
@@ -106,7 +110,8 @@ fn ak08_summe_der_antwort() {
         assert_eq!(e.dateien.len(), 1);
         assert_eq!((e.dateien[0].patch.as_ref().map(String::len), e.dateien[0].nachladen), (Some(202_019), false));
     }
-    let text = patch_text(&i.dateien);
+    let mut stuecke = lesen_als(&r, &h, Auswahl::Liste, Fassung::Stuecke).unwrap();
+    let text = patch_text(&mut stuecke.dateien);
     for n in 21..=25 {
         assert!(text.contains(&format!("diff --git a/f{n:02}.txt b/f{n:02}.txt\n# kanbanD: Patch fehlt (nachladen), laden mit &datei=f{n:02}.txt\n")), "f{n}");
     }

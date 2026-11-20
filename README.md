@@ -176,9 +176,10 @@ GET /api/aufgaben/1/diff?commit=kd:<X1>
  "hinweise": []}
 ```
 
-- **`gross` und `nachladen` sind Merkmale, keine Fehler**: `gross` heißt, der Patch der Datei ist über 256 KB oder über 3.000 Zeilen; `nachladen` heißt, der Patch passte nicht mehr in die 4 MB der Antwort. Beide holt man einzeln mit `&datei=<neu>` (bei gelöschten Dateien `alt`, buchstäblich) — bis 20 MB, darüber bleibt die Datei `gross` und `hinweise` nennt sie (`zu_gross_zum_anzeigen`).
+- **`gross` und `nachladen` sind Merkmale, keine Fehler**: `gross` heißt, der Patch der Datei ist über 256 KB oder über 3.000 Zeilen; `nachladen` heißt, der Patch passte nicht mehr in die 4 MB der Antwort. Beide holt man einzeln mit `&datei=<neu>` (bei gelöschten Dateien `alt`, buchstäblich) — bis 8 MB Patch, darüber bleibt die Datei `gross` und `hinweise` nennt sie (`zu_gross_zum_anzeigen`). Eine Datei mit einem Pfad über 4.096 Byte ist immer `gross` (ebenfalls mit `zu_gross_zum_anzeigen`).
 - Mehr als 2.000 Dateien: die ersten 2.000 stehen da, `hinweise` enthält `{"art": "dateien_gekappt", "gezeigt": 2000, "gesamt": …}`, und `commits[0].dateien` bleibt die wahre Zahl. Eine unbekannte `art` überspringen.
 - `&format=patch` liefert dieselbe Auswahl als Text (`text/x-diff`) mit den Kopfzeilen von Git — zum Lesen, nicht für `git apply`.
+- **Antwortbudget**: alle Diff-Antworten, die gerade an Clients unterwegs sind, halten zusammen höchstens 64 MB; wer seine Antwort nicht binnen 60 s liest, verliert sie. Ist das Budget belegt, kommt sofort `503 {"fehler": "Antwortbudget von 64 MB belegt — Diff in einigen Sekunden erneut laden"}` — einige Sekunden warten und erneut laden.
 - Jede Antwort zu einem Verweis mit vollem Hash trägt einen `ETag`; mit `If-None-Match` kommt 304 ohne Git-Aufruf.
 - Kein Diff gibt es zu den Zuständen `fehlt`, `repository_fehlt`, `anwendung_unbekannt` und `unlesbar` (404 mit `zustand`). Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einem halben Diff. Aus dem Repository läuft dabei kein Programm (`diff.external`, `textconv`, Pager und Hooks bleiben aus).
 

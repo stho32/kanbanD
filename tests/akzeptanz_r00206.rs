@@ -412,7 +412,7 @@ async fn ak09_ausgabe_mit_abbruch() {
     l.anhaengen(&[&h]);
     let pfad = endlos_skript(&l.a, &git(&l.a.r, &["rev-parse", &format!("{h}:riesig.txt")]));
     let lauf = l.starten(&[("PATH", &pfad)]);
-    for (abfrage, hoechstens, hinweise) in [(format!("commit=kd:{h}"), 5 << 20, json!([])), (format!("commit=kd:{h}&datei=riesig.txt"), 21 << 20, json!([{"art": "zu_gross_zum_anzeigen", "datei": "riesig.txt"}]))] {
+    for (abfrage, hoechstens, hinweise) in [(format!("commit=kd:{h}"), 5 << 20, json!([])), (format!("commit=kd:{h}&datei=riesig.txt"), 9 << 20, json!([{"art": "zu_gross_zum_anzeigen", "datei": "riesig.txt"}]))] {
         let _ = std::fs::remove_file(l.a.basis.join("pids"));
         let start = Instant::now();
         let a = holen(&lauf.adresse, 1, &abfrage, None).await;
@@ -744,7 +744,7 @@ async fn ak19_bestand_und_beschreibung() {
     let liste: Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let e = liste.as_array().unwrap().iter().find(|e| e["methode"] == "GET" && e["pfad"] == "/api/aufgaben/{nr}/diff").expect("Route in der Endpunktliste");
     let zweck = e["zweck"].as_str().unwrap();
-    for wort in ["commit", "datei", "format", "256 KB", "3.000 Zeilen", "4 MB", "20 MB", "2.000", "ETag", "304", "400", "404", "423", "503", "dateien_gekappt", "zu_gross_zum_anzeigen", "gross", "nachladen"] {
+    for wort in ["commit", "datei", "format", "256 KB", "3.000 Zeilen", "4 MB", "8 MB", "2.000", "Antwortbudget", "64 MB", "ETag", "304", "400", "404", "423", "503", "dateien_gekappt", "zu_gross_zum_anzeigen", "gross", "nachladen"] {
         assert!(zweck.contains(wort), "Zweck nennt {wort}");
     }
     let api: Value = reqwest::get(format!("{}api/openapi.json", lauf.adresse)).await.unwrap().json().await.unwrap();
@@ -752,12 +752,14 @@ async fn ak19_bestand_und_beschreibung() {
     for status in ["200", "304", "400", "404", "423", "503"] {
         assert!(get["responses"][status].is_object(), "OpenAPI nennt {status}");
     }
+    assert!(get["responses"]["503"]["description"].as_str().unwrap().contains("Antwortbudget"), "OpenAPI nennt beide Gründe für 503");
     let parameter: Vec<&str> = get["parameters"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap()).collect();
     assert_eq!(parameter, ["nr", "commit", "datei", "format", "If-None-Match"]);
     assert_eq!(get["description"].as_str(), Some(zweck), "derselbe Text");
     let readme = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
     let abschnitt = readme.split("### Diff eines Commits lesen").nth(1).expect("README-Abschnitt").split("\n### ").next().unwrap();
     assert!(abschnitt.contains("GET /api/aufgaben/1/diff?commit=kd:<X1>") && abschnitt.contains("Merkmale, keine Fehler") && abschnitt.contains("&datei=<neu>"));
+    assert!(abschnitt.contains("8 MB") && abschnitt.contains("Antwortbudget") && abschnitt.contains("64 MB") && !abschnitt.contains("20 MB"), "README nennt Grenzen und Budget");
 }
 
 /// Die Lesewege ohne Git: die Aufgabe, die Liste, der Zustand — als Text.
@@ -933,5 +935,167 @@ async fn ak21e_lange_pfade_und_summe_der_pfadangabe() {
     assert!(!laeufe.is_empty() && laeufe.iter().all(|n| *n <= (1 << 20) + 4096), "Befehlszeilen der Patch-Läufe: {laeufe:?}");
     for f in dateien(&d).iter().filter(|f| f["neu"] != "gross3001.txt") {
         assert!(f["patch"].is_string() || f["nachladen"] == true, "{}: Patch oder nachladen", &f["neu"].as_str().unwrap()[..4]);
+    }
+}
+
+// ---- AK 20: Speicher der Antworten (Security M-S1, ADR-0032 N5.1) ---------------------------------------------------
+
+/// `VmRSS` und `VmHWM` eines Prozesses in Byte.
+fn speicher(pid: u32) -> (usize, usize) {
+    let status = std::fs::read_to_string(format!("/proc/{pid}/status")).unwrap();
+    let wert = |name: &str| status.lines().find(|z| z.starts_with(name)).and_then(|z| z.split_whitespace().nth(1)).unwrap().parse::<usize>().unwrap() * 1024;
+    (wert("VmRSS:"), wert("VmHWM:"))
+}
+
+/// Setzt `VmHWM` auf den heutigen `VmRSS` zurück (Linux, `clear_refs` 5).
+fn spitze_zuruecksetzen(pid: u32) {
+    std::fs::write(format!("/proc/{pid}/clear_refs"), "5").unwrap();
+}
+
+unsafe extern "C" {
+    fn setsockopt(fd: i32, level: i32, name: i32, wert: *const std::ffi::c_void, laenge: u32) -> i32;
+}
+
+/// Eine Verbindung mit kleinem Empfangspuffer (`SO_RCVBUF` 4096), die die Anfrage sendet und nur die Statuszeile liest.
+fn langsam(adresse: &str, pfad: &str) -> (std::net::TcpStream, u16) {
+    use std::io::{Read, Write};
+    use std::os::fd::AsRawFd;
+    let ziel = adresse.trim_start_matches("http://").trim_end_matches('/');
+    let mut s = std::net::TcpStream::connect(ziel).unwrap();
+    let klein: i32 = 4096;
+    assert_eq!(unsafe { setsockopt(s.as_raw_fd(), 1, 8, (&raw const klein).cast(), 4) }, 0, "SO_RCVBUF");
+    s.write_all(format!("GET /{pfad} HTTP/1.1\r\nHost: {ziel}\r\n\r\n").as_bytes()).unwrap();
+    let mut zeile = vec![];
+    let mut b = [0u8; 1];
+    while !zeile.ends_with(b"\r\n") {
+        s.read_exact(&mut b).unwrap();
+        zeile.push(b[0]);
+    }
+    let status = String::from_utf8(zeile).unwrap().split_whitespace().nth(1).unwrap().parse().unwrap();
+    (s, status)
+}
+
+/// Der Rest einer kleinen Antwort mit `Content-Length` (die Statuszeile ist schon gelesen): der Rumpf als Text.
+fn rest_lesen(s: &mut std::net::TcpStream) -> String {
+    use std::io::Read;
+    let mut kopf = vec![];
+    let mut b = [0u8; 1];
+    while !kopf.ends_with(b"\r\n\r\n") {
+        s.read_exact(&mut b).unwrap();
+        kopf.push(b[0]);
+    }
+    let kopf = String::from_utf8(kopf).unwrap().to_ascii_lowercase();
+    let laenge: usize = kopf.lines().find_map(|z| z.strip_prefix("content-length:")).unwrap().trim().parse().unwrap();
+    let mut rumpf = vec![0u8; laenge];
+    s.read_exact(&mut rumpf).unwrap();
+    String::from_utf8(rumpf).unwrap()
+}
+
+const MB: usize = 1 << 20;
+
+/// Commit X legt `gross1.txt` mit 170.000 Zeilen zu je 45 Byte an (7,3 MB) und hängt an #1.
+fn gross1(l: &Lage) -> (String, String) {
+    let inhalt = zeilen("gross1", 170_000, 45);
+    std::fs::write(l.a.r.join("gross1.txt"), &inhalt).unwrap();
+    let x = commit(&l.a.r, "gross1");
+    l.anhaengen(&[&x]);
+    (x, inhalt)
+}
+
+#[tokio::test]
+async fn ak20a_c_einzelanfrage_und_schneller_client() {
+    let l = ausgangslage();
+    let (x, inhalt) = gross1(&l);
+    let lauf = l.starten(&[]);
+    let pid = lauf.kind.id();
+    holen(&lauf.adresse, 1, &format!("commit=kd:{}", l.x1), None).await;
+    let erwartet = ganzer_patch('+', &inhalt);
+    let git_text = std::process::Command::new("git").arg("-C").arg(&l.a.r).args(["diff-tree", "-r", "-p", "--full-index", "--no-color", &format!("{x}^"), &x, "--", "gross1.txt"]).output().unwrap().stdout;
+    for format in ["", "&format=patch"] {
+        let (vorher, _) = speicher(pid);
+        spitze_zuruecksetzen(pid);
+        let a = holen(&lauf.adresse, 1, &format!("commit=kd:{x}&datei=gross1.txt{format}"), None).await;
+        let (_, spitze) = speicher(pid);
+        assert_eq!(a.status, 200, "{format}");
+        let bytes = a.text.len();
+        eprintln!("AK 20 (a) {format:?}: Antwort {bytes} Byte, Anstieg VmHWM {} Byte", spitze - vorher);
+        assert!(spitze - vorher <= 3 * bytes + 4 * MB, "{format}: Anstieg {} MB bei {} MB Antwort", (spitze - vorher) / MB, bytes / MB);
+        // (c) dieselben Bytes wie am Stück, ETag und nosniff unverändert
+        assert!(a.etag.is_some() && a.nosniff, "{format}");
+        if format.is_empty() {
+            assert_eq!((a.art.as_str(), datei(&a.json(), "gross1.txt")["patch"].as_str()), ("application/json", Some(erwartet.as_str())));
+        } else {
+            assert_eq!((a.art.as_str(), a.text.as_bytes()), ("text/x-diff; charset=utf-8", git_text.as_slice()));
+        }
+    }
+}
+
+#[tokio::test]
+async fn ak20b_viele_die_nicht_lesen() {
+    let l = ausgangslage();
+    let (x, _) = gross1(&l);
+    let pfad = format!("api/aufgaben/1/diff?commit=kd:{x}&datei=gross1.txt");
+    for n in [6usize, 30] {
+        let lauf = l.starten(&[]);
+        let pid = lauf.kind.id();
+        let groesse = holen(&lauf.adresse, 1, &format!("commit=kd:{x}&datei=gross1.txt"), None).await.text.len();
+        let (vorher, _) = speicher(pid);
+        let adresse = lauf.adresse.clone();
+        let p = pfad.clone();
+        let verbindungen = tokio::task::spawn_blocking(move || std::thread::scope(|s| (0..n).map(|_| s.spawn(|| langsam(&adresse, &p))).collect::<Vec<_>>().into_iter().map(|t| t.join().unwrap()).collect::<Vec<_>>())).await.unwrap();
+        let (danach, _) = speicher(pid);
+        let ok = verbindungen.iter().filter(|(_, s)| *s == 200).count();
+        eprintln!("AK 20 (b) N = {n}: Antwort {groesse} Byte, VmRSS {vorher} → {danach} Byte, {ok} × 200");
+        assert!(danach.saturating_sub(vorher) <= 64 * MB + n * MB / 2 + 8 * MB, "N = {n}: +{} MB, {ok} × 200", (danach - vorher) / MB);
+        assert!(ok >= 1 && ok <= 64 * MB / groesse, "N = {n}: {ok} × 200 bei {groesse} Byte");
+        for (mut s, status) in verbindungen.into_iter().filter(|(_, s)| *s != 200) {
+            assert_eq!(status, 503, "N = {n}");
+            let rumpf: Value = serde_json::from_str(&rest_lesen(&mut s)).unwrap();
+            assert!(rumpf["fehler"].as_str().unwrap().starts_with("Antwortbudget"), "{rumpf}");
+        }
+        // (c) ist das Budget wieder frei (die langsamen sind geschlossen), ergibt dieselbe Anfrage 200
+        let bis = Instant::now() + Duration::from_secs(10);
+        loop {
+            let a = holen(&lauf.adresse, 1, &format!("commit=kd:{x}&datei=gross1.txt"), None).await;
+            if a.status == 200 {
+                break;
+            }
+            assert!(Instant::now() < bis, "Budget nach dem Schließen nicht frei: {}", a.text);
+        }
+    }
+}
+
+// ---- AK 11: Grenze für den Patch einer einzeln geladenen Datei (8 MB, ADR-0032 N5.1 Regel 6) -------------------------
+
+#[tokio::test]
+async fn ak11_grenze_einzeln_8_mb() {
+    let l = ausgangslage();
+    let r = &l.a.r;
+    let grenze = 8_388_608usize;
+    let mut hashes = vec![];
+    for (name, mehr) in [("g8a.txt", 0usize), ("g8b.txt", 1)] {
+        let mut inhalt = format!("{}\n", "a".repeat(99)).repeat(80_000);
+        std::fs::write(r.join(name), &inhalt).unwrap();
+        let h = commit(r, name);
+        let laenge = |h: &str| std::process::Command::new("git").arg("-C").arg(r).args(["diff-tree", "-r", "-p", "--full-index", "--no-color", &format!("{h}^"), h, "--", name]).output().unwrap().stdout.len();
+        let fehlt = grenze + mehr - laenge(&h);
+        git_am(r, ADA, X1_DATUM, &["reset", "-q", "--hard", "HEAD^"]);
+        inhalt.pop();
+        inhalt.push_str(&"a".repeat(fehlt));
+        inhalt.push('\n');
+        std::fs::write(r.join(name), &inhalt).unwrap();
+        let h = commit(r, name);
+        assert_eq!(laenge(&h), grenze + mehr, "Ausgabe des Patch-Laufs von {name}");
+        hashes.push(h);
+    }
+    l.anhaengen(&[&hashes[0], &hashes[1]]);
+    let lauf = l.starten(&[]);
+    for (h, name, gross) in [(&hashes[0], "g8a.txt", false), (&hashes[1], "g8b.txt", true)] {
+        let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}&datei={name}"), None).await;
+        assert_eq!(a.status, 200, "{}", &a.text[..a.text.len().min(300)]);
+        let d = a.json();
+        assert_eq!((&datei(&d, name)["gross"], datei(&d, name)["patch"].is_string()), (&json!(gross), !gross), "{name}");
+        let hinweise = if gross { json!([{"art": "zu_gross_zum_anzeigen", "datei": name}]) } else { json!([]) };
+        assert_eq!(d["hinweise"], hinweise, "{name}");
     }
 }

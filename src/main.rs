@@ -16,9 +16,27 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    grosse_puffer_zurueckgeben();
     let laufzeit = tokio::runtime::Runtime::new().expect("Tokio-Laufzeit");
     laufzeit.block_on(starten(auftrag, ordner))
 }
+
+/// Große Puffer (ab 256 KB: Git-Ausgaben, Rümpfe der Diff-Antworten) gehen immer als eigene Abbildung an das System
+/// und nach dem Freigeben sofort zurück (R00206, ADR-0032 N5.1). Ohne feste Schwelle hebt glibc sie nach dem ersten
+/// freigegebenen großen Puffer an; danach liegen große Puffer im Heap der Threads und bleiben nach dem Freigeben im
+/// Speicher des Prozesses — das Antwortbudget begrenzte dann nur die Buchung, nicht den Speicher.
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+fn grosse_puffer_zurueckgeben() {
+    unsafe extern "C" {
+        fn mallopt(param: i32, wert: i32) -> i32;
+    }
+    const M_MMAP_THRESHOLD: i32 = -3;
+    // SAFETY: setzt nur eine Schwelle des Allokators, vor dem ersten Thread
+    unsafe { mallopt(M_MMAP_THRESHOLD, 256 * 1024) };
+}
+
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+fn grosse_puffer_zurueckgeben() {}
 
 async fn starten(auftrag: Startauftrag, ordner: std::path::PathBuf) -> ExitCode {
     let listener = match server::freien_listener_binden(&auftrag.host, auftrag.port).await {
