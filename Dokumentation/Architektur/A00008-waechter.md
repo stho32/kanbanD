@@ -32,6 +32,8 @@ Der Wächter beobachtet den Ordner, bündelt Änderungen zu Ereignissen mit Kenn
 
 ## Entscheidungen
 
+- [ADR-0034: kanbanD ohne WBS — Register mit Repository, Phasen werden Spalten](../ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) (Vorgeschlagen, #224) — Soll: der Wächter für fremde WBS-Dateien (`FremdeWbs`) entfällt; beobachtet wird nur der Ordner
+
 ## Offene Fragen
 
 ## Notizen / Quellen

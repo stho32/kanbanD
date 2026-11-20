@@ -31,6 +31,7 @@ Der Verlauf rechnet aus den Git-Ständen von Board- und Aufgabendateien ab: die 
 ## Entscheidungen
 
 - [ADR-0021: Karten-Verlauf aus der Git-Geschichte gerechnet — ableiten statt speichern](../ADRs/0021-karten-verlauf-aus-der-git-geschichte.md) — gebaut (#119, R00123, `902a97b`): `verlauf::kartenverlauf` (`src/verlauf.rs:165`) führt die Stände der Aufgabendatei (je `Aufgabenstand { zeitpunkt, archiviert, autor }`, `:156`) und jeder Board-Datei (`Vec<(NaiveDateTime, Board, git::Autor)>`) zu `KartenEintrag`/`Kartenverlauf` zusammen; die Art `Kartenart` (`:118`) ist `erstellt`/`bewegt`/`archiviert`/`zurueckgeholt`/`geloescht`, ein Commit je Aktion ist ein Eintrag, ein Commit, der anlegt und zugleich aufnimmt, ist **ein** `erstellt`-Eintrag; neueste zuerst. Der `Autor` kommt aus [A00007](A00007-git.md) als reines Datenobjekt (`Autor::wer()`), es gibt keinen Commit-Weg und keinen neuen Schreibweg
+- [ADR-0034: kanbanD ohne WBS — Register mit Repository, Phasen werden Spalten](../ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) (Vorgeschlagen, #224) — Soll: `Phasenkarte` und `uebersprungen` in den Bewegungen entfallen
 
 ## Offene Fragen
 
