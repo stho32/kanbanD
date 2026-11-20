@@ -30,11 +30,15 @@ Commit-Verweise, Commit-Liste und Diff (#207–#214) hängen heute am Pfad einer
 - Ein gesetztes, aber unerreichbares `repository` fällt nie auf `wbs`/`requirements` zurück.
 - Die Wurzel ist `git rev-parse --show-toplevel` im Startordner. Ohne Startordner gilt der `zustand` `repository_fehlt`. Die WBS-Datei und den Anforderungsordner öffnet kanbanD dafür nie.
 - `PUT /api/einstellungen` nimmt je Anwendung und in `quellen` `repository` und/oder `wbs`/`anforderungen` an. Geschrieben wird `repository`: das mitgeschickte, sonst der Startordner. `wbs`/`requirements` werden nur geschrieben, wenn sie mitgeschickt und nicht leer sind.
-- `GET /api/einstellungen` und `GET /api/anwendungen` liefern je Anwendung `repository` (gespeichert oder Startordner) und `wbs`/`anforderungen` so, wie sie gespeichert sind. Alle drei Schlüssel sind immer vorhanden, leer als `""`, nie weggelassen (ADR-0034 N2 Regel 2). `GET /api/anwendungen` liefert dazu `erreichbar.repository` (der Ordner ist vorhanden), neben `erreichbar.wbs`/`erreichbar.anforderungen`.
-- Die Einstellungsseite zeigt je Anwendung und unter „Quellen“ das Repository mit seiner Erreichbarkeit. Eine Anwendung lässt sich mit nur einem Repository anlegen. Die Felder für WBS und Anforderungen bleiben bis S2.
+- `GET /api/einstellungen` und `GET /api/anwendungen` liefern je Anwendung `repository` (gespeichert oder Startordner) und `wbs`/`anforderungen` so, wie sie gespeichert sind. Alle drei Schlüssel sind immer vorhanden, leer als `""`, nie weggelassen (ADR-0034 N2 Regel 2). `GET /api/anwendungen` liefert dazu `erreichbar.repository` (der Ordner ist vorhanden), neben `erreichbar.wbs`/`erreichbar.anforderungen`. `GET /api/einstellungen` liefert `erreichbar.repository` auch für `quellen`.
+- Die Einstellungsseite zeigt je Anwendung und unter „Quellen“ das Repository mit einem sichtbaren Zustandswort: „erreichbar“, „nicht erreichbar“, „kein Repository“ (leeres Feld) oder „noch nicht geprüft“ (geänderter, noch nicht gespeicherter Pfad) (PO Z. 434). Eine Anwendung lässt sich mit nur einem Repository anlegen. Die Felder für WBS und Anforderungen bleiben bis S2, in der Reihenfolge Repository, WBS, Anforderungen.
+- Die Vorschau der Einstellungen zeigt vor dem Speichern genau die Zeilen, die danach in `kanbanD.md` stehen.
+- Scheitert das Speichern, bleibt der Entwurf stehen, und die Meldung ist sichtbar und erreichbar.
 - Start und lesende Aufrufe schreiben nichts: kein Commit, `kanbanD.md` bleibt bytegleich.
 
 ## Nicht-funktionale Anforderungen
+
+- Benutzerfreundlichkeit (UX-Vorprüfung Sollte 5, 6): Bei 375, 641, 768 und 980 px Breite gibt es in „Anwendungen“ und „Quellen“ kein Querscrollen. Bedienziele sind mindestens 24 px groß, bei Touch 44 px. Ein Pfad mit 120 Zeichen bleibt voll lesbar, über `title` oder Umbruch. Die Zustandswörter haben in Hell und Dunkel, auch im Hover, einen Kontrast von mindestens 4,5:1. Sie sind sichtbarer Text, nie in `.vh`, und werden mit dem Feld vorgelesen (Name oder `aria-describedby`).
 
 - Sicherheit: Der Startordner wird nur an Git übergeben, gehärtet wie bisher (ADR-0032 N2.3). Die Erreichbarkeit prüft nur, ob der Ordner vorhanden ist, ohne Git-Aufruf. Kein neuer Prozess im Arbeits-Repository.
 - Verträglichkeit: Die heutige Factory läuft gegen dieses Programm unverändert (ADR-0034 Q3). Eine ältere kanbanD-Version liest eine so geschriebene Datei ohne Fehler; ihr fehlt nur die Wurzel bei Anwendungen ohne `wbs` (bekannte Schwäche, ADR-0034 Option A).
@@ -78,8 +82,16 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` (Git, Com
 
 ### Einrichten
 
-- [ ] **AK 9** Gegeben ist das Register aus AK 8 vor dem `PUT`. Wenn der Betreiber die Einstellungen öffnet, dann zeigt die Anwendung `jopu` das Repository `/home/shoff/Projekte/JoinPuyaApp/Documentation/Planning` als erreichbar. Speichert er, ohne das Repository zu ändern, steht `repository: /home/shoff/Projekte/JoinPuyaApp/Documentation/Planning` in der Datei, und `wbs`/`requirements` bleiben unverändert stehen, weil die Seite sie mitsendet (N2 Regel 3). Ändert er das Repository auf `/home/shoff/Projekte/JoinPuyaApp` und speichert, steht genau dieser Ordner als `repository` in der Datei (ein Commit), `wbs`/`requirements` bleiben ebenso stehen, und `jopu:<hash>` bleibt gleich. Ein Ordner, den es nicht gibt, zeigt „nicht erreichbar“. Speichern geht trotzdem, und Verweise der Anwendung sind dann `repository_fehlt`.
-- [ ] **AK 10** Gegeben sind geöffnete Einstellungen. Wenn der Betreiber die Anwendung `lc` nur mit dem Repository `R` anlegt und unter „Quellen“ das Repository `R` einträgt und speichert, dann stehen `lc: {name: …, repository: R}` und `sources.repository: R` in der Datei, ohne `wbs` und ohne `requirements`, mit genau einem Commit. `<C>` ohne Kürzel ist danach `auf_zweig` (Standardanwendung).
+- [ ] **AK 9** Gegeben ist das Register aus AK 8 vor dem `PUT`. Wenn der Betreiber die Einstellungen öffnet, dann zeigt die Anwendung `jopu` das Repository `/home/shoff/Projekte/JoinPuyaApp/Documentation/Planning` mit dem Zustandswort „erreichbar“. Die Felder stehen in der Reihenfolge Repository, WBS, Anforderungen. Das Feld heißt für Hilfstechnik „Repository jopu“. Unter dem gefüllten WBS-Feld steht ruhig und ohne Sperre der Hinweis „Die Factory erkennt die Anwendung an diesem Pfad. Leeren erst, wenn die Factory umgestellt ist.“ (PO Z. 435); bei leerem WBS-Feld fehlt er.
+  - Speichert der Betreiber, ohne das Repository zu ändern, steht `repository: /home/shoff/Projekte/JoinPuyaApp/Documentation/Planning` in der Datei, und `wbs`/`requirements` bleiben unverändert stehen, weil die Seite sie mitsendet (N2 Regel 3).
+  - Ändert er das Repository auf `/home/shoff/Projekte/JoinPuyaApp`, zeigt die Zeile bis zum Speichern „noch nicht geprüft“. Nach dem Speichern steht genau dieser Ordner als `repository` in der Datei (ein Commit), `wbs`/`requirements` bleiben stehen, die Zeile zeigt „erreichbar“, und `jopu:<hash>` bleibt gleich.
+  - Ein Ordner, den es nicht gibt, zeigt nach dem Speichern „nicht erreichbar“, und ein leeres Feld zeigt „kein Repository“. Speichern geht in beiden Fällen, ohne Meldung, und Verweise der Anwendung sind dann `repository_fehlt`. Auch ein relativer Pfad erzeugt keine Meldung.
+- [ ] **AK 10** Gegeben sind geöffnete Einstellungen. Oben in „Anwendungen“ steht der Hinweis im Wortlaut von PO Z. 436: „Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie `kd:<hash>`. WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist. Aufgaben nennen ihre Herkunft als `kd:I0007`; Boards binden mit `applications: [kd]`.“ Wenn der Betreiber die Anwendung `lc` anlegt, dann steht der Fokus im Feld „Repository“ der neuen Zeile (Platzhalter `/voller/pfad/zum/Repository`).
+  - Trägt er dort `R` und unter „Quellen“ ebenfalls `R` ein (Feld „Repository“) und speichert, dann stehen `lc: {name: …, repository: R}` und `sources.repository: R` in der Datei, ohne `wbs` und ohne `requirements`, mit genau einem Commit. `<C>` ohne Kürzel ist danach `auf_zweig` (Standardanwendung).
+  - `GET /api/einstellungen` liefert für `quellen` `erreichbar.repository: true`, und die Quellen-Zeile zeigt „erreichbar“ wie die Zeile einer Anwendung. Nennt `sources.repository` einen Ordner, den es nicht gibt, steht dort „nicht erreichbar“, und Speichern bleibt möglich.
+  - Entfernt er `lc` wieder, steht der Fokus auf der Nachbarzeile oder, wenn keine bleibt, im Feld „Neues Anwendungskürzel“.
+- [ ] **AK 11** Gegeben sind geöffnete Einstellungen mit `kd: {repository: R, wbs: W}`. Wenn der Betreiber das Repository ändert oder `wbs` leert, dann zeigt `#einr-vorschau` vor dem Speichern genau die Zeilen, die nach dem Speichern in `kanbanD.md` stehen (`repository` immer, `wbs`/`requirements` nur bei nicht leerem Feld). Probe: Der Text von `#einr-vorschau` ist gleich `kanbanD.md` nach dem Speichern, auch in den Fällen von AK 9 und AK 10.
+- [ ] **AK 12** Gegeben ein geänderter Entwurf in den Einstellungen. Wenn `PUT /api/einstellungen` fehlschlägt (z. B. 400 bei doppeltem Kürzel oder 500), dann bleibt der Entwurf mit allen Eingaben stehen. Die Fehlermeldung erscheint als `role=alert` über den Knöpfen, und der Fokus liegt auf der Meldung oder dem ersten fehlerhaften Feld, nie auf `body`. `kanbanD.md` bleibt unverändert.
 
 ## Betroffene Verzeichnisstruktur
 
@@ -97,8 +109,8 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` (Git, Com
 1. **B1035 Startordner wählen, rein**: `(repository, wbs, requirements)` → `Option<Startordner>` nach AK 1, ohne Dateizugriff.
 2. **B1036 Register lesen und schreiben**: `repository` lesen. Schreiben je Anwendung `{name, repository}` (leer → Startordner aus 1), `wbs`/`requirements` nur, wenn nicht leer; `sources` ebenso. Alle drei Pfade bekommen in serde die Vorgabe „leer“.
 3. **B1037 Wurzel aus dem Startordner**: `wurzel`/`wurzel_bis` behalten ihre Signaturen (ADR-0034 N1), nur der Startordner kommt aus 1.
-4. **B1038 API**: `PUT`/`GET /api/einstellungen`, `GET /api/anwendungen` mit `repository` und `erreichbar.repository`; Endpunktliste, OpenAPI und README.
-5. **B1039 Einrichten**: Feld „Repository“ je Anwendung und unter „Quellen“ im vorhandenen Zeilenmuster (`vBeschriftung`, `mini-inp`, `vErreichbar`). Der Hinweistext nennt das Repository statt „die vollen Pfade zu WBS und Anforderungen“.
+4. **B1038 API**: `PUT`/`GET /api/einstellungen`, `GET /api/anwendungen` mit `repository` und `erreichbar.repository`, je Anwendung und für `quellen`; Endpunktliste, OpenAPI und README.
+5. **B1039 Einrichten**: Feld „Repository“ je Anwendung und unter „Quellen“ im vorhandenen Zeilenmuster (`vBeschriftung`, `mini-inp`, `vErreichbar`), vor WBS und Anforderungen. Zustandswörter nach PO Z. 434 (das heutige „—“ wird „noch nicht geprüft“), Hinweis am WBS-Feld (Z. 435), Hinweistext „Anwendungen“ (Z. 436), Vorschau nach derselben Schreibregel wie der Server (AK 11), Fehlerpfad und Fokus (AK 10, 12), Breiten und Kontrast nach NFA.
 6. **B1040 Probe im echten Programm**, Legacy-Probe, Gate, Abschluss.
 
 ### Hinweise
@@ -112,7 +124,7 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` (Git, Com
 
 - **Unit:** Startordner (AK 1, Tabelle je Zeile), Register-Rundlauf in drei Formen, Schreibregel „`wbs` nur, wenn mitgeschickt“.
 - **Integration:** `tests/akzeptanz_r00209.rs` gegen echtes Git: AK 2–5 und 7. Dazu AK 6 gegen die Factory, die dabei nur gelesen wird, und AK 8 gegen die Kopie (`#[ignore]`, wenn der Ordner fehlt; in B1040 einmal von Hand gefahren und im Bericht belegt).
-- **E2E:** AK 9 und 10 über die Einstellungsseite.
+- **E2E:** AK 9 bis 12 über die Einstellungsseite.
 
 ## Abhängigkeiten
 
