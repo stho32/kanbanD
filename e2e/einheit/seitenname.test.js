@@ -155,3 +155,11 @@ test('R00137 AK 6: eine zweite Namensliste in app.js wird rot', () => {
   assert.notStrictEqual(mutiert, lies(APP), 'Mutante greift nicht');
   assert.deepStrictEqual(pruefeFenstertitelRumpf(mutiert), ['Namensliteral „Zeiten"']);
 });
+
+test('Nacharbeit 1 (UX S3): Review ohne Kurzform heißt „Review #<nr>“, nie „Review #<nr> · “', () => {
+  assert.strictEqual(seitenUeberschrift({ ansicht: 'review', review: { nummer: 1, kurz: 'kd:abc1234' } }), 'Review #1 · kd:abc1234');
+  for (const kurz of ['', null, undefined]) {
+    assert.strictEqual(seitenUeberschrift({ ansicht: 'review', review: { nummer: 6, kurz } }), 'Review #6', String(kurz));
+    assert.strictEqual(fenstertitelName({ ansicht: 'review', review: { nummer: 6, kurz } }), 'Review #6 — kanbanD', String(kurz));
+  }
+});

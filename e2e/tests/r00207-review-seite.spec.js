@@ -777,6 +777,32 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page).toHaveTitle(`(1 ▶) Review #7 · ${kurz(rep.d)} — kanbanD`);
   });
 
+  for (const [fall, nr, commit, warten] of [['?commit=zzz (ungültig)', 1, 'zzz', '.rv-meld'], ['#6 ohne Verweis (Rand c)', 6, null, '.rv-meld'], ['gehaltene Liste ohne Verweis', 1, null, '.rv-laedt']]) {
+    test(`Nacharbeit 1 (UX S3): Fenstertitel ohne Kurzform bei ${fall} lautet „Review #${nr} — kanbanD“`, async ({ page }) => {
+      if (warten === '.rv-laedt') await halten(page, '**/api/aufgaben/1/commits');
+      await page.goto(reviewAdresse(k, nr, commit));
+      await expect(page.locator(warten)).toBeVisible();
+      await expect(page).toHaveTitle(`Review #${nr} — kanbanD`);
+    });
+  }
+
+  /* ── Nacharbeit 1, UX M2: „← #n“ behält beim Zeigen die Farbe des Kopfes ── */
+
+  for (const farbe of ['light', 'dark']) {
+    test(`Nacharbeit 1 (UX M2): Kontrast ${farbe} mit gehaltenem Hover auf „← #1“ — Kopf und Seite ≥ 4,5:1`, async ({ page }) => {
+      await thema(page, farbe);
+      await page.goto(reviewAdresse(k, 1, `kd:${rep.k3}`));
+      await expect(page.locator(POS)).toHaveText('1 von 4');
+      await page.locator('#rv-rueckweg').hover();
+      await thema(page, farbe);
+      const rueckweg = (await kontrastMessen(page, ['#kopf'])).filter(m => m.text && m.text.includes('#1'));
+      expect(rueckweg.length).toBeGreaterThan(0);
+      const zuWenig = (await kontrastMessen(page, ['#review', '#kopf'])).filter(m => m.wert < 4.5).map(m => `${m.element} „${String(m.text).slice(0, 30)}“ ${m.wert.toFixed(2)}`);
+      expect(zuWenig).toEqual([]);
+      expect(await page.locator('#rv-rueckweg').evaluate(e => e.matches(':hover'))).toBe(true);
+    });
+  }
+
   /* ── AK 8 Fremder Text und sichtbare Zeichen ── */
 
   test('AK 8: <img onerror> in Pfad, Zeile und Titel steht als Text, es entsteht kein img; Bidi als Marke, ESC und \\r sichtbar, Tab bleibt', async ({ page }) => {

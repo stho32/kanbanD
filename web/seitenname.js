@@ -38,7 +38,7 @@
   /** Text der verborgenen Überschrift erster Ebene: „Board · Entwicklung“, „Berichte · Burndown“, im ersten Start „Einrichten“. */
   function seitenUeberschrift(seite) {
     if (seite.ersterStart) return 'Einrichten';
-    if (seite.ansicht === 'review' && seite.review) return `Review #${seite.review.nummer} · ${seite.review.kurz}`;
+    if (seite.ansicht === 'review' && seite.review) return seite.review.kurz ? `Review #${seite.review.nummer} · ${seite.review.kurz}` : `Review #${seite.review.nummer}`;
     const teile = [seitenNameVon(seite.ansicht), zusatz(seite)].filter(Boolean);
     return teile.join(' · ');
   }
