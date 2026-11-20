@@ -24,6 +24,10 @@ pub struct Angaben {
     pub herkunft: Option<Vec<String>>,
     pub beschreibung: Option<String>,
     pub teilaufgaben: Option<Vec<String>>,
+    /// Ob `braucht` mitgeschickt wurde — nur lesbar, Abhängigkeiten über `labels` (R00214)
+    #[serde(default, rename = "braucht", deserialize_with = "crate::modell::mitgeschickt")]
+    #[schema(ignore)]
+    pub braucht_mitgeschickt: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -172,6 +176,7 @@ impl Kanban {
                     faellig: g.faellig.clone().map(Some),
                     herkunft: g.herkunft.clone(),
                     beschreibung: g.beschreibung.clone(),
+                    braucht_mitgeschickt: g.braucht_mitgeschickt,
                     ..Default::default()
                 };
                 if aus.is_some() {
@@ -265,6 +270,7 @@ fn angaben_der_quelle(quelle: &Aufgabe) -> Angaben {
         herkunft: Some(quelle.herkunft.clone()),
         beschreibung: Some(quelle.beschreibung.clone()),
         teilaufgaben: Some(quelle.teilaufgaben.iter().map(|t| t.text.clone()).collect()),
+        braucht_mitgeschickt: false,
     }
 }
 

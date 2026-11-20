@@ -2,6 +2,21 @@
 //! „diese Aufgabe wartet auf #n“. Hier steht seine Deutung als reine Funktionen, ohne Dateien und ohne HTTP.
 
 use super::{Aufgabe, Board};
+use serde::Serialize;
+
+/// Meldung, wenn `braucht` im Rumpf eines Schreibaufrufs steht — geschrieben wird nur über `labels` (ADR-0035 Punkt 4).
+pub const BRAUCHT_UEBER_LABELS: &str = "braucht über labels setzen (braucht:<nr>)";
+
+/// Ein Eintrag des abgeleiteten, nur lesbaren Felds `braucht` (R00214): worauf die Aufgabe wartet und ob das erledigt ist.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+pub struct Abhaengigkeit {
+    /// Nummer der gebrauchten Aufgabe, aus dem Label `braucht:<nummer>`
+    pub nummer: u32,
+    /// Titel der gebrauchten Aufgabe; null, wenn es zur Nummer keine lesbare Aufgabendatei gibt
+    pub titel: Option<String>,
+    /// archiviert oder auf einem ihrer Boards in dessen letzter Spalte; ohne lesbare Datei false
+    pub erledigt: bool,
+}
 
 /// Was ein Label über eine Abhängigkeit sagt.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,6 +61,15 @@ pub fn braucht_nummern(labels: &[String]) -> Vec<u32> {
 /// (ADR-0035 Punkt 3) — dieselbe Entscheidung trifft `POST /api/aufgaben/erledigen` für sein Board.
 pub fn ist_erledigt<'a>(a: &Aufgabe, boards: impl IntoIterator<Item = &'a Board>) -> bool {
     a.archiviert.is_some() || boards.into_iter().any(|b| b.abschlussspalte().is_some_and(|s| s.aufgaben.contains(&a.nummer)))
+}
+
+/// Das Feld `braucht` zu den Labels einer Aufgabe: `finde` liefert die gebrauchte Aufgabe, wenn ihre Datei lesbar ist.
+pub fn abhaengigkeiten<'a>(labels: &[String], finde: impl Fn(u32) -> Option<&'a Aufgabe>, boards: &[Board]) -> Vec<Abhaengigkeit> {
+    let eintrag = |nummer: u32| match finde(nummer) {
+        Some(a) => Abhaengigkeit { nummer, erledigt: ist_erledigt(a, boards), titel: Some(a.titel.clone()) },
+        None => Abhaengigkeit { nummer, titel: None, erledigt: false },
+    };
+    braucht_nummern(labels).into_iter().map(eintrag).collect()
 }
 
 #[cfg(test)]
@@ -113,5 +137,26 @@ mod tests {
         assert!(ist_erledigt(&karte(4, false), [&e, &f]), "auf e in der letzten Spalte, auf f offen");
         assert!(!ist_erledigt(&karte(5, false), [&e, &f]), "nur auf f, dort offen");
         assert!(!ist_erledigt(&karte(1, false), [&leer]), "Board ohne Spalten");
+    }
+
+    // R00214 AK 1–3: Titel und Erledigt der gebrauchten Aufgabe, fehlende oder unlesbare Datei titel null, erledigt false
+    #[test]
+    fn abhaengigkeiten_in_label_reihenfolge() {
+        let e = board("e", &[("Offen", &[1]), ("Fertig", &[3])]);
+        let mut geruest = karte(1, false);
+        geruest.titel = "Gerüst".into();
+        let mut alt = karte(4, true);
+        alt.titel = "Alt".into();
+        let alle = [geruest, karte(3, false), alt];
+        let finde = |n: u32| alle.iter().find(|a| a.nummer == n);
+        let eintrag = |nummer: u32, titel: Option<&str>, erledigt: bool| Abhaengigkeit { nummer, titel: titel.map(Into::into), erledigt };
+        assert_eq!(abhaengigkeiten(&labels(&["feature", "braucht:1"]), finde, &[e.clone()]), vec![eintrag(1, Some("Gerüst"), false)]);
+        assert_eq!(
+            abhaengigkeiten(&labels(&["braucht:999", "BRAUCHT:3", "braucht:4", "braucht:abc", "braucht:3"]), finde, &[e.clone()]),
+            vec![eintrag(999, None, false), eintrag(3, Some("x"), true), eintrag(4, Some("Alt"), true)]
+        );
+        assert_eq!(abhaengigkeiten(&labels(&["ui"]), finde, &[e]), vec![]);
+        let json = serde_json::to_value(eintrag(999, None, false)).unwrap();
+        assert_eq!(json, serde_json::json!({"nummer": 999, "titel": null, "erledigt": false}));
     }
 }

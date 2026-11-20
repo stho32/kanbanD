@@ -404,7 +404,8 @@ async fn wer(State(app): State<App>, Wer(wer): Wer) -> Result<Response, Fehler> 
 async fn aufgaben(State(app): State<App>, Abfrage(paare): Abfrage<Vec<(String, String)>>) -> Result<Response, Fehler> {
     let filter = crate::dienst::Aufgabenfilter::aus_paaren(&paare)?;
     let (aufgaben, defekte) = blockierend(&app, move |k| {
-        let (aufgaben, defekte) = k.ordner().aufgaben()?;
+        let (mut aufgaben, defekte) = k.ordner().aufgaben()?;
+        k.braucht_eintragen_alle(&mut aufgaben)?;
         let board = filter.board.as_deref().map(|slug| k.ordner().board(slug)).transpose()?;
         if let Some(s) = filter.spalten.iter().find(|s| board.as_ref().is_some_and(|b| !b.spalten.iter().any(|x| &x.name == *s))) {
             return Err(Fehler::Ungueltig(format!("Spalte „{s}“ gibt es auf diesem Board nicht")));
@@ -834,7 +835,8 @@ async fn aufgabe_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Re
         let text = k.ordner().lies(&pfad)?.unwrap_or_default();
         Ok(match k.ordner().aufgabe(nr) {
             // ein Objekt direkt (R00092): die Karte, daneben Pfad und Text der Datei
-            Ok(a) => {
+            Ok(mut a) => {
+                k.braucht_eintragen(&mut a)?;
                 let mut karte = serde_json::to_value(&a).map_err(|e| Fehler::Intern(format!("Aufgabe als JSON: {e}")))?;
                 karte["pfad"] = json!(pfad);
                 karte["text"] = json!(text);

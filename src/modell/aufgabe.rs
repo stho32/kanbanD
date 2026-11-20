@@ -1,4 +1,4 @@
-use super::{Anwendungen, Einstellungen, Herkunftsschluessel, Klassengeltung, Kosten, Kosteneintrag};
+use super::{Abhaengigkeit, Anwendungen, BRAUCHT_UEBER_LABELS, Einstellungen, Herkunftsschluessel, Klassengeltung, Kosten, Kosteneintrag};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -417,6 +417,11 @@ pub struct Aufgabe {
     /// `estimate` (R00129): geschätzte Zeit in ganzen Minuten, ≥ 1 und ≤ 100.000; null/fehlend heißt „keine Schätzung“
     #[serde(rename = "estimate")]
     pub geschaetzte_minuten: Option<u32>,
+    /// `braucht` (R00214, ADR-0035 Punkt 4): abgeleitet aus den Labels `braucht:<n>` in deren Reihenfolge, nur lesbar —
+    /// steht in `GET /api/aufgaben` und `GET /api/aufgaben/{nr}`, ohne Abhängigkeit `[]`; geschrieben wird über `labels`
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
+    #[schema(read_only)]
+    pub braucht: Option<Vec<Abhaengigkeit>>,
     /// Frontmatter-Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub weitere: Vec<(String, serde_yaml::Value)>,
@@ -450,6 +455,7 @@ impl Aufgabe {
             kosteneintraege: vec![],
             commits: vec![],
             geschaetzte_minuten: None,
+            braucht: None,
             weitere: vec![],
         }
     }
@@ -488,9 +494,13 @@ pub struct Aufgabenaenderung {
     #[serde(default, rename = "key", deserialize_with = "mitgeschickt")]
     #[schema(ignore)]
     pub schluessel_mitgeschickt: bool,
+    /// Ob `braucht` mitgeschickt wurde — das Feld ist nur lesbar, geschrieben wird über `labels` (R00214).
+    #[serde(default, rename = "braucht", deserialize_with = "mitgeschickt")]
+    #[schema(ignore)]
+    pub braucht_mitgeschickt: bool,
 }
 
-fn mitgeschickt<'de, D: serde::Deserializer<'de>>(d: D) -> Result<bool, D::Error> {
+pub(crate) fn mitgeschickt<'de, D: serde::Deserializer<'de>>(d: D) -> Result<bool, D::Error> {
     serde::de::IgnoredAny::deserialize(d).map(|_| true)
 }
 
@@ -554,6 +564,9 @@ impl Aufgabe {
     pub fn aendern(&mut self, a: &Aufgabenaenderung, e: &Einstellungen, klassen: &Klassengeltung) -> Result<Vec<&'static str>, String> {
         if a.schluessel_mitgeschickt {
             return Err("Schlüssel ist nicht änderbar".into());
+        }
+        if a.braucht_mitgeschickt {
+            return Err(BRAUCHT_UEBER_LABELS.into());
         }
         let mut neu = self.clone();
         if let Some(t) = &a.titel {
@@ -752,6 +765,19 @@ mod tests {
 
     fn geltung() -> Klassengeltung {
         Klassengeltung::neu([], &e())
+    }
+
+    /// R00214 AK 4: `braucht` im Rumpf — mit jedem Wert, auch neben anderen Feldern — ändert nichts und wird abgewiesen.
+    #[test]
+    fn braucht_im_rumpf_wird_abgewiesen() {
+        let mut a = Aufgabe::neu(5, "0005-frei.md".into(), "Frei".into());
+        let vorher = a.clone();
+        for rumpf in [r#"{"braucht":[{"nummer":1}]}"#, r#"{"braucht":[]}"#, r#"{"braucht":null}"#, r#"{"titel":"x","labels":["braucht:1"],"braucht":7}"#] {
+            assert_eq!(a.aendern(&aend(rumpf), &e(), &geltung()).unwrap_err(), "braucht über labels setzen (braucht:<nr>)", "{rumpf}");
+            assert_eq!(a, vorher, "{rumpf}");
+        }
+        assert_eq!(a.aendern(&aend(r#"{"labels":["braucht:1"]}"#), &e(), &geltung()).unwrap(), vec!["Labels"], "über labels geht es");
+        assert_eq!(serde_json::to_value(&a).unwrap().get("braucht"), None, "ungerechnet steht das Feld nicht in der Antwort");
     }
 
     /// R00195 AK 4 (ADR-0031 Regel 6): ein unverändert mitgeschickter Wert wird nicht geprüft — auch ein fremder nicht.
