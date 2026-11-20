@@ -74,6 +74,209 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   });
   test.afterEach(() => k.stoppen());
 
+  /** Die erste Antwort von #11 mit `k.txt` (zweite Datei von kd) in `nachladen`; `aendern` kann die Hinweise ersetzen. */
+  async function ersteAntwortElf(page, aendern = json => json) {
+    await page.route(url => istDiff(url, 11) && !url.searchParams.has('anwendung') && !url.searchParams.has('datei'), async route => {
+      const echt = await route.fetch();
+      const json = await echt.json();
+      json.dateien[1] = { ...json.dateien[1], nachladen: true, patch: undefined };
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(aendern(json)) });
+    });
+  }
+  const weitere = liste => json => ({ ...json, hinweise: json.hinweise.map(h => (h.art === 'weitere_anwendungen' ? { ...h, anwendungen: liste } : h)) });
+
+  /* ── Nacharbeit 1: AK 11 (Code-Review M1, Abnahme-Probe wörtlich) ── */
+
+  test('AK 11 (M1): „Erneut versuchen“ an wb, während datei= von kd läuft — #rv-a1 „Wartet, bis die Anwendung kd geladen ist …“; die Ansage wird sofort leer', async ({ page }) => {
+    await ersteAntwortElf(page);
+    const datei = await halten(page, url => istDiff(url, 11) && url.searchParams.has('datei'));
+    const wb = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'wb');
+    await page.goto(reviewAdresse(k, 11));
+    await expect(page.locator('#rv-a1 .zw')).toHaveText('lädt …');
+    wb.frei(0, { status: 503, body: { fehler: 'Git antwortete nicht' } });
+    await expect(page.locator('#rv-a1 .rv-abs-f')).toBeVisible();
+    await expect(page.locator('#rv-a2 .rv-cl')).toBeVisible();
+    await expect(page.locator('#rv-ansage')).toContainText('ohne Anwendung wb: ließ sich nicht lesen');
+    await page.locator('#rv-d0-1').getByRole('button', { name: 'Nachladen' }).click();
+    await expect.poll(() => datei.angehalten()).toBe(1);
+    await page.locator('#rv-a1').getByRole('button', { name: 'Erneut versuchen' }).click();
+    await expect(page.locator('#rv-a1 .rv-abs-zust')).toHaveText('Wartet, bis die Anwendung kd geladen ist …');
+    await expect(page.locator('#rv-ansage')).toHaveText('');
+    datei.frei(0);
+    await expect.poll(() => wb.angehalten()).toBe(2);
+    wb.frei(1);
+    await expect(page.locator('#rv-a1 .rv-cl')).toBeVisible();
+    await expect(page.locator('#rv-ansage')).toHaveText(/^Alle Änderungen der Aufgabe #11: .* entfernt\.$/);
+  });
+
+  /* ── AK 12 Standardanwendung ── */
+
+  test('AK 12: weitere Anwendung ist die Standardanwendung — lädt, wartet, Leiste, Fehler und Ansage sagen „Standardanwendung“, nie „Anwendung  “', async ({ page }) => {
+    await ersteAntwortElf(page, weitere(['', 'xx']));
+    const standard = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === '');
+    await page.goto(reviewAdresse(k, 11));
+    await expect(page.locator('#rv-a1 .rv-abs-zust')).toHaveText('Lädt die Änderungen der Standardanwendung …');
+    await expect(page.locator('#rv-a2 .rv-abs-zust')).toHaveText('Wartet, bis die Standardanwendung geladen ist …');
+    await expect(page.locator('#rv-summe')).toHaveText(/ · Standardanwendung lädt noch …$/);
+    await expect(page.locator('#rv-a1 h2')).toHaveText(/^Standardanwendung/);
+    const texte = [await page.locator('#review').textContent()];
+    standard.frei(0, { status: 503, body: { fehler: 'Git antwortete nicht' } });
+    await expect(page.locator('#rv-a1 .rv-abs-f')).toHaveText(/^Die Änderungen der Standardanwendung ließen sich nicht lesen: Git antwortete nicht \(503\)\./);
+    await expect(page.locator('#rv-ansage')).toContainText('ohne Standardanwendung: ließ sich nicht lesen');
+    texte.push(await page.locator('#review').textContent(), await page.locator('#rv-ansage').textContent());
+    for (const t of texte) expect(t).not.toMatch(/Anwendung {2}|Anwendung :|Anwendung …|Anwendung lädt|Anwendung wurden|Anwendung ließen|Anwendung geladen/);
+  });
+
+  /* ── AK 13 Netzabbruch ohne „(0)“ ── */
+
+  test('AK 13: Netzabbruch auf der Seite und bei datei= — „: keine Verbindung zum Programm.“ ohne „(0)“', async ({ page }) => {
+    const seite = await halten(page, url => istDiff(url, 2) && !url.searchParams.has('datei'));
+    await page.goto(reviewAdresse(k, 2));
+    await expect.poll(() => seite.angehalten()).toBe(1);
+    seite.frei(0, 'abbrechen');
+    await expect(page.locator('.rv-meld h2')).toHaveText('Der Diff ließ sich nicht lesen: keine Verbindung zum Programm.');
+    await page.unrouteAll();
+    await ersteAntwortElf(page);
+    const datei = await halten(page, url => istDiff(url, 11) && url.searchParams.has('datei'));
+    await page.goto(reviewAdresse(k, 11));
+    await expect(page.locator('#rv-a2 .rv-cl')).toBeVisible();
+    await page.locator('#rv-d0-1').getByRole('button', { name: 'Nachladen' }).click();
+    await expect.poll(() => datei.angehalten()).toBe(1);
+    datei.frei(0, 'abbrechen');
+    await expect(page.locator('#rv-d0-1 .df-hin.fehl p')).toHaveText('Die Änderungen dieser Datei ließen sich nicht laden: keine Verbindung zum Programm.');
+    expect(await page.locator('#review').textContent()).not.toContain('(0)');
+  });
+
+  /* ── AK 14 Fremder Text an den Rückfall-Senken ── */
+
+  test('AK 14: Grund, Status von Datei und Schritt, Dateimodus mit <img onerror> — window.PWN bleibt undefined, der Text steht maskiert da', async ({ page }) => {
+    const PWN = '<img src=x onerror=window.PWN=1>';
+    await festeAntwort(page, 2, json => {
+      const [a, kd] = json.dateien;
+      return { ...json, dateien: [{ ...a, schritte: a.schritte.map(s => ({ ...s, status: PWN, modus_alt: PWN, modus_neu: '100755' })) }, { ...kd, status: PWN, modus_alt: PWN, modus_neu: '100755' }], hinweise: [{ art: 'ganz_als_folge', grund: PWN }] };
+    });
+    await page.goto(reviewAdresse(k, 2));
+    await expect(page.locator('#rv-a0 .rv-ganz')).toContainText(`Grund „${PWN}“.`);
+    for (const kopf of ['#rv-dk0-0', '#rv-dk0-1']) { await page.locator(kopf).click(); await page.locator(kopf).click(); }
+    await expect(page.locator('#rv-d0-1 .df-mm')).toContainText(PWN);
+    expect(await page.evaluate(() => window.PWN)).toBeUndefined();
+    expect(await page.locator('#rv-insel img').count()).toBe(0);
+  });
+
+  test('AK 14: wartetAuf nur beim Einsetzen maskiert — Kürzel „a&b“ steht an Abschnitt und Datei als „a&b“', async ({ page }) => {
+    await ersteAntwortElf(page, weitere(['a&b', 'xx']));
+    const ab = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'a&b');
+    await page.goto(reviewAdresse(k, 11));
+    await expect(page.locator('#rv-a2 .rv-abs-zust')).toHaveText('Wartet, bis die Anwendung a&b geladen ist …');
+    await page.locator('#rv-d0-1').getByRole('button', { name: 'Nachladen' }).click();
+    await expect(page.locator('#rv-d0-1 .df-wartet')).toHaveText('Wartet, bis die Anwendung a&b geladen ist …');
+    ab.frei(0, { status: 404, body: { fehler: 'nichts' } });
+  });
+
+  /* ── AK 15 Mutanten G, J, A und die Fälle S9, AK 2 verzögert, Tab-Folge ── */
+
+  test('AK 15 (G): bei 320 px ändert die Leiste ihre Höhe, wenn die letzte Anwendung ankommt — der sichtbare Schrittkopf von kd bleibt (≤ 1 px)', async ({ page }) => {
+    await breiteSetzen(page, 320, 700);
+    await ersteAntwortElf(page, weitere(['langname']));
+    let frei;
+    const tor = new Promise(r => { frei = r; });
+    await page.route(url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'langname', async route => {
+      await tor;
+      const echt = await (await route.fetch({ url: route.request().url().replace('anwendung=langname', 'anwendung=wb') })).json();
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...echt, anwendung: 'langname' }) });
+    });
+    await page.goto(reviewAdresse(k, 11));
+    await expect(page.locator('#rv-summe')).toHaveText(/Anwendung langname lädt noch …$/);
+    await page.locator('#rv-d0-0-1 .fs-k').evaluate(e => e.scrollIntoView({ block: 'start' }));
+    const hoehe = () => page.locator('.rv-leiste').evaluate(e => e.getBoundingClientRect().height);
+    const kante = () => page.locator('#rv-d0-0-1 .fs-k').evaluate(e => e.getBoundingClientRect().top);
+    const [h0, k0] = [await hoehe(), await kante()];
+    frei();
+    await expect(page.locator('#rv-summe')).not.toContainText('lädt noch');
+    expect(await hoehe(), 'die Leiste ändert ihre Höhe (Vorbedingung)').not.toBe(h0);
+    expect(Math.abs((await kante()) - k0)).toBeLessThanOrEqual(1);
+  });
+
+  test('AK 15 (J): Klappen gelten nur bei gleicher Dateiliste — eine neue Datei vorn öffnet nach Plan, nicht nach der alten Klappe', async ({ page }) => {
+    let mitNeuer = false;
+    await festeAntwort(page, 2, json => {
+      if (!mitNeuer) return json;
+      return { ...json, dateien: [{ neu: '0-neu.txt', status: 'A', plus: 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1 @@\n+n\n' }, ...json.dateien] };
+    });
+    await page.goto(reviewAdresse(k, 2));
+    await page.locator('#rv-dk0-0').click();
+    await expect(page.locator('#rv-dk0-0')).toHaveAttribute('aria-expanded', 'false');
+    await page.locator('#rv-u-commit').click();
+    await expect(page.locator('#rv-pos')).toBeVisible();
+    await page.locator('#rv-u-alle').click();
+    await expect(page.locator('#rv-dk0-0')).toHaveAttribute('aria-expanded', 'false');
+    mitNeuer = true;
+    await page.locator('#rv-u-commit').click();
+    await expect(page.locator('#rv-pos')).toBeVisible();
+    await page.locator('#rv-u-alle').click();
+    await expect(page.locator('#rv-dk0-2')).toBeVisible();
+    await expect(page.locator('#rv-dk0-0')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#rv-dk0-1')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('AK 15 (A): vierte Anwendung — „Erneut versuchen“ an wb geht vor die noch nicht begonnene yy', async ({ page }) => {
+    const z = zaehlen(page);
+    await ersteAntwortElf(page, weitere(['wb', 'xx', 'yy']));
+    await page.route(url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'yy', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ anwendung: 'yy', commits: [], dateien: [], hinweise: [] }) }));
+    const wb = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'wb');
+    const xx = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'xx');
+    await page.goto(reviewAdresse(k, 11));
+    await expect.poll(() => wb.angehalten()).toBe(1);
+    wb.frei(0, { status: 503, body: { fehler: 'Git antwortete nicht' } });
+    await expect.poll(() => xx.angehalten()).toBe(1);
+    await page.locator('#rv-a1').getByRole('button', { name: 'Erneut versuchen' }).click();
+    xx.frei(0);
+    await expect.poll(() => wb.angehalten()).toBe(2);
+    wb.frei(1);
+    await expect(page.locator('#rv-a3 .rv-abs-leer')).toBeVisible();
+    expect(z.diff.filter(s => !s.includes('datei='))).toEqual(['', '?anwendung=wb', '?anwendung=xx', '?anwendung=wb', '?anwendung=yy']);
+  });
+
+  test('AK 15 (S9): Browser-Zurück ins Fenster und Vor auf die Seite — Fokus auf dem Rückweg, Titel wie beim Öffnen', async ({ page }) => {
+    await page.goto(`${k.adresse}#/board/entwicklung/aufgabe/2`);
+    await liveBereit(page);
+    await reiter(page, 'Commits');
+    await page.getByRole('link', { name: 'Alle Änderungen ansehen' }).click();
+    await expect(page.locator('#rv-a0')).toBeVisible();
+    await expect(page.locator('#rv-rueckweg')).toBeFocused();
+    await page.goBack();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #2' })).toBeVisible();
+    await page.goForward();
+    await expect(page.locator('#rv-a0')).toBeVisible();
+    await expect(page).toHaveTitle('Review #2 · Alle Änderungen — kanbanD');
+    await expect(page.locator('#rv-rueckweg')).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+  });
+
+  test('AK 15 (AK 2 verzögert): #2 mit gehaltener Antwort — nach der Freigabe dasselbe Bild wie direkt', async ({ page }) => {
+    const h = await halten(page, url => istDiff(url, 2));
+    await page.goto(reviewAdresse(k, 2));
+    await expect(page.locator('.rv-laedt')).toBeVisible();
+    h.frei(0);
+    await expect(page.locator('#rv-a0 h2')).toHaveText('Anwendung kd 2 Commits · 2 Dateien');
+    await expect(page.locator('#rv-dk0-0')).toHaveText('a.txtFolge · 2 Commits+2 −2');
+    await expect(page.locator('#rv-d0-0 .fs-l')).toHaveCount(2);
+    await expect(page.locator('#rv-dk0-1')).toHaveText(/^neuk\.txt\+3 −0/);
+    await expect(page.locator('#rv-ansage')).toHaveText('Alle Änderungen der Aufgabe #2: 2 Dateien, 5 Zeilen hinzugefügt, 2 entfernt.');
+  });
+
+  test('AK 15 (Tab-Folge der ganzen Seite): #12 — Rückweg, Umschalter, Alle einklappen, Hinweis-Verweise, Commit-Liste, Dateiliste, Dateien mit Code', async ({ page }) => {
+    await page.goto(reviewAdresse(k, 12));
+    await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
+    await page.locator('#rv-rueckweg').focus();
+    const folge = [];
+    for (let i = 0; i < 14; i++) {
+      folge.push(await page.evaluate(() => { const e = document.activeElement; return e.closest('#review, #kopf') ? (e.id || e.className) : 'aus'; }));
+      await page.keyboard.press('Tab');
+    }
+    expect(folge).toEqual(['rv-rueckweg', 'rv-u-alle', 'rv-u-commit', 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-dk0-0', 'df-sc', 'aus']);
+  });
+
   /* ── AK 1 Adresse, Umschalter, Titel, Ansage ── */
 
   test('AK 1: aus der Liste geöffnet — Adresse bleibt, Titel und Ansage in Worten, Umschalter ersetzt den Eintrag, Ziel ist der zuletzt gezeigte Commit', async ({ page }) => {
@@ -522,7 +725,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   /* ── AK 9 Breite, Ziele, Kontrast ── */
 
   for (const breite of [320, 414, 641, 768, 980, 1280]) {
-    test(`AK 9: ${breite} px hell und dunkel — keine Querrolle der Seite; Textspalten ≥ 160 px bei 641–980; Zustandswort und Zahlen ganz sichtbar`, async ({ page }) => {
+    test(`AK 9: ${breite} px hell und dunkel — kein Querscrollen der Seite; Textspalten ≥ 160 px bei 641–980; Zustandswort und Zahlen ganz sichtbar`, async ({ page }) => {
       await breiteSetzen(page, breite, 900);
       for (const nr of [2, 12]) {
         await page.goto(reviewAdresse(k, nr));
@@ -690,6 +893,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     wb.frei(1);
     await expect(page.locator('#rv-a1 .rv-cl')).toBeVisible();
     await expect(region).not.toContainText('ohne Anwendung');
-    expect(await page.evaluate(() => window.kdAnsagen.length)).toBe(2);
+    // „Erneut versuchen“ leert die Region sofort (AK 11), der neue Text kommt einmal, wenn alle Abschnitte entschieden sind
+    expect(await page.evaluate(() => window.kdAnsagen.slice(1))).toEqual(['', await region.textContent()]);
   });
 });

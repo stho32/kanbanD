@@ -1433,20 +1433,33 @@ function reviewAlleDatei(r, alle, { a, i }, antwort, fehler) {
   if (fokusInDerDatei || document.activeElement === document.body) S.ui.fokus = `#rv-dk${a}-${i}`;
 }
 
+/** Worauf ein wartender Abschnitt wartet: das rohe Kürzel des Abschnitts der laufenden Anfrage (Anwendung oder `datei=`; '' ist
+    die Standardanwendung), null ohne laufende Anfrage eines Abschnitts. Die eine Rechnung für Start, Nachladen und „Erneut versuchen“
+    (Code-Review M1); maskiert wird erst beim Einsetzen. */
+function wartetAufVon(alle) {
+  const laufend = alle.reihe.laufend;
+  if (!laufend || laufend.art === 'erste') return null;
+  return alle.abschnitte[laufend.a].kuerzel;
+}
+
+/** Worauf eine wartende Datei wartet: auf die laufende Anwendung, hinter einer laufenden Datei auf „die andere Datei“ (null). */
+function dateiWartetAufVon(alle) {
+  const laufend = alle.reihe.laufend;
+  if (!laufend || laufend.art !== 'anwendung') return null;
+  return wartetAufVon(alle);
+}
+
 /** Nach dem Start einer Anfrage: der startende Abschnitt bzw. die startende Datei und alle wartenden zeigen, worauf sie warten. */
 function reviewAlleNachziehen(r, alle, auftrag) {
   if (alle.erste.status !== 'da') { render(); return; }
-  const laufend = alle.reihe.laufend;
-  let wartetAuf = null;
-  if (laufend && laufend.art !== 'erste') wartetAuf = esc(alle.abschnitte[laufend.a].kuerzel);
+  const wartetAuf = wartetAufVon(alle);
   alle.abschnitte.forEach((ab, a) => {
     if (ab.status === 'wartet' && ab.wartetAuf !== wartetAuf) { ab.wartetAuf = wartetAuf; reviewAbschnittNeu(r, alle, a); }
     if (ab.status === 'laedt' && auftrag.art === 'anwendung' && auftrag.a === a) reviewAbschnittNeu(r, alle, a);
   });
   alle.reihe.wartend.forEach(({ a, i }) => {
     const st = alle.abschnitte[a].staende[i];
-    let auf = null;
-    if (laufend && laufend.art === 'anwendung') auf = wartetAuf;
+    const auf = dateiWartetAufVon(alle);
     if (st.wartetAuf !== auf) { st.wartetAuf = auf; reviewGesamtDateiNeu(r, a, i); }
   });
   if (auftrag.art === 'datei') reviewGesamtDateiNeu(r, auftrag.a, auftrag.i);
@@ -1513,9 +1526,7 @@ function reviewAlleNachladen(r, a, i) {
   st.offen = true;
   if (alle.reihe.laufend) {
     st.laden = 'wartet';
-    const laufend = alle.reihe.laufend;
-    st.wartetAuf = null;
-    if (laufend.art === 'anwendung') st.wartetAuf = esc(alle.abschnitte[laufend.a].kuerzel);
+    st.wartetAuf = dateiWartetAufVon(alle);
     alle.reihe.wartend.push({ a, i });
     reviewGesamtDateiNeu(r, a, i);
     return;
@@ -1527,8 +1538,10 @@ function reviewAlleNachladen(r, a, i) {
 function reviewAbschnittErneut(r, a) {
   const alle = r.alle, ab = alle && alle.abschnitte[a];
   if (!ab || ab.status !== 'fehler') return;
-  alle.abschnitte[a] = { status: 'wartet', kuerzel: ab.kuerzel };
+  alle.abschnitte[a] = { status: 'wartet', kuerzel: ab.kuerzel, wartetAuf: wartetAufVon(alle) };
   alle.reihe.anwendungen.unshift(ab.kuerzel);
+  // die alte Ansage gilt nicht mehr: die Region wird sofort leer, der neue Text kommt, wenn alle Abschnitte entschieden sind (AK 11)
+  alle.ansage = '';
   reviewAbschnittNeu(r, alle, a);
   S.ui.fokus = `#rv-a${a}-t`;
   reviewAlleWeiter(r, alle);

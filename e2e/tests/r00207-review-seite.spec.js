@@ -232,7 +232,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
 
   /* ── AK 6a Andere Fehler und unbekannte Aufgabe ── */
 
-  for (const [fall, wert, text] of [['500', { status: 500, body: { fehler: 'innen kaputt' } }, 'Der Diff ließ sich nicht lesen: innen kaputt (500).'], ['abort', 'abbrechen', 'Der Diff ließ sich nicht lesen: keine Verbindung zum Programm (0).']]) {
+  for (const [fall, wert, text] of [['500', { status: 500, body: { fehler: 'innen kaputt' } }, 'Der Diff ließ sich nicht lesen: innen kaputt (500).'], ['abort', 'abbrechen', 'Der Diff ließ sich nicht lesen: keine Verbindung zum Programm.']]) {
     test(`AK 6a: …/diff endet mit ${fall} → „${text}“ mit „Erneut versuchen“ und „Zur Liste der Commits“, role=alert; ein Klick, eine Anfrage`, async ({ page }) => {
       const z = zaehlen(page);
       const h = await halten(page, '**/api/aufgaben/1/diff?**');
