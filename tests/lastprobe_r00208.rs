@@ -85,7 +85,7 @@ async fn ak10_lastprobe_kalt_ueber_die_api() {
     let (karte, spanne) = karte_gestreut(r);
     // Bytes des Namenslaufs über die Spanne (genau 1.000 fremde) — derselbe Befehl wie im Startort
     let eingabe: String = spanne.iter().map(|(c, e)| format!("{c} {e}\n")).collect();
-    let mut kind = Command::new("git").arg("-C").arg(r).args(["diff-tree", "--stdin", "--root", "-r", "--ignore-submodules=none", "--no-renames", "--raw", "-z"]).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
+    let mut kind = Command::new("git").arg("-C").arg(r).args(["diff-tree", "--stdin", "--root", "-r", "--ignore-submodules=none", "-M50%", "-l1000", "--raw", "-z"]).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
     let mut ziel = kind.stdin.take().unwrap();
     let schreiber = std::thread::spawn(move || ziel.write_all(eingabe.as_bytes()));
     let namen = kind.wait_with_output().unwrap().stdout.len();
