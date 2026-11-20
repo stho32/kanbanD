@@ -82,6 +82,12 @@ impl Lage {
         std::fs::write(self.r.join(datei), inhalt).unwrap();
     }
 
+    /// Wie `schreiben`, legt fehlende Ordner an.
+    fn schreiben_in(&self, datei: &str, inhalt: &str) {
+        std::fs::create_dir_all(self.r.join(datei).parent().unwrap()).unwrap();
+        self.schreiben(datei, inhalt);
+    }
+
     /// Ersetzt Zeile `nr` (ab 1) von `datei`.
     fn zeile(&self, datei: &str, nr: usize, text: &str) {
         let alt = std::fs::read_to_string(self.r.join(datei)).unwrap();
@@ -700,5 +706,436 @@ async fn ak08_antwortbudget() {
         assert_eq!(status, 503);
         let rumpf: Value = serde_json::from_str(&rest_lesen(&mut s)).unwrap();
         assert!(rumpf["fehler"].as_str().unwrap().starts_with("Antwortbudget"), "{rumpf}");
+    }
+}
+
+// ---- Nacharbeit 1 (Code-Review B1–B5, Security S1/S2) ------------------------------------------------------------------
+
+/// Jeder Name steht höchstens einmal in `dateien` (ein Pfad gehört genau einem Eintrag: netto oder Folge).
+fn eindeutig(d: &Value) {
+    let mut n = namen(d);
+    let alle = n.len();
+    n.sort();
+    n.dedup();
+    assert_eq!(n.len(), alle, "ein Name doppelt: {d}");
+}
+
+/// `datei=` auf jeden Namen: 200 mit genau diesem Eintrag (gleich dem der Liste, ohne Patch-Felder), nie 500; auf jeden
+/// weiteren Pfad 200 oder 404.
+async fn datei_auf_jeden_pfad(adresse: &str, nr: u32, d: &Value, weitere: &[&str]) {
+    let ohne_patch = |f: &Value| {
+        let weg = |v: &mut Value| {
+            if let Some(o) = v.as_object_mut() {
+                o.retain(|k, _| !["patch", "gross", "nachladen"].contains(&k.as_str()));
+            }
+        };
+        let mut f = f.clone();
+        weg(&mut f);
+        for s in f["schritte"].as_array_mut().into_iter().flatten() {
+            weg(s);
+        }
+        f
+    };
+    for name in namen(d) {
+        let (e, _) = gesamt(adresse, nr, &format!("datei={}", kodiert(&name))).await;
+        assert_eq!(dateien(&e).len(), 1, "datei={name}: {e}");
+        assert_eq!(ohne_patch(&dateien(&e)[0]), ohne_patch(eintrag(d, &name)), "datei={name}");
+    }
+    for name in weitere {
+        let a = holen(adresse, nr, &format!("datei={}", kodiert(name)), None).await;
+        assert!(matches!(a.status, 200 | 404), "datei={name}: {} {}", a.status, a.text);
+    }
+}
+
+/// Ein Folge-Eintrag mit genau diesen Schritten `(verweis, status, alt, neu, plus, minus)`.
+fn schritte_von(f: &Value) -> Vec<(String, String, Value, Value, u64, u64)> {
+    assert!(ist_folge(f), "kein Folge-Eintrag: {f}");
+    f["schritte"].as_array().unwrap().iter().map(|s| (s["commit"].as_str().unwrap().to_string(), s["status"].as_str().unwrap().to_string(), s["alt"].clone(), s["neu"].clone(), s["plus"].as_u64().unwrap(), s["minus"].as_u64().unwrap())).collect()
+}
+
+// B1 (a) Abnahme-Probe: K1 ändert a.txt, F legt f1.txt mit FREMD-1..3 an, K2 `git mv f1.txt c.txt` → c.txt als Folge mit
+// dem Schritt K2 `R f1.txt → c.txt`, 0/0; kein Netto-Eintrag mit FREMD-Zeilen (heute: c.txt netto `A` mit F-Zeilen,
+// f1.txt Folge `D` mit `-FREMD`)
+#[tokio::test]
+#[ignore = "erwartet rot: B1 der Nacharbeit 1 (#214)"]
+async fn b1_umbenennung_einer_fremd_angelegten_datei() {
+    let l = ausgangslage();
+    l.zeile("a.txt", 3, "B1-K1");
+    let k1 = l.commit("K1");
+    l.schreiben("f1.txt", &zeilen("FREMD-", 3));
+    l.commit("F");
+    l.git(&["mv", "f1.txt", "c.txt"]);
+    let k2 = l.commit("K2");
+    l.karte(20, &[kd(&k1), kd(&k2)]);
+    // (b) F legt x.txt an, dann benennt K1 x.txt nach y.txt um (K0 davor öffnet die Spanne)
+    l.zeile("a.txt", 4, "B1-K0");
+    let k0 = l.commit("K0");
+    l.schreiben("x.txt", &zeilen("FREMD-x", 4));
+    l.commit("F-x");
+    l.git(&["mv", "x.txt", "y.txt"]);
+    let k1b = l.commit("K1b");
+    l.karte(21, &[kd(&k0), kd(&k1b)]);
+    // (c) Ziel netto abgedeckt, Quelle Folge: F schreibt q.txt so stark um, dass Git netto nicht mehr paart
+    l.schreiben("q.txt", &zeilen("q", 4));
+    l.commit("q.txt");
+    l.zeile("a.txt", 5, "B1-K0c");
+    let k0c = l.commit("K0c");
+    l.schreiben("q.txt", &(zeilen("q", 4) + &zeilen("FREMD-q", 30)));
+    l.commit("F-q");
+    l.git(&["mv", "q.txt", "w.txt"]);
+    let k1c = l.commit("K1c");
+    l.karte(22, &[kd(&k0c), kd(&k1c)]);
+    // (d) Kette: F legt u.txt an, K1 benennt nach u1.txt, K2 nach u2/inner, K3 ändert u2/inner
+    l.zeile("a.txt", 7, "B1-K0d");
+    let k0d = l.commit("K0d");
+    l.schreiben("u.txt", &zeilen("FREMD-u", 5));
+    l.commit("F-u");
+    l.git(&["mv", "u.txt", "u1.txt"]);
+    let k1d = l.commit("K1d");
+    std::fs::create_dir_all(l.r.join("u2")).unwrap();
+    l.git(&["mv", "u1.txt", "u2/inner"]);
+    let k2d = l.commit("K2d");
+    l.zeile("u2/inner", 1, "K3d");
+    let k3d = l.commit("K3d");
+    l.karte(23, &[kd(&k0d), kd(&k1d), kd(&k2d), kd(&k3d)]);
+    // (e) Zwischenname ohne fremde Zeilen (Zufallsprobe Seed 12): K1 benennt r.txt nach m.txt, K2 m.txt nach m.txt/inner,
+    // ein fremder Commit dazwischen berührt anderes → eine Datei, ein Eintrag
+    l.git(&["mv", "r.txt", "m.txt"]);
+    let k1e = l.commit("K1e");
+    l.zeile("a.txt", 8, "FREMD-e");
+    l.commit("F-e");
+    l.git(&["rm", "-q", "--cached", "m.txt"]);
+    let inhalt = std::fs::read_to_string(l.r.join("m.txt")).unwrap();
+    std::fs::remove_file(l.r.join("m.txt")).unwrap();
+    l.schreiben_in("m.txt/inner", &inhalt);
+    let k2e = l.commit("K2e");
+    l.karte(24, &[kd(&k1e), kd(&k2e)]);
+    let lauf = l.starten(&[]);
+
+    let (d, _) = gesamt(&lauf.adresse, 20, "").await;
+    eindeutig(&d);
+    assert!(!namen(&d).contains(&"f1.txt".to_string()), "f1.txt trägt nur den Schritt K2 bei c.txt: {d}");
+    assert_eq!(schritte_von(eintrag(&d, "c.txt")), [(kd(&k2), "R".into(), json!("f1.txt"), json!("c.txt"), 0, 0)]);
+    datei_auf_jeden_pfad(&lauf.adresse, 20, &d, &["f1.txt"]).await;
+
+    let (d, _) = gesamt(&lauf.adresse, 21, "").await;
+    eindeutig(&d);
+    assert_eq!(schritte_von(eintrag(&d, "y.txt")), [(kd(&k1b), "R".into(), json!("x.txt"), json!("y.txt"), 0, 0)]);
+    datei_auf_jeden_pfad(&lauf.adresse, 21, &d, &["x.txt"]).await;
+
+    let (d, _) = gesamt(&lauf.adresse, 22, "").await;
+    eindeutig(&d);
+    assert_eq!(schritte_von(eintrag(&d, "w.txt")), [(kd(&k1c), "R".into(), json!("q.txt"), json!("w.txt"), 0, 0)]);
+    datei_auf_jeden_pfad(&lauf.adresse, 22, &d, &["q.txt"]).await;
+
+    let (d, _) = gesamt(&lauf.adresse, 23, "").await;
+    eindeutig(&d);
+    assert_eq!(schritte_von(eintrag(&d, "u1.txt")), [(kd(&k1d), "R".into(), json!("u.txt"), json!("u1.txt"), 0, 0)]);
+    let u2 = schritte_von(eintrag(&d, "u2/inner"));
+    assert_eq!(u2.iter().map(|s| (s.0.clone(), s.1.clone())).collect::<Vec<_>>(), [(kd(&k2d), "R".into()), (kd(&k3d), "M".into())]);
+    datei_auf_jeden_pfad(&lauf.adresse, 23, &d, &["u.txt"]).await;
+
+    let (d, _) = gesamt(&lauf.adresse, 24, "").await;
+    eindeutig(&d);
+    assert!(!namen(&d).contains(&"m.txt".to_string()) && !dateien(&d).iter().any(ist_folge), "eine Netto-Umbenennung r.txt → m.txt/inner, kein Zwischenname: {d}");
+    assert_eq!((&eintrag(&d, "m.txt/inner")["status"], &eintrag(&d, "m.txt/inner")["alt"]), (&json!("R"), &json!("r.txt")));
+    datei_auf_jeden_pfad(&lauf.adresse, 24, &d, &["m.txt", "r.txt"]).await;
+}
+
+// B2 Abnahme-Probe: Basis b und d/x mit gleichem Inhalt; K1 ersetzt d/x durch d/x/inner, K2 hängt K2 an, K3 ersetzt b
+// durch b/inner — ohne und mit F zwischen K2 und K3, das b ändert; Variante: fremde Löschung von d/x mit Zwilling.
+// Heute: mit F `…/diff` 500 (`--literal-pathspecs d/x` trifft `d/x/…`, Git paart neu)
+#[tokio::test]
+#[ignore = "erwartet rot: B2 der Nacharbeit 1 (#214)"]
+async fn b2_typwechsel_mit_gleichem_blob() {
+    let l = ausgangslage();
+    let inhalt = zeilen("zw", 10);
+    let mut karten = vec![];
+    for (nr, mit_f) in [(30u32, false), (31, true)] {
+        let (b, dx) = (format!("b{nr}"), format!("d{nr}/x"));
+        l.schreiben_in(&b, &inhalt);
+        l.schreiben_in(&dx, &inhalt);
+        l.commit("Basis");
+        std::fs::remove_file(l.r.join(&dx)).unwrap();
+        l.schreiben_in(&format!("{dx}/inner"), &inhalt);
+        let k1 = l.commit("K1");
+        l.schreiben_in(&format!("{dx}/inner"), &format!("{inhalt}K2\n"));
+        let k2 = l.commit("K2");
+        if mit_f {
+            l.schreiben_in(&b, &format!("{inhalt}FREMD-b\n"));
+            l.commit("F");
+        }
+        let alt = std::fs::read_to_string(l.r.join(&b)).unwrap();
+        std::fs::remove_file(l.r.join(&b)).unwrap();
+        l.schreiben_in(&format!("{b}/inner"), &alt);
+        let k3 = l.commit("K3");
+        l.karte(nr, &[kd(&k1), kd(&k2), kd(&k3)]);
+        karten.push((nr, b, dx));
+    }
+    // fremde Löschung von d32/x mit Zwilling b32: K1 ändert a.txt, F löscht d32/x, K2 verschiebt b32 nach d32/x/inner
+    l.schreiben_in("b32", &inhalt);
+    l.schreiben_in("d32/x", &inhalt);
+    l.commit("Basis 32");
+    l.zeile("a.txt", 9, "K1-32");
+    let k1 = l.commit("K1-32");
+    std::fs::remove_file(l.r.join("d32/x")).unwrap();
+    l.commit("F-32");
+    std::fs::remove_file(l.r.join("b32")).unwrap();
+    l.schreiben_in("d32/x/inner", &inhalt);
+    let k2 = l.commit("K2-32");
+    l.karte(32, &[kd(&k1), kd(&k2)]);
+    karten.push((32, "b32".into(), "d32/x".into()));
+    let lauf = l.starten(&[]);
+    for (nr, b, dx) in karten {
+        let (d, _) = gesamt(&lauf.adresse, nr, "").await;
+        eindeutig(&d);
+        datei_auf_jeden_pfad(&lauf.adresse, nr, &d, &[&b, &dx, &format!("{b}/inner"), &format!("{dx}/inner")]).await;
+    }
+}
+
+// B5 Abnahme-Probe: ein Dateiname mit Tab am Ende in K1, F und K2 → 200 mit Folge und beiden Schritten; Varianten
+// Umbenennung und binär (heute 500: `ends_with(b"\t")` hielt den Eintrag für eine Umbenennung)
+#[tokio::test]
+#[ignore = "erwartet rot: B5 der Nacharbeit 1 (#214)"]
+async fn b5_dateiname_mit_tab_am_ende() {
+    let l = ausgangslage();
+    l.schreiben("x\t", &zeilen("x", 5));
+    std::fs::write(l.r.join("bin\t"), [0u8, 1, 2]).unwrap();
+    let k1 = l.commit("K1");
+    l.zeile("x\t", 2, "FREMD-x");
+    std::fs::write(l.r.join("bin\t"), [0u8, 1, 2, 3]).unwrap();
+    l.commit("F");
+    l.zeile("x\t", 4, "K2");
+    std::fs::write(l.r.join("bin\t"), [0u8, 1, 2, 3, 4]).unwrap();
+    l.git(&["mv", "r.txt", "r\t"]);
+    let k2 = l.commit("K2");
+    l.zeile("r\t", 3, "FREMD-r");
+    l.commit("F2");
+    l.git(&["mv", "r\t", "s\t"]);
+    let k3 = l.commit("K3");
+    l.karte(40, &[kd(&k1), kd(&k2), kd(&k3)]);
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 40, "").await;
+    eindeutig(&d);
+    assert_eq!(schritte_von(eintrag(&d, "x\t")).iter().map(|s| (s.0.clone(), s.1.clone())).collect::<Vec<_>>(), [(kd(&k1), "A".into()), (kd(&k2), "M".into())]);
+    let bin = eintrag(&d, "bin\t");
+    assert_eq!((schritte_von(bin).len(), &bin["binaer"]), (2, &json!(true)), "{bin}");
+    assert_eq!(schritte_von(eintrag(&d, "s\t")), [(kd(&k3), "R".into(), json!("r\t"), json!("s\t"), 0, 0)]);
+    datei_auf_jeden_pfad(&lauf.adresse, 40, &d, &[]).await;
+}
+
+/// Die Antworten, die S1 und S2 vergleichen: Gesamt-Diff, `format=patch`, `datei=`, Commit-Liste, Diff je Commit.
+async fn antworten(adresse: &str, l: &Lage) -> Vec<(u16, String)> {
+    let mut v = vec![];
+    for q in ["", "format=patch", "datei=a.txt", "datei=k.txt", &format!("commit={}", kodiert(&kd(&l.k1))), &format!("commit={}&format=patch", kodiert(&kd(&l.k2)))] {
+        let a = holen(adresse, 2, q, None).await;
+        v.push((a.status, a.text));
+    }
+    let liste = reqwest::get(format!("{adresse}api/aufgaben/2/commits")).await.unwrap();
+    v.push((liste.status().as_u16(), liste.text().await.unwrap()));
+    v
+}
+
+// S1 Abnahme-Probe: je eine getrackte und eine ungetrackte Datei mit dem Hash von Kartencommit, Elternteil und Basis →
+// Gesamt-Diff, `format=patch`, `datei=` und die Commit-Liste antworten 200, bytegleich zur Antwort ohne diese Dateien
+// (heute 404 `repository_fehlt` „ambiguous argument … both revision and filename“)
+#[tokio::test]
+#[ignore = "erwartet rot: S1 der Nacharbeit 1 (#214)"]
+async fn s1_dateien_mit_hash_namen() {
+    let l = ausgangslage();
+    let lauf = l.starten(&[]);
+    let vorher = antworten(&lauf.adresse, &l).await;
+    assert!(vorher.iter().all(|(s, _)| *s == 200), "{vorher:?}");
+    // getrackt auf einem Seitenzweig (main bleibt, die Zweige der Commits auch), ungetrackt im Arbeitsbaum
+    l.git(&["checkout", "-q", "-b", "hashnamen"]);
+    for h in [&l.k1, &l.k2] {
+        l.schreiben(h, "getrackt\n");
+    }
+    l.commit("Dateien mit Hash-Namen");
+    l.git(&["checkout", "-q", "main"]);
+    l.git(&["branch", "-q", "-D", "hashnamen"]);
+    for h in [&l.k1, &l.a0, &l.f] {
+        l.schreiben(h, "ungetrackt\n");
+    }
+    let mit = antworten(&lauf.adresse, &l).await;
+    assert_eq!(mit, vorher, "bytegleich");
+    // getrackt auf main: K1 und Basis als Dateien im Arbeitsbaum und im Index
+    for h in [&l.k1, &l.a0] {
+        std::fs::remove_file(l.r.join(h)).ok();
+    }
+    l.schreiben(&l.k2, "getrackt\n");
+    l.schreiben(&l.a0, "getrackt\n");
+    let neu = l.commit("Hash-Namen auf main");
+    let _ = neu;
+    let mit = antworten(&lauf.adresse, &l).await;
+    assert_eq!(mit, vorher, "bytegleich, getrackt");
+}
+
+// S2 Abnahme-Probe: `git replace <K1> <evil>` → 200 ohne FREMD-Zeile, bytegleich zur Antwort ohne den Ref
+#[tokio::test]
+#[ignore = "erwartet rot: S2 der Nacharbeit 1 (#214)"]
+async fn s2_replace_refs_schmuggeln_nichts() {
+    let l = ausgangslage();
+    let lauf = l.starten(&[]);
+    let vorher = antworten(&lauf.adresse, &l).await;
+    l.git(&["checkout", "-q", "--detach", &l.a0]);
+    l.zeile("a.txt", 2, "FREMD-evil");
+    let evil = l.commit("K1");
+    l.git(&["checkout", "-q", "main"]);
+    l.git(&["replace", &l.k1, &evil]);
+    assert!(l.git(&["show", &l.k1]).contains("+FREMD-evil"), "Gegenprobe: Git selbst folgt dem Ref");
+    let mit = antworten(&lauf.adresse, &l).await;
+    assert_eq!(mit, vorher, "bytegleich");
+}
+
+/// Legt `n` kleine Dateien `<ordner>/<i>.txt` an (ohne Commit).
+fn viele(l: &Lage, ordner: &str, n: usize) {
+    std::fs::create_dir_all(l.r.join(ordner)).unwrap();
+    for i in 0..n {
+        std::fs::write(l.r.join(format!("{ordner}/{i:05}.txt")), format!("{i}\n")).unwrap();
+    }
+}
+
+fn hinweis<'a>(d: &'a Value, art: &str) -> Option<&'a Value> {
+    d["hinweise"].as_array().unwrap().iter().find(|h| h["art"] == art)
+}
+
+// B3 Abnahme-Probe: mehr als 4 MB Namen allein in den Kartencommits → 200 mit höchstens 2.000 Einträgen und
+// `dateien_gekappt`, nie 500; geprüft mit 1.000, 2.000, 2.001 und 42.000 Dateien in einem Kartencommit, dazu zwei
+// Kartencommits zu je 21.000 Dateien mit einem fremden Commit dazwischen (heute 500 „Namen … länger als 4 MB“)
+#[tokio::test]
+#[ignore = "erwartet rot: B3 der Nacharbeit 1 (#214)"]
+async fn b3_namen_der_kartencommits_ueber_vier_mb() {
+    let l = ausgangslage();
+    let mut einzeln = vec![];
+    for (nr, n) in [(50u32, 1000usize), (51, 2000), (52, 2001), (53, 42_000)] {
+        viele(&l, &format!("v{nr}"), n);
+        let k = l.commit(&format!("{n} Dateien"));
+        l.karte(nr, &[kd(&k)]);
+        einzeln.push((nr, n));
+    }
+    viele(&l, "va", 21_000);
+    let ka = l.commit("Ka");
+    l.zeile("a.txt", 10, "FREMD-v");
+    l.commit("F");
+    viele(&l, "vb", 21_000);
+    let kb = l.commit("Kb");
+    l.karte(54, &[kd(&ka), kd(&kb)]);
+    let lauf = l.starten(&[]);
+    for (nr, n) in einzeln {
+        let (d, _) = gesamt(&lauf.adresse, nr, "").await;
+        let gezeigt = n.min(2000);
+        assert_eq!(dateien(&d).len(), gezeigt, "#{nr}");
+        let kappe = (n > 2000).then(|| json!({"art": "dateien_gekappt", "gezeigt": 2000, "gesamt": n}));
+        assert_eq!(hinweis(&d, "dateien_gekappt"), kappe.as_ref(), "#{nr}: {}", d["hinweise"]);
+        assert!(dateien(&d).iter().all(|f| !ist_folge(f) && f["status"] == "A"), "#{nr}: ein Kartencommit ist netto");
+    }
+    let (d, _) = gesamt(&lauf.adresse, 54, "").await;
+    assert_eq!(d["hinweise"][0], json!({"art": "ganz_als_folge", "grund": "fremd_zu_gross"}));
+    let kappe = hinweis(&d, "dateien_gekappt").unwrap_or_else(|| panic!("{}", d["hinweise"]));
+    assert_eq!((kappe["gezeigt"].as_u64(), kappe["gesamt"].as_u64()), (Some(dateien(&d).len() as u64), Some(42_000)));
+    assert!(dateien(&d).len() <= 2000);
+}
+
+/// Eine Zeile von 79 Zeichen mit Nummer.
+fn zeile79(p: &str, i: usize) -> String {
+    format!("{:<79}\n", format!("{p}-{i}"))
+}
+
+// B4 (a) Abnahme-Probe zu M5 „Folge bekommt den vollen Rest statt Rest nach Netto“: Netto 2 MB plus Folge 3 MB ergibt
+// höchstens 4 MB Patch zusammen (FA 11)
+#[tokio::test]
+async fn b4a_vier_mb_zusammen() {
+    let l = ausgangslage();
+    for i in 0..10 {
+        l.schreiben(&format!("n{i}.txt"), &(0..2500).map(|z| zeile79(&format!("n{i}"), z)).collect::<String>());
+    }
+    for i in 0..7 {
+        l.schreiben(&format!("g{i}.txt"), &(0..2900).map(|z| zeile79(&format!("g{i}"), z)).collect::<String>());
+    }
+    let k1 = l.commit("K1");
+    for i in 0..7 {
+        l.zeile(&format!("g{i}.txt"), 1, "FREMD-g");
+    }
+    l.commit("F");
+    for i in 0..7 {
+        let alt = std::fs::read_to_string(l.r.join(format!("g{i}.txt"))).unwrap();
+        l.schreiben(&format!("g{i}.txt"), &alt.lines().enumerate().map(|(z, t)| if (2..1402).contains(&z) { zeile79(&format!("K2-{i}"), z) } else { format!("{t}\n") }).collect::<String>());
+    }
+    let k2 = l.commit("K2");
+    l.karte(60, &[kd(&k1), kd(&k2)]);
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 60, "").await;
+    let laenge = |f: &Value| f["patch"].as_str().map_or(0, str::len);
+    let netto: Vec<&Value> = dateien(&d).iter().filter(|f| !ist_folge(f)).collect();
+    let schritte: Vec<&Value> = dateien(&d).iter().filter(|f| ist_folge(f)).flat_map(|f| f["schritte"].as_array().unwrap()).collect();
+    assert_eq!((netto.len(), schritte.len()), (10, 14));
+    assert!(netto.iter().all(|f| f["patch"].is_string()), "Netto zuerst");
+    let summe: usize = netto.iter().chain(&schritte).map(|f| laenge(f)).sum();
+    assert!(summe > 3 << 20, "die Folge bekommt den Rest: {summe}");
+    assert!(summe <= 4 << 20, "4 MB zusammen: {summe}");
+    assert!(schritte.iter().any(|s| s["nachladen"] == true) && schritte.iter().any(|s| s["patch"].is_string()), "Rest reicht für einen Teil");
+}
+
+// B4 (b) Abnahme-Probe zu M10 „Pfadangabe D_karte nie zu lang“: D_karte über 1 MB → ganz als Folge mit fremd_zu_gross
+#[tokio::test]
+async fn b4b_pfadangabe_ueber_ein_mb() {
+    let l = ausgangslage();
+    let ordner = format!("lang/{}/{}/{}/{}", "a".repeat(240), "b".repeat(240), "c".repeat(240), "d".repeat(240));
+    std::fs::create_dir_all(l.r.join(&ordner)).unwrap();
+    for i in 0..1200 {
+        std::fs::write(l.r.join(format!("{ordner}/{i:04}.txt")), format!("{i}\n")).unwrap();
+    }
+    let k1 = l.commit("K1");
+    l.zeile("a.txt", 3, "FREMD-b4b");
+    l.commit("F");
+    l.zeile("a.txt", 4, "K2");
+    let k2 = l.commit("K2");
+    l.karte(61, &[kd(&k1), kd(&k2)]);
+    assert!(1200 * (ordner.len() + 9) > 1 << 20);
+    let lauf = l.starten(&[]);
+    let (d, _) = gesamt(&lauf.adresse, 61, "").await;
+    assert_eq!(d["hinweise"][0], json!({"art": "ganz_als_folge", "grund": "fremd_zu_gross"}), "{}", d["hinweise"]);
+    assert!(d["spanne"].is_null() && dateien(&d).iter().all(ist_folge), "kein Netto-Eintrag: {}", d["hinweise"]);
+}
+
+// B4 (c) Abnahme-Probe zu M3/M4 „abgeschnittener Folge-Lauf“: Folge-Liste über 1 MB — ein Eintrag steht nur mit allen
+// Schritten, der angefangene Commit zählt in `dateien_gekappt`; dazu Code-Review Sollte 3: werden alle Folge-Dateien
+// verworfen, steht `fremd_dazwischen` trotzdem
+#[tokio::test]
+#[ignore = "erwartet rot: Sollte 3 der Nacharbeit 1 (#214)"]
+async fn b4c_folge_liste_abgeschnitten() {
+    let l = ausgangslage();
+    let mut karten = vec![];
+    for (nr, zweiter) in [(62u32, 750usize), (63, 1500)] {
+        let ordner = format!("lang{nr}/{}", "p".repeat(200));
+        std::fs::create_dir_all(l.r.join(&ordner)).unwrap();
+        let pfad = |i: usize| format!("{ordner}/{}{i:04}.txt", "q".repeat(186));
+        for i in 0..1500 {
+            std::fs::write(l.r.join(pfad(i)), "k1\n").unwrap();
+        }
+        let k1 = l.commit("K1");
+        for i in 0..1500 {
+            std::fs::write(l.r.join(pfad(i)), "k1\nFREMD\n").unwrap();
+        }
+        l.commit("F");
+        for i in 0..zweiter {
+            std::fs::write(l.r.join(pfad(i)), "k1\nFREMD\nk2\n").unwrap();
+        }
+        let k2 = l.commit("K2");
+        l.karte(nr, &[kd(&k1), kd(&k2)]);
+        karten.push((nr, zweiter, k1, (0..zweiter).map(pfad).collect::<std::collections::HashSet<_>>()));
+    }
+    let lauf = l.starten(&[]);
+    for (nr, zweiter, k1, von_k2) in karten {
+        let (d, _) = gesamt(&lauf.adresse, nr, "").await;
+        let gezeigt = 1500 - zweiter;
+        assert_eq!(dateien(&d).len(), gezeigt, "#{nr}");
+        for f in dateien(&d) {
+            assert!(!von_k2.contains(f["pfad"].as_str().unwrap()), "#{nr}: K2 berührt {} — der Eintrag fehlte ein Schritt", f["pfad"]);
+            assert_eq!(schritte_von(f).iter().map(|s| (s.0.clone(), s.1.clone())).collect::<Vec<_>>(), [(kd(&k1), "A".to_string())]);
+        }
+        assert_eq!(hinweis(&d, "fremd_dazwischen"), Some(&json!({"art": "fremd_dazwischen", "commits": 1, "dateien": 1500})), "#{nr}: {}", d["hinweise"]);
+        assert_eq!(hinweis(&d, "dateien_gekappt"), Some(&json!({"art": "dateien_gekappt", "gezeigt": gezeigt, "gesamt": 1500})), "#{nr}");
     }
 }
