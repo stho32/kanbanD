@@ -1336,3 +1336,20 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Gemeinsame Eingabetabelle für die Startordner-Regel in Rust und JS.
   - Die Vorschau zeigt für `lc` `repository: ""`.
 - **Nebenbei:** Die Factory-Tests lassen über 2.700 `/tmp/factory-kanband-*` liegen (Vorschlag an die Factory).
+| 2026-11-20 | #226 | Architektur | architekt | bestanden | 5 min | ADR-0034 N3 (f81160db) · claude · opus · Lauf 226-architekt-1 · 2,15 $ · Karte gesamt 2,15 $ |
+| 2026-11-20 | #226 | Detailplanung | product-owner | bestanden | 0 min | Z. 445–446 (889adc3c) · claude · opus · Lauf 226-product-owner-1 |
+| 2026-11-20 | #226 | Detailplanung | planer | bestanden | 4 min | R00212, I0202, B1059–B1065 · claude · opus · Lauf 226-planer-1 · 1,70 $ · Karte gesamt 3,85 $ |
+| 2026-11-20 | #226 | Detailplanung | ux-reviewer | befund | 2 min | Vorprüfung kriterium_fehlt: AK 3 Höhe 24/16 px · claude · sonnet · Lauf 226-ux-reviewer-1 · 0,42 $ · Karte gesamt 4,27 $ |
+| 2026-11-20 | #226 | Detailplanung | planer | bestanden | 0 min | UX-Vorprüfung eingearbeitet (2397173a) · claude · opus · Lauf 226-planer-2 |
+| 2026-11-20 | #229 | Entwicklung | entwickler | bestanden | 52 min | B1053–B1058, Zufallsprobe 1.200 Seeds 0/0, Gate grün · claude · Lauf 229-entwickler-1 · 7,66 $ · Karte gesamt 10,71 $ |
+| 2026-11-20 | #229 | Auto-Reviews | security-reviewer | bestanden | 28 min | kein Muss, 3 Sollte (ARG_MAX nach Anzahl, 404-Text, nachladen-Flut) · claude · sonnet · Lauf 229-security-reviewer-1 · 1,11 $ · Karte gesamt 11,82 $ |
+| 2026-11-20 | #229 | Auto-Reviews | code-reviewer | befund | 38 min | M1: Liste mit Pfadangabe 500 bei gleich bewerteten Umbenennungsquellen (Bestand, aber AK 2) · claude · sonnet · Lauf 229-code-reviewer-1 · 1,81 $ · Karte gesamt 13,63 $ |
+| 2026-11-20 | #229 | Auto-Reviews | architekt | bestanden | 3 min | ADR-0032 N7.8 (e2fad756) · claude · opus · Lauf 229-architekt-2 |
+| 2026-11-20 | #229 | Auto-Reviews | product-owner | bestanden | 0 min | 404-Wortlaut (310b4cf6, Z. 447) · claude · opus · Lauf 229-product-owner-1 |
+| 2026-11-20 | #215 | Entwicklung | entwickler | bestanden | 1 h 0 min | B1041–B1048, 37 E2E + 41 Node, 37 Mutanten, Gate grün · claude · Lauf 215-entwickler-1 · 15,63 $ · Karte gesamt 25,43 $ |
+| 2026-11-20 | #215 | Auto-Reviews | rechtschreib-reviewer | bestanden | 2 min | kein Muss, 1 Sollte (Testname) · claude · sonnet · Lauf 215-rechtschreib-reviewer-1 · 0,58 $ · Karte gesamt 26,01 $ |
+| 2026-11-20 | #229 | Auto-Reviews | planer | bestanden | 2 min | R00211 nach N7.8 (7e389bfd), B1066–B1069 · claude · opus · Lauf 229-planer-2 |
+| 2026-11-20 | #215 | Auto-Reviews | code-reviewer | befund | 9 min | M1: Erneut am Abschnitt während datei= → Wartetext ohne Kürzel · claude · sonnet · Lauf 215-code-reviewer-1 · 1,24 $ · Karte gesamt 27,25 $ |
+| 2026-11-20 | #215 | Auto-Reviews | security-reviewer | bestanden | 6 min | kein Muss/Sollte, 3 Optional · claude · sonnet · Lauf 215-security-reviewer-1 · 0,85 $ · Karte gesamt 28,10 $ |
+| 2026-11-20 | #215 | Auto-Reviews | ux-reviewer | bestanden | 14 min | kein Muss; Sollte (0) bei Netzabbruch, Altlast R00207 · claude · sonnet · Lauf 215-ux-reviewer-3 · 1,25 $ · Karte gesamt 29,35 $ |
+| 2026-11-20 | #215 | Auto-Reviews | product-owner | bestanden | 0 min | Z. 448–450 (b1dfecfa) · claude · opus · Lauf 215-product-owner-4 |
