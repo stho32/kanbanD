@@ -1334,3 +1334,64 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 #tooltip .k-zugang,#tooltip .k-abgang{margin-right:5px}
 .dflaeche .dus .rate{stroke:var(--kd-warn);stroke-width:2;stroke-dasharray:6 4}
 .dflaeche .dus .ratetext{font-family:var(--kd-font);font-size:12px;font-weight:600;fill:var(--kd-warn);paint-order:stroke;stroke:var(--kd-surface);stroke-width:3.5;stroke-linejoin:round}
+
+/* ── Ansicht „Commits“ im Aufgabenfenster (R00205, Artboard D0009 `#commits-ansicht`): Tabelle breit, bis 640 px je Verweis vier Reihen.
+   Titel, Autor, Zweignamen und Gründe umbrechen (overflow-wrap:anywhere) und werden nie abgeschnitten (kein nowrap, kein overflow:hidden). ── */
+.cl-panel{padding:var(--kd-s4) var(--kd-s5) var(--kd-s5);gap:var(--kd-s3);min-width:0}
+.cl-kopf{display:flex;align-items:center;gap:var(--kd-s3) var(--kd-s4);flex-wrap:wrap}
+.cl-kopf h3{margin:0;font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--kd-muted)}
+.cl-kopf h3 .mono{letter-spacing:0;font-weight:400;margin-left:4px}
+.cl-hin{font-size:12px;color:var(--kd-muted)}
+.cl-rahmen{min-width:0;overflow-x:auto;border:1px solid var(--kd-line)}
+.cl-tab{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--kd-surface)}
+.cl-tab thead th{height:26px;padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);text-align:left;font-size:11px;font-weight:600;color:var(--kd-muted);white-space:nowrap}
+.cl-tab th.cl-r,.cl-tab td.cl-r{text-align:right}
+.cl-tab tbody th,.cl-tab tbody td{padding:5px var(--kd-s3);border-bottom:1px solid var(--kd-line);text-align:left;font-weight:400;vertical-align:top}
+.cl-tab tbody tr:last-child>*{border-bottom:0}
+.cl-c-hash{width:112px;white-space:nowrap}
+.cl-hash{font-family:var(--kd-mono);font-size:12px}
+.cl-c-hash .cl-roh{white-space:normal;overflow-wrap:anywhere}
+.cl-c-titel,.cl-c-autor,.cl-c-zst{min-width:0;overflow-wrap:anywhere}
+.cl-kurz{display:inline-block;margin-left:6px;font-size:11px;color:var(--kd-muted);border:1px dashed var(--kd-line-strong);padding:0 4px}
+.cl-c-autor{width:132px}
+.cl-c-datum{width:122px;white-space:nowrap;font-family:var(--kd-mono);font-size:12px}
+.cl-c-pm{width:84px;white-space:nowrap;font-family:var(--kd-mono);font-size:12px;text-align:right}
+.cl-c-zst{width:220px}
+.cl-ohne [aria-hidden="true"]{color:var(--kd-muted)}
+.cl-tab tbody tr.cl-z:hover>*{background:var(--kd-accent-weak)}
+.cl-tab tbody tr.cl-ohne:hover>*{background:var(--kd-surface)}
+.cl-tab tr.cl-zw>td{background:var(--kd-bg);padding:6px var(--kd-s3) 8px 120px;font-size:12px}
+.cl-tab tr.cl-zw p{margin:2px 0}
+.cl-tab tr.cl-zw b{font-weight:600;font-size:11px;letter-spacing:.03em;color:var(--kd-muted)}
+.cl-tab .cl-zeilen .cl-br{margin:0 4px 4px 0}
+.cl-zs{display:inline-flex;align-items:center;gap:5px;min-block-size:20px;padding:1px 6px;border:1px solid var(--zl);background:var(--zb);color:var(--zi);font-size:12px;font-weight:500;line-height:1.3;max-width:100%}
+.cl-warn{--zl:var(--kd-wbs-warn);--zb:var(--kd-wbs-warn-bg);--zi:var(--kd-wbs-warn-ink)}
+.cl-fehl{--zl:var(--kd-wbs-error);--zb:var(--kd-wbs-error-bg);--zi:var(--kd-wbs-error-ink)}
+.cl-zh{margin:3px 0 0;font-size:11.5px;line-height:1.35;color:var(--kd-muted);overflow-wrap:anywhere}
+.cl-zweige{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.cl-br{display:inline-flex;align-items:center;gap:4px;min-block-size:20px;max-width:100%;padding:1px 6px;border:1px solid var(--kd-line-strong);background:var(--kd-bg);font:11.5px/1.3 var(--kd-mono);overflow-wrap:anywhere}
+.cl-br.cl-fern{border-style:dashed}
+.cl-br svg.i,.cl-mehr svg.i{width:11px;height:11px}
+.cl-mehr{display:inline-flex;align-items:center;gap:3px;min-block-size:max(20px,var(--kd-ziel));min-inline-size:var(--kd-ziel);padding:0 6px;border:0;background:none;color:var(--kd-accent-ink);font:500 12px/1 var(--kd-font);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.cl-mehr[aria-expanded="true"] svg.i{transform:rotate(90deg)}
+.cl-fuss{display:flex;flex-wrap:wrap;align-items:center;gap:2px var(--kd-s4);font-size:12px;color:var(--kd-muted)}
+.cl-textknopf{display:inline-flex;align-items:center;gap:4px;min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel);padding:0 var(--kd-s2);border:0;background:none;color:var(--kd-accent-ink);font:500 12px/1 var(--kd-font);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.cl-textknopf[aria-disabled="true"]{cursor:progress;opacity:1;color:var(--kd-muted)}
+@media (max-width:640px){
+  .cl-panel{padding:var(--kd-s4)}
+  .cl-rahmen{overflow:visible;border:0}
+  .cl-tab,.cl-tab tbody{display:block;background:none}
+  .cl-tab thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .cl-tab tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"hash pm" "titel titel" "autor datum" "zst zst";column-gap:var(--kd-s3);padding:6px var(--kd-s4) 8px;margin-bottom:-1px;border:1px solid var(--kd-line);background:var(--kd-surface)}
+  .cl-tab tbody tr>*{display:block;width:auto;padding:0;border:0;background:none!important;min-width:0}
+  .cl-c-hash{grid-area:hash}
+  .cl-c-titel{grid-area:titel;padding:2px 0 4px!important}
+  .cl-c-autor{grid-area:autor;font-size:12px;color:var(--kd-muted)}
+  .cl-c-datum{grid-area:datum;font-size:11.5px;color:var(--kd-muted)}
+  .cl-c-pm{grid-area:pm;align-self:center}
+  .cl-c-zst{grid-area:zst;padding-top:4px!important}
+  .cl-tab tr.cl-ohne .cl-c-titel,.cl-tab tr.cl-ohne .cl-c-autor,.cl-tab tr.cl-ohne .cl-c-datum,.cl-tab tr.cl-ohne .cl-c-pm{display:none}
+  .cl-tab tbody tr.cl-zw{display:block;padding:6px var(--kd-s4) 8px;background:var(--kd-bg)}
+  .cl-tab tr.cl-zw>td{padding:0!important}
+  .cl-kurz{margin:2px 0 0}
+}

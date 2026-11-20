@@ -114,5 +114,74 @@
     return anzahl === 1 ? '1 Commit gelesen' : `${anzahl} Commits gelesen`;
   }
 
-  Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText });
+  /* ── Zeichnen: HTML-Text aus den Zeilenwerten (R00205 FA 4–7, Artboard D0009 `#commits-ansicht`). Aller fremde Text geht durch
+     `esc` (ADR-0030 Grundsatz 1), die Zustandswörter stehen als sichtbarer Text in ihrer Marke, nie in `.vh`. ── */
+  const SYMBOLE = {
+    'kette-offen': '<path d="M10 14a4 4 0 0 0 5 .5M14 10a4 4 0 0 0-5-.5M8 16l-2 2M16 8l2-2M4 4l16 16"/>',
+    fehlt: '<rect x="4" y="4" width="16" height="16" stroke-dasharray="3 3"/><path d="M9 9l6 6M15 9l-6 6"/>',
+    'ordner-offen': '<path d="M3 7h7l2 2h9v11H3z"/><path d="M3 3l18 18"/>',
+    frage: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17v.01"/>',
+    achtung: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
+    zweig: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 5-8 3-12 7"/>',
+    weiter: '<path d="M9 5l7 7-7 7"/>',
+    neu: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+  };
+  const symbol = name => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[name]}</svg>`;
+
+  const SPALTEN = ['Commit', 'Titel', 'Autor', 'Datum', '+ / −', 'Zustand'];
+  const KEINE_ANGABE = '<span aria-hidden="true">—</span><span class="vh">keine Angabe</span>';
+  const GEKUERZT_HINWEIS = 'Der Titel ist bei 500 Zeichen gekürzt; vollständig steht er im Repository.';
+
+  /** Ein Zweig als Marke; entfernte gestrichelt und mit Lesetext. Der volle Name steht im `title`. */
+  const zweigMarke = (z, esc) => `<span class="cl-br${z.entfernt ? ' cl-fern' : ''}" title="${esc(z.name)}">${symbol('zweig')}<span>${esc(z.name)}</span>${z.entfernt ? '<span class="vh"> (entfernt)</span>' : ''}</span>`;
+
+  function zweigeZelle(z, i, offen, esc) {
+    if (!z.sichtbar.length && !z.weitere) return '';
+    const knopf = z.weitere ? `<button type="button" class="cl-mehr" data-act="commits-klappe" data-arg="${i}" aria-expanded="${offen}" aria-controls="cl-zw-${i}" aria-label="${z.weitere} weitere Zweige ${offen ? 'verbergen' : 'zeigen'}">${symbol('weiter')}+${z.weitere} weitere</button>` : '';
+    return `<span class="vh">auf Zweigen: </span><div class="cl-zweige">${z.sichtbar.map(m => zweigMarke(m, esc)).join('')}${knopf}</div>`;
+  }
+
+  /** Die volle Zweigliste unter der Zeile: je Liste eine Überschrift mit Zahl (eine leere entfällt), dazu der Satz zum Rest. */
+  function zweigeKlappe(z, i, esc) {
+    const liste = (titel, namen, entfernt) => namen.length ? `<p><b>${titel} ${namen.length}</b></p><p>${namen.map(name => zweigMarke({ name, entfernt }, esc)).join('')}</p>` : '';
+    const rest = z.satzRest ? `<p class="cl-rest">${esc(z.satzRest)}</p>` : '';
+    return `<tr class="cl-zw" id="cl-zw-${i}"><td colspan="6"><div class="cl-zeilen">${liste('LOKALE ZWEIGE', z.lokal, false)}${liste('ENTFERNTE ZWEIGE', z.entfernt, true)}${rest}</div></td></tr>`;
+  }
+
+  function zustandsZelle(w, i, offen, esc) {
+    if (w.zweige) return zweigeZelle(w.zweige, i, offen, esc);
+    const m = w.zustand;
+    return `<span class="cl-zs cl-${m.ton}">${symbol(m.symbol)}${esc(m.wort)}</span><p class="cl-zh">${esc(m.hinweis)}</p>`;
+  }
+
+  function zeileHtml(e, i, offen, esc) {
+    const w = zeilenwerte(e);
+    const wert = text => (w.ohneMetadaten ? KEINE_ANGABE : text);
+    const titel = wert(`${esc(w.titel)}${w.gekuerzt ? `<span class="cl-kurz" title="${esc(GEKUERZT_HINWEIS)}">gekürzt</span>` : ''}`);
+    const datum = wert(`<span title="${esc(w.datumTitel)}">${esc(w.datum)}</span>`);
+    const zahlen = wert(w.zahlen && `<span class="cl-pl">+${tausender(e.plus)}</span> <span class="cl-mi">−${tausender(e.minus)}</span><span class="vh"> Zeilen</span>`);
+    const hash = `<span class="cl-hash${e.hash ? '' : ' cl-roh'}" title="${esc(w.verweis)}">${esc(w.kurz)}</span>`;
+    const zeile = `<tr class="cl-z${w.ohneMetadaten ? ' cl-ohne' : ''}"><th scope="row" class="cl-c-hash">${hash}</th><td class="cl-c-titel">${titel}</td><td class="cl-c-autor">${wert(esc(w.autor))}</td><td class="cl-c-datum">${datum}</td><td class="cl-c-pm cl-r">${zahlen}</td><td class="cl-c-zst">${zustandsZelle(w, i, offen, esc)}</td></tr>`;
+    return offen && w.zweige ? zeile + zweigeKlappe(w.zweige, i, esc) : zeile;
+  }
+
+  /** Die Tabelle der Liste im querscrollbaren Rahmen (Gruppe mit Namen, per Tab fokussierbar). `klappen` nennt die Zeilen mit offener Zweigliste. */
+  function commitsListeHtml(eintraege, klappen, esc) {
+    const kopf = SPALTEN.map(name => `<th scope="col"${name === '+ / −' ? ' class="cl-r"' : ''}>${name}</th>`).join('');
+    const zeilen = eintraege.map((e, i) => zeileHtml(e, i, klappen.has(i), esc)).join('');
+    return `<div class="cl-rahmen" tabindex="0" role="group" aria-label="Commits dieser Aufgabe, ältester zuerst"><table class="cl-tab"><thead><tr>${kopf}</tr></thead><tbody>${zeilen}</tbody></table></div>`;
+  }
+
+  /** Kopf der Ansicht: „COMMITS“ mit der Zahl der Einträge (ohne Zahl, solange gelesen wird). */
+  function commitsKopfHtml(anzahl) {
+    return `<div class="cl-kopf"><h3>COMMITS ${anzahl == null ? '' : `<span class="mono">${anzahl}</span>`}</h3><span class="cl-hin">an dieser Aufgabe hinterlegt · ältester zuerst</span></div>`;
+  }
+
+  /** Fuß: „liest nur“ mit der Uhrzeit der letzten erfolgreichen Antwort und „Neu lesen“; beim Lesen `aria-disabled` statt `disabled`, damit der Fokus bleibt. */
+  function commitsFussHtml({ stand, laedt }) {
+    const knopf = `<button type="button" class="cl-textknopf" id="commits-neu" data-act="commits-lesen"${laedt ? ' aria-disabled="true"' : ''}>${symbol('neu')}Neu lesen</button>`;
+    return `<div class="cl-fuss"><span>liest nur · gelesen aus dem Repository der Anwendung${stand ? ` · Stand ${stand}` : ''}</span>${knopf}</div>`;
+  }
+
+  Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, symbol });
 })(typeof module !== 'undefined' ? module.exports : window);
