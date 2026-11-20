@@ -1,6 +1,6 @@
 # ADR-0034: kanbanD ohne WBS — das Register nennt das Repository, Phasen werden Spalten, Altbestände öffnen weiter, die Factory stellt zuerst um
 
-**Status**: Akzeptiert (2026-11-20, Nachtrag N1: Produktfragen 1–3 entschieden, po-entscheidungen Z. 430–433) — zuvor „Vorgeschlagen“. Ändert ADR-0032 Punkt 2 (Startordner der Wurzel) und ADR-0027 Regel 4 und N5 Punkt 4 (Zweig „mit Phasen“). Offen bleibt nur der Wortlaut der Vision-Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ (Betreiber über `/vision fortschreiben`); er ändert keine Regel dieser ADR.
+**Status**: Akzeptiert (2026-11-20, Regel 1 „Schreiben“ geändert durch Nachtrag N2; Nachtrag N1: Produktfragen 1–3 entschieden, po-entscheidungen Z. 430–433) — zuvor „Vorgeschlagen“. Ändert ADR-0032 Punkt 2 (Startordner der Wurzel) und ADR-0027 Regel 4 und N5 Punkt 4 (Zweig „mit Phasen“). Offen bleibt nur der Wortlaut der Vision-Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ (Betreiber über `/vision fortschreiben`); er ändert keine Regel dieser ADR.
 **Datum**: 2026-11-20
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
 **Kontext-Anforderung**: Karte #224 „WBS-Funktionen aus kanbanD entfernen“ (Auftrag des Betreibers 2026-11-20); Scheiben als Karten #225 S1, #226 S4, #224 S2, #227 S3, #228 „Braucht zwischen Karten“ (po-entscheidungen Z. 433); Anforderungen folgen je Karte über den planer. Bezug: Vision ab11f96a, po-entscheidungen Z. 362, 426–429, R00018, R00053–R00062, R00071, R00072, ADR-0027, ADR-0028, ADR-0031, ADR-0032
@@ -109,6 +109,26 @@ Qualitätsziele (Szenarien mit Maß):
 **Schnitt und Reihenfolge** (Z. 433): #225 S1 Register mit `repository` (braucht #214, ohne Factory-Sperre, weil der Rückfall auf `wbs`/`requirements` die heutige Factory bedient) → #226 S4 Herkunft als Text (braucht #225) → **Sperre**: Factory-Pflege und globale Befehle (Inventur §6) ausgerollt → #224 S2 (braucht #225) → #227 S3 Phasen werden Spalten (braucht #224) → #228 Braucht zwischen Karten (braucht #224).
 
 **S1 und #214** (Startort in `src/git/arbeitsrepo.rs`): S1 ändert nur, **woher der Startordner kommt** (`wurzel_bis`, `:148–153`); #214 ändert dieselbe Datei an anderen Stellen (Befehlsliste, `diff_tree`, Teilausgabe) und ruft `wurzel_bis(board_ordner, anwendung, frist)` unverändert auf. Regel für den Bau: **Signaturen von `wurzel` und `wurzel_bis` bleiben**, die Wahl des Startordners wandert in eine reine Funktion (`repository`, sonst Ordner von `wbs`, sonst `requirements`). Die neuen Tests von #214 schreiben Register mit `wbs:` als Text in `kanbanD.md`; sie laufen über den Rückfall weiter und sind damit zugleich Legacy-Probe. Der Struct `Anwendung` verliert `wbs`/`anforderungen` erst, wenn #214 auf `main` ist — deshalb bleibt `braucht:214` (Reihenfolge, nicht Konfliktgefahr in derselben Zeile).
+
+### N2 (2026-11-20, Karte #225): Übergangsform des Registers — `repository` immer, `wbs`/`requirements` durchgereicht, solange ein Schreiber sie schickt (ändert Regel 1 „Schreiben“ und „`PUT` ignoriert“)
+
+**Anlass** (planer, R00209 Offene Fragen): Regel 1 verträgt sich nicht mit „S1 ohne Factory-Sperre“ (N1, PO Z. 433) und nicht mit Q3. Belegt:
+- Die Factory erkennt ihre Anwendung über `os.path.realpath(a["wbs"])` für **jeden** Eintrag aus `GET /api/einstellungen` (`werkzeuge/board_binden.py:54`); fehlt der Schlüssel, `KeyError`; ist er leer, wird die Anwendung nicht wiedererkannt und der nächste Lauf scheitert an „Kürzel … schon vergeben“ (`:56–58`).
+- `board.py` `_einrichten` und `board_aus_konfig.py` schreiben die Einstellungen per `GET`→`PUT` zurück; nach Regel 1 wäre `wbs` danach fort.
+- **Mein Fehler in Regel 1:** kanbanD selbst liest `wbs` bis S2–S4 weiter (WBS-Sicht `src/dienst/wbs.rs:62`, Phasen `src/dienst/phasen.rs:57`, Herkunft `src/dienst/herkunft.rs:49–55`). S1 nach Regel 1 hätte diese Funktionen beim ersten Speichern abgeschaltet, Karten vor ihrer Scheibe.
+
+**Optionen:** (a) Übergangsform (Empfehlung des planers) — Factory und eigene Leser laufen unverändert, die neue Form entsteht erst, wenn niemand `wbs` mehr schickt; Schwäche: zwei Formen nebeneinander bis S2, und ein `PUT` in neuer Form an einer Factory-gebundenen Anwendung bricht deren Wiedererkennung. (b) Regel 1 wörtlich, Factory-Sperre vor S1 — eine Form sofort; Schwäche: S1 wartet auf die Factory-Pflege, und die eigenen WBS-Funktionen fielen trotzdem zwischen S1 und S2 aus.
+
+**Gewählt: (a).** Regeln (ersetzen Regel 1 ab „**Schreiben**“ bis „senden kann“):
+
+1. **Schreiben**: je Anwendung immer `repository` — das mitgeschickte, sonst der Startordner aus dem Rückfall (Ordner von `wbs`, sonst `requirements`); `wbs`/`requirements` nur, wenn mitgeschickt und nicht leer. Für `sources` ebenso. Lesen bleibt wie Regel 1.
+2. **API**: `GET /api/einstellungen` und `GET /api/anwendungen` liefern je Anwendung **immer** die Schlüssel `repository`, `wbs` und `anforderungen` (leer = `""`, nie weggelassen — `board_binden.py:54` indiziert jeden Eintrag). `PUT` nimmt beide Formen an; ein `GET`→`PUT`-Rundlauf ändert die Datei nicht (bis auf ein ergänztes `repository` beim ersten Mal).
+3. **Neue Form allein** entsteht nur durch einen `PUT`, der `wbs`/`anforderungen` leer lässt. Bis die Factory-Sperre fällt (N1, vor #224), schickt die Einstellungsseite die vorhandenen Werte unverändert mit, und für Factory-gebundene Anwendungen ist ein `PUT` in neuer Form nur in Proben auf Kopien erlaubt (R00209 AK 4, 8, 9).
+4. **Ende der Übergangsform**: S2 (#224) entfernt die Felder `wbs`/`anforderungen` aus Einstellungsseite und API-Antwort und schreibt nur noch `repository`; der Lese-Rückfall bleibt (Regel 1). Bis dahin ist die Factory umgestellt (Inventur §6.1).
+
+**Inkauf**: In der Übergangszeit stehen in Bestandsregistern beide Formen; ein Mensch, der `wbs` in den Einstellungen leert, trennt die Factory von ihrer Anwendung — das zeigt der nächste Factory-Start mit klarer Meldung, nicht still.
+
+**Durchsetzung**: R00209 AK 5 (alte Form → 200, `repository` abgeleitet, `wbs` bleibt), AK 6 (Rundlauf mit der unveränderten Factory, `tests.test_auftrag`), AK 7 (Start schreibt nichts); dazu ein Test: `GET /api/einstellungen` nach einem `PUT` in neuer Form liefert `wbs: ""` (Schlüssel vorhanden).
 
 ## Quellen / Bezüge
 
