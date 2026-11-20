@@ -928,3 +928,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1054 Liste mit Pfadangabe gegen die gelesene Liste abschließen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1055 datei=: Zähler und Stücke im Bezug der abgeschlossenen Angabe | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1056 Abgeschnittener Bezug: nachladen bzw. 404 statt 500 | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1057 Zufallsprobe über ?commit= mit 1.200 Seeds, Mutanten | Standard | 1-2h | 0,4h | 0,4h | autonom |

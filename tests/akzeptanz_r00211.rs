@@ -347,3 +347,66 @@ async fn ak3_abgeschlossene_angabe_ueber_1_mb() {
     let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}")).await;
     assert_eq!(s, 200, "{t}");
 }
+
+// ---- Feste Fälle aus der Zufallsprobe (AK 4): vor dem Fix rot ----------------------------------------------------------
+
+/// Ein Commit K von genau dem Baum `vorher` (Pfad, Inhalt) auf genau den Baum `nachher`.
+fn baeume(l: &Lage, vorher: &[(&str, &str)], nachher: &[(&str, &str)]) -> String {
+    let leeren = |l: &Lage| {
+        for e in std::fs::read_dir(&l.r).unwrap() {
+            let n = e.unwrap().file_name().into_string().unwrap();
+            if n != ".git" && n != "Dokumentation" {
+                l.loeschen(&n);
+            }
+        }
+    };
+    for (baum, nachricht) in [(vorher, "Vorgänger"), (nachher, "K")] {
+        leeren(l);
+        for (p, inhalt) in baum {
+            l.schreiben(p, inhalt);
+        }
+        if nachricht == "K" {
+            return l.commit(nachricht);
+        }
+        l.commit(nachricht);
+    }
+    unreachable!()
+}
+
+fn zeilen(prefix: &str, n: usize) -> String {
+    (0..n).map(|j| format!("{prefix}-{j}\n")).collect()
+}
+
+async fn fester_fall(vorher: &[(&str, &str)], nachher: &[(&str, &str)]) {
+    let l = Lage::neu();
+    let k = baeume(&l, vorher, nachher);
+    let stuecke = l.stuecke(&k);
+    let lauf = l.starten(&k);
+    let liste = liste_pruefen(&lauf.adresse, &k, &stuecke).await;
+    datei_auf_jeden_namen(&lauf.adresse, &k, &liste, &stuecke).await;
+}
+
+/// Seed 14: drei gleiche Inhalte; K: `R w1/x → d0.txt/x` und `R d0.txt → t1`. Vor dem Fix `datei=t1` 500 „Zähler passen
+/// nicht zur Datei“ (die Angabe `d0.txt` traf `d0.txt/x`).
+#[tokio::test]
+async fn ak4_seed_14_drei_zwillinge_mit_typwechsel() {
+    let b = zeilen("b0", 4);
+    fester_fall(&[("d0.txt", &b), ("v0/y/z", &b), ("w1/x", &b)], &[("d0.txt/x", &b), ("t1", &b), ("v0/y/z", &b)]).await;
+}
+
+/// Seed 72: K löscht `v0/y/z` (Zwilling von `d0.txt`) und benennt `d0.txt` nach `v0/y/z/inner` um. Vor dem Fix
+/// `datei=v0/y/z` 500 „Zähler passen nicht zur Datei“.
+#[tokio::test]
+async fn ak4_seed_72_geloeschter_zwilling_unter_dem_ziel() {
+    let b = zeilen("b0", 4);
+    let g = zeilen("g1", 3002);
+    fester_fall(&[("d0.txt", &b), ("v0/y/z", &b), ("w1/x", &b)], &[("g1", &g), ("v0/y/z/inner", &b), ("w1/x", &b)]).await;
+}
+
+/// Seed 645: zwei Dateien über 3.000 Zeilen (Liste mit Pfadangabe), `g2/x → k5-1/inner` mit dem Inhalt der gelöschten
+/// `k5-1`, `g2` wird Datei. Vor dem Fix `datei=k5-1` 500 „Zähler passen nicht zur Datei“.
+#[tokio::test]
+async fn ak4_seed_645_typwechsel_beider_richtungen_mit_grossen_dateien() {
+    let (g1, g5, g6) = (zeilen("g1", 3002), zeilen("g5", 3006), zeilen("g6", 3007));
+    fester_fall(&[("g0", &g5), ("g2/x", &g1), ("k5-1", &g1)], &[("g0", &g6), ("g2", &g6), ("k5-1/inner", &g1)]).await;
+}
