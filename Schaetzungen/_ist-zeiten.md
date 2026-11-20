@@ -901,3 +901,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #214 R00208 Nacharbeit 2 | B1050 B2-Rest: Zuordnung über alle getroffenen Einträge, Zufallsprobe Verzeichnis ↔ Datei, Lastprobe | Standard | 1h | 0,9h | 0,9h | autonom |
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1035 Startordner wählen, rein | Standard | 0,3-0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1036 Register mit repository lesen und schreiben | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-20 | Karte #225 R00209 (Register führt das Repository der Anwendung) | B1037 Wurzel aus dem Startordner | Standard | 0,3-0,5h | 0,1h | 0,1h | autonom |

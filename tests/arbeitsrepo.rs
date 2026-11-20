@@ -26,6 +26,23 @@ fn wurzel_aus_dem_ordner_der_wbs_oder_der_anforderungen() {
     assert_eq!(arbeitsrepo::wurzel(&r.r, &anwendung("Dokumentation/Planung/app.md", "")), Ok(r.r.clone()), "relativ zum Board-Ordner");
 }
 
+// R00209 (ADR-0034 N1): der Startordner ist `repository` — absolut, relativ zum Board-Ordner oder ein Ordner darin —,
+// ohne Rückfall auf `wbs`, wenn er nicht erreichbar ist; die WBS-Datei selbst wird nie geöffnet
+#[test]
+fn wurzel_aus_dem_repository_ohne_rueckfall() {
+    let r = repo();
+    let mit = |repository: &str, wbs: &str| Anwendung { repository: repository.into(), ..anwendung(wbs, "") };
+    let wbs = r.r.join("Dokumentation/Planung/app.md");
+    assert_eq!(arbeitsrepo::wurzel(Path::new("/"), &mit(r.r.to_str().unwrap(), "")), Ok(r.r.clone()));
+    assert_eq!(arbeitsrepo::wurzel(Path::new("/"), &mit(r.r.join("Dokumentation").to_str().unwrap(), "")), Ok(r.r.clone()), "ein Ordner darin genügt");
+    assert_eq!(arbeitsrepo::wurzel(&r.r, &mit("Dokumentation", "")), Ok(r.r.clone()), "relativ zum Board-Ordner");
+    assert_eq!(arbeitsrepo::wurzel(&r.r, &mit("  ", "Dokumentation/Planung/app.md")), Ok(r.r.clone()), "leer nach Trimmen → Rückfall");
+    match arbeitsrepo::wurzel(Path::new("/"), &mit("/gibt/es/nicht", wbs.to_str().unwrap())) {
+        Err(Arbeitsrepofehler::RepositoryFehlt(grund)) => assert!(grund.contains("/gibt/es/nicht"), "{grund}"),
+        anders => panic!("kein Rückfall auf wbs: {anders:?}"),
+    }
+}
+
 // ADR-0032 Punkt 2: fehlt der Ordner oder ist er kein Repository, heißt das repository_fehlt mit Grund
 #[test]
 fn wurzel_fehlt_mit_grund() {

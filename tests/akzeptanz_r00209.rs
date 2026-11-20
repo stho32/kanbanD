@@ -180,7 +180,6 @@ async fn ak01_startordner_je_zeile_der_tabelle() {
 // ---- AK 2, 3: Commit-Verweise in allen Registerformen -----------------------------------------------------------------
 
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak02_ak03_gleicher_zustand_in_allen_registerformen() {
     let l = Lage::neu();
     let lauf = l.starten();
@@ -347,7 +346,6 @@ async fn ak10_quellen_und_neue_anwendung_nur_mit_repository() {
 
 /// Ohne Kürzel: `<C>` gehört zur Standardanwendung, wenn sie die einzige ist (`sources.repository`, AK 10).
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak10_standardanwendung_nur_mit_repository() {
     let l = Lage::neu();
     let lauf = l.starten();

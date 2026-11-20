@@ -151,18 +151,17 @@ pub fn aufrufe() -> usize {
     AUFRUFE.with(Cell::get)
 }
 
-/// Die Wurzel des Arbeits-Repositorys einer Anwendung (ADR-0032 Punkt 2): Startordner ist der Ordner der WBS-Datei, ohne
-/// WBS der Anforderungsordner; relative Pfade gelten ab dem Board-Ordner. Je Aufruf neu ermittelt, kein Zwischenspeicher.
+/// Die Wurzel des Arbeits-Repositorys einer Anwendung (ADR-0032 Punkt 2, ADR-0034 N1): Startordner ist `repository`, sonst
+/// der Ordner der WBS-Datei, sonst der Anforderungsordner ([`Anwendung::startordner`] — die Dateien selbst werden nie
+/// geöffnet); relative Pfade gelten ab dem Board-Ordner. Je Aufruf neu ermittelt, kein Zwischenspeicher.
 pub fn wurzel(board_ordner: &Path, anwendung: &Anwendung) -> Result<PathBuf, Arbeitsrepofehler> {
     wurzel_bis(board_ordner, anwendung, Instant::now() + ZEITGRENZE)
 }
 
 /// Wie [`wurzel`], mit der Gesamtgrenze des Lesens: der Prozess bekommt `min(10 s, Rest bis frist)`.
 pub fn wurzel_bis(board_ordner: &Path, anwendung: &Anwendung, frist: Instant) -> Result<PathBuf, Arbeitsrepofehler> {
-    let start = match (anwendung.wbs.as_str(), anwendung.anforderungen.as_str()) {
-        ("", "") => return Err(Arbeitsrepofehler::RepositoryFehlt("weder WBS noch Anforderungsordner im Register".into())),
-        ("", anforderungen) => board_ordner.join(anforderungen),
-        (wbs, _) => board_ordner.join(wbs).parent().map(Path::to_path_buf).unwrap_or_default(),
+    let Some(start) = anwendung.startordner().map(|s| board_ordner.join(s)) else {
+        return Err(Arbeitsrepofehler::RepositoryFehlt("kein Repository im Register (weder repository noch WBS oder Anforderungsordner)".into()));
     };
     if !start.is_dir() {
         return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Ordner fehlt: {}", start.display())));
