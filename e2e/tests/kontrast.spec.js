@@ -149,6 +149,8 @@ test.describe('R00107 Kontrast', () => {
     await thema(page, 'light');
     await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',
       '<div id="probe-angehalten" style="background:var(--kd-surface)"><span style="color:var(--kd-text);transition:color 60s linear">steht</span></div>'));
+    // Stil-Flush: der Übergang startet nur, wenn der Ausgangsstil berechnet war (sonst gibt es nichts, wovon er gleiten könnte)
+    await page.evaluate(() => getComputedStyle(document.querySelector('#probe-angehalten span')).color);
     await thema(page, 'dark');
     await page.evaluate(() => document.getAnimations().filter(a => a instanceof CSSTransition).forEach(a => a.pause()));
     const beginn = Date.now();
@@ -160,6 +162,8 @@ test.describe('R00107 Kontrast', () => {
     await thema(page, 'light');
     await page.evaluate(() => document.body.insertAdjacentHTML('beforeend',
       '<div id="probe-uebergang" style="background:var(--kd-surface)"><span style="color:var(--kd-text);transition:color 2s linear">gleitet</span></div>'));
+    // Stil-Flush: der Übergang startet nur, wenn der Ausgangsstil berechnet war (sonst gibt es nichts, wovon er gleiten könnte)
+    await page.evaluate(() => getComputedStyle(document.querySelector('#probe-uebergang span')).color);
     const laufende = () => page.evaluate(() => document.getAnimations().filter(a => a instanceof CSSTransition && a.playState === 'running').length);
     await thema(page, 'dark');
     expect(await laufende()).toBeGreaterThan(0);
