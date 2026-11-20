@@ -567,6 +567,14 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(page.locator(NEU_LESEN)).toBeFocused();
   });
 
+  test('AK 7: ein 503 wegen zu viel Ausgabe („mehr als 5000 Zeilen“) zeigt den fehler der Antwort, nicht die 10 Sekunden', async ({ page }) => {
+    const grund = 'die Zweigliste eines Arbeits-Repositorys hat mehr als 5000 Zeilen — keine Liste';
+    await page.route('**/api/aufgaben/1/commits', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ fehler: grund }) }));
+    await commitsOeffnen(page);
+    await expect(page.locator(STATUS)).toHaveText(`Die Commits ließen sich nicht lesen: ${grund} (503).`);
+    await expect(page.locator(STATUS)).not.toContainText('10 Sekunden');
+  });
+
   test('AK 7: defekte Aufgabendatei (423) und fehlende Verbindung nennen den fehler der Antwort bzw. „keine Verbindung zum Programm“ mit dem Status', async ({ page }) => {
     await page.route('**/api/aufgaben/1/commits', route => route.fulfill({ status: 423, contentType: 'application/json', body: JSON.stringify({ fehler: 'Die Aufgabendatei ist defekt' }) }));
     await commitsOeffnen(page);

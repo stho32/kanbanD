@@ -142,11 +142,25 @@ test('zweigmarken: nur „zweige_weitere“ ohne Namen zählt mit (Summe aller d
   assert.strictEqual(z.weitere, 3, '1 + 5 − 3');
 });
 
-test('fehlerText: 503 hat den festen Wortlaut des PO, sonst der fehler der Antwort, ohne Verbindung „keine Verbindung zum Programm“', () => {
-  assert.strictEqual(fehlerText({ status: 503, fehler: 'egal' }), 'Die Commits ließen sich nicht lesen: Das Repository antwortete nicht innerhalb von 10 Sekunden (503).');
+test('fehlerText: 503 der Zeitgrenze hat den festen Wortlaut des PO, sonst der fehler der Antwort, ohne Verbindung „keine Verbindung zum Programm“', () => {
+  const zeit = 'Git in einem Arbeits-Repository antwortete nicht innerhalb von 10 s — keine Liste';
+  const wortlaut = 'Die Commits ließen sich nicht lesen: Das Repository antwortete nicht innerhalb von 10 Sekunden (503).';
+  assert.strictEqual(fehlerText({ status: 503, fehler: zeit }), wortlaut);
+  assert.strictEqual(fehlerText({ status: 503, fehler: '' }), wortlaut, 'ohne Text bleibt es beim Wortlaut des PO');
   assert.strictEqual(fehlerText({ status: 423, fehler: 'Die Aufgabendatei ist defekt' }), 'Die Commits ließen sich nicht lesen: Die Aufgabendatei ist defekt (423).');
-  assert.strictEqual(fehlerText({ status: 0, fehler: 'Keine Verbindung zum Server — nichts geändert.' }), 'Die Commits ließen sich nicht lesen: keine Verbindung zum Programm (0).');
   assert.strictEqual(fehlerText({ status: 500, fehler: '' }), 'Die Commits ließen sich nicht lesen: unbekannter Fehler (500).');
+});
+
+test('fehlerText: ein 503 aus anderem Grund (zu viel Ausgabe) nennt seinen fehler, nicht die 10 Sekunden', () => {
+  for (const fehler of ['die Zweigliste eines Arbeits-Repositorys hat mehr als 5000 Zeilen — keine Liste', 'Git im Repository „kd“ lieferte mehr als 5000 Zeilen — abgebrochen']) {
+    const text = fehlerText({ status: 503, fehler });
+    assert.strictEqual(text, `Die Commits ließen sich nicht lesen: ${fehler} (503).`);
+    assert.doesNotMatch(text, /10 Sekunden/);
+  }
+});
+
+test('fehlerText: ohne Verbindung (Status 0) steht „keine Verbindung zum Programm“ mit dem Status, wie AK 7 es verlangt', () => {
+  assert.strictEqual(fehlerText({ status: 0, fehler: 'Keine Verbindung zum Server — nichts geändert.' }), 'Die Commits ließen sich nicht lesen: keine Verbindung zum Programm (0).');
 });
 
 test('gelesenText: „5 Commits gelesen“, Einzahl und leer', () => {
@@ -160,4 +174,25 @@ test('zeilenwerte reicht fremden Text unverändert durch — Maskieren ist Sache
   assert.strictEqual(z.titel, '<img src=x onerror=window.pwn=1> "x" \\ y');
   assert.strictEqual(z.autor, 'Mallory <b>fett</b>');
   assert.strictEqual(z.zweige.sichtbar[0].name, 'a"><i>z');
+});
+
+test('zweigmarken: bei genau einem nicht aufgeführten Zweig „und 1 weiterer Zweig, hier nicht aufgeführt“, ab zwei „n weitere Zweige“', () => {
+  assert.strictEqual(zweigmarken(auf({ zweige: ['a'], zweige_weitere: 1 })).satzRest, 'und 1 weiterer Zweig, hier nicht aufgeführt');
+  assert.strictEqual(zweigmarken(auf({ zweige: ['a'], zweige_weitere: 2 })).satzRest, 'und 2 weitere Zweige, hier nicht aufgeführt');
+  assert.strictEqual(zweigmarken(auf({ zweige: ['a'], zweige_weitere: 0 })).satzRest, null);
+});
+
+test('Bidi-Steuerzeichen U+202A–202E und U+2066–2069 verschwinden aus Titel, Autor, Zweig, Verweis und grund; Umlaute und Emoji bleiben', () => {
+  const rlo = '\u202E', lri = '\u2066', pdi = '\u2069';
+  const w = zeilenwerte(auf({ titel: `a${rlo}b${lri}c${pdi}ä😀`, autor: `x${rlo}y`, zweige: [`fix-${rlo}gpj.exe`], entfernte_zweige: [`o/${lri}z`] }));
+  assert.strictEqual(w.titel, 'abcä😀');
+  assert.strictEqual(w.autor, 'xy');
+  assert.deepStrictEqual(w.zweige.sichtbar.map(z => z.name), ['fix-gpj.exe', 'o/z']);
+  assert.strictEqual(zeilenwerte({ verweis: `kd:${rlo}x`, zustand: 'unlesbar', grund: `g${rlo}h` }).kurz, 'kd:x');
+  assert.strictEqual(zustandsmarke({ zustand: 'repository_fehlt', grund: `g${rlo}h` }).hinweis, 'gh');
+  assert.strictEqual(fehlerText({ status: 423, fehler: `f${rlo}g` }), 'Die Commits ließen sich nicht lesen: fg (423).');
+});
+
+test('zahlenText: eine Zahl als Zeichenkette wird wie eine Zahl gesetzt, ein Zahlenwert ohne Nachkomma bleibt', () => {
+  assert.strictEqual(zahlenText({ plus: '1204567', minus: 7 }), '+1.204.567 −7');
 });

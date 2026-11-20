@@ -35,15 +35,18 @@
     switch (e.zustand) {
       case 'verwaist': return HINWEIS_VERWAIST;
       case 'fehlt': return HINWEIS_FEHLT;
-      case 'anwendung_unbekannt': return e.anwendung ? `Anwendung „${e.anwendung}“ ist unter Einrichten nicht eingetragen.` : HINWEIS_OHNE_ANWENDUNG;
-      default: return e.grund || '';
+      case 'anwendung_unbekannt': return e.anwendung ? `Anwendung „${ohneSteuerzeichen(e.anwendung)}“ ist unter Einrichten nicht eingetragen.` : HINWEIS_OHNE_ANWENDUNG;
+      default: return ohneSteuerzeichen(e.grund) || '';
     }
   };
 
+  /** Bidi-Steuerzeichen (U+202A–202E, U+2066–2069) aus fremdem Text: ein RLO in einem Zweignamen ließe `fix-<RLO>gpj.exe` als `fix-exe.jpg` erscheinen. */
+  const ohneSteuerzeichen = text => (typeof text === 'string' ? text.replace(/[\u202A-\u202E\u2066-\u2069]/g, '') : text);
+
   /** Der Commit in der Zeile: Kürzel und die ersten 7 Zeichen des Hashs, ohne Kürzel nur die 7; ohne Hash der Verweis wörtlich. */
   function kurzform(e) {
-    if (!e.hash) return e.verweis;
-    return (e.anwendung ? `${e.anwendung}:` : '') + e.hash.slice(0, 7);
+    if (!e.hash) return ohneSteuerzeichen(e.verweis);
+    return (e.anwendung ? `${ohneSteuerzeichen(e.anwendung)}:` : '') + e.hash.slice(0, 7);
   }
 
   /** Die Marke „gekürzt“: genau 501 Zeichen (Unicode-Codepunkte, nicht UTF-16-Einheiten) und am Ende „…“. */
@@ -52,7 +55,7 @@
     return titel.endsWith('…') && Array.from(titel).length === TITEL_HOECHSTENS + 1;
   }
 
-  const tausender = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const tausender = n => String(Number(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   /** `+1.204 −87` mit Tausenderpunkt und dem Minus-Zeichen U+2212. */
   const zahlenText = e => `+${tausender(e.plus)} −${tausender(e.minus)}`;
 
@@ -71,14 +74,14 @@
 
   /** Zweige der Zeile und der Klappe: bis zu drei Namen (lokale zuerst, dann entfernte), `weitere` = Summe aller Angaben − 3. */
   function zweigmarken(e) {
-    const lokal = e.zweige || [], entfernt = e.entfernte_zweige || [], nichtAufgefuehrt = e.zweige_weitere || 0;
+    const lokal = (e.zweige || []).map(ohneSteuerzeichen), entfernt = (e.entfernte_zweige || []).map(ohneSteuerzeichen), nichtAufgefuehrt = e.zweige_weitere || 0;
     const alle = [...lokal.map(name => ({ name, entfernt: false })), ...entfernt.map(name => ({ name, entfernt: true }))];
     const summe = alle.length + nichtAufgefuehrt;
     return {
       sichtbar: alle.slice(0, ZWEIGE_IN_ZEILE),
       weitere: Math.max(0, summe - ZWEIGE_IN_ZEILE),
       lokal, entfernt, nichtAufgefuehrt,
-      satzRest: nichtAufgefuehrt > 0 ? `und ${nichtAufgefuehrt} weitere Zweige, hier nicht aufgeführt` : null,
+      satzRest: nichtAufgefuehrt > 0 ? `und ${nichtAufgefuehrt === 1 ? '1 weiterer Zweig' : `${nichtAufgefuehrt} weitere Zweige`}, hier nicht aufgeführt` : null,
     };
   }
 
@@ -86,12 +89,12 @@
   function zeilenwerte(e) {
     const ohneMetadaten = OHNE_METADATEN.includes(e.zustand);
     return {
-      verweis: e.verweis,
+      verweis: ohneSteuerzeichen(e.verweis),
       kurz: kurzform(e),
       ohneMetadaten,
-      titel: ohneMetadaten ? null : e.titel,
+      titel: ohneMetadaten ? null : ohneSteuerzeichen(e.titel),
       gekuerzt: !ohneMetadaten && titelGekuerzt(e),
-      autor: ohneMetadaten ? null : e.autor,
+      autor: ohneMetadaten ? null : ohneSteuerzeichen(e.autor),
       datum: ohneMetadaten ? null : datumText(e.datum),
       datumTitel: ohneMetadaten ? null : e.datum,
       zahlen: ohneMetadaten ? null : zahlenText(e),
@@ -100,10 +103,14 @@
     };
   }
 
-  /** Meldung der Ansicht beim Fehler (R00205 FA 8): 503 mit dem festen Wortlaut des PO, ohne Verbindung (Status 0) ohne Antwort. */
+  /** Der Text der Zeitgrenze (R00204 AK 8: „… antwortete nicht innerhalb von n s …“); nur er wird durch den Wortlaut des PO ersetzt. */
+  const ZEITGRENZE_TEXT = /antwortete nicht (?:innerhalb von|in) \d+ s/;
+
+  /** Meldung der Ansicht beim Fehler (R00205 FA 8): 503 wegen der Zeitgrenze mit dem festen Wortlaut des PO, jedes andere 503 (etwa zu viel
+      Ausgabe) mit dem `fehler` der Antwort; ohne Verbindung (Status 0) ohne Antwort. */
   function fehlerText({ status, fehler }) {
-    let grund = fehler || 'unbekannter Fehler';
-    if (status === 503) grund = 'Das Repository antwortete nicht innerhalb von 10 Sekunden';
+    let grund = ohneSteuerzeichen(fehler) || 'unbekannter Fehler';
+    if (status === 503 && (!fehler || ZEITGRENZE_TEXT.test(fehler))) grund = 'Das Repository antwortete nicht innerhalb von 10 Sekunden';
     if (status === 0) grund = 'keine Verbindung zum Programm';
     return `Die Commits ließen sich nicht lesen: ${grund} (${status}).`;
   }
@@ -137,7 +144,7 @@
 
   function zweigeZelle(z, i, offen, esc) {
     if (!z.sichtbar.length && !z.weitere) return '';
-    const knopf = z.weitere ? `<button type="button" class="cl-mehr" data-act="commits-klappe" data-arg="${i}" aria-expanded="${offen}" aria-controls="cl-zw-${i}" aria-label="${z.weitere} weitere Zweige ${offen ? 'verbergen' : 'zeigen'}">${symbol('weiter')}+${z.weitere} weitere</button>` : '';
+    const knopf = z.weitere ? `<button type="button" class="cl-mehr" data-act="commits-klappe" data-arg="${i}" aria-expanded="${offen}" aria-controls="cl-zw-${i}" aria-label="${z.weitere === 1 ? '1 weiteren Zweig' : `${z.weitere} weitere Zweige`} ${offen ? 'verbergen' : 'zeigen'}">${symbol('weiter')}+${z.weitere} weitere</button>` : '';
     return `<span class="vh">auf Zweigen: </span><div class="cl-zweige">${z.sichtbar.map(m => zweigMarke(m, esc)).join('')}${knopf}</div>`;
   }
 

@@ -99,7 +99,7 @@ test('Zweige: bis zu drei Namen, entfernte gestrichelt mit Lesetext „(entfernt
   assert.match(drei, /<span class="vh">auf Zweigen: <\/span>/);
   assert.doesNotMatch(drei, /cl-mehr/);
   const vier = liste([auf({ zweige: ['a', 'b', 'c', 'd'], entfernte_zweige: [] })]);
-  assert.match(vier, /<button type="button" class="cl-mehr" data-act="commits-klappe" data-arg="0" aria-expanded="false" aria-controls="cl-zw-0" aria-label="1 weitere Zweige zeigen">/);
+  assert.match(vier, /<button type="button" class="cl-mehr" data-act="commits-klappe" data-arg="0" aria-expanded="false" aria-controls="cl-zw-0" aria-label="1 weiteren Zweig zeigen">/);
   assert.match(vier, /\+1 weitere<\/button>/);
 });
 
@@ -191,7 +191,7 @@ test('Liste: der Statusbereich ist versteckt (.vh) und sagt „5 Commits gelesen
 });
 
 test('Fehler: der Statusbereich trägt die sichtbare Meldung (503 mit dem Wortlaut des PO), dazu „Erneut versuchen“, keine Zeilen, keine Zahl', () => {
-  const html = ansicht(fehler(503, 'egal'));
+  const html = ansicht(fehler(503, 'Git in einem Arbeits-Repository antwortete nicht innerhalb von 10 s — keine Liste'));
   assert.match(html, /<div class="cl-meldtext" id="commits-status" role="status">Die Commits ließen sich nicht lesen: Das Repository antwortete nicht innerhalb von 10 Sekunden \(503\)\.<\/div>/);
   assert.match(html, /<button type="button" class="cl-knopf" id="commits-erneut" data-act="commits-lesen">Erneut versuchen<\/button>/);
   assert.doesNotMatch(html, /<tr|<table|class="mono"/);
@@ -218,4 +218,32 @@ test('die Ansicht trägt das Gerüst .mod-main.cl-panel; Kopf vor Inhalt vor Fu�
     assert.match(html, /^<div class="mod-main cl-panel">/);
     assert.ok(html.indexOf('cl-kopf') < html.indexOf('commits-status') && html.indexOf('commits-status') < html.indexOf('cl-fuss'), c.status);
   }
+});
+
+test('Zweigklappe: bei n = 1 „1 weiteren Zweig zeigen/verbergen“ (aria-label), ab n = 2 „n weitere Zweige“', () => {
+  const vier = auf({ zweige: ['a', 'b', 'c', 'd'], entfernte_zweige: [] });
+  assert.match(liste([vier]), /aria-label="1 weiteren Zweig zeigen"/);
+  assert.match(liste([vier], new Set([0])), /aria-label="1 weiteren Zweig verbergen"/);
+  const fuenf = auf({ zweige: ['a', 'b', 'c', 'd', 'e'], entfernte_zweige: [] });
+  assert.match(liste([fuenf]), /aria-label="2 weitere Zweige zeigen"/);
+  assert.match(liste([fuenf], new Set([0])), /aria-label="2 weitere Zweige verbergen"/);
+});
+
+test('Zweigklappe: genau ein nicht aufgeführter Zweig → „und 1 weiterer Zweig, hier nicht aufgeführt“ in der aufgeklappten Zeile', () => {
+  const offen = liste([auf({ zweige: ['a', 'b', 'c'], zweige_weitere: 1 })], new Set([0]));
+  assert.match(offen, /und 1 weiterer Zweig, hier nicht aufgeführt/);
+});
+
+test('fremder Text am Hash: Kurzform und voller Verweis einer unlesbaren Zeile werden maskiert (Text und title-Attribut)', () => {
+  const boese = { verweis: 'kd:<img src=x onerror=1>" onmouseover="x', zustand: 'unlesbar', hash: null, grund: 'Verweis ungültig' };
+  const html = liste([boese]);
+  assert.doesNotMatch(html, /<img/);
+  assert.doesNotMatch(html, /" onmouseover="/);
+  assert.match(html, /<span class="cl-hash cl-roh" title="kd:&lt;img src=x onerror=1&gt;&quot; onmouseover=&quot;x">kd:&lt;img src=x onerror=1&gt;&quot; onmouseover=&quot;x<\/span>/);
+});
+
+test('Bidi-Steuerzeichen im Zweignamen erscheinen nicht in der gezeichneten Zeile (kein RLO, das den Namen umkehrt)', () => {
+  const html = liste([auf({ zweige: ['fix-\u202Egpj.exe'] })]);
+  assert.doesNotMatch(html, /[\u202A-\u202E\u2066-\u2069]/);
+  assert.match(html, /<span>fix-gpj\.exe<\/span>/);
 });
