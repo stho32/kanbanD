@@ -936,3 +936,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #229 R00211 Nacharbeit 1 (N7.8) | B1069 Zufallsprobe mit gleich bewerteten Quellen, Mutanten, Gate (AK 8 gross2 offen) | Standard | 1-2h | 1,3h | 1,3h | autonom |
 | 2026-11-20 | Karte #229 R00211 Nacharbeit 2 (N7.9) | B1074 Vorabgrenze der Argumente am Startort je Plattform | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-20 | Karte #229 R00211 Nacharbeit 2 (N7.9) | B1075 Liste und datei= behandeln ArgumenteZuLang | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #229 R00211 Nacharbeit 2 (N7.9) | B1076 AK 8 neu belegen, Mutanten AK 12, Gate | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
