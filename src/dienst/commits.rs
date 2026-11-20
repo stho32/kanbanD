@@ -269,7 +269,7 @@ fn derselbe_verweis(a: &str, b: &str) -> bool {
 }
 
 /// Gleiches Kürzel (beide ohne heißt Standardanwendung) und der gespeicherte Hash beginnt mit dem genannten.
-fn passt(gespeichert: &str, form: &Verweisform) -> bool {
+pub(super) fn passt(gespeichert: &str, form: &Verweisform) -> bool {
     let (kuerzel, hash) = match gespeichert.split_once(':') {
         Some((k, h)) => (Some(k), h),
         None => (None, gespeichert),

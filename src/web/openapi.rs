@@ -86,6 +86,16 @@ pub struct Verweisfehler {
     pub verweis: String,
 }
 
+/// 404 von `GET …/diff` (R00206 FA 3): zu diesem Verweis gibt es keinen Diff — mit dem Zustand, den auch die Liste nennt,
+/// bei `repository_fehlt` und `unlesbar` dazu der Grund.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct Zustandsfehler {
+    pub fehler: String,
+    pub zustand: crate::modell::Commitzustand,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grund: Option<String>,
+}
+
 /// Antwort von `GET …/commits` (R00204): je Verweis der Aufgabe ein Eintrag.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct Commitliste {

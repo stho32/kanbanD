@@ -336,7 +336,8 @@ async fn die_beschreibung_nennt_400_mit_fehlerantwort_und_keinen_code_des_transp
         }
     }
     assert_eq!(schreibend, 64);
-    assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "400", "403", "404", "409", "423", "500", "503"]);
+    // 304: GET …/diff mit If-None-Match (R00206 FA 12) — die einzige Route mit ETag
+    assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "304", "400", "403", "404", "409", "423", "500", "503"]);
 }
 
 // ADR-0003 N3 Punkt 6: die Standardgrenze des Rahmens bleibt — ein JSON-Rumpf von genau 2 MiB geht durch

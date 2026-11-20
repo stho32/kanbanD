@@ -155,6 +155,33 @@ GET /api/aufgaben/1/commits
 - Reihenfolge: älteste zuerst nach dem Commit-Datum, Einträge ohne Datum (`fehlt`, `unlesbar`, …) danach. `titel` ist die erste Zeile der Nachricht (höchstens 500 Zeichen), `autor` nur der Name, `plus`/`minus`/`dateien` zählen gegen den ersten Elternteil.
 - Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einer halben Liste; Schreibvorgänge an der Karte warten nie auf ihn.
 
+### Diff eines Commits lesen
+
+`GET /api/aufgaben/{nr}/diff?commit=<verweis>` liefert, was ein einzelner Commit der Karte geändert hat — gegen seinen ersten Elternteil, live und nur lesend aus dem Arbeits-Repository, ohne `X-KanbanD-Wer`. `commit` ist ein Verweis der Karte, wörtlich oder mit einem an der Karte eindeutigen Hash-Präfix ab 7 Zeichen:
+
+```
+GET /api/aufgaben/1/diff?commit=kd:<X1>
+→ 200
+{"anwendung": "kd",
+ "commits": [{"verweis": "kd:<X1>", "anwendung": "kd", "hash": "<X1>", "titel": "Text, Binär, Umbenennung",
+              "autor": "Ada Autorin", "datum": "2026-03-05T09:00:00+00:00", "plus": 1, "minus": 1, "dateien": 3}],
+ "dateien": [
+   {"alt": "a.txt", "neu": "a.txt", "status": "M", "plus": 1, "minus": 1,
+    "binaer": false, "gross": false, "nachladen": false, "nicht_utf8": false,
+    "patch": "@@ -1,2 +1,2 @@\n eins\n-zwei\n+Zwei\n"},
+   {"neu": "bild.bin", "status": "A", "plus": 0, "minus": 0,
+    "binaer": true, "gross": false, "nachladen": false, "nicht_utf8": false},
+   {"alt": "c.txt", "neu": "c2.txt", "status": "R", "aehnlichkeit": 100, "plus": 0, "minus": 0,
+    "binaer": false, "gross": false, "nachladen": false, "nicht_utf8": false}],
+ "hinweise": []}
+```
+
+- **`gross` und `nachladen` sind Merkmale, keine Fehler**: `gross` heißt, der Patch der Datei ist über 256 KB oder über 3.000 Zeilen; `nachladen` heißt, der Patch passte nicht mehr in die 4 MB der Antwort. Beide holt man einzeln mit `&datei=<neu>` (bei gelöschten Dateien `alt`, buchstäblich) — bis 20 MB, darüber bleibt die Datei `gross` und `hinweise` nennt sie (`zu_gross_zum_anzeigen`).
+- Mehr als 2.000 Dateien: die ersten 2.000 stehen da, `hinweise` enthält `{"art": "dateien_gekappt", "gezeigt": 2000, "gesamt": …}`, und `commits[0].dateien` bleibt die wahre Zahl. Eine unbekannte `art` überspringen.
+- `&format=patch` liefert dieselbe Auswahl als Text (`text/x-diff`) mit den Kopfzeilen von Git — zum Lesen, nicht für `git apply`.
+- Jede Antwort zu einem Verweis mit vollem Hash trägt einen `ETag`; mit `If-None-Match` kommt 304 ohne Git-Aufruf.
+- Kein Diff gibt es zu den Zuständen `fehlt`, `repository_fehlt`, `anwendung_unbekannt` und `unlesbar` (404 mit `zustand`). Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einem halben Diff. Aus dem Repository läuft dabei kein Programm (`diff.external`, `textconv`, Pager und Hooks bleiben aus).
+
 ## Tests
 
 ```bash

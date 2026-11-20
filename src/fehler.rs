@@ -32,6 +32,9 @@ pub enum Fehler {
     VerweisKonflikt { meldung: String, verweis: String },
     /// Ein Git-Prozess im Arbeits-Repository überschritt die Zeitgrenze und wurde beendet (503, ADR-0032 Punkt 3).
     Zeitgrenze(String),
+    /// Zu diesem Commit-Verweis gibt es keinen Diff (404, R00206 FA 3, ADR-0032 N4.2) — Rumpf `{fehler, zustand, grund?}`
+    /// mit dem Zustand, den auch die Commit-Liste nennt.
+    Commitzustand { meldung: String, zustand: crate::modell::Commitzustand, grund: Option<String> },
 }
 
 impl Fehler {
@@ -39,7 +42,7 @@ impl Fehler {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
-            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } => meldung,
+            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } | Fehler::Commitzustand { meldung, .. } => meldung,
         }
     }
 

@@ -133,6 +133,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(commits_lesen, commits_hinterlegen))
         .routes(routes!(commits_ersetzen))
         .routes(routes!(commit_entfernen))
+        .routes(routes!(diff_lesen))
         .routes(routes!(teilaufgabe_aendern, teilaufgabe_entfernen))
         .routes(routes!(openapi_json))
         .split_for_parts();
@@ -175,6 +176,7 @@ impl IntoResponse for Fehler {
             Fehler::Verweis { fehlt: false, .. } => StatusCode::BAD_REQUEST,
             Fehler::VerweisKonflikt { .. } => StatusCode::CONFLICT,
             Fehler::Zeitgrenze(_) => StatusCode::SERVICE_UNAVAILABLE,
+            Fehler::Commitzustand { .. } => StatusCode::NOT_FOUND,
         };
         match &self {
             Fehler::GrenzeErreicht { spalte, grenze, anzahl } => {
@@ -195,6 +197,10 @@ impl IntoResponse for Fehler {
             }
             Fehler::Verweis { meldung, verweis, .. } | Fehler::VerweisKonflikt { meldung, verweis } => {
                 let rumpf = openapi::Verweisfehler { fehler: meldung.clone(), verweis: verweis.clone() };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::Commitzustand { meldung, zustand, grund } => {
+                let rumpf = openapi::Zustandsfehler { fehler: meldung.clone(), zustand: *zustand, grund: grund.clone() };
                 (status, Json(rumpf)).into_response()
             }
             _ => fehlerantwort(status, self.meldung()),
@@ -1193,6 +1199,36 @@ async fn commits_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Re
     let frist = std::time::Instant::now() + crate::dienst::GESAMTGRENZE;
     let commits = blockierend(&app, move |k| k.commits_lesen(nr, frist)).await?;
     Ok(Json(json!({ "commits": commits })).into_response())
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/aufgaben/{nr}/diff",
+    tag = "Aufgaben",
+    description = endpunkte::DIFF_LESEN,
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("commit" = String, Query, description = "Commit-Verweis der Karte, wörtlich wie in der Datei (<kürzel>:<voller Hash>) oder mit einem an der Karte eindeutigen Hash-Präfix ab 7 Zeichen"), ("datei" = Option<String>, Query, description = "nur diese Datei: neu, bei gelöschten alt, buchstäblich (kein Muster); bis 20 MB Patch, ohne Grenze je Datei"), ("format" = Option<String>, Query, description = "patch liefert dieselbe Auswahl als Text text/x-diff"), ("If-None-Match" = Option<String>, Header, description = "ETag einer früheren Antwort 200 — gleich → 304 ohne Git")),
+    responses((status = 200, description = "Diff des Commits {anwendung, commits, dateien, hinweise} — mit format=patch als text/x-diff; charset=utf-8; ETag bei Verweisen mit vollem Hash", body = crate::dienst::diff::Diff), (status = 304, description = "unverändert zum ETag aus If-None-Match — ohne Rumpf, ohne Git"), (status = 400, description = "commit fehlt, format unbekannt, datei leer/mit NUL/über 4096 Byte, oder Form des Verweises falsch bzw. Präfix an der Karte mehrdeutig (Verweisfehler)", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden; Verweis nicht an der Karte (Verweisfehler); kein Diff zum Zustand des Verweises (Zustandsfehler: fehlt, repository_fehlt, anwendung_unbekannt, unlesbar); datei nicht in der Dateiliste (mit Grund „Dateiliste zu groß“, wenn sie abgeschnitten war)", body = crate::web::openapi::Zustandsfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git im Arbeits-Repository über der Gesamtgrenze von 10 s — kein Diff, keine Teilantwort", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn diff_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>, Abfrage(paare): Abfrage<Vec<(String, String)>>, kopf: axum::http::HeaderMap) -> Result<Response, Fehler> {
+    use axum::http::header;
+    use crate::dienst::diff::{Diffanfrage, Diffantwort};
+    // die Gesamtgrenze zählt ab Eintritt in den Handler, vor dem Warten auf den Blocking-Pool (ADR-0032 N4.1)
+    let frist = std::time::Instant::now() + crate::dienst::GESAMTGRENZE;
+    let bekannt = kopf.get(header::IF_NONE_MATCH).and_then(|w| w.to_str().ok()).map(str::to_string);
+    let anfrage = Diffanfrage::aus_paaren(&paare, bekannt)?;
+    let antwort = blockierend(&app, move |k| k.diff_lesen(nr, &anfrage, frist)).await?;
+    let mit_etag = |etag: Option<String>, mut r: Response| {
+        r.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS, header::HeaderValue::from_static("nosniff"));
+        if let Some(e) = etag.and_then(|e| header::HeaderValue::from_str(&e).ok()) {
+            r.headers_mut().insert(header::ETAG, e);
+        }
+        r
+    };
+    Ok(match antwort {
+        Diffantwort::Unveraendert(etag) => mit_etag(Some(etag), StatusCode::NOT_MODIFIED.into_response()),
+        Diffantwort::Json { etag, diff } => mit_etag(etag, Json(diff).into_response()),
+        Diffantwort::Text { etag, text } => mit_etag(etag, ([(header::CONTENT_TYPE, "text/x-diff; charset=utf-8")], text).into_response()),
+    })
 }
 
 #[utoipa::path(

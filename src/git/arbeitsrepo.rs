@@ -249,8 +249,9 @@ const LOG_FORMAT: &str = "--format=%H%x00%P%x00%an%x00%cI%x00%B%x00";
 
 /// Metadaten der Commits (volle Hashes) in einem Aufruf `log --no-walk`.
 pub fn metadaten(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<HashMap<String, Metadaten>, Arbeitsrepofehler> {
-    // `-M -l1000` wie die Dateiliste des Diffs (ADR-0032 N4.3): `diff.renameLimit` aus dem Repository ändert nichts
-    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "-M", "-l1000", "--diff-merges=first-parent", "--numstat", LOG_FORMAT, "--end-of-options"];
+    // `-M -l1000` wie die Dateiliste des Diffs (ADR-0032 N4.3): `diff.renameLimit` aus dem Repository ändert nichts;
+    // `--ignore-submodules=none`: `diff.ignoreSubmodules` ließe `log` Submodule sonst still weglassen (R00206 AK 16 b)
+    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "-M", "-l1000", "--ignore-submodules=none", "--diff-merges=first-parent", "--numstat", LOG_FORMAT, "--end-of-options"];
     args.extend_from_slice(commits);
     let aus = lesen(wurzel, Befehl::Log, &args, None, frist)?;
     log_lesen(&aus).ok_or_else(|| Arbeitsrepofehler::Start("Ausgabe von git log unlesbar".into()))
@@ -322,7 +323,7 @@ pub enum Diffart {
 /// Umbenennungen mit `-M50% -l1000`, Submodule kurz —, die Schalter der Befehlszeile der Startort; `pfade` gehen
 /// wörtlich nach `--` (bei einer Umbenennung beide Pfade, sonst wird sie zu `A`).
 pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
-    let mut args = vec!["-r", "-M50%", "-l1000"];
+    let mut args = vec!["-r", "-M50%", "-l1000", "--ignore-submodules=none"];
     args.extend_from_slice(match art {
         Diffart::Roh => &["--raw", "-z"][..],
         Diffart::Zahlen => &["--numstat", "-z"],
@@ -884,8 +885,8 @@ mod tests {
     }
 
     // R00206 AK 16 (a) am Startort: `diff-tree -p` im feindlichen Repository startet weder `diff.external` noch
-    // `diff.x.textconv` (mit `.gitattributes`) noch `GIT_EXTERNAL_DIFF`; Gegenproben: `git diff` und `git diff-tree -p
-    // --textconv` direkt in R legen die Marke an — die Probe kann also rot werden
+    // `diff.x.command`/`diff.x.textconv` (mit `.gitattributes`) noch `GIT_EXTERNAL_DIFF`; Gegenproben: `git diff`,
+    // `git diff-tree -p --textconv` und `git diff-tree -p --ext-diff` direkt in R legen die Marke an
     #[test]
     fn diff_tree_im_feindlichen_repository_fuehrt_nichts_aus() {
         let (_tmp, r, marke, s) = feindlich();
@@ -895,6 +896,9 @@ mod tests {
         std::fs::remove_file(&marke).unwrap();
         roh(&["diff-tree", "-r", "-p", "--textconv", "HEAD^", "HEAD"]);
         assert!(marke.exists(), "Gegenprobe 2: diff-tree --textconv startet textconv");
+        std::fs::remove_file(&marke).unwrap();
+        roh(&["-c", "core.fsmonitor=false", "diff-tree", "-r", "-p", "--ext-diff", "HEAD^", "HEAD"]);
+        assert!(marke.exists(), "Gegenprobe 3: diff-tree --ext-diff startet diff.x.command aus .gitattributes");
         std::fs::remove_file(&marke).unwrap();
         let kopf = String::from_utf8(roh(&["rev-parse", "HEAD", "HEAD^"]).stdout).unwrap();
         let [neu, alt]: [&str; 2] = kopf.split_whitespace().collect::<Vec<_>>().try_into().unwrap();
