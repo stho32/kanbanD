@@ -952,3 +952,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #228 R00214 | B1089 OpenAPI, /api/endpunkte, A00005/A00006 | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-20 | Karte #228 R00214 | B1090 Legacy-Probe, Factory-Proben, Mutanten, PO-Wortlaut, Gate | Standard | 1-2h | 1,0h | 1,0h | autonom |
 | 2026-11-21 | Karte #228 R00214 (Nacharbeit 1) | B1095 Lineare Labelprüfung, Kreissuche je Aufruf, Sollte (a)–(d), Gate | Standard | 1-2h | 0,8h | 0,8h | autonom |
+| 2026-11-20 | Karte #231 R00215 (Wackler unter Last) | B1091 Rot-Beleg mit langsamem Git | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

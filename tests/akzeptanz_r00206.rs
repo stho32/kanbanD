@@ -3,7 +3,7 @@
 // Testsprache (`Lage`, `diff`, `spur`) → Treiber (`holen`: URL, Header, Status) → Programm.
 mod gemeinsam;
 
-use gemeinsam::{Laufendes, R204, ausgangslage_r00204, git, git_am, lies, senden, starten_mit};
+use gemeinsam::{LANGSAM_D, Laufendes, R204, ausgangslage_r00204, git, git_am, langsames_git, lies, senden, starten_mit};
 use serde_json::{Value, json};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
@@ -1038,10 +1038,13 @@ async fn ak20b_viele_die_nicht_lesen() {
     let l = ausgangslage();
     let (x, _) = gross1(&l);
     let pfad = format!("api/aufgaben/1/diff?commit=kd:{x}&datei=gross1.txt");
+    let langsam_pfad = langsames_git(&l.a.r, LANGSAM_D);
     for n in [6usize, 30] {
-        let lauf = l.starten(&[]);
+        let lauf = l.starten(&[("PATH", &langsam_pfad)]);
         let pid = lauf.kind.id();
+        let start = Instant::now();
         let groesse = holen(&lauf.adresse, 1, &format!("commit=kd:{x}&datei=gross1.txt"), None).await.text.len();
+        eprintln!("AK 20 (b) N = {n}: Einzelanfrage T = {:?} mit langsamem Git (d = {LANGSAM_D} s)", start.elapsed());
         let (vorher, _) = speicher(pid);
         let adresse = lauf.adresse.clone();
         let p = pfad.clone();

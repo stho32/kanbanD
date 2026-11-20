@@ -3,7 +3,7 @@
 // (`Lage`, `gesamt`, `nie_fremd`) → Treiber (`holen`: URL, Header, Status) → Programm.
 mod gemeinsam;
 
-use gemeinsam::{Laufendes, git, git_am, lies, starten_mit};
+use gemeinsam::{LANGSAM_D, Laufendes, git, git_am, langsames_git, lies, starten_mit};
 use serde_json::{Value, json};
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
@@ -694,8 +694,10 @@ async fn ak08_antwortbudget() {
     l.schreiben("gross1.txt", &(0..170_000).map(|i| format!("{:<44}\n", format!("gross1-{i}"))).collect::<String>());
     let x = l.commit("gross1");
     l.karte(12, &[kd(&x)]);
-    let lauf = l.starten(&[]);
+    let lauf = l.starten(&[("PATH", &langsames_git(&l.r, LANGSAM_D))]);
+    let start = Instant::now();
     let groesse = holen(&lauf.adresse, 12, "datei=gross1.txt", None).await.text.len();
+    eprintln!("AK 8: Einzelanfrage T = {:?} mit langsamem Git (d = {LANGSAM_D} s)", start.elapsed());
     assert!(groesse > 7 << 20, "{groesse}");
     let adresse = lauf.adresse.clone();
     let pfad = "api/aufgaben/12/diff?datei=gross1.txt".to_string();

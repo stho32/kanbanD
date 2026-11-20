@@ -119,6 +119,22 @@ fn aus_befehl(mut befehl: Command, ordner: &Path, zusatz: &[&str], stderr: Stdio
     Laufendes { kind, adresse, mitschnitt: None }
 }
 
+/// R00215: Die Verzögerung je Aufruf für [`langsames_git`], gemessen in B1091: eine Einzelanfrage über `gross1.txt`
+/// braucht damit 1,5–3 s.
+pub const LANGSAM_D: &str = "0.15";
+
+/// R00215: ein `git` vorn im `PATH` des Servers, das jeden Aufruf im Arbeits-Repository `r` um `d` Sekunden verzögert
+/// und dann das echte Git ausführt — so dauert eine Anfrage länger, ohne Rechenzeit zu kosten. Liefert den Wert für `PATH`.
+pub fn langsames_git(r: &Path, d: &str) -> String {
+    let echt = String::from_utf8(Command::new("sh").args(["-c", "command -v git"]).output().unwrap().stdout).unwrap().trim().to_string();
+    let ordner = r.parent().unwrap().join("bin-langsam");
+    std::fs::create_dir_all(&ordner).unwrap();
+    let skript = format!("#!/bin/sh\ncase \"$*\" in *\"{r}\"*) sleep {d} ;; esac\nexec {echt} \"$@\"\n", r = r.display());
+    std::fs::write(ordner.join("git"), skript).unwrap();
+    std::fs::set_permissions(ordner.join("git"), std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    format!("{}:{}", ordner.display(), std::env::var("PATH").unwrap())
+}
+
 pub fn git(pfad: &Path, args: &[&str]) -> String {
     let a = Command::new("git").arg("-C").arg(pfad).args(args).output().unwrap();
     String::from_utf8_lossy(&a.stdout).trim().to_string()
