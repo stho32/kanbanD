@@ -943,3 +943,11 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1080 datei=: Rückfall mit genau der Angabe des Bezugs | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1081 ArgumenteZuLang an vier Stellen | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-20 | Karte #230 R00213 (Gesamt-Diff ohne 500 bei gleich bewerteten Quellen) | B1082 Zufallsprobe, Mutanten, Gate (Lastprobe R00208 offen, Nachtbetrieb) | Standard | 1-2h | 0,6h | 0,6h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1083 Abnahme-Proben rot am heutigen Stand | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1084 Deutung und Erledigt als reine Funktionen | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1085 Lesefeld braucht, Schreiben → 400 | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1086 Filter wartet=ja\|nein | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1087 Tür: Form, Selbstbezug, unbekannte Nummer, nur neue Labels | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1088 Kreisprüfung mit Nennung des Kreises | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1089 OpenAPI, /api/endpunkte, A00005/A00006 | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #228 R00214 | B1090 Legacy-Probe, Factory-Proben, Mutanten, PO-Wortlaut, Gate | Standard | 1-2h | 1,0h | 1,0h | autonom |
