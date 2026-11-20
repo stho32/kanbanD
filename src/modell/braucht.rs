@@ -189,6 +189,7 @@ mod tests {
         assert_eq!(neue_braucht_labels(&vorher, &labels(&["braucht:abc", "braucht:888", "prio"])), Vec::<&str>::new(), "AK 11");
         assert_eq!(neue_braucht_labels(&vorher, &labels(&["braucht:abc", "braucht:888", "braucht:777"])), vec!["braucht:777"]);
         assert_eq!(neue_braucht_labels(&vorher, &labels(&["BRAUCHT:ABC", "Braucht:888"])), Vec::<&str>::new(), "ohne Groß/Klein");
+        assert_eq!(neue_braucht_labels(&labels(&["BRAUCHT:ABC", "Braucht:999"]), &labels(&["braucht:abc", "braucht:999"])), Vec::<&str>::new(), "gespeichert groß, geschickt klein");
         assert_eq!(neue_braucht_labels(&[], &labels(&["braucht", "brauchtnix", "braucht:x", "braucht:1"])), vec!["braucht:x", "braucht:1"]);
         assert_eq!(neue_braucht_labels(&labels(&["braucht:1"]), &labels(&["braucht:01"])), vec!["braucht:01"], "andere Schreibweise der Zahl ist neu");
     }

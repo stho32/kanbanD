@@ -318,6 +318,10 @@ async fn ak11_unveraendert_mitgeschickte_labels_werden_nicht_geprueft() {
     let meldung = abgewiesen(&lage, 3, &["braucht:abc", "braucht:888", "braucht:777"], "#777").await;
     assert!(!meldung.contains("abc") && !meldung.contains("888"), "{meldung}");
 
+    let gross = Lage::von_hand(&[(3, &["BRAUCHT:abc", "Braucht:888"])]);
+    let (s, a) = gross.labels_setzen(3, &["braucht:abc", "braucht:888", "prio"]).await;
+    assert_eq!(s, 200, "Vergleich mit dem Gespeicherten ohne Groß/Klein: {a}");
+
     let geloescht = Lage::von_hand(&[(2, &["braucht:1"])]);
     geloescht.loeschen(1).await;
     let (s, a) = geloescht.labels_setzen(2, &["braucht:1", "ui"]).await;
