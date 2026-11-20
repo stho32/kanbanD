@@ -313,6 +313,8 @@ async fn ak1_e_umbenennungs_zwilling_im_typwechsel() {
     let liste = liste_pruefen(&lauf.adresse, &k, &stuecke).await;
     assert_eq!(dateien(&liste).iter().map(|f| (f["status"].as_str().unwrap(), name(f))).collect::<Vec<_>>(), [("R", "c"), ("R", "m")], "{liste}");
     datei_auf_jeden_namen(&lauf.adresse, &k, &liste, &stuecke).await;
+    // N7.8: die Zuordnung im Bezug trägt ohne Rückfall (der Rückfall heilte sonst still eine Zuordnung ohne Bezug)
+    assert_eq!(laeufe_fuer(&l, &k, "m").await.len(), 3, "Dateiliste, Zähler, Patch — kein Rückfall");
 }
 
 /// AK 3, US-5: Fall (a) und so viele neue Dateien `d/x/a<nnnn>…` mit Namen von 200 Zeichen, dass die Dateiliste über 1 MB
@@ -575,13 +577,19 @@ async fn ak10_streng_nur_ohne_pfadangabe() {
 async fn ak1_abgeschlossene_angabe_traegt_ohne_rueckfall() {
     let l = Lage::neu();
     let k = fall_a(&l, |_| {});
+    assert_eq!(laeufe_fuer(&l, &k, "d/x").await, ["--raw --", "--numstat d/x/inner", "-p d/x/inner"], "Dateiliste ohne, Zähler und Patch mit Angabe (letzter Pfad sortiert)");
+}
+
+/// Die Läufe von `diff-tree`, die `datei=<name>` an K braucht: je Lauf seine Art und das letzte Argument (`--` ohne
+/// Pfadangabe, sonst der letzte Pfad). Die Antwort muss 200 sein.
+async fn laeufe_fuer(l: &Lage, k: &str, name: &str) -> Vec<String> {
     let spur = l.r.parent().unwrap().join("spur");
+    let _ = std::fs::remove_file(&spur);
     let pfad = l.git_skript(&format!("case \"$*\" in *diff-tree*) eval letztes=\\${{$#}}; for a in --raw --numstat -p; do case \" $* \" in *\" $a \"*) echo \"$a $letztes\" >> {};; esac; done;; esac", spur.display()));
-    let lauf = l.starten_mit(&[&k], &[("PATH", &pfad)]);
-    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=d/x")).await;
+    let lauf = l.starten_mit(&[k], &[("PATH", &pfad)]);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei={}", kodiert(name))).await;
     assert_eq!(s, 200, "{t}");
-    let laeufe: Vec<String> = std::fs::read_to_string(&spur).unwrap().lines().map(String::from).collect();
-    assert_eq!(laeufe, ["--raw --", "--numstat d/x/inner", "-p d/x/inner"], "Dateiliste ohne, Zähler und Patch mit Angabe (letzter Pfad sortiert)");
+    std::fs::read_to_string(&spur).unwrap().lines().map(String::from).collect()
 }
 
 /// AK 8 (N7.8, eigene Variante): die Abkürzung mit Pfadangabe ist kein Beleg — liefert sie keine passenden Zähler bzw.
