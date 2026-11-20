@@ -2,7 +2,7 @@
 // Ausgangslage und Hilfen: commits-hilfen.js (Arbeits-Repository R, Register, Aufgaben #1–#5).
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
-const { kanbanStarten, alsPerson, liveBereit, bereit, breiteSetzen, reiter, thema, kontrastMessen, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, bereit, breiteSetzen, reiter, thema, kontrastMessen, kontrastFarben, kontrastAm, mutanteEinsetzen } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
 const { geteiltesRepository, arbeitsRepositoryBauen, basisAnlegen, ausgangslageVorbereiten } = require('./commits-hilfen');
 
@@ -635,6 +635,22 @@ test.describe('R00205 Ansicht „Commits“', () => {
     }
   }
 
+  for (const breite of [641, 768]) {
+    test(`AK 8: bei ${breite} px ist der Titel an #3 und #4 mindestens 160 px breit (der Rahmen scrollt in sich), die Seite scrollt nicht quer`, async ({ page }) => {
+      for (const nr of [3, 4]) {
+        if (nr === 3) await commitsOeffnen(page, 3); else { await page.keyboard.press('Escape'); await page.locator('.ka[data-id="4"] .id').click(); }
+        await expect(page.locator(ZEILEN)).toHaveCount(8);
+        await breiteSetzen(page, breite);
+        const titel = await page.locator(`${ZEILEN} .cl-c-titel`).evaluateAll(zellen => zellen.filter(z => getComputedStyle(z).display !== 'none' && z.textContent.trim() !== '').map(z => Math.round(z.getBoundingClientRect().width)));
+        expect(titel.length, `#${nr} ${breite}: Zeilen mit Titel`).toBeGreaterThanOrEqual(3);
+        for (const w of titel) expect(w, `#${nr} ${breite}: Breite der Titelspalte`).toBeGreaterThanOrEqual(160);
+        const m = await page.evaluate(ueberlaufMessen);
+        expect(m.seite, `#${nr} ${breite}`).toBe('ok');
+        expect(m.fenster, `#${nr} ${breite}`).toBe('ok');
+      }
+    });
+  }
+
   test('AK 8: bei 1280 px steht die Liste als Tabelle mit sechs Spalten, bei 414 und 320 px je Verweis in vier Reihen (Commit und +/−, Titel, Autor und Datum, Zustand)', async ({ page }) => {
     await breitendatenOeffnen(page);
     const lage = () => page.evaluate(h => {
@@ -758,8 +774,12 @@ test.describe('R00205 Ansicht „Commits“', () => {
     const zuWenig = messungen.filter(m => m.wert < SCHRIFT).map(m => `${wo}: ${m.element} „${String(m.text).slice(0, 30)}“ ${m.wert.toFixed(2)}`);
     // Symbole und Ränder der Zustandsmarken gegen ihren Grund (3:1) und das Wort gegen die Fläche der Marke
     const marken = await page.evaluate(() => [...document.querySelectorAll('#fenster .cl-zs, #fenster .cl-meld')].map(m => {
-      const st = getComputedStyle(m), grund = getComputedStyle(m.closest('.cl-rahmen, .cl-panel') || document.body);
-      return { text: m.textContent.slice(0, 24), rand: st.borderTopColor, flaeche: st.backgroundColor, tinte: st.color, aussen: grund.backgroundColor === 'rgba(0, 0, 0, 0)' ? getComputedStyle(document.getElementById('fenster')).backgroundColor : grund.backgroundColor };
+      const st = getComputedStyle(m);
+      // der erste deckende Grund hinter der Marke (bei den Zeilen der Tabelle die Fläche der Tabelle), nicht der des Rahmens
+      let grund = m.parentElement;
+      while (grund && getComputedStyle(grund).backgroundColor === 'rgba(0, 0, 0, 0)') grund = grund.parentElement;
+      const aussen = grund ? getComputedStyle(grund).backgroundColor : getComputedStyle(document.getElementById('fenster')).backgroundColor;
+      return { text: m.textContent.slice(0, 24), rand: st.borderTopColor, flaeche: st.backgroundColor, tinte: st.color, aussen };
     }));
     for (const m of marken) {
       const rand = await kontrastFarben(page, m.rand, m.aussen);
@@ -776,6 +796,26 @@ test.describe('R00205 Ansicht „Commits“', () => {
       const r = await kontrastPruefen(page, `Liste ${farbe}`);
       expect(r.marken, 'es gibt Marken zu messen').toBeGreaterThanOrEqual(2);
       expect(r.zuWenig).toEqual([]);
+    });
+    test(`AK 9: ${farbe} — an #3 (alle Zustände) hat jeder Rand einer Zustandsmarke mindestens 3:1 gegen die Zeilenfläche, Text 4,5:1`, async ({ page }) => {
+      await commitsOeffnen(page, 3);
+      await expect(page.locator(ZEILEN)).toHaveCount(8);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      const r = await kontrastPruefen(page, `#3 ${farbe}`);
+      expect(r.marken, 'fünf Zustandsmarken (verwaist, fehlt, Repository, Anwendung, unlesbar)').toBe(5);
+      expect(r.zuWenig).toEqual([]);
+    });
+    test(`AK 9: ${farbe} — „+“ und „−“ sind eingefärbt (grün, rot), verschieden und je 4,5:1 gegen die Zeilenfläche`, async ({ page }) => {
+      await commitsOeffnen(page, 3);
+      await expect(page.locator(ZEILEN)).toHaveCount(8);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      const plus = page.locator(`${ZEILEN} .cl-pl`).first(), minus = page.locator(`${ZEILEN} .cl-mi`).first();
+      const [fp, fm, normal] = [await plus.evaluate(e => getComputedStyle(e).color), await minus.evaluate(e => getComputedStyle(e).color), await page.locator(`${ZEILEN} .cl-c-autor`).first().evaluate(e => getComputedStyle(e).color)];
+      expect(fp, '+ und − haben verschiedene Farben').not.toBe(fm);
+      expect(fp, '+ ist eingefärbt').not.toBe(normal);
+      expect(fm, '− ist eingefärbt').not.toBe(normal);
+      expect(await kontrastAm(plus), '+ gegen die Zeilenfläche').toBeGreaterThanOrEqual(SCHRIFT);
+      expect(await kontrastAm(minus), '− gegen die Zeilenfläche').toBeGreaterThanOrEqual(SCHRIFT);
     });
     test(`AK 9: ${farbe} — im Laden und im Fehler hat der Text ebenfalls 4,5:1`, async ({ page }) => {
       let frei; const tor = new Promise(r => { frei = r; });

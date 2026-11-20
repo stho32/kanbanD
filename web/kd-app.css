@@ -1352,6 +1352,10 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .cl-hash{font-family:var(--kd-mono);font-size:12px}
 .cl-c-hash .cl-roh{white-space:normal;overflow-wrap:anywhere}
 .cl-c-titel,.cl-c-autor,.cl-c-zst{min-width:0;overflow-wrap:anywhere}
+/* Zwischen 641 und etwa 850 px bliebe dem Titel sonst kaum Breite (38 px bei 641): Mindestbreite, und der Rahmen scrollt in sich (R00205 FA 8). */
+.cl-c-titel{min-width:16em}
+.cl-pl{color:var(--kd-wbs-ok-ink)}
+.cl-mi{color:var(--kd-wbs-error-ink)}
 .cl-kurz{display:inline-block;margin-left:6px;font-size:11px;color:var(--kd-muted);border:1px dashed var(--kd-line-strong);padding:0 4px}
 .cl-c-autor{width:132px}
 .cl-c-datum{width:122px;white-space:nowrap;font-family:var(--kd-mono);font-size:12px}
@@ -1365,7 +1369,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .cl-tab tr.cl-zw b{font-weight:600;font-size:11px;letter-spacing:.03em;color:var(--kd-muted)}
 .cl-tab .cl-zeilen .cl-br{margin:0 4px 4px 0}
 .cl-zs{display:inline-flex;align-items:center;gap:5px;min-block-size:20px;padding:1px 6px;border:1px solid var(--zl);background:var(--zb);color:var(--zi);font-size:12px;font-weight:500;line-height:1.3;max-width:100%}
-.cl-warn{--zl:var(--kd-wbs-warn);--zb:var(--kd-wbs-warn-bg);--zi:var(--kd-wbs-warn-ink)}
+/* Der Rand der Warnmarke ist dunkler als die Linie der Ampel (hell 2,1–2,5:1 gegen die Zeile): AK 9 verlangt 3:1 */
+.cl-warn{--zl:color-mix(in oklch,var(--kd-wbs-warn) 40%,var(--kd-wbs-warn-ink));--zb:var(--kd-wbs-warn-bg);--zi:var(--kd-wbs-warn-ink)}
 .cl-fehl{--zl:var(--kd-wbs-error);--zb:var(--kd-wbs-error-bg);--zi:var(--kd-wbs-error-ink)}
 .cl-zh{margin:3px 0 0;font-size:11.5px;line-height:1.35;color:var(--kd-muted);overflow-wrap:anywhere}
 .cl-zweige{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
@@ -1396,7 +1401,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .cl-tab tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"hash pm" "titel titel" "autor datum" "zst zst";column-gap:var(--kd-s3);padding:6px var(--kd-s4) 8px;margin-bottom:-1px;border:1px solid var(--kd-line);background:var(--kd-surface)}
   .cl-tab tbody tr>*{display:block;width:auto;padding:0;border:0;background:none!important;min-width:0}
   .cl-c-hash{grid-area:hash}
-  .cl-c-titel{grid-area:titel;padding:2px 0 4px!important}
+  .cl-c-titel{grid-area:titel;padding:2px 0 4px!important;min-width:0}
   .cl-c-autor{grid-area:autor;font-size:12px;color:var(--kd-muted)}
   .cl-c-datum{grid-area:datum;font-size:11.5px;color:var(--kd-muted)}
   .cl-c-pm{grid-area:pm;align-self:center}
