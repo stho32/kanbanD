@@ -2,7 +2,8 @@
 // Ausgangslage und Hilfen: commits-hilfen.js (Arbeits-Repository R, Register, Aufgaben #1–#5).
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
-const { kanbanStarten, alsPerson, liveBereit, bereit, breiteSetzen, reiter, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, bereit, breiteSetzen, reiter, thema, kontrastMessen, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
+const { breiteMessen } = require('./ziele-hilfen');
 const { geteiltesRepository, arbeitsRepositoryBauen, basisAnlegen, ausgangslageVorbereiten } = require('./commits-hilfen');
 
 const AUSLOESER = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
@@ -34,6 +35,42 @@ function zaehlen(page, nr) {
   page.on('request', r => { if (r.method() === 'GET' && new URL(r.url()).pathname === `/api/aufgaben/${nr}/commits`) aufrufe.push(r.headers()); });
   return aufrufe;
 }
+
+
+/** Läuft im Browser: ist der Text im Element mit diesem Selektor wirklich sichtbar? Nicht in .vh, Rechteck größer 0, innerhalb der Zeile,
+ *  ohne Beschnitt, ohne opacity:0, font-size:0, clip-path, visibility:hidden oder display:none an sich oder einem Vorfahren. */
+const SICHTBAR = paare => {
+  const aus = [];
+  for (const [selektor, wort] of paare) {
+    const el = [...document.querySelectorAll(selektor)].find(e => e.textContent.trim() === wort);
+    if (!el) { aus.push(`${wort}: fehlt`); continue; }
+    const zeile = el.closest('tr'), r = el.getBoundingClientRect(), zr = zeile.getBoundingClientRect();
+    // der Text selbst, nicht nur sein Element: ein Textknoten in einem .vh-Kind zählt als versteckt
+    const knoten = []; const lauf = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); for (let t; (t = lauf.nextNode());) if (t.textContent.trim()) knoten.push(t);
+    for (const t of knoten) {
+      if (t.parentElement.closest('.vh')) aus.push(`${wort}: in .vh`);
+      const rg = document.createRange(); rg.selectNodeContents(t);
+      const rt = rg.getBoundingClientRect();
+      if (rt.width <= 0 || rt.height <= 0) aus.push(`${wort}: Text ohne Rechteck`);
+    }
+    if (!knoten.length) aus.push(`${wort}: kein Text`);
+    if (r.width <= 0 || r.height <= 0) aus.push(`${wort}: ohne Rechteck`);
+    if (r.left < zr.left - 0.5 || r.right > zr.right + 0.5 || r.top < zr.top - 0.5 || r.bottom > zr.bottom + 0.5) aus.push(`${wort}: außerhalb der Zeile`);
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      const st = getComputedStyle(n);
+      if (st.opacity === '0') aus.push(`${wort}: opacity 0 an ${n.tagName}`);
+      if (st.fontSize === '0px') aus.push(`${wort}: font-size 0 an ${n.tagName}`);
+      if (st.visibility === 'hidden' || st.display === 'none') aus.push(`${wort}: unsichtbar an ${n.tagName}`);
+      if (st.clipPath !== 'none') aus.push(`${wort}: clip-path an ${n.tagName}`);
+      if (n !== el && st.overflowX !== 'visible' && n.id !== 'fenster') {
+        const nr = n.getBoundingClientRect();
+        if (r.right > nr.right + 0.5 || r.left < nr.left - 0.5) aus.push(`${wort}: beschnitten von ${n.className}`);
+      }
+    }
+  }
+  return aus;
+};
+const ZUSTANDSWOERTER = ['auf keinem Zweig', 'nicht mehr im Repository', 'Repository nicht erreichbar', 'Anwendung unbekannt', 'Eintrag nicht lesbar'].map(w => ['#fenster .cl-zs', w]);
 
 test.describe('R00205 Ansicht „Commits“', () => {
   let k, rep;
@@ -245,31 +282,7 @@ test.describe('R00205 Ansicht „Commits“', () => {
       await commitsOeffnen(page, 3);
       await breiteSetzen(page, breite);
       await expect(page.locator(ZEILEN)).toHaveCount(8);
-      const verstoesse = await page.evaluate(() => {
-        const woerter = ['auf keinem Zweig', 'nicht mehr im Repository', 'Repository nicht erreichbar', 'Anwendung unbekannt', 'Eintrag nicht lesbar'];
-        const aus = [];
-        for (const wort of woerter) {
-          const el = [...document.querySelectorAll('#fenster .cl-zs')].find(e => e.textContent.trim() === wort);
-          if (!el) { aus.push(`${wort}: fehlt`); continue; }
-          const zeile = el.closest('tr'), r = el.getBoundingClientRect(), zr = zeile.getBoundingClientRect();
-          if (el.closest('.vh')) aus.push(`${wort}: in .vh`);
-          if (r.width <= 0 || r.height <= 0) aus.push(`${wort}: ohne Rechteck`);
-          if (r.left < zr.left - 0.5 || r.right > zr.right + 0.5 || r.top < zr.top - 0.5 || r.bottom > zr.bottom + 0.5) aus.push(`${wort}: außerhalb der Zeile`);
-          for (let n = el; n && n !== document.body; n = n.parentElement) {
-            const st = getComputedStyle(n);
-            if (st.opacity === '0') aus.push(`${wort}: opacity 0 an ${n.tagName}`);
-            if (st.fontSize === '0px') aus.push(`${wort}: font-size 0 an ${n.tagName}`);
-            if (st.visibility === 'hidden' || st.display === 'none') aus.push(`${wort}: unsichtbar an ${n.tagName}`);
-            if (st.clipPath !== 'none') aus.push(`${wort}: clip-path an ${n.tagName}`);
-            if (n !== el && st.overflowX !== 'visible' && n.id !== 'fenster') {
-              const nr = n.getBoundingClientRect();
-              if (r.right > nr.right + 0.5 || r.left < nr.left - 0.5) aus.push(`${wort}: beschnitten von ${n.className}`);
-            }
-          }
-        }
-        return aus;
-      });
-      expect(verstoesse).toEqual([]);
+      expect(await page.evaluate(SICHTBAR, ZUSTANDSWOERTER)).toEqual([]);
     });
   }
 
@@ -311,6 +324,17 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(zeileMit(page, kurz(rep.t499)).locator('.cl-kurz')).toHaveCount(0);
     expect(await page.evaluate(() => [...document.querySelectorAll('#fenster .mod-body *')].filter(e => getComputedStyle(e).textOverflow === 'ellipsis').length)).toBe(0);
   });
+
+  for (const breite of [320, 414, 1280]) {
+    test(`AK 4: bei ${breite} px ist die Marke „gekürzt“ sichtbar (nicht in .vh, Rechteck, kein Beschnitt, in der Zeile)`, async ({ page }) => {
+      await commitsOeffnen(page, 4);
+      await breiteSetzen(page, breite);
+      await expect(page.locator(ZEILEN)).toHaveCount(8);
+      expect(await page.locator('#fenster .cl-kurz').count()).toBe(2);
+      expect(await page.evaluate(SICHTBAR, [['#fenster .cl-kurz', 'gekürzt']])).toEqual([]);
+      for (const marke of await page.locator('#fenster .cl-kurz').all()) expect(await marke.evaluate(e => !e.closest('.vh') && e.getClientRects().length > 0)).toBe(true);
+    });
+  }
 
   test('AK 5: Commit Z — drei Namen, „+20 weitere“; zeigen/verbergen mit aria-expanded und Namen; die Listen mit Zahlen und der Satz zum Rest', async ({ page }) => {
     await commitsOeffnen(page, 4);
@@ -532,5 +556,284 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(page.locator(PANEL)).toContainText('Ein Agent hinterlegt sie über die API (POST /api/aufgaben/{nr}/commits); siehe Endpunktliste unter /api.');
     await expect(page.locator(`${PANEL} .cl-kopf h3 .mono`)).toHaveCount(0);
     await expect(page.locator(ZEILEN)).toHaveCount(0);
+  });
+
+  /* ── AK 8 Breite und Ziele, AK 9 Themen, AK 10 Tastatur (Breitendaten aus #4, Lehre aus #204–#206) ── */
+
+  const RAHMEN = `${PANEL} .cl-rahmen`;
+  /** Läuft im Browser: Überlauf von Seite, Fenster und Rahmen (gemessen gegen clientWidth, nie innerWidth) und jedes Element der Ansicht
+   *  mit rechter Kante über clientWidth. */
+  const ueberlaufMessen = () => {
+    const de = document.documentElement, fenster = document.getElementById('fenster'), rahmen = document.querySelector('#fenster .cl-rahmen');
+    const rechts = [...fenster.querySelectorAll('.mod-body *')]
+      .filter(e => !e.closest('.vh') && e.getClientRects().length && e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().right > de.clientWidth + 0.5)
+      .map(e => `${e.tagName.toLowerCase()}.${e.className} rechts ${Math.round(e.getBoundingClientRect().right)} > ${de.clientWidth}`);
+    return {
+      seite: de.scrollWidth <= de.clientWidth ? 'ok' : `${de.scrollWidth} > ${de.clientWidth}`,
+      fenster: fenster.scrollWidth <= fenster.clientWidth ? 'ok' : `${fenster.scrollWidth} > ${fenster.clientWidth}`,
+      rahmen: !rahmen ? 'fehlt' : rahmen.scrollWidth <= rahmen.clientWidth ? 'ok' : `${rahmen.scrollWidth} > ${rahmen.clientWidth}`,
+      rechts: rechts.slice(0, 6),
+    };
+  };
+
+  async function breitendatenOeffnen(page) {
+    await commitsOeffnen(page, 4);
+    await expect(page.locator(ZEILEN)).toHaveCount(8);
+    const z = zeileMit(page, kurz(rep.z));
+    await z.getByRole('button', { name: '20 weitere Zweige zeigen' }).click();
+    await expect(page.locator(`${PANEL} tr.cl-zw`)).toHaveCount(1);
+  }
+
+  for (const farbe of ['hell', 'dunkel']) {
+    for (const breite of [320, 414, 1280]) {
+      test(`AK 8: ${breite} px ${farbe} — Seite, Fenster und Rahmen der Liste scrollen nicht quer, nichts ragt über die rechte Kante (gegen clientWidth)`, async ({ page }) => {
+        await breitendatenOeffnen(page);
+        await thema(page, farbe === 'hell' ? 'light' : 'dark');
+        await breiteSetzen(page, breite);
+        await expect(page.locator(ZEILEN)).toHaveCount(8);
+        expect(await page.evaluate(ueberlaufMessen)).toEqual({ seite: 'ok', fenster: 'ok', rahmen: 'ok', rechts: [] });
+        expect(await breiteMessen(page, `Commits ${breite} ${farbe}`), 'weder Seite noch #main scrollen quer').toEqual([]);
+      });
+    }
+  }
+
+  test('AK 8: bei 1280 px steht die Liste als Tabelle mit sechs Spalten, bei 414 und 320 px je Verweis in vier Reihen (Commit und +/−, Titel, Autor und Datum, Zustand)', async ({ page }) => {
+    await breitendatenOeffnen(page);
+    const lage = () => page.evaluate(h => {
+      const zeile = [...document.querySelectorAll('#fenster tbody tr.cl-z')].find(r => r.querySelector('th .cl-hash').textContent === h);
+      const r = sel => zeile.querySelector(sel).getBoundingClientRect();
+      return { kopf: document.querySelector('#fenster thead').getBoundingClientRect().width, spalten: [...document.querySelectorAll('#fenster thead th')].length, hash: r('.cl-c-hash'), pm: r('.cl-c-pm'), titel: r('.cl-c-titel'), autor: r('.cl-c-autor'), datum: r('.cl-c-datum'), zst: r('.cl-c-zst') };
+    }, kurz(rep.z));
+    await breiteSetzen(page, 1280);
+    const breit = await lage();
+    expect(breit.spalten).toBe(6);
+    expect(breit.kopf, 'die Kopfzeile steht sichtbar').toBeGreaterThan(300);
+    expect(Math.abs(breit.hash.top - breit.titel.top)).toBeLessThanOrEqual(1);
+    expect(breit.titel.left).toBeGreaterThan(breit.hash.left);
+    expect(breit.zst.left).toBeGreaterThan(breit.datum.left);
+    for (const breite of [414, 320]) {
+      await breiteSetzen(page, breite);
+      const l = await lage();
+      expect(l.kopf, `${breite}: Kopfzeile nur für Bedienhilfen (1 px)`).toBeLessThanOrEqual(1);
+      expect(Math.abs(l.hash.top - l.pm.top), `${breite}: Commit und +/− in einer Reihe`).toBeLessThanOrEqual(6);
+      expect(l.titel.top, `${breite}: Titel darunter`).toBeGreaterThanOrEqual(l.hash.bottom - 1);
+      expect(Math.abs(l.autor.top - l.datum.top), `${breite}: Autor und Datum in einer Reihe`).toBeLessThanOrEqual(2);
+      expect(l.autor.top, `${breite}: Autor unter dem Titel`).toBeGreaterThanOrEqual(l.titel.bottom - 1);
+      expect(l.zst.top, `${breite}: Zustand zuletzt`).toBeGreaterThanOrEqual(l.autor.bottom - 1);
+    }
+  });
+
+  for (const breite of [641, 980]) {
+    test(`AK 8: bei ${breite} px scrollt die Seite nicht quer (der Rahmen der Liste darf in sich scrollen)`, async ({ page }) => {
+      await breitendatenOeffnen(page);
+      await breiteSetzen(page, breite);
+      const m = await page.evaluate(ueberlaufMessen);
+      expect(m.seite).toBe('ok');
+      expect(m.fenster).toBe('ok');
+      expect(await breiteMessen(page, `Commits ${breite}`)).toEqual([]);
+    });
+  }
+
+  for (const breite of [320, 414, 1280]) {
+    test(`AK 8: bei ${breite} px sind Titel, Autor, Zweignamen, grund und das lange Wort nie abgeschnitten (letztes Zeichen per Range im Rahmen, kein overflow:hidden, kein line-clamp, das Wort bricht um)`, async ({ page }) => {
+      await breitendatenOeffnen(page);
+      await breiteSetzen(page, breite);
+      const verstoesse = await page.evaluate(([zHash, langHash, unlesbarHash]) => {
+        const aus = [];
+        const rahmen = document.querySelector('#fenster .cl-rahmen'), rr = rahmen.getBoundingClientRect();
+        const zeile = h => [...document.querySelectorAll('#fenster tbody tr.cl-z')].find(r => r.querySelector('th .cl-hash').textContent === h);
+        const letztes = (el, name) => {
+          const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          let n, last = null; while ((n = w.nextNode())) if (n.textContent.trim() && !n.parentElement.closest('.vh')) last = n;
+          if (!last) { aus.push(`${name}: kein Text`); return; }
+          const rg = document.createRange(); rg.setStart(last, last.textContent.length - 1); rg.setEnd(last, last.textContent.length);
+          const rs = [...rg.getClientRects()];
+          if (!rs.length) { aus.push(`${name}: letztes Zeichen ohne Rechteck`); return; }
+          const r = rs.at(-1);
+          if (r.right > rr.right + 0.5 || r.left < rr.left - 0.5 || r.bottom > rr.bottom + 0.5 + rahmen.scrollHeight) aus.push(`${name}: letztes Zeichen außerhalb des Rahmens (${Math.round(r.left)}–${Math.round(r.right)} gegen ${Math.round(rr.left)}–${Math.round(rr.right)})`);
+          for (let a = last.parentElement; a && a.id !== 'fenster'; a = a.parentElement) {
+            const st = getComputedStyle(a);
+            if (['hidden', 'clip'].includes(st.overflowX) || ['hidden', 'clip'].includes(st.overflowY)) aus.push(`${name}: ${a.tagName.toLowerCase()}.${a.className} hat overflow:${st.overflowX}/${st.overflowY}`);
+            if (st.webkitLineClamp && st.webkitLineClamp !== 'none') aus.push(`${name}: line-clamp an ${a.className}`);
+            if (st.textOverflow === 'ellipsis') aus.push(`${name}: text-overflow:ellipsis an ${a.className}`);
+          }
+        };
+        const z = zeile(zHash), l = zeile(langHash), u = zeile(unlesbarHash);
+        letztes(z.querySelector('.cl-c-titel'), 'Titel (600 Zeichen)');
+        letztes(z.querySelector('.cl-c-autor'), 'Autor (45 Zeichen)');
+        for (const chip of document.querySelectorAll('#fenster .cl-zw .cl-br')) letztes(chip.querySelector(':scope > span:not(.vh)'), `Zweig ${chip.textContent.slice(0, 5)}`);
+        for (const chip of z.querySelectorAll('.cl-zweige .cl-br')) letztes(chip.querySelector(':scope > span:not(.vh)'), `Zweig in der Zeile ${chip.textContent.slice(0, 5)}`);
+        letztes(l.querySelector('.cl-zh'), 'grund (200 Zeichen)');
+        letztes(u.querySelector('.cl-hash'), 'Verweis (64 Zeichen ohne Leerzeichen)');
+        letztes(u.querySelector('.cl-zh'), 'grund des unlesbaren Eintrags');
+        // das Wort von 120 Zeichen bricht um: sein Text belegt mehr als eine Zeile (Rechtecke je Zeile zählen, nicht die Höhe des Elements)
+        const titel = z.querySelector('.cl-c-titel').firstChild, start = titel.textContent.indexOf('W'.repeat(120));
+        const rw = document.createRange(); rw.setStart(titel, start); rw.setEnd(titel, start + 120);
+        const zeilen = new Set([...rw.getClientRects()].map(r => Math.round(r.top)));
+        if (zeilen.size < 2) aus.push(`das Wort aus 120 Zeichen steht in ${zeilen.size} Zeile`);
+        return aus;
+      }, [kurz(rep.z), 'lg:' + rep.k1.slice(0, 7), 'kd:' + 'g'.repeat(61)]);
+      expect(verstoesse).toEqual([]);
+    });
+  }
+
+  test.describe('grober Zeiger', () => {
+    test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
+
+    test('AK 8: bei grobem Zeiger ist jedes Bedienziel der Ansicht mindestens 48 × 48 px — „Commits“ im Menü, „+n weitere“, „Neu lesen“, „Erneut versuchen“', async ({ page }) => {
+      await oeffnen(page, 4);
+      await liveBereit(page);
+      expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+      await ausloeser(page).click();
+      await menue(page).waitFor();
+      const maße = loc => loc.evaluate(e => { const r = e.getBoundingClientRect(); return [Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10]; });
+      const eintrag = menue(page).getByRole('menuitemradio', { name: 'Commits', exact: true });
+      expect((await maße(eintrag))[1]).toBeGreaterThanOrEqual(47.5);
+      await eintrag.click();
+      await expect(page.locator(ZEILEN)).toHaveCount(8);
+      for (const ziel of [page.getByRole('button', { name: /weitere Zweige zeigen/ }).first(), page.locator(NEU_LESEN)]) {
+        const [b, h] = await maße(ziel);
+        expect(b, await ziel.innerText()).toBeGreaterThanOrEqual(47.5);
+        expect(h, await ziel.innerText()).toBeGreaterThanOrEqual(47.5);
+      }
+      await page.route('**/api/aufgaben/4/commits', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{"fehler":"x"}' }));
+      await page.locator(NEU_LESEN).click();
+      const erneut = page.getByRole('button', { name: 'Erneut versuchen' });
+      await expect(erneut).toBeVisible();
+      const [b, h] = await maße(erneut);
+      expect(b).toBeGreaterThanOrEqual(47.5);
+      expect(h).toBeGreaterThanOrEqual(47.5);
+    });
+
+    test('AK 8: bei grobem Zeiger und 414 px passt die Liste ohne Quer-Scrollen (isMobile: gemessen gegen clientWidth)', async ({ page }) => {
+      await breitendatenOeffnen(page);
+      expect(await page.evaluate(ueberlaufMessen)).toEqual({ seite: 'ok', fenster: 'ok', rahmen: 'ok', rechts: [] });
+    });
+  });
+
+  /* ── AK 9 Themen ── */
+
+  const SCHRIFT = 4.5, SYMBOL = 3;
+  async function kontrastPruefen(page, wo, mindestens = 20) {
+    const messungen = await kontrastMessen(page, [`${PANEL}`]);
+    expect(messungen.length, `${wo}: es gibt Text zu messen`).toBeGreaterThanOrEqual(mindestens);
+    const zuWenig = messungen.filter(m => m.wert < SCHRIFT).map(m => `${wo}: ${m.element} „${String(m.text).slice(0, 30)}“ ${m.wert.toFixed(2)}`);
+    // Symbole und Ränder der Zustandsmarken gegen ihren Grund (3:1) und das Wort gegen die Fläche der Marke
+    const marken = await page.evaluate(() => [...document.querySelectorAll('#fenster .cl-zs, #fenster .cl-meld')].map(m => {
+      const st = getComputedStyle(m), grund = getComputedStyle(m.closest('.cl-rahmen, .cl-panel') || document.body);
+      return { text: m.textContent.slice(0, 24), rand: st.borderTopColor, flaeche: st.backgroundColor, tinte: st.color, aussen: grund.backgroundColor === 'rgba(0, 0, 0, 0)' ? getComputedStyle(document.getElementById('fenster')).backgroundColor : grund.backgroundColor };
+    }));
+    for (const m of marken) {
+      const rand = await kontrastFarben(page, m.rand, m.aussen);
+      if (rand < SYMBOL) zuWenig.push(`${wo}: Rand der Marke „${m.text}“ ${rand.toFixed(2)}`);
+      const symbol = await kontrastFarben(page, m.tinte, m.flaeche);
+      if (symbol < SYMBOL) zuWenig.push(`${wo}: Symbol der Marke „${m.text}“ ${symbol.toFixed(2)}`);
+    }
+    return { zuWenig, marken: marken.length };
+  }
+  for (const farbe of ['hell', 'dunkel']) {
+    test(`AK 9: ${farbe} — Text mindestens 4,5:1, Symbole und Ränder der Zustandsmarken mindestens 3:1, mit allen Zeilen und aufgeklappter Zweigliste`, async ({ page }) => {
+      await breitendatenOeffnen(page);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      const r = await kontrastPruefen(page, `Liste ${farbe}`);
+      expect(r.marken, 'es gibt Marken zu messen').toBeGreaterThanOrEqual(2);
+      expect(r.zuWenig).toEqual([]);
+    });
+    test(`AK 9: ${farbe} — im Laden und im Fehler hat der Text ebenfalls 4,5:1`, async ({ page }) => {
+      let frei; const tor = new Promise(r => { frei = r; });
+      await page.route('**/api/aufgaben/1/commits', async route => {
+        await tor;
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{"fehler":"x"}' });
+      });
+      await oeffnen(page);
+      await liveBereit(page);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      await reiter(page, 'Commits');
+      await expect(page.locator(`${PANEL} ${STATUS}`)).toHaveText('Liest die Commits aus dem Repository …');
+      expect((await kontrastPruefen(page, `Laden ${farbe}`, 3)).zuWenig).toEqual([]);
+      frei();
+      await expect(page.getByRole('button', { name: 'Erneut versuchen' })).toBeVisible();
+      const r = await kontrastPruefen(page, `Fehler ${farbe}`, 4);
+      expect(r.marken).toBeGreaterThanOrEqual(1);
+      expect(r.zuWenig).toEqual([]);
+    });
+  }
+
+  /* ── AK 10 Tastatur und Bedienhilfe ── */
+
+  test('AK 10: „Commits“ ist im Menü per Pfeile und Enter wählbar; Auslöser und Bereich tragen den Namen „Ansicht: Commits“', async ({ page }) => {
+    await oeffnen(page, 1);
+    await liveBereit(page);
+    await ausloeser(page).focus();
+    await page.keyboard.press('Enter');
+    await menue(page).waitFor();
+    for (const name of ['Zeiten', 'Details', 'Datei', 'Commits']) {
+      await page.keyboard.press('ArrowDown');
+      await expect(menue(page).getByRole('menuitemradio', { name, exact: true })).toBeFocused();
+    }
+    await page.keyboard.press('Enter');
+    await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Commits');
+    await expect(page.getByRole('group', { name: 'Ansicht: Commits' })).toBeVisible();
+    await expect(ausloeser(page)).toBeFocused();
+    await expect(page.locator(ZEILEN)).toHaveCount(5);
+  });
+
+  test('AK 10: Tab erreicht in Dokumentreihenfolge „+n weitere“, den Rahmen der Liste und „Neu lesen“; jeder Fokus ist sichtbar; Enter und Leertaste betätigen „+n weitere“, der Fokus bleibt darauf', async ({ page }) => {
+    await commitsOeffnen(page, 4);
+    await expect(page.locator(ZEILEN)).toHaveCount(8);
+    await ausloeser(page).focus();
+    const reihe = [];
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press('Tab');
+      const stand = await page.evaluate(() => {
+        const e = document.activeElement, st = getComputedStyle(e);
+        return { name: e.getAttribute('aria-label') || e.textContent.trim().slice(0, 30), rolle: e.getAttribute('role'), id: e.id, sichtbar: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0, tag: e.tagName };
+      });
+      reihe.push(stand);
+      if (stand.id === 'commits-neu') break;
+    }
+    const namen = reihe.map(r => r.name);
+    expect(namen.at(-1)).toContain('Neu lesen');
+    const rahmen = reihe.findIndex(r => r.name === 'Commits dieser Aufgabe, ältester zuerst');
+    const mehr = reihe.findIndex(r => /weitere Zweige zeigen/.test(r.name));
+    expect(rahmen, 'der Rahmen der Liste ist per Tab fokussierbar').toBeGreaterThanOrEqual(0);
+    expect(reihe[rahmen].rolle).toBe('group');
+    expect(mehr, '„+n weitere“ ist per Tab erreichbar').toBeGreaterThan(rahmen);
+    expect(mehr).toBeLessThan(reihe.length - 1);
+    for (const r of reihe) expect(r.sichtbar, `Fokus sichtbar an ${r.name}`).toBe(true);
+    // Enter und Leertaste betätigen „+n weitere“, der Fokus bleibt darauf
+    const knopf = zeileMit(page, kurz(rep.z)).getByRole('button', { name: /weitere Zweige/ });
+    await knopf.focus();
+    await page.keyboard.press('Enter');
+    await expect(knopf).toHaveAttribute('aria-expanded', 'true');
+    await expect(knopf).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(knopf).toHaveAttribute('aria-expanded', 'false');
+    await expect(knopf).toBeFocused();
+  });
+
+  test('AK 10: Tabelle mit Spaltenüberschriften (scope=col), der Kurz-Hash ist die Zeilenüberschrift, +/− und entfernte Zweige tragen Lesetext; „Esc“ schließt das Fenster', async ({ page }) => {
+    await commitsOeffnen(page, 1);
+    await expect(page.locator(ZEILEN)).toHaveCount(5);
+    await expect(page.locator(`${PANEL} thead th[scope="col"]`)).toHaveCount(6);
+    await expect(page.locator(`${PANEL} tbody th[scope="row"]`)).toHaveCount(5);
+    await expect(page.getByRole('rowheader', { name: kurz(rep.k3) })).toHaveCount(1);
+    await expect(page.getByRole('columnheader', { name: 'Zustand' })).toHaveCount(1);
+    await expect(zeileMit(page, kurz(rep.k3)).locator('.cl-c-pm .vh')).toHaveText('Zeilen');
+    await expect(zeileMit(page, kurz(rep.r1)).locator('.cl-br .vh')).toHaveText('(entfernt)');
+    await expect(page.getByRole('group', { name: 'Commits dieser Aufgabe, ältester zuerst' })).toHaveAttribute('tabindex', '0');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toHaveCount(0);
+  });
+
+  test('AK 10: der Statusbereich meldet „5 Commits gelesen“ bzw. den Fehler, ohne den Fokus zu bewegen', async ({ page }) => {
+    await commitsOeffnen(page, 1);
+    await expect(page.locator(STATUS)).toHaveText('5 Commits gelesen');
+    await expect(page.locator(STATUS)).toHaveAttribute('role', 'status');
+    await page.locator(NEU_LESEN).focus();
+    await page.route('**/api/aufgaben/1/commits', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{"fehler":"x"}' }));
+    await page.keyboard.press('Enter');
+    await expect(page.locator(STATUS)).toHaveText(/^Die Commits ließen sich nicht lesen:/);
+    await expect(page.locator(NEU_LESEN)).toBeFocused();
   });
 });
