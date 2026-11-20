@@ -1,9 +1,9 @@
 # ADR-0034: kanbanD ohne WBS — das Register nennt das Repository, Phasen werden Spalten, Altbestände öffnen weiter, die Factory stellt zuerst um
 
-**Status**: Vorgeschlagen (2026-11-20) — wartet auf die Produktfragen 1–3 unten (product-owner, Legacy-Review) und auf den neuen Wortlaut der Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ (Betreiber über `/vision fortschreiben`). Ändert bei Annahme ADR-0032 Punkt 2 (Startordner der Wurzel) und ADR-0027 Regel 4 und N5 Punkt 4 (Zweig „mit Phasen“).
+**Status**: Akzeptiert (2026-11-20, Nachtrag N1: Produktfragen 1–3 entschieden, po-entscheidungen Z. 430–433) — zuvor „Vorgeschlagen“. Ändert ADR-0032 Punkt 2 (Startordner der Wurzel) und ADR-0027 Regel 4 und N5 Punkt 4 (Zweig „mit Phasen“). Offen bleibt nur der Wortlaut der Vision-Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ (Betreiber über `/vision fortschreiben`); er ändert keine Regel dieser ADR.
 **Datum**: 2026-11-20
 **Entscheider**: Claude (autonom, architekt, Auftrag Director der Software-Factory)
-**Kontext-Anforderung**: Karte #224 „WBS-Funktionen aus kanbanD entfernen“ (Auftrag des Betreibers 2026-11-20); Anforderungen folgen je Scheibe über den planer. Bezug: Vision ab11f96a, po-entscheidungen Z. 362, 426–429, R00018, R00053–R00062, R00071, R00072, ADR-0027, ADR-0028, ADR-0031, ADR-0032
+**Kontext-Anforderung**: Karte #224 „WBS-Funktionen aus kanbanD entfernen“ (Auftrag des Betreibers 2026-11-20); Scheiben als Karten #225 S1, #226 S4, #224 S2, #227 S3, #228 „Braucht zwischen Karten“ (po-entscheidungen Z. 433); Anforderungen folgen je Karte über den planer. Bezug: Vision ab11f96a, po-entscheidungen Z. 362, 426–429, R00018, R00053–R00062, R00071, R00072, ADR-0027, ADR-0028, ADR-0031, ADR-0032
 **Erprobt durch**: — (keine Probe gebaut; alle Aussagen zum Ist sind am Code belegt, Stand `5efbbaa0`; Bestand gezählt in `~/Projekte/Kanban-Boards/*` am 2026-11-20)
 
 ## Kontext
@@ -83,7 +83,7 @@ Qualitätsziele (Szenarien mit Maß):
 - Legacy-Probe gegen `5efbbaa0`: Kopie eines echten Ordners (JoinPuya: `wbs-effects`, `phases`, `column-phases`, Register mit `wbs`) öffnet; `kd:<hash>`-Zustände gleich; nach `PATCH titel` stehen `wbs-effects`/`phases` semantisch gleich in der Datei; nach `PUT /api/einstellungen` steht `repository` statt `wbs`/`requirements`.
 - `rg -i 'wbs' src web` ergibt nach der letzten Scheibe nur noch den Rückfall in Regel 1 und Kommentare mit Verweis auf diese ADR (Prüfpunkt des architektur-reviewer).
 
-## Offene Produktfragen (an den product-owner)
+## Produktfragen (an den product-owner, entschieden in N1)
 
 1. **Herkunft (`origins`)** — Empfehlung: bleibt als Verweistext an der Karte (Chips, Eingabe, Rückgängig, Schnelleingabe wie heute, Form `[kürzel:]ID` oder `thin air` unverändert geprüft), aber **ohne Auflösung**: kein Name, kein Status, kein Editor-Link, kein `GET /api/herkunft`. Grund: die Factory setzt sie (`karten_aus_wbs.py`), 363 Aufgaben tragen sie, ein Verweis ist kein Lesen der WBS. Alternative: `origins` wird unbekannter Schlüssel (bleibt in der Datei, verschwindet aus Oberfläche und API).
 2. **`Braucht` zwischen Karten** — Empfehlung: „wartet auf“ aus der WBS entfällt mit #224; eine eigene Karte baut `needs: [<nr>]` an der Aufgabe mit „wartet auf #n“ (Vision verspricht es). Alternative: in #224 mitbauen (größere Karte, neue Gestaltung).
@@ -94,6 +94,21 @@ Qualitätsziele (Szenarien mit Maß):
 - [ ] Nach Annahme: Statuszeile von ADR-0032 („Punkt 2 geändert durch ADR-0034“) und ADR-0027 (Phasenzweig entfallen) nachführen — erst nach dem Merge von #214, das ADR-0032 gerade ergänzt.
 - [ ] A00011 Abschnitt Entscheidungen um diese ADR ergänzen (ebenfalls nach #214).
 - [ ] Bausteine nach jeder Scheibe nachführen (Soll → Ist).
+- [ ] Vision-Leitplanke „Board-Repository und Arbeits-Repository sind getrennt“ neu fassen (Vorschlag im Bericht der Inventur, Betreiber).
+
+## Nachträge
+
+### N1 (2026-11-20, Karte #225): Akzeptiert — Produktfragen entschieden, Schnitt in fünf Karten
+
+**Antworten des product-owner** (po-entscheidungen Z. 430–433, bc5f5eaf):
+
+1. **Herkunft** wie empfohlen: `origins` bleibt in der Aufgabe, wird gelesen, geschrieben (Schnelleingabe, API) und als Text angezeigt; die Schreibweise `[<kürzel>:]<id>` bzw. `thin air` bleibt geprüft. `GET /api/herkunft` und der Link in die WBS-Sicht entfallen (Karte #226, S4).
+2. **Braucht**: „wartet auf“ aus der WBS entfällt mit S2 (#224); eigene Karte #228 „Braucht zwischen Karten“ direkt nach S2. Vorgabe **ein Träger**: zuerst prüfen, ob das Label `braucht:<nr>` der Träger wird, bevor ein Feld `needs` entsteht; wird es ein Feld, gehört die Übernahme der Labels in dieselbe Karte.
+3. **Altbestände** wie Regel 2, mit Bedingungen: ein Altbestand öffnet **ohne Fehler und ohne Warnung** im normalen Betrieb; die **Legacy-Probe gegen eine Kopie des JoinPuya-Ordners** (85 `wbs-effects`, 2 `phases`, Boards mit `column-phases`, Register mit `wbs`) gehört zur Abnahme; Board-Schlüssel fallen **nur im Commit einer Aktion weg, die das Board ohnehin schreibt**, nie in einem eigenen Commit.
+
+**Schnitt und Reihenfolge** (Z. 433): #225 S1 Register mit `repository` (braucht #214, ohne Factory-Sperre, weil der Rückfall auf `wbs`/`requirements` die heutige Factory bedient) → #226 S4 Herkunft als Text (braucht #225) → **Sperre**: Factory-Pflege und globale Befehle (Inventur §6) ausgerollt → #224 S2 (braucht #225) → #227 S3 Phasen werden Spalten (braucht #224) → #228 Braucht zwischen Karten (braucht #224).
+
+**S1 und #214** (Startort in `src/git/arbeitsrepo.rs`): S1 ändert nur, **woher der Startordner kommt** (`wurzel_bis`, `:148–153`); #214 ändert dieselbe Datei an anderen Stellen (Befehlsliste, `diff_tree`, Teilausgabe) und ruft `wurzel_bis(board_ordner, anwendung, frist)` unverändert auf. Regel für den Bau: **Signaturen von `wurzel` und `wurzel_bis` bleiben**, die Wahl des Startordners wandert in eine reine Funktion (`repository`, sonst Ordner von `wbs`, sonst `requirements`). Die neuen Tests von #214 schreiben Register mit `wbs:` als Text in `kanbanD.md`; sie laufen über den Rückfall weiter und sind damit zugleich Legacy-Probe. Der Struct `Anwendung` verliert `wbs`/`anforderungen` erst, wenn #214 auf `main` ist — deshalb bleibt `braucht:214` (Reihenfolge, nicht Konfliktgefahr in derselben Zeile).
 
 ## Quellen / Bezüge
 
