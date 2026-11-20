@@ -1218,3 +1218,13 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Die Zeitzone +00:00 erscheint als `Z`.
   - Eine 9-MB-Datei steht in der Liste als `gross` und `nachladen` zugleich.
   - Bei gleichem Blob-Hash trägt `format=patch` den Kopf der anderen Datei.
+| 2026-11-20 | #209 | Entwicklung | entwickler | bestanden | 52 min | B1017–B1024, Gate 1055/1335/2084, 34 Mutanten · claude · Lauf 209-entwickler-1 · 14,49 $ · Karte gesamt 23,35 $ |
+| 2026-11-20 | #209 | Auto-Reviews | rechtschreib-reviewer | bestanden | 2 min | kein Muss, 2 Sollte, 3 Optional · claude · sonnet · Lauf 209-rechtschreib-reviewer-1 · 0,47 $ · Karte gesamt 23,82 $ |
+| 2026-11-20 | #209 | Auto-Reviews | security-reviewer | bestanden | 2 min | kein Muss, 2 Sollte (Zeichenumfang der Marke, Titel/Autor/Zweig), 3 Optional · claude · sonnet · Lauf 209-security-reviewer-1 · 0,42 $ · Karte gesamt 24,24 $ |
+| 2026-11-20 | #209 | Auto-Reviews | code-reviewer | befund | 8 min | 2 Muss: Erneut versuchen mit nacktem Präfix; späte Nachladeantwort nach Wechsel · claude · sonnet · Lauf 209-code-reviewer-1 · 1,05 $ · Karte gesamt 25,29 $ |
+| 2026-11-20 | #214 | Architektur | architekt | bestanden | 14 min | ADR-0032 N6 (408fdc67) · claude · opus · Lauf 214-architekt-1 · 4,79 $ · Karte gesamt 4,79 $ |
+| 2026-11-20 | #214 | Detailplanung | product-owner | bestanden | 2 min | Fragen 1/2, Reihenfolge #224 (5efbbaa0, Z. 426–429) · claude · opus · Lauf 214-product-owner-1 · 0,85 $ · Karte gesamt 5,64 $ |
+| 2026-11-20 | #214 | Detailplanung | planer | bestanden | 8 min | R00208, I0198, B1025–B1029 (8d1ed3e9) · claude · opus · Lauf 214-planer-1 · 2,82 $ · Karte gesamt 8,46 $ |
+| 2026-11-20 | #224 | Architektur | architekt | bestanden | 10 min | Inventur, ADR-0034 vorgeschlagen (c990f17a) · claude · opus · Lauf 224-architekt-1 · 4,50 $ · Karte gesamt 4,50 $ |
+| 2026-11-20 | #209 | Auto-Reviews | ux-reviewer | befund | 29 min | 2 Muss: Fokus auf body beim Start der wartenden Datei; Hover-Kontrast ← #n 1,65:1 · claude · sonnet · Lauf 209-ux-reviewer-3 · 1,54 $ · Karte gesamt 26,83 $ |
+| 2026-11-20 | #224 | Architektur | product-owner | bestanden | 1 min | Fragen 1–4, vier Karten (bc5f5eaf, Z. 430–433) · claude · opus · Lauf 224-product-owner-1 |
