@@ -55,6 +55,11 @@ impl Lage {
 
     /// Ausgangslage, dazu je Aufgabe Labels, von Hand committet.
     fn von_hand(labels: &[(u32, &[&str])]) -> Lage {
+        Lage::mit_dateien(labels, &[])
+    }
+
+    /// Wie `von_hand`, dazu weitere Aufgabendateien (Name, Text) — etwa eine defekte.
+    fn mit_dateien(labels: &[(u32, &[&str])], weitere: &[(&str, &str)]) -> Lage {
         let k = tempfile::tempdir().unwrap();
         let w = k.path();
         std::fs::create_dir_all(w.join("boards")).unwrap();
@@ -64,6 +69,9 @@ impl Lage {
         for (nr, titel, datei) in DATEIEN {
             let eigene: &[&str] = labels.iter().find(|(n, _)| *n == nr).map(|(_, l)| *l).unwrap_or(&[]);
             std::fs::write(w.join("aufgaben").join(datei), aufgabendatei(nr, titel, eigene, nr == 4)).unwrap();
+        }
+        for (datei, text) in weitere {
+            std::fs::write(w.join("aufgaben").join(datei), text).unwrap();
         }
         git(w, &["init", "-q"]);
         git(w, &["add", "-A"]);
@@ -399,4 +407,105 @@ async fn eigen_kreis_gegen_den_stand_nach_dem_ganzen_aufruf_und_beim_anlegen() {
     assert_eq!((antwort.0, fehler(&antwort)), (400, "„Neu“: braucht:2 schlösse einen Kreis: #6 → #2 → #6"), "{}", antwort.1);
     let antwort = stale.labels_setzen(5, &["braucht:2"]).await;
     assert_eq!(antwort.0, 200, "ohne #6 kein Kreis: {}", antwort.1);
+}
+
+#[tokio::test]
+async fn eigen_defekte_datei_zaehlt_als_vorhanden_und_liest_sich_wie_eine_fehlende() {
+    let lage = Lage::mit_dateien(&[], &[("0006-kaputt.md", "---\nid: 6\ntitle: [kaputt\n---\n")]);
+    let (s, a) = lage.labels_setzen(5, &["braucht:6"]).await;
+    assert_eq!(s, 200, "es gibt die Datei: {a}");
+    assert_eq!(lage.braucht(5).await, json!([{"nummer": 6, "titel": null, "erledigt": false}]));
+    assert_eq!(lage.liste("wartet=ja").await, Ok(vec![5]));
+}
+
+// ---- AK 14: Legacy-Probe gegen Kopien der Bestände (von Hand, B1090) ---------------------------------------------------
+
+/// Das Programm mit eigenem Mitschnitt von stderr („im Log steht keine Fehler- oder Warnzeile“).
+struct Instanz {
+    kind: std::process::Child,
+    adresse: String,
+    log: std::path::PathBuf,
+}
+
+impl Drop for Instanz {
+    fn drop(&mut self) {
+        gemeinsam::geordnet_beenden(&mut self.kind);
+    }
+}
+
+impl Instanz {
+    fn starten(board: &Path, log: std::path::PathBuf) -> Instanz {
+        use std::io::BufRead;
+        let mut kind = std::process::Command::new(env!("CARGO_BIN_EXE_kanbanD"))
+            .arg(board)
+            .args(["--kein-browser", "--host", "127.0.0.1", "--port", "0"])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::from(std::fs::File::create(&log).unwrap()))
+            .spawn()
+            .expect("kanbanD startet");
+        let mut zeile = String::new();
+        std::io::BufReader::new(kind.stdout.take().unwrap()).read_line(&mut zeile).unwrap();
+        let adresse = zeile.split_whitespace().last().expect("Adresse in der Startzeile").to_string();
+        Instanz { kind, adresse, log }
+    }
+
+    /// Zeilen des Logs, die nach Fehler oder Warnung aussehen; ausgenommen die erschöpften inotify-Instanzen des Rechners.
+    fn auffaellige_zeilen(&self) -> Vec<String> {
+        let auffaellig = |z: &str| ["fehler", "warn", "error", "defekt", "nicht beobachtet"].iter().any(|w| z.to_lowercase().contains(w));
+        let rechnergrenze = |z: &str| z.contains("nicht beobachtet (Too many open files (os error 24))");
+        std::fs::read_to_string(&self.log).unwrap_or_default().lines().filter(|z| auffaellig(z) && !rechnergrenze(z)).map(String::from).collect()
+    }
+}
+
+/// Alle versionierten Dateien mit Inhalt, sortiert — die Gleichheit ersetzt die SHA-256-Summe über `git ls-files`.
+fn dateien(ordner: &Path) -> Vec<(String, Vec<u8>)> {
+    let mut alle: Vec<_> = git(ordner, &["ls-files"]).lines().map(|p| (p.to_string(), std::fs::read(ordner.join(p)).unwrap())).collect();
+    alle.sort();
+    alle
+}
+
+/// Die Nummer eines Labels der Form `braucht:<Zahl>` (ohne Groß/Klein, ohne führende Null) — unabhängig vom Programm gezählt.
+fn bestandsnummer(label: &str) -> Option<u64> {
+    let (praefix, zahl) = label.split_at_checked(8)?;
+    let form = praefix.eq_ignore_ascii_case("braucht:") && !zahl.is_empty() && !zahl.starts_with('0') && zahl.bytes().all(|b| b.is_ascii_digit());
+    form.then(|| zahl.parse().ok()).flatten()
+}
+
+/// `R00214_KOPIEN` = Kopien der Board-Ordner, durch `:` getrennt (werden gelesen, nie beschrieben).
+#[tokio::test]
+#[ignore = "Legacy-Probe von Hand: braucht Kopien der Board-Ordner (R00214_KOPIEN)"]
+async fn ak14_legacy_probe_kopien_der_bestaende() {
+    let kopien = std::env::var("R00214_KOPIEN").expect("R00214_KOPIEN fehlt");
+    let (mut dateien_mit, mut labels_gesamt) = (0, 0);
+    for kopie in kopien.split(':').map(std::path::PathBuf::from) {
+        let name = kopie.file_name().unwrap().to_string_lossy().to_string();
+        let (zahl, vorher) = (git(&kopie, &["rev-list", "--count", "HEAD"]), dateien(&kopie));
+        let lauf = Instanz::starten(&kopie, kopie.parent().unwrap().join(format!("log-{name}.txt")));
+        let (s, liste) = get(&lauf.adresse, "api/aufgaben?archivierte=ja").await;
+        assert_eq!(s, 200, "{name}");
+        let (mut mit, mut eintraege) = (0, 0);
+        for a in liste["aufgaben"].as_array().unwrap() {
+            let mut erwartet: Vec<u64> = vec![];
+            for n in a["labels"].as_array().unwrap().iter().filter_map(|l| bestandsnummer(l.as_str().unwrap())) {
+                if !erwartet.contains(&n) {
+                    erwartet.push(n);
+                }
+            }
+            let gedeutet: Vec<u64> = a["braucht"].as_array().unwrap_or_else(|| panic!("{name} #{}: braucht fehlt", a["nummer"])).iter().map(|b| b["nummer"].as_u64().unwrap()).collect();
+            assert_eq!(gedeutet, erwartet, "{name} #{}", a["nummer"]);
+            if !gedeutet.is_empty() {
+                mit += 1;
+                eintraege += gedeutet.len();
+            }
+        }
+        let (s, wartend) = get(&lauf.adresse, "api/aufgaben?wartet=ja&archivierte=ja").await;
+        assert_eq!(s, 200, "{name}: wartet=ja");
+        assert_eq!(git(&kopie, &["rev-list", "--count", "HEAD"]), zahl, "{name}: kein Commit");
+        assert_eq!(dateien(&kopie), vorher, "{name}: alle Dateien bytegleich");
+        assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new(), "{name}");
+        println!("{name}: {mit} Aufgaben mit braucht, {eintraege} Einträge, davon wartend {} Aufgaben", wartend["aufgaben"].as_array().unwrap().len());
+        dateien_mit += mit;
+        labels_gesamt += eintraege;
+    }
+    println!("gesamt: {dateien_mit} Aufgaben, {labels_gesamt} Einträge in braucht");
 }
