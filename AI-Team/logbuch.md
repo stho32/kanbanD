@@ -1353,3 +1353,27 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #215 | Auto-Reviews | security-reviewer | bestanden | 6 min | kein Muss/Sollte, 3 Optional · claude · sonnet · Lauf 215-security-reviewer-1 · 0,85 $ · Karte gesamt 28,10 $ |
 | 2026-11-20 | #215 | Auto-Reviews | ux-reviewer | bestanden | 14 min | kein Muss; Sollte (0) bei Netzabbruch, Altlast R00207 · claude · sonnet · Lauf 215-ux-reviewer-3 · 1,25 $ · Karte gesamt 29,35 $ |
 | 2026-11-20 | #215 | Auto-Reviews | product-owner | bestanden | 0 min | Z. 448–450 (b1dfecfa) · claude · opus · Lauf 215-product-owner-4 |
+| 2026-11-20 | #215 | Auto-Reviews | planer | bestanden | 1 min | R00210 AK 11–15 (6f7c0e62), B1070–B1073 · claude · opus · Lauf 215-planer-4 |
+| 2026-11-20 | #215 | Entwicklung | entwickler | bestanden | 49 min | Nacharbeit 1 B1070–B1073, 16 Mutanten, Gate grün bis 2 Last-Wackler · claude · Lauf 215-entwickler-2 |
+| 2026-11-20 | #215 | Auto-Reviews | code-reviewer | bestanden | 9 min | Wiederholung: M1 zu, Sollte erledigt · claude · sonnet · Lauf 215-code-reviewer-2 |
+| 2026-11-20 | #215 | Entwicklertest | entwicklertester | bestanden | 14 min | US-1..US-9 erfüllt, keine Befunde · claude · sonnet · Lauf 215-entwicklertester-1 · 1,30 $ · Karte gesamt 30,65 $ |
+
+**Retrospektive #215** (Scheibe B3: Review-Seite „Alle Änderungen“ mit Umschalter, 2026-11-20, 30,65 $ gemessen, ausgeliefert 858a9a42)
+- **Gut:**
+  - Opus baute B3 in 1 h mit 37 E2E- und 41 Node-Tests und tötete 37 Mutanten.
+  - Die Lehren aus #209 wirkten: Lauf-Kennung mit AbortController, Tests zählen Anfragen statt nur das Endbild, Fokus nie `body`, Leseposition ≤ 1 px. UX, Security und Rechtschreibung bestanden ohne Muss.
+  - Der Entwicklertest im echten Programm fand nichts.
+- **Muss aus dem Code-Review:** „Erneut versuchen“ während einer `datei=`-Anfrage zeigte ein leeres Kürzel.
+  - Ursache: Zwei Wege berechneten denselben Zustandswert getrennt (`wartetAuf`).
+  - Behoben mit einer benannten Funktion je Wert (`wartetAufVon`). Im Zustand stehen rohe Werte, `esc` kommt nur an der Senke.
+  - Eine Nacharbeit, 49 min.
+- **Lehre (Mutanten über Adresse):** Die ersten vier „überlebenden“ Mutanten des Code-Reviews waren ungültig (Pfad `/app.js` statt `/web/app.js`). Ein Mutant gilt erst, wenn ein Gegentest belegt, dass er greift.
+- **Lehre (Wortlaut leerer Werte):** Ein leeres Kürzel braucht einen Namen („Standardanwendung“, PO Z. 448). Sonst entstehen Sätze mit doppeltem Leerzeichen.
+- **Gate:** `ak08_antwortbudget` und `ak20b_viele_die_nicht_lesen` waren unter Last 6–16 rot und einzeln grün; Rust ist unverändert. Sie stehen auf Karte #231.
+- **Neue Karten:**
+  - #231: Wackler unter Last.
+  - #232: Grund bei 404 „Repository fehlt“ in Worten (Entwicklertest).
+- **Sollte ohne Karte:**
+  - Gedämpftes „Ein Commit“ mit `aria-describedby`.
+  - Abweichungen vom Artboard (Folge-Marke rechts, Hinweise ohne Überschrift).
+  - `null` und `''` in `wartetText` getrennt behandeln.
