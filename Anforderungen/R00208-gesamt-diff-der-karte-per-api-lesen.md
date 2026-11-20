@@ -1,6 +1,6 @@
 ---
 id: R00208
-status: Neu
+status: Erledigt
 datum: 2026-11-20
 ---
 
@@ -85,34 +85,34 @@ Ein Reviewer-Agent will wissen, was eine Karte als Ganzes geändert hat, nicht n
 
 ### Nie fremd
 
-- [ ] **AK 1 Folge, netto und verwaister Zwilling (Abnahme-Probe der Karte):**
+- [x] **AK 1 Folge, netto und verwaister Zwilling (Abnahme-Probe der Karte):**
   - `GET /api/aufgaben/2/diff` ergibt 200 wie im Beispiel-Aufruf: `a.txt` ist ein Folge-Eintrag mit den Schritten `kd:<K1>` und `kd:<K2>` (je `plus 1`, `minus 1`), `plus 2`, `minus 2`; `k.txt` ist netto (`status A`, `plus 3`); `f.txt` fehlt; `spanne` ist `{basis <A0>, letzter <K2>}`; `hinweise` ist `[{art "fremd_dazwischen", commits 1, dateien 1}]`. Die Probe „nie fremd“ ist erfüllt (JSON und `format=patch`).
   - Ohne fremden Commit: `GET /api/aufgaben/3/diff?format=patch` ist **bytegleich** zu `git diff --full-index -M50% -l1000 --submodule=short <L1>^ <L2>` in R; das JSON hat nur Netto-Einträge, `spanne {basis <L1^>, letzter <L2>}` und `hinweise []`.
   - Trägt #2 zusätzlich `kd:<K1'>` (derselbe Inhalt wie K1, vor einem Rebase entstanden, auf keinem Zweig: `verwaist` wie V1 in R00204), sind `spanne`, `commits` und `dateien` unverändert, und `hinweise` endet mit `{art "verwaist", verweis "kd:<K1'>"}`.
-- [ ] **AK 2 Umbenennung über einen fremden Commit:** Gegeben #4 mit **R1** (Zeile 1 von `r.txt` wird `R1`), fremd **FR** (Zeile 5 wird `FREMD-R`), **R2** (benennt `r.txt` in `s.txt` um und ändert Zeile 10), an #4 `kd:<R1>`, `kd:<R2>`. Dann stehen `r.txt` und `s.txt` nur in Folge-Einträgen (kein Netto-Eintrag mit `s.txt`), die Probe „nie fremd“ ist erfüllt, und der Schritt R2 trägt die Umbenennung (`status R`, `alt "r.txt"`, `neu "s.txt"`). Der Mutant „Pfadangabe des Netto-Laufs nur Netto-Pfade“ (ADR-0032 N6 Durchsetzung 2) macht einen benannten Test rot; die Commit-Nachricht nennt ihn.
-- [ ] **AK 3 Merges:**
+- [x] **AK 2 Umbenennung über einen fremden Commit:** Gegeben #4 mit **R1** (Zeile 1 von `r.txt` wird `R1`), fremd **FR** (Zeile 5 wird `FREMD-R`), **R2** (benennt `r.txt` in `s.txt` um und ändert Zeile 10), an #4 `kd:<R1>`, `kd:<R2>`. Dann stehen `r.txt` und `s.txt` nur in Folge-Einträgen (kein Netto-Eintrag mit `s.txt`), die Probe „nie fremd“ ist erfüllt, und der Schritt R2 trägt die Umbenennung (`status R`, `alt "r.txt"`, `neu "s.txt"`). Der Mutant „Pfadangabe des Netto-Laufs nur Netto-Pfade“ (ADR-0032 N6 Durchsetzung 2) macht einen benannten Test rot; die Commit-Nachricht nennt ihn.
+- [x] **AK 3 Merges:**
   - **Fremder Merge in der Spanne:** Gegeben #5 mit **M1** (ändert Zeile 1 von `m.txt`, 20 Zeilen), danach auf `main` mit `--no-ff` gemergt ein Seitenzweig, der Zeile 10 von `m.txt` zu `FREMD-M` macht (Merge **MF**, nicht an der Karte), danach **M2** (ändert Zeile 20). Dann ist `m.txt` ein Folge-Eintrag mit den Schritten M1 und M2, `fremd_dazwischen {commits 1, dateien 1}`, und die Probe „nie fremd“ ist erfüllt. Der Mutant „Merge ohne Elternzeile im Namenslauf“ (N6 Durchsetzung 3) macht einen benannten Test rot; die Commit-Nachricht nennt ihn.
   - **Merge an der Karte (PO Z. 427):** Gegeben #6 mit **N1** (ändert `n.txt`), danach auf `main` mit `--no-ff` gemergt ein Seitenzweig, der `y.txt` mit der Zeile `FREMD-Y` anlegt (Merge **MK**), danach **N2** (ändert `n.txt`); an #6 `kd:<N1>`, `kd:<MK>`, `kd:<N2>`. Dann nennt `commits` nur N1 und N2, `hinweise` enthält `{art "merge_ausgelassen", verweis "kd:<MK>"}`, `y.txt` steht nirgends in der Antwort, und die Probe „nie fremd“ ist erfüllt. `GET /api/aufgaben/6/diff?commit=kd:<MK>` ergibt weiter 200 mit `y.txt` (R00206 unverändert).
-- [ ] **AK 4 Ganz als Folge, nie netto:**
+- [x] **AK 4 Ganz als Folge, nie netto:**
   - **Nicht linear:** Gegeben #7 mit **P1** auf `main` und **P2** auf dem Zweig `seite`, der vor P1 abzweigt und nicht gemergt ist: `hinweise` beginnt mit `{art "ganz_als_folge", grund "nicht_linear"}`, `spanne` ist `null`, jede Datei von P1 und P2 ist ein Folge-Eintrag, es gibt keinen Netto-Eintrag.
   - **Zu viele fremde:** Gegeben #8 mit **Q1**, danach genau **1.001** fremde Commits, danach **Q2**: `grund "fremd_zu_viele"`, kein Netto-Eintrag. Mit genau **1.000** fremden Commits dazwischen: kein `ganz_als_folge`, `spanne` gesetzt.
   - **Namenslauf abgeschnitten:** Gegeben #2 und `GRENZE_NAMEN` über einen internen Parameter auf 100 Byte verkleinert: `grund "fremd_zu_gross"`, `a.txt` **und** `k.txt` sind Folge-Einträge, kein Netto-Eintrag, und die Probe „nie fremd“ ist erfüllt.
 
 ### Antwort und Aufwand
 
-- [ ] **AK 5 Prozesse und `ETag`:**
+- [x] **AK 5 Prozesse und `ETag`:**
   - Gegeben Karten mit 1, 10 und 30 Kartencommits, je in zwei Formen — linear ohne fremde Commits (alles netto) und abwechselnd mit fremden Commits auf denselben Dateien (Folge) —, und vor jeder Anfrage ein Zweig in R bewegt (kalt). Dann startet jede Anfrage **höchstens 15** Git-Prozesse (Zähler der Git-Aufrufe), und je Form ist die Zahl bei 10 und bei 30 Commits gleich. Rechenbeispiel der Obergrenze: 3 (Wurzel, Typ, Metadaten) + 3 (Zustand kalt) + 2 (letzter, Spanne) + 1 (Namen) + 3 (Netto) + 3 (Folge) = 15.
   - Dieselbe Anfrage mit `If-None-Match` ihres `ETag` → 304 ohne Rumpf nach genau **2** Git-Prozessen. Nach einem neuen Commit auf einem beliebigen Zweig von R (`nebenbei`) → 200 mit anderem `ETag`; ein anderer Wert von `anwendung`, `datei` oder `format` → 200.
   - Wird `main` in einer Kopie der Ausgangslage auf K1 zurückgesetzt (K2 wird `verwaist`), ergibt die Anfrage mit dem alten `ETag` 200 (kein 304): `commits` nennt nur K1, und `hinweise` enthält `{art "verwaist", verweis "kd:<K2>"}`.
-- [ ] **AK 6 Antwortform, Anwendungen, ersetzt „ohne `commit` 400“:**
+- [x] **AK 6 Antwortform, Anwendungen, ersetzt „ohne `commit` 400“:**
   - `GET /api/aufgaben/2/diff` ohne `commit` ergibt 200 (nicht mehr 400 wie in R00206 FA 11 und AK 3); die Felder je Eintrag in `commits` gleichen denen von `GET /api/aufgaben/2/commits` ohne Zustand und Zweige; `dateien` steht nach dem Namen in Bytefolge.
   - Ist eine zweite Anwendung `zw` im Register auf ein Repository R2 eingetragen und trägt #2 zusätzlich `zw:<Z1>` (nach den `kd`-Verweisen), gilt ohne `anwendung` weiter `kd`, und `hinweise` enthält `{art "weitere_anwendungen", anwendungen ["zw"]}`; mit `anwendung=zw` kommt `anwendung "zw"` mit der Datei von Z1.
   - `anwendung=xx` (kein Verweis dieser Anwendung) und eine Karte ohne Verweise → 404 `{fehler}`; `anwendung=kd&commit=kd:<K1>` → 400. Stehen an #2 von Hand ein gelöschter Commit, ein Verweis auf eine nicht registrierte Anwendung und ein mehrdeutiger Kurz-Hash, bleibt die Antwort 200 mit denselben `dateien`, und `hinweise` nennt die drei als `ausgelassen` mit `zustand` `fehlt`, `anwendung_unbekannt` und `unlesbar`.
   - Endpunktliste, OpenAPI und README „Für Agenten“ (Abschnitt „Alle Änderungen der Karte lesen“ mit dem Beispiel-Aufruf) beschreiben den Gesamt-Diff mit Parametern, Folge-Einträgen, Arten von `hinweise` und Statuscodes; die Vertragstests zählen keine neue Route.
-- [ ] **AK 7 `datei=` und `format=patch`:**
+- [x] **AK 7 `datei=` und `format=patch`:**
   - An #2: `datei=k.txt` ergibt genau den Netto-Eintrag aus AK 1; `datei=a.txt` genau den Folge-Eintrag mit beiden Schritten und ihren Patches. `datei=f.txt` (nur F hat sie berührt), `datei=*` und `datei=../a.txt` ergeben 404 `{fehler}`, und die Git-Spur zeigt keinen Lauf mit diesem Text als Pfadangabe.
   - `GET /api/aufgaben/2/diff?format=patch` ergibt 200, `Content-Type: text/x-diff; charset=utf-8`, `nosniff`; die erste Zeile ist `# kanbanD: fremd_dazwischen …`; vor den Patches von `a.txt` stehen `# kanbanD: Folge a.txt — Schritt 1 von 2, Commit kd:<K1>` und `… Schritt 2 von 2, Commit kd:<K2>`; `k.txt` steht als Patch von Git da.
-- [ ] **AK 8 Grenzen und Antwortbudget wie A3:**
+- [x] **AK 8 Grenzen und Antwortbudget wie A3:**
   - **Kappe:** Eine Karte, deren einziger Commit 2.001 Dateien anlegt, liefert 2.000 Einträge und `{art "dateien_gekappt", gezeigt 2000, gesamt 2001}`.
   - **4 MB zusammen:** Gegeben #9 mit **S1** (25 neue Dateien zu je 2.000 Zeilen aus 99 `a` wie R00206 AK 8, dazu `t.txt`), fremd **FS** (ändert `t.txt`), **S2** (ändert `t.txt`). Dann haben die ersten 20 Netto-Dateien einen `patch`, die Dateien 21 bis 25 sind `nachladen`, beide Schritte von `t.txt` sind `nachladen` ohne `patch` (kein Rest), und die Git-Spur zeigt keinen Patch-Lauf für die Folge. `datei=t.txt` liefert beide Schritte mit `patch`.
   - **Gesamtgrenze:** Mit einem Git-Skript, das jeden Aufruf 4 s hält, antwortet der Gesamt-Diff nach spätestens 15 s mit 503 `{fehler}`, ohne Teilantwort, und danach läuft kein Git-Prozess mehr.
@@ -120,11 +120,11 @@ Ein Reviewer-Agent will wissen, was eine Karte als Ganzes geändert hat, nicht n
 
 ### Sicherheit und Last
 
-- [ ] **AK 9 Feindliche Konfiguration und nur lesend:**
+- [x] **AK 9 Feindliche Konfiguration und nur lesend:**
   - Mit Konfiguration, Attributen und Umgebung wie in R00206 AK 16 (a) (jede auf ein Skript, das eine Marke anlegt) und den Einstellungen aus R00206 AK 16 (b), dazu `diff.renames=false` und `diff.renameLimit=1`, sind die Antworten von AK 1 und AK 2 (JSON und `format=patch`) **bytegleich** zu denen im sauberen Repository, und **keine** Marke entsteht.
   - `anwendung=--output=x`, `datei=--output=x` und `datei=$(touch x)` ergeben 400 oder 404 mit `fehler`; danach liegt weder in R noch im Board-Ordner eine Datei `x`.
   - Nach allen Anfragen dieser Anforderung sind `git count-objects -v` und `git status --porcelain` in R unverändert, es gibt keine `index.lock`, die Commit-Zahl des Board-Ordners ist gleich und die Dateien der Karten sind bytegleich. Die Befehlszeilen von `merge-base --independent` und `diff-tree --stdin` laufen gegen echtes Git mit Ausstiegscode 0; der Fitness-Test „Git nur an drei Orten“ (R00204) bleibt grün.
-- [ ] **AK 10 Lastprobe und `GRENZE_NAMEN` (Hypothese, wird gemessen):** Gegeben ein Wegwerf-Repository mit rund 20.000 Commits (Erzeuger aus B0998) und eine Karte mit 30 Kartencommits, gestreut zwischen 1.000 Commits (S3 aus ADR-0032 N6 „Belegt“): 20 kalte Läufe (vor jedem ein Zweig bewegt), gemessen am Client bis zum letzten Byte, im 95. Perzentil (19. von 20) **unter 500 ms** bei Rechnerlast unter 2. Gemessen werden auch die Bytes des Namenslaufs für eine Spanne mit genau 1.000 fremden Commits; sie liegen unter `GRENZE_NAMEN` (sonst griffe `fremd_zu_gross` vor `fremd_zu_viele`). Beide Werte stehen in der Commit-Nachricht. Die Schwellen ändert niemand; werden sie verfehlt, meldet der entwickler `anforderung_falsch` mit den Messwerten.
+- [x] **AK 10 Lastprobe und `GRENZE_NAMEN` (Hypothese, wird gemessen):** Gegeben ein Wegwerf-Repository mit rund 20.000 Commits (Erzeuger aus B0998) und eine Karte mit 30 Kartencommits, gestreut zwischen 1.000 Commits (S3 aus ADR-0032 N6 „Belegt“): 20 kalte Läufe (vor jedem ein Zweig bewegt), gemessen am Client bis zum letzten Byte, im 95. Perzentil (19. von 20) **unter 500 ms** bei Rechnerlast unter 2. Gemessen werden auch die Bytes des Namenslaufs für eine Spanne mit genau 1.000 fremden Commits; sie liegen unter `GRENZE_NAMEN` (sonst griffe `fremd_zu_gross` vor `fremd_zu_viele`). Beide Werte stehen in der Commit-Nachricht. Die Schwellen ändert niemand; werden sie verfehlt, meldet der entwickler `anforderung_falsch` mit den Messwerten.
 
 ## Betroffene Verzeichnisstruktur
 

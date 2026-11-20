@@ -370,7 +370,7 @@ async fn statische_dateien_antworten_wie_vor_dem_fix() {
     assert_eq!((kaputt.status, kaputt.art.as_str(), kaputt.text.as_str()), (400, "text/plain; charset=utf-8", "Invalid URL: Invalid UTF-8 in `name`"));
 }
 
-// AK 15: die Beschreibung nennt an jeder Route die Pfadparameter der Schablone und an sechs Routen die Abfrageparameter (seit R00206 mit dem Diff)
+// AK 15: die Beschreibung nennt an jeder Route die Pfadparameter der Schablone und an sechs Routen die Abfrageparameter (seit R00206 mit dem Diff, seit R00208 mit anwendung)
 #[tokio::test]
 async fn die_beschreibung_nennt_jeden_pfad_und_abfrageparameter() {
     let (_tmp, lauf) = grundbestand();
@@ -393,7 +393,7 @@ async fn die_beschreibung_nennt_jeden_pfad_und_abfrageparameter() {
     assert_eq!(mit_pfad, MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect::<BTreeSet<_>>(), "die 64 Routen der Tabelle");
     assert_eq!(abfragen, [
         "get /api/aufgaben: board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte",
-        "get /api/aufgaben/{nr}/diff: commit, datei, format",
+        "get /api/aufgaben/{nr}/diff: commit, anwendung, datei, format",
         "get /api/berichte/bewegungen: board",
         "get /api/berichte/verlauf: board",
         "get /api/boards: archivierte",
