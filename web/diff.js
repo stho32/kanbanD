@@ -355,7 +355,7 @@
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
-  Object.assign(ziel, { kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);
