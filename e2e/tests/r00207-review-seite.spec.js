@@ -324,4 +324,76 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page.locator('#rv-d20 table.dz').first()).toBeVisible();
     expect([z.commits.length, z.diff.length, z.datei.length]).toEqual(anfragen);
   });
+  /* ── AK 5 Nachladen in Reihe und „wartet“ ── */
+
+  async function nachladenVorbereiten(page) {
+    const z = zaehlen(page);
+    const h = await halten(page, url => url.pathname === '/api/aufgaben/9/diff' && url.searchParams.has('datei'));
+    await page.goto(reviewAdresse(k, 9, `kd:${rep.f}`));
+    await expect(page.locator('#rv-d20')).toContainText('Diese Datei war nicht in der ersten Antwort, weil die Antwort zu groß wurde. Sie wird einzeln geladen.');
+    return { z, h };
+  }
+
+  for (const [fall, erste] of [['fertig', undefined], ['mit 503', { status: 503, body: { fehler: 'Git antwortete nicht innerhalb von 10 s' } }]]) {
+    test(`AK 5: zwei „Nachladen“ — eine Anfrage zur Zeit, die zweite wartet ohne Knopf und startet, wenn die erste ${fall} ist`, async ({ page }) => {
+      const { z, h } = await nachladenVorbereiten(page);
+      await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+      await expect(page.locator('#rv-d20 .df-laedt')).toHaveText('Lädt die Änderungen …');
+      await expect(page.locator('#rv-d20')).toHaveAttribute('aria-busy', 'true');
+      await expect(page.locator('#rv-dk20')).toBeFocused();
+      await page.locator('#rv-d21').getByRole('button', { name: 'Nachladen' }).click();
+      const wartet = page.locator('#rv-d21 .df-wartet');
+      await expect(wartet).toHaveText('Wartet, bis die andere Datei geladen ist …');
+      await expect(wartet).toHaveAttribute('role', 'status');
+      await expect(wartet.locator('svg.i')).toHaveCount(1);
+      await expect(page.locator('#rv-d21 .df-inhalt button')).toHaveCount(0);
+      await expect(page.locator('#rv-dk21')).toBeFocused();
+      expect(z.datei.length).toBe(1);
+      h.frei(0, erste);
+      await expect(page.locator('#rv-d21 .df-laedt')).toHaveText('Lädt die Änderungen …');
+      expect(z.datei.length).toBe(2);
+      if (erste) {
+        const fehler = page.locator('#rv-d20 .df-hin.fehl');
+        await expect(fehler).toContainText('Zeitgrenze überschritten. Die Änderungen dieser Datei konnten nicht geladen werden (503).');
+        await expect(fehler).toHaveAttribute('role', 'alert');
+        await expect(page.locator('#rv-d20 table.dz')).toHaveCount(0);
+        await expect(fehler.getByRole('button', { name: 'Erneut versuchen' })).toBeVisible();
+      } else {
+        await expect(page.locator('#rv-d20 table.dz').first()).toBeVisible();
+      }
+      h.frei(1);
+      await expect(page.locator('#rv-d21 table.dz').first()).toBeVisible();
+      expect(z.datei.length).toBe(2);
+      expect(new URL(z.datei[1]).searchParams.get('datei')).toBe('f22.txt');
+    });
+  }
+
+  test('AK 5: die gross-Datei lädt mit „Änderungen anzeigen“ einzeln und steht danach ganz gezeichnet (3.001 Zeilen und Kopf)', async ({ page }) => {
+    const { z, h } = await nachladenVorbereiten(page);
+    const gross = page.locator('#rv-d25');
+    await expect(gross).toContainText('Der Patch ist groß (3.001 Zeilen) und wird erst auf Wunsch geladen.');
+    await gross.getByRole('button', { name: 'Änderungen anzeigen' }).click();
+    await expect(gross.locator('.df-laedt')).toBeVisible();
+    h.frei(0);
+    await expect(gross.locator('table.dz')).toHaveCount(7);
+    expect(await gross.locator('tr').count()).toBe(3002);
+    expect(new URL(z.datei[0]).searchParams.get('datei')).toBe('gross.txt');
+    expect(new URL(z.datei[0]).searchParams.get('commit')).toBe(`kd:${rep.f}`);
+  });
+
+  test('AK 5: Antwort mit zu_gross_zum_anzeigen → „Zu groß zum Anzeigen. Es stehen nur die Zahlen: +3.001 −0.“ ohne Knopf', async ({ page }) => {
+    await page.route(url => url.pathname === '/api/aufgaben/9/diff' && url.searchParams.get('datei') === 'gross.txt', async route => {
+      const antwort = await route.fetch();
+      const json = await antwort.json();
+      json.dateien = json.dateien.map(d => ({ ...d, gross: true, patch: undefined }));
+      json.hinweise = [{ art: 'zu_gross_zum_anzeigen', datei: 'gross.txt' }];
+      await route.fulfill({ response: antwort, json });
+    });
+    await page.goto(reviewAdresse(k, 9, `kd:${rep.f}`));
+    const gross = page.locator('#rv-d25');
+    await gross.getByRole('button', { name: 'Änderungen anzeigen' }).click();
+    await expect(gross).toContainText('Zu groß zum Anzeigen. Es stehen nur die Zahlen: +3.001 −0.');
+    await expect(gross.locator('.df-inhalt button')).toHaveCount(0);
+    await expect(page.locator('#rv-dk25')).toBeFocused();
+  });
 });
