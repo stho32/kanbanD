@@ -1,6 +1,6 @@
 # ADR-0033: Review-Seite eines Commits — Adresse hinter `/aufgabe/<nr>/review?commit=`, Diff als stehende Insel, gestaffeltes Zeichnen, Nachladen einzeln und ohne Selbstwiederholung
 
-**Status**: Akzeptiert (Punkte 1–8); Punkt 9 „Knopf ‚Alle Änderungen ansehen‘ bis B3“ Vorgeschlagen bis zur Antwort des product-owner
+**Status**: Akzeptiert (Punkte 1–9; Punkt 9 entschieden vom product-owner am 2026-11-20, po-entscheidungen Z. 411, mit der Bedingung „Blättern“)
 **Datum**: 2026-11-20
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #209, Lauf 209-architekt-1)
 **Kontext-Anforderung**: — (Karte #209, nach Feinschnitt nur Scheibe B2 „Diff-Ansicht eines Commits“; die Anforderung schreibt der planer). Bezug: ADR-0007, ADR-0014, ADR-0029, ADR-0030, ADR-0032 (Punkte 6 und 8, N4, N5 auf `karte/213`), R00205 (B1), R00206 (A3), Artboard D0009 `#diff-fenster`, `#diff-raender`
@@ -54,7 +54,7 @@
    - Hash und Zeile in der Liste aus B1 sind echte `<a href>`. Ein einfacher Linksklick ohne Umschalt- und Steuertaste läuft über `act`, schreibt `history.pushState` mit der Marke `AUS_DER_ANSICHT_GEOEFFNET` und lädt. Mittelklick und „In neuem Tab öffnen“ bleiben Links.
    - „Zurück zur Liste“: mit Marke `history.back()`, ohne Marke (Link, Lesezeichen) `replaceState` auf die Adresse des Fensters. So stapelt nichts, wie in ADR-0029 N1.
    - Der Wechsel zum vorigen oder nächsten Commit („3 von 4“) **ersetzt** den Eintrag, wie der Wechsel der Aufgabe in ADR-0029 Regel 2.
-   - Gezählt und geblättert wird über die Einträge von `GET …/commits` mit Diff (`auf_zweig`, `verwaist`), in der Reihenfolge der API. Die übrigen Einträge zählen nicht mit.
+   - Gezählt und geblättert wird über die Einträge von `GET …/commits` mit Diff (`auf_zweig`, `verwaist`), in der Reihenfolge der API. Die übrigen Einträge zählen nicht mit. Ränder nach Punkt 9 (a)–(d).
 3. **Laden**:
    - Beim Öffnen der Seite (Adresse neu) laufen zwei Anfragen parallel: `GET …/commits` (Navigation, Band „verwaist“, Zweig) und `GET …/diff?commit=`. Der Titel kommt aus `/api/aufgaben`, das `laden` ohnehin liest.
    - Es gilt nur die neueste Antwort (ADR-0014). Der Schlüssel ist Aufgabe + voller Hash. Eine Antwort für einen inzwischen verlassenen Commit wird verworfen.
@@ -81,7 +81,9 @@
    - Zerlegt wird der Patch nur an `\n` (nicht an `\r`, U+2028, U+0085, R00206 AK 18). Die Zeilennummern kommen aus den `@@ -a,b +c,d @@`-Köpfen. `\ No newline at end of file` ist eine Hinweiszeile ohne Nummer.
    - **Unsichtbares wird sichtbar, nicht entfernt**: Bidi-Steuerzeichen (U+202A–202E, U+2066–2069) erscheinen in Pfaden und Patch-Zeilen als Marke (z. B. `⟨U+202E⟩`). Steuerzeichen außer Tab und ein `\r` am Zeilenende erscheinen als Bildzeichen (U+2400 + Code, `␍`). Grund: im Review ist ein verstecktes Bidi-Zeichen genau der Angriff („Trojan Source“), Entfernen verbärge ihn. B1 entfernt sie in Zweignamen weiter, das bleibt.
    - Lange Zeilen (bis 256 KB in einer Zeile) laufen je Datei quer (Artboard), sie werden nie umgebrochen oder gekürzt.
-9. **Knopf „Alle Änderungen ansehen“ bis B3** (Vorgeschlagen, Entscheidung beim product-owner): Er führt in B2 auf `…/review` und damit nach Punkt 1 auf den ersten Commit mit Diff, mit „1 von n“. Der Umschalter „Alle Änderungen | Ein Commit“ steht in B2 **nicht** auf der Seite, denn ohne B3 hätte er kein Ziel. B3 ändert nur, was `…/review` zeigt. Der Knopf und seine Adresse bleiben.
+9. **Knopf „Alle Änderungen ansehen“ bis B3** (Akzeptiert, product-owner 2026-11-20, po-entscheidungen Z. 411): Er führt in B2 auf `…/review` und damit nach Punkt 1 auf den ersten Commit mit Diff, mit „1 von n“. Der Knopftext bleibt wie gezeichnet. Der Umschalter „Alle Änderungen | Ein Commit“ steht in B2 **nicht** auf der Seite, denn ohne B3 hätte er kein Ziel. B3 ändert nur, was `…/review` zeigt. Der Knopf und seine Adresse bleiben.
+   - **Bedingung des PO: Blättern.** Die Seite geht von Commit zu Commit (vor und zurück, „2 von n“), und jeder Commit ist auch über `?commit=` erreichbar. So ist jede Änderung der Karte erreichbar. Das deckt Punkt 2: dieselbe Folge und dieselbe Zählung (Einträge mit Diff in der Reihenfolge der API), „Erster Commit mit Diff“ in Punkt 1 ist ihr erstes Glied, und jeder Schritt ersetzt den Verlaufseintrag.
+   - **Lücken geschlossen**: (a) Die Stelle „i“ wird über den **vollen Hash** aus der Diff-Antwort in der Liste gesucht, nie über den Text der Adresse. So zählt auch ein getippter Kurz-Präfix richtig. (b) Steht der Commit der Adresse nicht unter den Einträgen mit Diff (Liste und Diff sind zwei Anfragen, N4.2), zeigt die Seite den Diff ohne „i von n“ und mit „zum ersten Commit“. (c) Hat die Karte keinen Commit mit Diff, ersetzt `…/review` die Adresse nicht. Die Seite sagt „Keine Änderungen zu zeigen“, nennt die Zustände der Einträge und führt zurück zur Liste, statt leer zu bleiben. (d) „vor“ fehlt am letzten Commit, „zurück“ am ersten. Es gibt keinen Umlauf und keinen toten Knopf.
 
 ## Konsequenzen
 
@@ -106,7 +108,7 @@
 
 **Folgeentscheidungen / Aufgaben:**
 - [ ] gestalter: Zustand 503 „Antwortbudget“ (Seite und Datei) und die Hinweiszeile `dateien_gekappt` nachzeichnen; „über 20 MB“ und „380 KB“ aus den Rändern nehmen; Umschalter „Alle Änderungen | Ein Commit“ in B2 weglassen; Marke für Bidi- und Steuerzeichen.
-- [ ] product-owner: Punkt 9.
+- [x] product-owner: Punkt 9 (2026-11-20, mit Bedingung „Blättern“).
 - [ ] B3 (#215): `…/review` ohne `commit` zeigt den Gesamt-Diff; der Umschalter kommt dazu.
 - [ ] B4 (#216): die Hervorhebung zeichnet in dieselben Blöcke zu 500 Zeilen; Prism tokenisiert je Hunk-Seite (ADR-0032 Punkt 10). Das Zeichenbudget nach Punkt 5 wird mit Farbe neu gemessen.
 
