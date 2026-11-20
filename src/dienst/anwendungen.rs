@@ -1,10 +1,15 @@
 use super::Kanban;
-use super::herkunft::absolut;
 use crate::fehler::Fehler;
 use crate::modell::{Einstellungen, Klasse, Person, Quellen, Signal};
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Absolut bleibt absolut; relativ gilt zum kanbanD-Ordner.
+pub(super) fn absolut(wurzel: &Path, pfad: &str) -> PathBuf {
+    let p = wurzel.join(pfad);
+    p.canonicalize().unwrap_or(p)
+}
 
 #[derive(Debug, Serialize, PartialEq, Eq, utoipa::ToSchema)]
 pub struct Erreichbar {

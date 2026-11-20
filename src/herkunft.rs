@@ -1,4 +1,4 @@
-//! Liest WBS und Anforderungen, auf die Aufgaben zeigen — rein, ohne Dateizugriff.
+//! Liest die Knotentabelle einer WBS-Datei — rein, ohne Dateizugriff (bleibt bis S2, #224; mit der Herkunft hat sie nichts mehr zu tun).
 
 use crate::wbs::{WbsKnoten, WbsTabelle};
 use crate::wbs_datei::inhalte as zellen;
@@ -48,15 +48,6 @@ pub fn wbs_tabelle(text: &str) -> WbsTabelle {
     WbsTabelle::aus(knoten)
 }
 
-/// Name einer Anforderung aus ihrer ersten Überschrift (`# R00014: Timer` → `Timer`).
-pub fn anforderungsname(text: &str) -> String {
-    let h = text.lines().find_map(|z| z.strip_prefix("# ")).unwrap_or_default().trim();
-    match h.split_once(": ") {
-        Some((id, rest)) if id.starts_with('R') => rest.to_string(),
-        _ => h.to_string(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,12 +83,5 @@ mod tests {
         let k = &t.alle()[0];
         assert_eq!((k.eingabe_ausgabe.as_str(), k.status.as_str()), ("Spalte | Archiv → x", "gruen"));
         assert_eq!(zellen("| a \\| b | c \\|"), vec!["a | b", "c |"]);
-    }
-
-    #[test]
-    fn name_der_anforderung() {
-        assert_eq!(anforderungsname("---\nid: R00014\n---\n\n# R00014: Timer starten\n"), "Timer starten");
-        assert_eq!(anforderungsname("# Nur Titel"), "Nur Titel");
-        assert_eq!(anforderungsname(""), "");
     }
 }

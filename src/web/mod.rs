@@ -92,7 +92,6 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(personen, person_anlegen))
         .routes(routes!(person_aendern, person_stilllegen))
         .routes(routes!(aufgaben, aufgabe_anlegen))
-        .routes(routes!(herkunft))
         .routes(routes!(anwendungen))
         .routes(routes!(wbs))
         .routes(routes!(wbs_knoten_anlegen))
@@ -1448,18 +1447,6 @@ async fn archivieren(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>)
 )]
 async fn zurueckholen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.zurueckholen(p, nr)).await
-}
-
-#[utoipa::path(
-    get,
-    path = "/api/herkunft",
-    tag = "Aufgaben",
-    description = "WBS-Knoten und Anforderungen der verwendeten Herkunft, je Schreibweise mit anwendung und schluessel",
-    responses((status = 200, description = "Erfolg", body = std::collections::BTreeMap<String, crate::dienst::Quelle>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn herkunft(State(app): State<App>) -> Result<Response, Fehler> {
-    let q = blockierend(&app, |k| k.herkunft()).await?;
-    Ok(Json(q).into_response())
 }
 
 #[utoipa::path(

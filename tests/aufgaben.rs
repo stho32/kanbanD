@@ -56,7 +56,7 @@ async fn defekte_einstellungen_lassen_lesen_zu_und_sperren_schreiben() {
     gemeinsam::mit_drei_aufgaben(tmp.path());
     std::fs::write(tmp.path().join("kanbanD.md"), "---\npeople: [\n---\n").unwrap();
     let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
-    for pfad in ["api/herkunft", "api/berichte/zeiten.csv", "api/aufgaben", "api/boards", "api/zustand"] {
+    for pfad in ["api/berichte/zeiten.csv", "api/aufgaben", "api/boards", "api/zustand"] {
         assert_eq!(reqwest::get(format!("{}{pfad}", lauf.adresse)).await.unwrap().status(), 200, "{pfad}");
     }
     let (s, f) = gemeinsam::senden(reqwest::Method::POST, &lauf.adresse, "api/aufgaben", "st", serde_json::json!({"titel": "x"})).await;

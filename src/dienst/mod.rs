@@ -26,7 +26,6 @@ mod einrichten;
 mod einstellungen;
 mod erledigen;
 mod fieber;
-mod herkunft;
 mod klassen;
 mod kommentare;
 mod kosteneintraege;
@@ -61,7 +60,6 @@ pub use kosteneintraege::{HOECHSTZAHL_KOSTENEINTRAEGE, Kosteneintragsangaben};
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use board_verwalten::BoardVerwalten;
 pub use einrichten::{Einrichtung, NeuePerson};
-pub use herkunft::Quelle;
 pub use erledigen::{Erledigt, Erledigung, Erledigungsergebnis};
 pub use einstellungen::{PALETTE, PersonAenderung, Personenangabe, farbe_gueltig};
 

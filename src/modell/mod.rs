@@ -11,7 +11,7 @@ mod einstellungen;
 mod kosten;
 mod kosteneintrag;
 
-pub use anwendungen::{Anwendungen, Aufloesung, Herkunftsschluessel, id_gueltig};
+pub use anwendungen::{Anwendungen, Herkunftsschluessel, id_gueltig};
 pub use aufgabe::{Aktion, Aufgabe, Ausfuehrung, Aufgabenaenderung, Berichtszaehlung, Dublette, Durchlauf, Ergebnis, Fremdschluessel, GESCHAETZTE_MINUTEN_MAX, GESCHAETZT_MELDUNG, Kommentar, OHNE_HERKUNFT, Phasenaenderung, Phasenangaben, RESERVIERUNG_MINUTEN, Reservierung, Schluesseltreffer, Teilaufgabe, Wirkung, Zeiteintrag, Zaehlungsaenderung, doppelte_schluessel, geschaetzte_minuten_pruefen, herkunft_gueltig, instanz_gueltig, signal_unbekannt};
 pub use commit_diff::{Diffdatei, Fassung, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_DATEI, GRENZE_PATCH_LAUF, GRENZE_ZEILEN, GRENZEN_VERSION, Hinweis, KAPPE_DATEIEN, PFAD_HOECHSTENS, Rohdatei, Verteilung, datei as diffdatei, dateiliste, hunks, lauf_der_liste, patch_text, getroffen, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, stuecke, zahlen_lesen, zahlen_mit_pfaden};
 pub(crate) use commit_diff::zitiert;

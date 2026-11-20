@@ -1,5 +1,5 @@
 use super::Kanban;
-use super::herkunft::absolut;
+use super::anwendungen::absolut;
 use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
 use crate::waechter::FremdeWbs;

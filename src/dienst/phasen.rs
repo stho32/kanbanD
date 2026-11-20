@@ -1,5 +1,5 @@
 use super::{Kanban, Schritt};
-use super::herkunft::absolut;
+use super::anwendungen::absolut;
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Art, Board, Person};
