@@ -185,7 +185,7 @@ GET /api/aufgaben/1/diff?commit=kd:<X1>
 
 ### Alle Änderungen der Karte lesen
 
-`GET /api/aufgaben/{nr}/diff` **ohne** `commit` liefert den Gesamt-Diff der Karte für eine Anwendung: je Datei **netto** (ein Diff von der Basis — dem ersten Elternteil des ältesten Kartencommits — bis zum letzten), wo kein fremder Commit dazwischen dieselbe Datei berührt, sonst als **Folge** der Kartenschritte. Nie steht eine geänderte Zeile eines fremden Commits darin. Beispiel (Karte #2: K1, fremd F, K2):
+`GET /api/aufgaben/{nr}/diff` **ohne** `commit` liefert den Gesamt-Diff der Karte für eine Anwendung: je Datei **netto** (ein Diff von der Basis — dem ersten Elternteil des ältesten Kartencommits — bis zum letzten), wo kein fremder Commit dazwischen dieselbe Datei berührt, sonst als **Folge** der Kartenschritte. Nie steht eine geänderte Zeile eines fremden Commits darin — außer der Kartenschritt löscht oder schreibt sie selbst um (dann zeigt sie schon sein Diff je Commit). Benennt ein Kartenschritt eine Datei um, gehören beide Namen zusammen: berührt ein fremder Commit einen davon, stehen beide als Folge. Beispiel (Karte #2: K1, fremd F, K2):
 
 ```
 GET /api/aufgaben/2/diff
@@ -206,7 +206,7 @@ GET /api/aufgaben/2/diff
 - `anwendung=<kürzel>` wählt die Anwendung (leer = Standardanwendung); ohne gilt die erste in der Reihenfolge der Verweise, die übrigen nennt `weitere_anwendungen`.
 - **`hinweise`** in dieser Reihenfolge: `ganz_als_folge {grund: nicht_linear | fremd_zu_viele | fremd_zu_gross}` (dann ist `spanne` null und alles Folge), `fremd_dazwischen {commits, dateien}`, `weitere_anwendungen {anwendungen}`, `verwaist {verweis}`, `merge_ausgelassen {verweis}` (Merges an der Karte fallen heraus und bleiben über `?commit=` lesbar), `ausgelassen {verweis, zustand}`, dann `dateien_gekappt` und `zu_gross_zum_anzeigen` wie beim Diff je Commit.
 - `&datei=<pfad>` liefert genau diesen Eintrag (bei einer Folge alle Schritte, bis 8 MB Patch); der Pfad muss in einem Kartencommit stehen, sonst 404. `&format=patch` liefert Text: je Hinweis eine Zeile `# kanbanD: <art> …`, vor jedem Schritt `# kanbanD: Folge <pfad> — Schritt i von n, Commit <verweis>`; ohne Hinweise und Folge ist er bytegleich zu `git diff --full-index -M50% -l1000 --submodule=short <basis> <letzter>`.
-- Grenzen und Antwortbudget wie beim Diff je Commit (4 MB Patch für Netto und Folge zusammen); `ETag` gilt, solange sich kein Zweig im Repository bewegt. Keine Verweise dieser Anwendung → 404; `anwendung` zusammen mit `commit` → 400.
+- Grenzen und Antwortbudget wie beim Diff je Commit (4 MB Patch für Netto und Folge zusammen). Sind die Namen der Kartencommits länger als 4 MB (etwa 40.000 Dateien), zeigt eine Spanne ohne fremden Commit nur die Netto-Einträge bis zur Kappe; sonst bleibt `dateien` leer, und `dateien_gekappt` nennt als `gesamt` die Dateien der Kartencommits zusammen (Obergrenze) — die Dateien dann über `?commit=` je Commit laden; `ETag` gilt, solange sich kein Zweig im Repository bewegt. Keine Verweise dieser Anwendung → 404; `anwendung` zusammen mit `commit` → 400.
 
 ## Tests
 
