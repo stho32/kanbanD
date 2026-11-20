@@ -208,5 +208,5 @@
     return `<div class="mod-main cl-panel">${commitsKopfHtml(anzahl)}${inhaltHtml(c, esc)}${commitsFussHtml({ stand: c.stand, laedt: c.status === 'laedt' })}</div>`;
   }
 
-  Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml, symbol });
+  Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml });
 })(typeof module !== 'undefined' ? module.exports : window);

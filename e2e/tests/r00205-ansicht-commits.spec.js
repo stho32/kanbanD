@@ -836,4 +836,27 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(page.locator(STATUS)).toHaveText(/^Die Commits ließen sich nicht lesen:/);
     await expect(page.locator(NEU_LESEN)).toBeFocused();
   });
+
+  /* ── Abnahme-Probe der Karte #212 (Feinschnitt B1), wörtlich ── */
+
+  test('Abnahme-Probe: eine Aufgabe mit zwei Verweisen zeigt zwei Zeilen; ein verwaister Commit „auf keinem Zweig“, ein Commit auf karte/7 mit dem Namen des Zweigs; fehlend steht als „nicht mehr im Repository“', async ({ page }) => {
+    const { gitAls } = require('./commits-hilfen');
+    const basis = basisAnlegen();
+    const eigenes = arbeitsRepositoryBauen(basis);
+    try {
+      await k.stoppen();
+      k = await kanbanStarten(ausgangslageVorbereiten(eigenes, basis));
+      gitAls(eigenes.r, 'Ada Autorin', '2026-03-12T09:00:00+00:00', 'branch', 'karte/7', eigenes.k4);
+      expect((await page.request.post(k.adresse + 'api/aufgaben/2/commits', { headers: AGENT, data: { commits: [`kd:${eigenes.k4}`, `kd:${eigenes.v1}`] } })).ok()).toBe(true);
+      await commitsOeffnen(page, 2);
+      await expect(page.locator(ZEILEN)).toHaveCount(2);
+      await expect(page.locator(`${PANEL} .cl-kopf h3`)).toHaveText('COMMITS 2');
+      await expect(zeileMit(page, kurz(eigenes.k4)).locator('.cl-br > span:not(.vh)')).toContainText(['karte/7']);
+      await expect(zeileMit(page, kurz(eigenes.v1)).locator('.cl-zs')).toHaveText('auf keinem Zweig');
+      // ein fehlender Commit: V2 aus #3 (aus R gelöscht) steht sichtbar als „nicht mehr im Repository“
+      await page.keyboard.press('Escape');
+      await page.locator('.ka[data-id="3"] .id').click();
+      await expect(zeileMit(page, kurz(eigenes.v2)).locator('.cl-zs')).toHaveText('nicht mehr im Repository');
+    } finally { fs.rmSync(basis, { recursive: true, force: true }); }
+  });
 });

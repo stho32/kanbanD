@@ -862,3 +862,9 @@ Nie vom User erfragen.
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1002 Route GET …/commits, Gesamtgrenze, Beschreibung, Akzeptanztests | Standard | 1-2h | 0,7h | 0,7h | autonom |
 | 2026-11-19 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | B1003 Lastprobe, Legacy-Probe, Mutanten, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,9h | 0,9h | autonom |
 | 2026-11-20 | Karte #211 R00204 (Commit-Liste einer Karte per API lesen) | Nacharbeit 1: Muss B1, Security Muss 1–3, zwei Sollte, Abnahmen, Gate | Standard | 1-2h | 1,0h | 1,0h | autonom |
+| 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1004 Menüeintrag „Commits“ nur bei Verweisen, Rückfall auf „Inhalt“ | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1005 Zeilenwerte rechnen, rein | Standard | 1-2h | 0,1h | 0,1h | autonom |
+| 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1006 Liste zeichnen: Tabelle, schmale Zeilen, Zustände, Zweigklappe, Fuß | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1007 Lesen: Laden, Liste, Fehler und leer, „Neu lesen“, Stand | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1008 Breite, Ziele, Themen und Tastatur messen | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1009 Probe im echten Programm, Mutationen, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
