@@ -313,6 +313,48 @@ async fn ak07_start_und_lesen_schreiben_nichts() {
     assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new());
 }
 
+/// Legacy S2 (Review #225): ein echtes Altregister, geschrieben vom Programm vor der Karte (main 202c743b: Einrichten mit
+/// Quellen, dann `PUT /api/einstellungen` mit zwei Anwendungen in alter Form), öffnet ohne Commit, bytegleich, ohne Warnung.
+#[tokio::test]
+async fn altregister_von_202c743b_oeffnet_ohne_commit_und_bytegleich() {
+    let l = Lage::neu();
+    let alt = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/altbestaende/main-202c743b/kanbanD-register-wbs.md")).unwrap();
+    std::fs::write(l.k.join("kanbanD.md"), &alt).unwrap();
+    l.committen();
+    let zahl = l.commits_zahl();
+    let lauf = l.starten();
+    assert_eq!(lesen(lauf.adresse(), "api/zustand").await["defekte"], json!([]));
+    let e = lesen(lauf.adresse(), "api/einstellungen").await;
+    assert_eq!(e["quellen"]["repository"], "plan");
+    assert_eq!((&anwendung(&e, "kd")["repository"], &anwendung(&e, "nr")["repository"]), (&json!("/srv/app/Dokumentation/Planung"), &json!("../app/Requirements")));
+    let a = lesen(lauf.adresse(), "api/anwendungen").await;
+    assert_eq!((&a["nr"]["wbs"], &a["kd"]["erreichbar"]["repository"]), (&json!(""), &json!(false)));
+    lesen(lauf.adresse(), "api/aufgaben/1/commits").await;
+    assert_eq!(l.commits_zahl(), zahl, "kein Commit");
+    assert_eq!(std::fs::read(l.k.join("kanbanD.md")).unwrap(), alt, "bytegleich");
+    assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new());
+}
+
+/// Code S1 (Review #225): eine Personenaktion mit Änderung an einem Altregister schreibt das Register in neuer Form mit
+/// (`repository` ergänzt, `wbs` bleibt) — in genau einem Commit; ohne Änderung entsteht keiner.
+#[tokio::test]
+async fn personenaktion_mit_aenderung_schreibt_repository_mit_ein_commit() {
+    let l = Lage::neu();
+    l.register(&format!("kd: {{name: kanbanD, wbs: {}, requirements: {}}}", l.wbs(), l.anf()));
+    l.committen();
+    let lauf = l.starten();
+    let zahl: u32 = l.commits_zahl().parse().unwrap();
+    let (s, _) = gemeinsam::senden(reqwest::Method::PATCH, lauf.adresse(), "api/personen/entw1", "sh", json!({"name": "Entwickler"})).await;
+    assert_eq!(s, 200);
+    assert_eq!(l.commits_zahl(), zahl.to_string(), "ohne Änderung kein Commit");
+    assert!(!l.datei().contains("repository:"), "Altform bleibt ohne Änderung stehen");
+    let (s, _) = gemeinsam::senden(reqwest::Method::PATCH, lauf.adresse(), "api/personen/entw1", "sh", json!({"name": "Entwicklerin"})).await;
+    assert_eq!(s, 200);
+    assert_eq!(l.commits_zahl(), (zahl + 1).to_string(), "genau ein Commit");
+    assert_eq!(zeile_von(&l.datei(), "kd").trim(), format!("kd: {{name: kanbanD, repository: {}/Dokumentation/Planung, wbs: {}, requirements: {}}}", l.r.display(), l.wbs(), l.anf()));
+    assert!(l.datei().contains("entw1: {name: Entwicklerin, kind: agent}"));
+}
+
 // ---- AK 10 (API-Teil): Quellen mit Repository ------------------------------------------------------------------------
 
 #[tokio::test]

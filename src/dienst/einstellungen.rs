@@ -158,12 +158,15 @@ fn normalisieren(neu: &mut Einstellungen) {
     neu.repository_ergaenzen();
 }
 
-/// Was mit einem Register in alter Form geschieht, wenn sich sonst nichts ändert (ADR-0034 N2 Regel 2): `PUT
-/// /api/einstellungen` stellt es um (das ergänzte `repository` ist die eine Änderung beim ersten Mal, R00209 AK 9),
-/// eine Aktion an einer Person lässt es stehen (ohne Änderung kein Commit, R00091).
+/// Ob das ergänzte `repository` allein schon eine Änderung ist (ADR-0034 N2 Regel 2): `PUT /api/einstellungen` stellt ein
+/// Register in alter Form um, auch wenn sonst nichts geändert ist (die eine Änderung beim ersten Mal, R00209 AK 9). Eine
+/// Aktion an einer Person committet ohne eigene Änderung nichts und lässt die alte Form dann stehen (R00091); ändert sie
+/// etwas, schreibt sie das Register wie jeder Schreibweg in neuer Form mit, im selben Commit.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Altform {
+    /// das ergänzte `repository` zählt als Änderung (PUT)
     Umstellen,
+    /// nur eine eigene Änderung zählt; ohne sie bleibt die alte Form stehen (Personenaktionen)
     Stehenlassen,
 }
 
