@@ -1,6 +1,6 @@
 # ADR-0032: Commit-Verweise an der Karte — Schlüssel `commits` mit `<kürzel>:<voller Hash>`, Diff live und nur lesend aus dem Arbeits-Repository des Registers, Gesamt-Diff dateiweise ohne fremde Änderungen
 
-**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen; Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung; Nachtrag N3 (2026-11-19) Akzeptiert (Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3); Nachtrag N4 (2026-11-19) Akzeptiert (Diff eines Commits: Gesamtgrenze, Zulassung, Zählweise, Lauf mit Teilausgabe, `hinweise`, Befehl `diff-tree`; Kappe der Dateizahl und p95 < 500 ms nur Hypothese bis B1014); Nachtrag N5 (2026-11-20) Akzeptiert (Antwortbudget 64 MB, Schreibfrist 60 s, `GRENZE_EINZELN` 8 MB, Zuordnung über Blob-Hashes, Berichtigung N4 „Belegt“ zu `--ext-diff`, Submodule in `metadaten`); Nachtrag N6 (2026-11-20) Akzeptiert (Gesamt-Diff: Basis, Spanne, netto/Folge je Datei, Merges, Antwortform mit Summen, höchstens 15 Git-Prozesse, `datei=`, `format=patch`, `ETag`; p95 < 500 ms und `GRENZE_NAMEN` Hypothese bis zur Lastprobe der Karte #214)
+**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen; Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 Vorgeschlagen; Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung; Nachtrag N3 (2026-11-19) Akzeptiert (Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3); Nachtrag N4 (2026-11-19) Akzeptiert (Diff eines Commits: Gesamtgrenze, Zulassung, Zählweise, Lauf mit Teilausgabe, `hinweise`, Befehl `diff-tree`; Kappe der Dateizahl und p95 < 500 ms nur Hypothese bis B1014); Nachtrag N5 (2026-11-20) Akzeptiert (Antwortbudget 64 MB, Schreibfrist 60 s, `GRENZE_EINZELN` 8 MB, Zuordnung über Blob-Hashes, Berichtigung N4 „Belegt“ zu `--ext-diff`, Submodule in `metadaten`); Nachtrag N6 (2026-11-20) Akzeptiert (Gesamt-Diff: Basis, Spanne, netto/Folge je Datei, Merges, Antwortform mit Summen, höchstens 15 Git-Prozesse, `datei=`, `format=patch`, `ETag`; p95 < 500 ms und `GRENZE_NAMEN` Hypothese bis zur Lastprobe der Karte #214; belegt p95 298 ms vor N7); Nachtrag N7 (2026-11-20) Akzeptiert (Gruppen über Umbenennungen der Karte, abgeschlossene Pfadangaben, Namen über 4 MB mit Kappe, `--` hinter Revisionen, `GIT_NO_REPLACE_OBJECTS`, `ETag` über alle Verweise; belegt durch die Nacharbeit 1 an #214 und eine Zufallsprobe über 1.200 Seeds; Neumessung p95 steht aus)
 **Datum**: 2026-11-19
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #207, Lauf 207-architekt-1)
 **Kontext-Anforderung**: — (Karte #207 „Commits an der Karte und Review-Diff direkt aus dem Board“, Teil A; Anforderung und WBS-Knoten folgen über den planer). Bezug: Karten #208–#210, po-entscheidungen Z. 358–383, R00053, ADR-0003, ADR-0008, ADR-0021, ADR-0028, ADR-0030, ADR-0031
@@ -588,13 +588,15 @@ Der bisherige Text bleibt stehen; N6 macht Punkt 7 (mit N1.5) baubar und gilt, w
 1. Wurzel, `cat-file --batch-check`, `log` der Metadaten (wie die Liste; liefert Elternteile, Titel, Zähler).
 2. Zustand mit **demselben Helfer wie die Liste** (Fingerabdruck, Cache oder Z5, zweite Probe; 3 Prozesse kalt, 1 warm). Einbezogen wird `auf_zweig` (N1.5).
 3. `merge-base --independent` (1), Spanne `rev-list` (1).
-4. **Namenslauf** (1): `diff-tree --stdin -r --raw -z --no-renames` über alle Commits der Spanne (Karte und fremd), je Zeile `<commit> <erster Elternteil>`. `--raw` statt `--name-only`, damit die Zerlegung strukturell ist: ein Kopf (voller Hash) steht nur dort, wo ein Eintrag mit `:` erwartet wird; ein Pfad, der wie ein Hash aussieht, wird nie Kopf.
+4. *(geändert durch N7.1: mit `-M50% -l1000` statt `--no-renames`)* **Namenslauf** (1): `diff-tree --stdin -r --raw -z --no-renames` über alle Commits der Spanne (Karte und fremd), je Zeile `<commit> <erster Elternteil>`. `--raw` statt `--name-only`, damit die Zerlegung strukturell ist: ein Kopf (voller Hash) steht nur dort, wo ein Eintrag mit `:` erwartet wird; ein Pfad, der wie ein Hash aussieht, wird nie Kopf.
 5. **Netto** (bis zu 3): Liste, Zähler, Patch `diff-tree <basis> <letzter>` wie in A3 (N4.3, N5.2).
 6. **Folge** (bis zu 3): Liste, Zähler, Patch über `diff-tree --stdin` für die Kartencommits, die eine Folge-Datei berühren, Pfadangabe = Folge-Pfade; zerlegt nach den Köpfen in der Reihenfolge der Eingabe.
 
 Inkauf: Die Zerlegung einer Ausgabe mit vielen Köpfen ist neu (Zähler `--numstat -z` mit Umbenennung: leerer Pfad, dann zwei Pfade; Patch: Kopf als eigene Zeile, wo `diff --git` erwartet wird). Ziel des Lastprofils: Gesamt-Diff von 30 Commits kalt **p95 < 500 ms** im 20.000er-Repository (gemessen ~230 ms bei Last 1,3 im Messskript; die Lastprobe der Karte misst über die API). Punkt 9 „< 2 s für 30 Commits“ wird damit enger.
 
 ### N6.3 Netto oder Folge je Datei (präzisiert Punkt 7.3 und 7.4)
+
+*(Regel „netto genau dann“ und „übrige Kartenpfade sind Folge“ geändert durch N7.1 Gruppen; Pfadangaben durch N7.2)*
 
 - Aus dem Namenslauf: `D_karte` = Pfade der Kartencommits, `D_fremd` = Pfade der übrigen Commits der Spanne (dazu Merges der Karte, N6.5). Ohne Umbenennungserkennung, also mit **beiden** Pfaden einer Umbenennung.
 - **Netto-Lauf**: Ist `D_fremd` leer, ohne Pfadangabe (die Spanne ist reine Kartenarbeit). Sonst Liste und Zähler mit der Pfadangabe **`D_karte`** (nicht nur der Netto-Pfade: sonst wird eine Umbenennung über einen fremden Commit zu `A` mit dessen Zeilen, gemessen), Patch mit den Pfaden der Netto-Einträge.
@@ -633,7 +635,7 @@ Neu, in dieser Reihenfolge vor den Arten aus A3: `ganz_als_folge` (`grund`), `fr
 ### N6.8 Grenzen, Budget, Zeit — dieselben wie A3
 
 - Je Netto-Datei und je Schritt: 256 KB / 3.000 Zeilen → `gross` (N4.3). **4 MB gelten für die Summe** aus Netto- und Folge-Patch-Lauf: der Folge-Lauf bekommt den Rest; ohne Rest sind alle Schritte `nachladen` ohne Lauf. Liste und Zähler je Lauf 1 MB. **Kappe 2.000 Einträge** (ein Folge-Eintrag zählt einmal); ein Folge-Eintrag erscheint nur mit allen Schritten, sonst fehlt er und zählt in `dateien_gekappt`. `gesamt` = Zahl der Einträge ohne Kappe; war ein Listenlauf abgeschnitten, die Zahl der Pfade von `D_karte` (Obergrenze).
-- Neu: Bytegrenze des Namenslaufs **4 MB** (`GRENZE_NAMEN`, Startwert, Hypothese; etwa 40.000 Einträge).
+- Neu: Bytegrenze des Namenslaufs **4 MB** (`GRENZE_NAMEN`, Startwert, Hypothese; etwa 40.000 Einträge). *(Folgen eines abgeschnittenen Namenslaufs geändert durch N7.3)*
 - Gesamtgrenze 10 s ab Eintritt in den Handler, Antwort ≤ 15 s, keine Teilantwort (N4.1); ein Platz der Lesegrenze für die ganze Anfrage; Antwortbudget 64 MB, Strom und Schreibfrist wie N5.1. Die größte Antwort bleibt wie in A3 (4 MB Patch bzw. 8 MB mit `datei=`).
 
 ### N6.9 `datei=` und `format=patch`
@@ -643,6 +645,8 @@ Neu, in dieser Reihenfolge vor den Arten aus A3: `ganz_als_folge` (`grund`), `fr
 - `anwendung=` zusammen mit `commit=` → 400 (der Verweis trägt sein Kürzel). `commit=` bleibt wie R00206 FA 2: ein Präfix nur mit Kürzel, ohne Kürzel nur für die Standardanwendung. **A4 ändert daran nichts** (Hinweis aus #209): der Gesamt-Diff braucht keinen Verweis, die Review-Seite löst ein nacktes Präfix weiter über die Liste auf.
 
 ### N6.10 `ETag` (präzisiert Punkt 9 für den Gesamt-Diff)
+
+*(gebaut strenger, siehe N7.5)*
 
 | Option | Stärke | Schwäche |
 |---|---|---|
@@ -677,6 +681,64 @@ Pre-Mortem: (a) Jemand spart die Pfadangabe `D_karte` und nimmt nur die Netto-Pf
 
 - Positiv: konstante Prozesszahl (≤ 15) und kurze Laufzeit auch bei 300 Commits; fremde `+`/`−`-Zeilen sind über Umbenennung, Merge und abgeschnittene Läufe ausgeschlossen; Summen der Folge-Dateien kommen fertig aus der API; ein Agent bekommt mit einem Aufruf das Gesamtbild der ersten Anwendung und den Hinweis auf weitere.
 - Inkauf: eine neue Zerlegung für Ausgaben vieler Commits; Kontextzeilen eines Kartenschritts können fremden Text zeigen; Kopie und schwache Umbenennung aus einer fremd geänderten Datei gelten als Kartenarbeit; Konfliktauflösungen in Merges der Karte fehlen; der `ETag` wird bei jeder Zweigbewegung ungültig; Summen zählen später geänderte Zeilen doppelt.
+
+## Nachtrag 2026-11-20 N7: Gruppen über Umbenennungen der Karte, abgeschlossene Pfadangaben, Namen über 4 MB, gehärteter Startort, `ETag` über alle Verweise (Karte #214, Nacharbeit 1)
+
+Der bisherige Text bleibt stehen; N7 gilt, wo er N6 widerspricht. Entscheider: Claude (autonom, architekt, Lauf 214-architekt-2). Anlass: Code-Review B1–B5 und Security-Review S1/S2 an #214, gebaut in der Nacharbeit 1 (`26623c02` … `b9b6dcd0`), dazu die Abweichungen, die der architektur-reviewer als vertretbar gemeldet hat. N7 trägt den gebauten Stand nach; er ist belegt durch Abnahme-Proben, die vor dem Fix rot waren, und eine Zufallsprobe über 1.200 Seeds mit 0 Verstößen gegen „nie fremd“ und 0 Antworten 500 (vorher 25 Verstöße bei 60 Seeds; 76 Verstöße in 391 Szenarien hatten alle eine Umbenennung).
+
+**Was N6.3 übersehen hat:** Die Regel „netto genau dann, wenn kein Pfad in `D_fremd` liegt“ prüfte nur die Pfade **eines** Eintrags. Ein fremder Commit F legt `f.txt` an, der Kartenschritt K2 benennt `f.txt` nach `c.txt` um. Der Netto-Lauf zwischen Basis und letztem kennt `f.txt` nicht (es gab sie an der Basis nicht), also erscheint `c.txt` als `A` mit den Zeilen von F. Im Namenslauf ohne Umbenennung waren `f.txt` und `c.txt` zwei unverbundene Pfade, und `c.txt` galt als rein. Der Folge-Lauf, der nur die Folge-Pfade nannte, zerlegte die Umbenennung zudem in `D` und `A`, und K2 zeigte `-`-Zeilen von F.
+
+### N7.1 Namenslauf mit Umbenennung, Gruppen (ersetzt N6.2 Schritt 4 „`--no-renames`“ und die Regel in N6.3)
+
+- Der Namenslauf läuft mit **`-M50% -l1000`** wie jeder andere Lauf (`diff_tree_viele`, `Vielart::Namen`). Ein Eintrag mit Umbenennung trägt beide Pfade **und ihr Paar**; die Menge der Pfade ist dieselbe wie ohne Umbenennung, das Paar ist neu.
+- **Gruppen**: Pfade, die ein **Kartenschritt** durch eine Umbenennung verbindet, bilden eine Gruppe (transitiv, über Ketten `a → m → z`). Eine Gruppe ist ganz netto oder ganz Folge.
+- Eine Gruppe ist **belastet**, wenn ein fremder Commit der Spanne (oder ein Merge der Karte, N6.5) einen ihrer Pfade berührt.
+- **Netto genau dann**, wenn jeder Pfad des Eintrags in `D_karte` liegt und keiner in `D_fremd` oder in einer belasteten Gruppe. **Folge-Pfade** sind alle Kartenpfade, die kein Netto-Eintrag trägt, außer **Zwischennamen** einer unbelasteten, schon netto gedeckten Gruppe: K1 benennt `a` nach `m`, K2 `m` nach `z`; netto steht `a → z`, `m` erscheint nirgends.
+- Umbenennungen **fremder** Commits verbinden nichts; ihre Pfade liegen ohnehin beide in `D_fremd`.
+- Inkauf: Mehr als 1.000 Umbenennungskandidaten in einem Kartenschritt (`-l1000`) heben die unscharfe Erkennung auf. Das Paar fehlt dann, und die Gruppe zerfällt. Das ist nicht abgedeckt (offen aus der Nacharbeit) und bleibt eine bekannte Grenze, wie in N4.3 für den Diff je Commit. Unberührt bleibt die Inkaufnahme aus N6.3 (Kopie, Umbenennung unter 50 %). Ebenso das Risiko, das der code-reviewer als richtig bestätigt hat: Ein Kartenschritt, der Zeilen eines fremden Commits selbst löscht oder umschreibt, zeigt sie als `-`-Zeilen; das ist Arbeit der Karte (Wortlaut für den planer: „… außer der Kartenschritt löscht oder schreibt sie selbst um“).
+
+### N7.2 Jede Pfadangabe wird gegen ihren Bezugslauf abgeschlossen (präzisiert N6.3 „Pfadangabe“ und N6.9)
+
+- Eine Pfadangabe `d/x` trifft in Git auch `d/x/…`, auch mit `--literal-pathspecs` (N5.2). Im Netto- und im Folge-Lauf ließ das Git Einträge **neu paaren** (Typwechsel Datei ↔ Verzeichnis mit gleichem Blob), und die Zuordnung endete in 500.
+- **Regel** (`abschliessen`, Modell): Jede Pfadangabe eines Laufs wird gegen die Einträge seines **Bezugslaufs** abgeschlossen. Für den Netto-Patch ist das die Netto-Liste, für die Folge-Läufe die Namen der Kartenschritte, für `datei=` die Liste des Laufs. Jeder Eintrag des Bezugslaufs, dessen Pfad die Angabe genau oder als `…/` trifft, kommt mit **allen** seinen Pfaden hinein, bis nichts mehr dazukommt. So sieht der Lauf nur ganze Einträge und paart wie der Bezugslauf. Die Stücke der mitgenommenen Einträge verwirft die Zuordnung als fremd (N5.2 Regel 3). Die Grenze von 1 MB für die Pfadangabe (N5.5 S1) gilt für die abgeschlossene Angabe.
+
+### N7.3 Namen über 4 MB (ersetzt N6.4 `fremd_zu_gross` für den Fall „Namen der Karte selbst zu groß“, ergänzt N6.8)
+
+- **Spanne nur aus Kartencommits**, Namenslauf abgeschnitten: `D_fremd` ist sicher leer, alles ist netto, der Netto-Lauf läuft ohne Pfadangabe. Unvollständig sind nur die Namen. Antwort 200.
+- **Spanne mit fremden Commits**, Namenslauf abgeschnitten: wie N6.4 `ganz_als_folge` mit `fremd_zu_gross`. Dafür läuft ein zweiter Namenslauf nur über die Kartencommits. Ist auch er abgeschnitten, kann kein Folge-Eintrag sicher vollständig sein: Die Antwort ist 200 mit `dateien: []`, `commits` vollständig und `dateien_gekappt {gezeigt: 0, gesamt: <Obergrenze>}`. Die Obergrenze ist die Summe der `dateien` der Kartenschritte aus den Metadaten; eine Datei in mehreren Schritten zählt dabei mehrfach. Mit `datei=` ergibt das 404 `{fehler}`; der Text verweist auf `commit=` und `datei=` (A3). Nie 500 (Code-Review B3: 42.000 Dateien, 2 × 21.000 Dateien).
+- `GRENZE_NAMEN` (4 MB) ist ein **internes Feld** in `Kanban` (`grenze_namen`), damit Tests sie verkleinern können, keine Konfiguration (wie Frist und Budget in N5.1). Offen (Optional des architektur-reviewers): Der zweite Namenslauf nutzt noch die Konstante statt des Feldes; der Randfall „zweiter Lauf abgeschnitten“ ist deshalb nur mit großen Repositories probbar.
+
+### N7.4 Startort: `--` hinter den Revisionen, keine Ersatzobjekte (ändert N2.3 und N6.11)
+
+- **`--` immer hinter den Revisionen**: in `git_teil` (also in jedem Lauf `diff-tree`, auch ohne Pfade), in `metadaten` (`log`) und in `linie` (`rev-list`). `--end-of-options` beendet die Mehrdeutigkeitsprüfung „Revision oder Dateiname“ nicht. Eine Datei, die wie ein Commit-Hash heißt, legte sonst Liste, Diff je Commit und Gesamt-Diff mit `repository_fehlt` lahm (Security S1; betrifft auch R00204 und R00206).
+- **`GIT_NO_REPLACE_OBJECTS=1`** in der gehärteten Umgebung jedes Befehls. `refs/replace/<hash>` schob sonst einen anderen Commit unter den Hash eines Kartencommits. Weder Fingerabdruck noch `ETag` decken `refs/replace` ab (Security S2). Die Liste der gesetzten Variablen in N2.3 wächst um diese Zeile.
+- Der Startort kennt damit **sieben Befehle**: `rev-parse`, `cat-file`, `log`, `for-each-ref`, `rev-list`, `diff-tree`, `merge-base`. `merge-base` erzwingt `--independent --end-of-options`, und nur `diff-tree` liefert einen Teil. Ein Befehl `diff` ist nicht dabei (N4.6).
+
+### N7.5 `ETag` über alle Verweise der Karte (ändert N6.10 E3)
+
+Gebaut ist E3 mit **allen** Verweisen der Karte (wörtlich, in Reihenfolge), nicht nur denen der Anwendung, dazu Fingerabdruck, Anwendung, `datei`, `format` und `GRENZEN_VERSION`. Strenger als N6.10, und richtig: Die Hinweise jeder Antwort nennen auch Verweise anderer Anwendungen und solche ohne Anwendung (N6.7), etwa `weitere_anwendungen` und `ausgelassen`. Kommt an der Karte ein Verweis einer anderen Anwendung dazu, ändert sich die Antwort also auch für diese. Inkauf: ein unnötiger 200, wenn sich nur die Reihenfolge fremder Verweise ändert.
+
+### N7.6 Belegt und offen
+
+- Lastprobe vor der Nacharbeit (B1029, `202c743b`): p95 **298 ms** über die API (30 Commits, 20.000er-Repository, kalt). Der Namenslauf hatte **159.061 Byte** bei 1.000 fremden Commits, also etwa 4 % von `GRENZE_NAMEN`. Prozesse 10–15, bei 500 Kartencommits und 1.000 fremden 12–14 (security-reviewer); ein 304 kostet 2. Die **Neumessung nach N7.1** (Namenslauf mit Umbenennungserkennung) steht aus und läuft mit der Wiederholung des Code-Reviews. Bis dahin bleibt p95 < 500 ms für den Stand nach N7 Hypothese.
+- **Offen, eigene Karte:** Dieselbe Neupaarung wie in N7.2 steckt im Diff je Commit (R00206): `?commit=…&datei=d/x` ergibt 500 (Probe `gemeinsam/scratchpad/entw1-214/a3b.py` der Factory). Die Regel aus N7.2 gilt dort genauso; Bezugslauf ist die ungekappte Liste von `datei=`.
+- **Offen (Sollte des architektur-reviewers):** Ein Fitness-Test für den einzigen Startort fehlt: `Command::new("git")` darf außerhalb von `#[cfg(test)]` nur in den drei Dateien aus N2.3 stehen. Ebenso fehlen Dienst und Modell des Gesamt-Diffs (`src/dienst/gesamt_diff.rs`, `src/modell/gesamt_diff.rs`) in den Bausteinen A00004 und A00006.
+
+### N7 Durchsetzung
+
+Die Abnahme-Proben B1–B5, S1 und S2 der Nacharbeit (`tests/akzeptanz_r00208.rs`, Modultests in `src/modell/gesamt_diff.rs`) und 20 getötete Mutanten. Dazu gehören:
+- B1 (a)–(c): Umbenennung einer fremd angelegten Datei, `x → y` nach fremdem Anlegen, Ziel netto gedeckt und Quelle Folge. Ergebnis: kein `[+-].*FREMD` in JSON und `format=patch`, der Schritt als `R`.
+- B2: Typwechsel mit gleichem Blob, `datei=` auf jeden Kartenpfad. Ergebnis: 200.
+- B3: 1.000, 2.000, 2.001 und 42.000 Dateien. Ergebnis: 200, nie 500.
+- S1: Datei mit dem Namen eines Commit-Hashes. Ergebnis: bytegleich.
+- S2: `refs/replace`. Ergebnis: keine FREMD-Zeile.
+
+Pre-Mortem zusätzlich zu N6: (e) Jemand nimmt `-M` aus dem Namenslauf, „weil N6.2 `--no-renames` sagte“. Dann zerfallen die Gruppen, und B1 wird rot. (f) Eine neue Pfadangabe ohne `abschliessen` macht B2 rot. (g) Ein neuer Lesebefehl ohne `--` hinter den Revisionen macht S1 rot.
+
+### N7 Konsequenzen
+
+- Positiv: „nie fremd“ hält auch über Umbenennungen der Karte; Typwechsel und sehr große Karten ergeben keine 500; der Startort ist gegen mehrdeutige Namen und Ersatzobjekte gehärtet, für alle drei Lesewege.
+- Inkauf: Eine belastete Gruppe bringt auch rein kartengeänderte Pfade in die Folge. Abgeschlossene Pfadangaben lassen Läufe fremde Stücke lesen, die verworfen werden (Bytes zählen gegen die 4 MB). Bei Namen über 4 MB mit fremden Commits zeigt die Antwort keine Datei. Der `ETag` wird auch bei Änderungen an Verweisen anderer Anwendungen ungültig.
 
 ## Quellen / Bezuege
 
