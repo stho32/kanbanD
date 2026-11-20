@@ -883,3 +883,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1021 Nachladen in Reihe mit Zustand „wartet“ | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1022 Einstieg aus der Liste und Rückweg | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1023 Breite, Ziele, Knöpfe, Kontrast und Tastatur messen und nachziehen | Standard | 1-2h | 0,6h | 0,6h | autonom |
+| 2026-11-20 | Karte #209 R00207 (Review-Seite eines Commits) | B1024 Probe im echten Programm, Mutanten, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
