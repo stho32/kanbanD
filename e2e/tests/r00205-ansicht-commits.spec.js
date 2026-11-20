@@ -507,6 +507,33 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(page.locator(ZEILEN)).toHaveCount(5);
   });
 
+  test('AK 6: zwei gehaltene Antworten derselben Aufgabe (Fenster zu, wieder „Commits“) — die ältere, nach der neueren freigegeben, wird verworfen', async ({ page }) => {
+    const gehalten = [];
+    await page.route('**/api/aufgaben/1/commits', route => {
+      if (route.request().method() !== 'GET') return route.continue();
+      gehalten.push(route);
+    });
+    await commitsOeffnen(page, 1);
+    await expect(page.locator(`${PANEL} ${STATUS}`)).toHaveText('Liest die Commits aus dem Repository …');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toHaveCount(0);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    if ((await ausloeser(page).getAttribute('aria-label')) !== 'Ansicht: Commits') await reiter(page, 'Commits');
+    await expect.poll(() => gehalten.length).toBe(2);
+    // die neuere (zweite) Antwort zuerst, die ältere danach mit einer leeren Liste: sie darf die Liste nicht überschreiben
+    await gehalten[1].continue();
+    await expect(page.locator(ZEILEN)).toHaveCount(5);
+    const stand = await page.locator(`${PANEL} .cl-fuss span`).first().innerText();
+    await gehalten[0].fulfill({ status: 200, contentType: 'application/json', body: '{"commits":[]}' });
+    await page.request.patch(k.adresse + 'api/aufgaben/1', { headers: AGENT, data: { titel: 'Nach der alten Antwort' } });
+    await expect(page.locator('.ka[data-id="1"]')).toContainText('Nach der alten Antwort');
+    await bereit(page, page.locator(PANEL));
+    await expect(page.locator(ZEILEN)).toHaveCount(5);
+    await expect(page.locator(`${PANEL} .cl-kopf h3`)).toHaveText('COMMITS 5');
+    expect(await page.locator(`${PANEL} .cl-fuss span`).first().innerText()).toBe(stand);
+  });
+
   test('AK 6: ohne gewählte Person lädt die Ansicht ohne Hinweis und ohne Fehler (das GET trägt kein X-KanbanD-Wer)', async ({ page }) => {
     const aufrufe = zaehlen(page, 1);
     await commitsOeffnen(page);
