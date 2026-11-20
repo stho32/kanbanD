@@ -868,3 +868,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1007 Lesen: Laden, Liste, Fehler und leer, „Neu lesen“, Stand | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1008 Breite, Ziele, Themen und Tastatur messen | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | B1009 Probe im echten Programm, Mutationen, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #212 R00205 (Ansicht „Commits“ im Aufgabenfenster) | Nacharbeit 1: Rebase, Muss M1, Sollte S1/S2, UX 1–4, Rechtschreibung 1–2, Optional Bidi, Mutationen, Gate | Standard | 1-2h | 0,6h | 0,6h | autonom |
