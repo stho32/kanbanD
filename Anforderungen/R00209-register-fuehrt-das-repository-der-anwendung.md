@@ -8,13 +8,13 @@ datum: 2026-11-20
 
 ## Beschreibung
 
-Karte #225, Scheibe **S1** des Rückbaus der WBS (Auftrag des Betreibers 2026-11-20, #224). Technik nach [ADR-0034](../Dokumentation/ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) Regel 1 und 2 mit Nachtrag N1; Produktentscheidungen po-entscheidungen Z. 430–433.
+Karte #225, Scheibe **S1** des Rückbaus der WBS (Auftrag des Betreibers 2026-11-20, #224). Technik nach [ADR-0034](../Dokumentation/ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) Regel 1 und 2 mit Nachträgen N1 und N2 (Übergangsform des Registers); Produktentscheidungen po-entscheidungen Z. 430–433.
 
 Das Register in `kanbanD.md` nennt je Anwendung ihr **Repository** (`sources.applications.<kürzel>.repository`, für die Standardanwendung `sources.repository`): einen Ordner im Arbeits-Repository, absolut oder relativ zum kanbanD-Ordner. Von dort ermittelt kanbanD die Wurzel für Commit-Verweise, Commit-Liste und Diff. Fehlt `repository`, gilt ersatzweise der Ordner von `wbs`, sonst `requirements` — nur als Startpunkt; die Datei selbst öffnet kanbanD nie. Beim Start entsteht kein Commit; ein Altbestand öffnet ohne Fehler und ohne Warnung.
 
-**Übergang bis S2 (#224):** Geschrieben wird je Anwendung immer `repository`. `wbs`/`requirements` schreibt kanbanD nur noch, wenn der Schreiber sie in derselben Anfrage mitschickt, und `GET` zeigt sie weiter, solange sie in der Datei stehen. Grund: Die heutige Factory (`werkzeuge/board_binden.py`) liest `a["wbs"]` und erkennt ihre Anwendung über diesen Pfad wieder. WBS-Sicht, Phasen und Herkunft lesen `wbs` bis S2–S4. Diese Anforderung setzt **keine Änderung der Factory voraus**. Wer nur `repository` schickt (Einrichten, eine umgestellte Factory), bekommt die neue Form allein. Diese Abweichung vom Wortlaut von ADR-0034 Regel 1 steht unter „Offene Fragen“.
+**Übergang bis S2 (#224):** Geschrieben wird je Anwendung immer `repository`. `wbs`/`requirements` schreibt kanbanD nur noch, wenn der Schreiber sie in derselben Anfrage mitschickt, und `GET` zeigt sie weiter, solange sie in der Datei stehen. Grund: Die heutige Factory (`werkzeuge/board_binden.py`) liest `a["wbs"]` und erkennt ihre Anwendung über diesen Pfad wieder. WBS-Sicht, Phasen und Herkunft lesen `wbs` bis S2–S4. Diese Anforderung setzt **keine Änderung der Factory voraus**. Wer nur `repository` schickt (Einrichten, eine umgestellte Factory), bekommt die neue Form allein. So entschieden in ADR-0034 N2 (ersetzt Regel 1 ab „Schreiben“).
 
-**Abnahme-Probe der Karte (architekt, ADR-0034 N1):** „`kd:<hash>` zeigt denselben `zustand` mit neuem Register, mit nur `wbs` und mit nur `requirements`. Nach `PUT /api/einstellungen` steht `repository` in der Datei und `wbs` nicht mehr.“ Sie steckt in AK 2 und AK 4. Dazu kommt die Legacy-Probe mit einer Kopie des JoinPuya-Ordners (PO Z. 432, AK 8).
+**Abnahme-Probe der Karte (architekt, ADR-0034 N1):** „`kd:<hash>` zeigt denselben `zustand` mit neuem Register, mit nur `wbs` und mit nur `requirements`. Nach `PUT /api/einstellungen` steht `repository` in der Datei und `wbs` nicht mehr.“ Nach N2 gilt der zweite Satz für ein `PUT` **in neuer Form** (ohne `wbs`/`anforderungen`). Ein `PUT` der heutigen Factory reicht `wbs` durch (AK 5). Die Probe steckt in AK 2 und AK 4. Dazu kommt die Legacy-Probe mit einer Kopie des JoinPuya-Ordners (PO Z. 432, AK 8).
 
 Ändert R00053 (Register mit Kürzel und Pfaden zu WBS und Anforderungen): Die Wurzel kommt aus `repository`, und eine Anwendung braucht keinen WBS-Pfad mehr. R00053 selbst bleibt unverändert.
 
@@ -30,7 +30,7 @@ Commit-Verweise, Commit-Liste und Diff (#207–#214) hängen heute am Pfad einer
 - Ein gesetztes, aber unerreichbares `repository` fällt nie auf `wbs`/`requirements` zurück.
 - Die Wurzel ist `git rev-parse --show-toplevel` im Startordner. Ohne Startordner gilt der `zustand` `repository_fehlt`. Die WBS-Datei und den Anforderungsordner öffnet kanbanD dafür nie.
 - `PUT /api/einstellungen` nimmt je Anwendung und in `quellen` `repository` und/oder `wbs`/`anforderungen` an. Geschrieben wird `repository`: das mitgeschickte, sonst der Startordner. `wbs`/`requirements` werden nur geschrieben, wenn sie mitgeschickt und nicht leer sind.
-- `GET /api/einstellungen` und `GET /api/anwendungen` liefern je Anwendung `repository` (gespeichert oder Startordner) und `wbs`/`anforderungen` so, wie sie gespeichert sind (leer, wenn nicht). `GET /api/anwendungen` liefert dazu `erreichbar.repository` (der Ordner ist vorhanden), neben `erreichbar.wbs`/`erreichbar.anforderungen`.
+- `GET /api/einstellungen` und `GET /api/anwendungen` liefern je Anwendung `repository` (gespeichert oder Startordner) und `wbs`/`anforderungen` so, wie sie gespeichert sind. Alle drei Schlüssel sind immer vorhanden, leer als `""`, nie weggelassen (ADR-0034 N2 Regel 2). `GET /api/anwendungen` liefert dazu `erreichbar.repository` (der Ordner ist vorhanden), neben `erreichbar.wbs`/`erreichbar.anforderungen`.
 - Die Einstellungsseite zeigt je Anwendung und unter „Quellen“ das Repository mit seiner Erreichbarkeit. Eine Anwendung lässt sich mit nur einem Repository anlegen. Die Felder für WBS und Anforderungen bleiben bis S2.
 - Start und lesende Aufrufe schreiben nichts: kein Commit, `kanbanD.md` bleibt bytegleich.
 
@@ -64,7 +64,7 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` (Git, Com
 
 ### Schreiben
 
-- [ ] **AK 4** Gegeben `kd` als `{name: kanbanD, wbs: R/Dokumentation/Planung/kd.md, requirements: R/Anforderungen}`. Wenn `PUT /api/einstellungen` `kd` als `{kuerzel: kd, name: kanbanD, repository: R}` ohne `wbs`/`anforderungen` schickt, dann steht in `kanbanD.md` `kd: {name: kanbanD, repository: R}` ohne `wbs` und ohne `requirements`, es entsteht genau ein Commit, und `kd:<C>` bleibt `auf_zweig`.
+- [ ] **AK 4** Gegeben `kd` als `{name: kanbanD, wbs: R/Dokumentation/Planung/kd.md, requirements: R/Anforderungen}`. Wenn `PUT /api/einstellungen` `kd` als `{kuerzel: kd, name: kanbanD, repository: R}` ohne `wbs`/`anforderungen` schickt, dann steht in `kanbanD.md` `kd: {name: kanbanD, repository: R}` ohne `wbs` und ohne `requirements`, es entsteht genau ein Commit, und `kd:<C>` bleibt `auf_zweig`. Danach liefern `GET /api/einstellungen` und `GET /api/anwendungen` für `kd` `repository: R`, `wbs: ""` und `anforderungen: ""`: Die Schlüssel sind vorhanden, nicht weggelassen (N2 Regel 2, wegen `board_binden.py:54`).
 - [ ] **AK 5** Gegeben ein leeres Register. Wenn `PUT /api/einstellungen` eine Anwendung wie die heutige Factory schickt, `{kuerzel: pa, name: Probe, wbs: R/Dokumentation/Planung/pa.md, anforderungen: R/Anforderungen}` ohne `repository`, dann antwortet kanbanD mit 200. In der Datei steht `pa: {name: Probe, repository: R/Dokumentation/Planung, wbs: R/Dokumentation/Planung/pa.md, requirements: R/Anforderungen}`. `GET /api/anwendungen` liefert für `pa` dieses `repository`, `wbs` unverändert und `erreichbar.repository: true`, und `pa:<C>` ist `auf_zweig`. Schickt dieselbe Anfrage zusätzlich `repository: R`, gilt `R`.
 - [ ] **AK 6** Gegeben ist das gebaute Programm. Wenn die heutige Factory ein Board bindet (`KANBAND=<build> python3 -m unittest tests.test_auftrag`, Fall `test_board_wird_an_die_anwendung_gebunden`), danach per `GET`→`PUT /api/einstellungen` ein Signal einträgt (wie `werkzeuge/board.py` `_einrichten`) und `board_binden.binde` erneut aufruft, dann ist der Test grün. Der zweite Aufruf liefert dasselbe Kürzel, das Register hat genau einen Eintrag, und kein Fehler „Kürzel … schon vergeben“ erscheint.
 
@@ -78,7 +78,7 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` (Git, Com
 
 ### Einrichten
 
-- [ ] **AK 9** Gegeben ist das Register aus AK 8 vor dem `PUT`. Wenn der Betreiber die Einstellungen öffnet, dann zeigt die Anwendung `jopu` das Repository `/home/shoff/Projekte/JoinPuyaApp/Documentation/Planning` als erreichbar. Ändert er es auf `/home/shoff/Projekte/JoinPuyaApp` und speichert, steht genau dieser Ordner als `repository` in der Datei (ein Commit), und `jopu:<hash>` bleibt gleich. Ein Ordner, den es nicht gibt, zeigt „nicht erreichbar“. Speichern geht trotzdem, und Verweise der Anwendung sind dann `repository_fehlt`.
+- [ ] **AK 9** Gegeben ist das Register aus AK 8 vor dem `PUT`. Wenn der Betreiber die Einstellungen öffnet, dann zeigt die Anwendung `jopu` das Repository `/home/shoff/Projekte/JoinPuyaApp/Documentation/Planning` als erreichbar. Speichert er, ohne das Repository zu ändern, steht `repository: /home/shoff/Projekte/JoinPuyaApp/Documentation/Planning` in der Datei, und `wbs`/`requirements` bleiben unverändert stehen, weil die Seite sie mitsendet (N2 Regel 3). Ändert er das Repository auf `/home/shoff/Projekte/JoinPuyaApp` und speichert, steht genau dieser Ordner als `repository` in der Datei (ein Commit), `wbs`/`requirements` bleiben ebenso stehen, und `jopu:<hash>` bleibt gleich. Ein Ordner, den es nicht gibt, zeigt „nicht erreichbar“. Speichern geht trotzdem, und Verweise der Anwendung sind dann `repository_fehlt`.
 - [ ] **AK 10** Gegeben sind geöffnete Einstellungen. Wenn der Betreiber die Anwendung `lc` nur mit dem Repository `R` anlegt und unter „Quellen“ das Repository `R` einträgt und speichert, dann stehen `lc: {name: …, repository: R}` und `sources.repository: R` in der Datei, ohne `wbs` und ohne `requirements`, mit genau einem Commit. `<C>` ohne Kürzel ist danach `auf_zweig` (Standardanwendung).
 
 ## Betroffene Verzeichnisstruktur
@@ -121,7 +121,7 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` (Git, Com
 
 ## Offene Fragen
 
-- **An architekt und product-owner (vor dem Bau):** ADR-0034 Regel 1 sagt „geschrieben wird nur die neue Form“ und „`PUT` ignoriert mitgeschickte `wbs`/`anforderungen`“. Das verträgt sich nicht mit „ohne Factory-Sperre“ (PO Z. 433, ADR-0034 Q3). Die heutige Factory greift auf `a["wbs"]` aus `GET /api/einstellungen` zu und erkennt ihre Anwendung über diesen Pfad wieder (`board_binden.py:54`). Sie schreibt außerdem per `GET`→`PUT` Signale und Klassen (`board.py` `_einrichten`, `board_aus_konfig.py`), und WBS-Sicht, Phasen und Herkunft lesen `wbs` bis S2–S4. Strikt nach Regel 1 brächte schon das nächste Signal den nächsten Start der Factory zum Scheitern (`KeyError` bzw. „Kürzel schon vergeben“). **Empfehlung:** die Übergangsform dieser Anforderung (FA 4, AK 4–6) als Nachtrag N2 zu ADR-0034 bestätigen. Die neue Form allein entsteht, sobald kein Schreiber `wbs` mehr schickt, spätestens mit S2. **Alternative:** Regel 1 wörtlich, dann gehört die Factory-Sperre (Inventur §6.1, §6.3) vor die Auslieferung von S1, und AK 5/6 entfallen.
+- Keine. Die Frage zur Übergangsform des Registers (Regel 1 gegen „ohne Factory-Sperre“) hat der architekt am 2026-11-20 entschieden: **ADR-0034 N2**, Option (a) wie empfohlen (4d2430d5). Durch die Einstellungsseite und an Factory-gebundenen Anwendungen entsteht die neue Form allein erst mit S2 (#224); vorher gibt es `PUT` in neuer Form nur in Proben auf Kopien (N2 Regel 3, 4).
 
 ## Manuelle Vorbereitungstätigkeiten
 
@@ -142,6 +142,6 @@ Auslöser ist die Vision vom 2026-11-20: kanbanD kennt die WBS nicht mehr, aber 
 ## Notizen
 
 **Verworfene Alternativen:**
-- *Strikt nach ADR-0034 Regel 1* (nur `{name, repository}`, `wbs` beim `PUT` ignoriert): Damit bricht die unveränderte Factory beim nächsten Signal oder bei der nächsten Klasse, also ist es nur mit vorgezogener Factory-Sperre möglich. Offen an architekt/PO (siehe oben).
+- *Strikt nach ADR-0034 Regel 1* (nur `{name, repository}`, `wbs` beim `PUT` ignoriert): Damit bricht die unveränderte Factory beim nächsten Signal oder bei der nächsten Klasse, also ist es nur mit vorgezogener Factory-Sperre möglich. Verworfen in ADR-0034 N2.
 - *In S1 nur lesen* (`repository` lesen, weiter die alte Form schreiben): Niemand könnte `repository` setzen, und die Scheibe brächte keinen Nutzen.
 - *`wbs`/`requirements` immer erhalten* (auch wenn der Schreiber sie weglässt): Die Abnahme-Probe „nach `PUT` steht `wbs` nicht mehr“ wäre nie erfüllbar, und der WBS-Pfad bliebe ohne Ende in der Datei.
