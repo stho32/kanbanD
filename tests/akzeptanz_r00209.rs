@@ -55,9 +55,12 @@ impl Instanz {
         &self.adresse
     }
 
-    /// Zeilen des Logs, die nach Fehler oder Warnung aussehen.
+    /// Zeilen des Logs, die nach Fehler oder Warnung aussehen. Ausgenommen ist nur die Meldung „nicht beobachtet“ bei
+    /// erschöpften inotify-Instanzen des Rechners (os error 24): sie hängt an der Zahl paralleler Instanzen, nicht am Register.
     fn auffaellige_zeilen(&self) -> Vec<String> {
-        std::fs::read_to_string(&self.log).unwrap_or_default().lines().filter(|z| ["fehler", "warn", "error", "defekt"].iter().any(|w| z.to_lowercase().contains(w))).map(String::from).collect()
+        let auffaellig = |z: &str| ["fehler", "warn", "error", "defekt", "nicht beobachtet"].iter().any(|w| z.to_lowercase().contains(w));
+        let rechnergrenze = |z: &str| z.contains("nicht beobachtet (Too many open files (os error 24))");
+        std::fs::read_to_string(&self.log).unwrap_or_default().lines().filter(|z| auffaellig(z) && !rechnergrenze(z)).map(String::from).collect()
     }
 }
 
@@ -155,7 +158,6 @@ fn zeile_von<'a>(datei: &'a str, kuerzel: &str) -> &'a str {
 // ---- AK 1: Startordner ------------------------------------------------------------------------------------------------
 
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak01_startordner_je_zeile_der_tabelle() {
     let l = Lage::neu();
     let lauf = l.starten();
@@ -211,7 +213,6 @@ async fn ak02_ak03_gleicher_zustand_in_allen_registerformen() {
 // ---- AK 4, 5: Schreiben -----------------------------------------------------------------------------------------------
 
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak04_put_in_neuer_form_schreibt_nur_repository() {
     let l = Lage::neu();
     l.register(&format!("kd: {{name: kanbanD, wbs: {}, requirements: {}}}", l.wbs(), l.anf()));
@@ -237,7 +238,6 @@ async fn ak04_put_in_neuer_form_schreibt_nur_repository() {
 }
 
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak05_put_wie_die_heutige_factory_reicht_wbs_durch() {
     let l = Lage::neu();
     let lauf = l.starten();
@@ -316,7 +316,6 @@ async fn ak07_start_und_lesen_schreiben_nichts() {
 // ---- AK 10 (API-Teil): Quellen mit Repository ------------------------------------------------------------------------
 
 #[tokio::test]
-#[ignore = "erwartet rot (ATDD) bis B1036–B1038"]
 async fn ak10_quellen_und_neue_anwendung_nur_mit_repository() {
     let l = Lage::neu();
     let lauf = l.starten();
@@ -355,6 +354,24 @@ async fn ak10_standardanwendung_nur_mit_repository() {
     assert_eq!(verweis(lauf.adresse(), &l.c).await["zustand"], "auf_zweig");
 }
 
+// ---- Vertrag: OpenAPI und Endpunktliste nennen repository ------------------------------------------------------------
+
+#[tokio::test]
+async fn openapi_nennt_repository_und_erreichbarkeit() {
+    let l = Lage::neu();
+    let lauf = l.starten();
+    let d = lesen(lauf.adresse(), "api/openapi.json").await;
+    let schema = |n: &str| d["components"]["schemas"][n].clone();
+    assert!(schema("Registereintrag")["properties"]["repository"].is_object(), "{}", schema("Registereintrag"));
+    assert!(schema("Erreichbar")["properties"]["repository"].is_object());
+    assert!(schema("Anwendung")["properties"]["repository"].is_object());
+    assert!(schema("Quellen")["properties"]["repository"].is_object());
+    assert!(!schema("Anwendung")["required"].as_array().unwrap().iter().any(|f| f == "wbs" || f == "repository"), "beide Formen kommen an: {}", schema("Anwendung"));
+    let get = &d["paths"]["/api/einstellungen"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"];
+    assert_eq!(get, "#/components/schemas/Einstellungsantwort");
+    assert!(d.to_string().contains("RepositoryErreichbar"));
+}
+
 // ---- AK 8: Legacy-Probe gegen eine Kopie des JoinPuya-Ordners (von Hand, B1040) -------------------------------------
 
 /// `R00209_KOPIE` = Kopie des Board-Ordners (wird beschrieben), `R00209_ALT` = Programm vor der Karte,
@@ -388,7 +405,7 @@ async fn ak08_legacy_probe_joinpuya_kopie() {
     let (status, antwort) = gemeinsam::senden(reqwest::Method::PUT, lauf.adresse(), "api/einstellungen", &var("R00209_WER"), e).await;
     assert_eq!(status, 200, "{antwort}");
     let text = std::fs::read_to_string(kopie.join("kanbanD.md")).unwrap();
-    assert_eq!(zeile_von(&text, "jopu").contains(&format!("repository: {repo}")), true, "{text}");
+    assert!(zeile_von(&text, "jopu").contains(&format!("repository: {repo}")), "{text}");
     assert!(!zeile_von(&text, "jopu").contains("wbs:"), "{text}");
     assert_eq!(eintrag(&lesen(lauf.adresse(), &format!("api/aufgaben/{nr}/commits")).await), ergebnisse[0], "nach dem PUT gleich");
 }

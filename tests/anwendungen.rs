@@ -132,11 +132,12 @@ async fn register_mit_erreichbarkeit_ein_fehlender_pfad_macht_nichts_defekt() {
     let (s, r) = senden(Method::GET, &lauf.adresse, "api/anwendungen", "st", json!(null)).await;
     assert_eq!(s, 200);
     assert_eq!(r["kd"]["name"], "kanbanD");
-    assert_eq!(r["kd"]["erreichbar"], json!({"wbs": true, "anforderungen": true}));
-    assert_eq!(r["rel"]["erreichbar"], json!({"wbs": true, "anforderungen": false}), "relativ zum kanbanD-Ordner, leer ist nicht erreichbar");
+    assert_eq!(r["kd"]["erreichbar"], json!({"repository": true, "wbs": true, "anforderungen": true}));
+    assert_eq!(r["rel"]["erreichbar"], json!({"repository": true, "wbs": true, "anforderungen": false}), "relativ zum kanbanD-Ordner, leer ist nicht erreichbar");
+    assert_eq!(r["rel"]["repository"], ".", "R00209: Startordner einer WBS ohne Ordneranteil");
     std::fs::remove_file(x.path().join("plan.md")).unwrap();
     let (_, r) = senden(Method::GET, &lauf.adresse, "api/anwendungen", "st", json!(null)).await;
-    assert_eq!(r["kd"]["erreichbar"], json!({"wbs": false, "anforderungen": true}));
+    assert_eq!(r["kd"]["erreichbar"], json!({"repository": true, "wbs": false, "anforderungen": true}), "R00209: der Ordner bleibt erreichbar");
     let (_, z) = senden(Method::GET, &lauf.adresse, "api/zustand", "st", json!(null)).await;
     assert_eq!(z["defekte"], json!([]), "kanbanD.md ist nicht defekt");
     assert_eq!(z["einstellungen"]["quellen"]["anwendungen"][0]["kuerzel"], "kd");

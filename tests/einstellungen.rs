@@ -64,7 +64,9 @@ async fn einstellungen_lesen_und_unveraendert_zurueck() {
     let lauf = gemeinsam::eingerichtet_starten(tmp.path());
     let (s, e) = senden(Method::GET, &lauf.adresse, "api/einstellungen", "st", json!(null)).await;
     assert_eq!(s, 200);
-    assert_eq!(e, einstellungen(&lauf.adresse).await);
+    let mut ohne_erreichbar = e.clone();
+    assert_eq!(ohne_erreichbar["quellen"].as_object_mut().unwrap().remove("erreichbar"), Some(json!({"repository": false})), "R00209: plan/ fehlt");
+    assert_eq!(ohne_erreichbar, einstellungen(&lauf.adresse).await);
     assert!(e["personen"].is_array() && e["klassen"].is_array() && e["signale"].is_array() && e["quellen"].is_object());
     let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", e).await;
     assert_eq!((s, r["geaendert"].as_bool()), (200, Some(true)), "alte Form: repository ergänzt");

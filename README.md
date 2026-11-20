@@ -36,7 +36,8 @@ Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet;
 ```
 <ordner>/
   kanbanD.md                 Personen (people), Klassen (classes — die Vorgabe für Boards ohne eigene), Quellpfade (sources),
-                             Register der Anwendungen (sources.applications: je Kürzel name, wbs, requirements)
+                             Register der Anwendungen (sources.applications: je Kürzel name, repository — bis zur
+                             Umstellung der Factory auch wbs, requirements)
   boards/<slug>.md           # Titel, je Spalte „## Name“, je Aufgabe „- [#12](../aufgaben/0012-….md)“;
                              im Frontmatter optional applications: [kd] — die gebundenen Anwendungen ([] = keine)
                              und classes: — eigene Klassen dieses Boards in der Form von kanbanD.md ({} = keine)
@@ -45,7 +46,9 @@ Der Ordner wird bei Bedarf angelegt, ein Git-Repository bei Bedarf eingerichtet;
   aufgaben/0012-titel/       Anhänge
 ```
 
-Liegen WBS und Anforderungen in einem anderen Repository, trägt man die Anwendung einmal mit vollen Pfaden ins Register ein (Einrichten → Anwendungen); Aufgaben nennen ihre Herkunft dann mit Kürzel, `kd:I0007` oder `kd:R00014`. Ohne Kürzel löst eine Herkunft nur auf, solange es genau eine Anwendung gibt. Ein Board ohne `applications:` gilt bei genau einer registrierten Anwendung als an sie gebunden; `applications: []` löst es ausdrücklich (reines Kanban, keine Phasen-Spalten, keine WBS-Sicht). Die Bindung setzt der Spalten-Dialog („Gebunden an“) oder `PUT /api/boards/{slug}/anwendungen` mit `[kürzel…]`, ein Commit je Änderung. Eine Anwendung, deren Pfad fehlt, gilt als nicht erreichbar; die Boards bleiben benutzbar.
+Je Anwendung nennt das Register ihr **Repository** (`repository`, ein Ordner darin genügt, absolut oder relativ zum kanbanD-Ordner; die Standardanwendung ohne Kürzel heißt `sources.repository`). Daraus ermittelt kanbanD die Wurzel für Commit-Verweise, Commit-Liste und Diff (`git rev-parse --show-toplevel`). Fehlt `repository`, gilt ersatzweise der Ordner von `wbs`, sonst `requirements` — nur als Startpunkt, die Datei selbst öffnet kanbanD nie; ein gesetztes, aber fehlendes Repository fällt nicht zurück (`repository_fehlt`). Geschrieben wird je Anwendung immer `repository`; `wbs`/`requirements` nur, solange ein Schreiber sie mitschickt und sie nicht leer sind — die Factory erkennt ihre Anwendung bis zu ihrer Umstellung an `wbs` (ADR-0034 N2). Ein Register in alter Form öffnet ohne Commit und ohne Warnung und bekommt sein `repository` beim nächsten Speichern der Einstellungen. `GET /api/einstellungen` und `GET /api/anwendungen` liefern je Anwendung immer `repository`, `wbs` und `anforderungen` (leer = `""`), dazu `erreichbar.repository` (der Ordner ist vorhanden, ohne Git-Aufruf).
+
+Trägt man die Anwendung einmal ins Register ein (Einrichten → Anwendungen), nennen Aufgaben ihre Herkunft dann mit Kürzel, `kd:I0007` oder `kd:R00014`. Ohne Kürzel löst eine Herkunft nur auf, solange es genau eine Anwendung gibt. Ein Board ohne `applications:` gilt bei genau einer registrierten Anwendung als an sie gebunden; `applications: []` löst es ausdrücklich (reines Kanban, keine Phasen-Spalten, keine WBS-Sicht). Die Bindung setzt der Spalten-Dialog („Gebunden an“) oder `PUT /api/boards/{slug}/anwendungen` mit `[kürzel…]`, ein Commit je Änderung. Eine Anwendung, deren Pfad fehlt, gilt als nicht erreichbar; die Boards bleiben benutzbar.
 
 **Klassen je Board.** Ein Board ohne `classes:` zeigt die Klassen aus `kanbanD.md` (die Vorgabe des Ordners). Trägt die Board-Datei `classes:`, gelten auf diesem Board nur seine eigenen — gemischt wird nicht; `classes: {}` heißt „dieses Board führt keine Klassen“. Eingerichtet wird das unter „Spalten einrichten“ („Klassen dieses Boards“: eigene Klassen beginnen als Kopie der Vorgabe) oder mit `PUT /api/boards/{slug}/klassen` (`{klassen: [{schluessel, bezeichnung, farbe}] | null}`, `null` kehrt zur Vorgabe zurück), ein Commit je Änderung. Die Aufgabe behält ihren einen Schlüssel (`class`): kennt das Board ihn nicht, ist die Klasse dort fremd und steht als Text ohne Farbe auf der Karte — entfernt wird sie nie. Eine Klasse setzen lässt sich nur, wenn ein Board der Aufgabe sie führt (sonst 400 mit Board und Schlüssel); in der Aufgabenliste gilt das erste Board der Aufgabe, ohne Board die Vorgabe.
 
@@ -107,7 +110,7 @@ Worauf zu achten ist:
 
 ### Commits an der Karte hinterlegen
 
-Eine Aufgabe trägt unter `commits` die Commits, die für sie entstanden sind — als Verweis `<kürzel>:<hash>` auf das Arbeits-Repository einer registrierten Anwendung (`<hash>` allein meint die Standardanwendung aus `sources.wbs`/`sources.requirements`). Ein Agent hängt seine Commits gleich nach dem Bericht an, auch wenn sie noch auf dem Kartenzweig im Worktree liegen:
+Eine Aufgabe trägt unter `commits` die Commits, die für sie entstanden sind — als Verweis `<kürzel>:<hash>` auf das Arbeits-Repository einer registrierten Anwendung (`<hash>` allein meint die Standardanwendung aus `sources.repository`). Ein Agent hängt seine Commits gleich nach dem Bericht an, auch wenn sie noch auf dem Kartenzweig im Worktree liegen:
 
 ```bash
 curl -X POST http://localhost:7420/api/aufgaben/42/commits -H 'X-KanbanD-Wer: entwickler' \

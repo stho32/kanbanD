@@ -718,12 +718,11 @@ async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<
     get,
     path = "/api/einstellungen",
     tag = "Ordner",
-    description = "Personen, Klassen, Signale und Quellen in der Form, die PUT annimmt",
-    responses((status = 200, description = "Erfolg", body = crate::modell::Einstellungen), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    description = "Personen, Klassen, Signale und Quellen in der Form, die PUT annimmt; je Anwendung und in quellen immer repository (gespeichert oder Startordner: Ordner von wbs, sonst anforderungen), wbs und anforderungen (leer = \"\"); quellen.erreichbar: {repository} — PUT überliest es",
+    responses((status = 200, description = "Erfolg", body = crate::dienst::Einstellungsantwort), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn einstellungen_lesen(State(app): State<App>) -> Result<Response, Fehler> {
-    let mut e = blockierend(&app, |k| k.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))).await?;
-    e.repository_ergaenzen();
+    let e = blockierend(&app, |k| k.einstellungen_antwort()).await?;
     Ok(Json(e).into_response())
 }
 
@@ -788,7 +787,7 @@ async fn person_stilllegen(State(app): State<App>, Wer(wer): Wer, Pfad(kuerzel):
     put,
     path = "/api/einstellungen",
     tag = "Ordner",
-    description = "Personen, Klassen, Signale, Quellen und Register der Anwendungen ersetzen (Personen nur stilllegen); die Art einer Person und den Zustand einer Person der Art human ändern nur Menschen → 403 {fehler, kuerzel}; signale: [{schluessel, bezeichnung, farbe}] — Schlüssel wie Klassen, „due“ vergeben",
+    description = "Personen, Klassen, Signale, Quellen und Register der Anwendungen ersetzen (Personen nur stilllegen); die Art einer Person und den Zustand einer Person der Art human ändern nur Menschen → 403 {fehler, kuerzel}; signale: [{schluessel, bezeichnung, farbe}] — Schlüssel wie Klassen, „due“ vergeben; je Anwendung und in quellen repository und/oder wbs/anforderungen — geschrieben wird immer repository (mitgeschickt, sonst Startordner), wbs/requirements nur, wenn mitgeschickt und nicht leer; ein Register in alter Form bekommt beim ersten PUT sein repository",
     params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
     request_body = crate::modell::Einstellungen,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Geaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person und den Zustand eines Menschen ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
@@ -1467,7 +1466,7 @@ async fn herkunft(State(app): State<App>) -> Result<Response, Fehler> {
     get,
     path = "/api/anwendungen",
     tag = "Ordner",
-    description = "Register der Anwendungen {kürzel: {name, wbs, anforderungen, erreichbar: {wbs, anforderungen}}}",
+    description = "Register der Anwendungen {kürzel: {name, repository, wbs, anforderungen, erreichbar: {repository, wbs, anforderungen}}} — repository gespeichert oder Startordner, alle drei Pfade immer vorhanden (leer = \"\"); erreichbar.repository: der Ordner ist vorhanden",
     responses((status = 200, description = "Erfolg", body = std::collections::BTreeMap<String, crate::dienst::Registereintrag>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn anwendungen(State(app): State<App>) -> Result<Response, Fehler> {

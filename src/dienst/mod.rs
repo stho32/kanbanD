@@ -45,7 +45,7 @@ mod zugregeln;
 mod zuordnung;
 
 pub use anhaenge::{Anhang, anhangname_bereinigen, freier_name};
-pub use anwendungen::{Erreichbar, Registereintrag};
+pub use anwendungen::{Einstellungsantwort, Erreichbar, Quellenantwort, Registereintrag, RepositoryErreichbar};
 pub use aufgabenfilter::{Archivierte, Aufgabenfilter};
 pub use durchlaeufe::NeuerDurchlauf;
 pub use reservierung::{Gezogen, Zug, erste_freie, instanz_pruefen};

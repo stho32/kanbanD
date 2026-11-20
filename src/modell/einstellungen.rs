@@ -169,8 +169,8 @@ mod tests {
     #[test]
     fn repository_ergaenzen_je_anwendung_und_in_den_quellen() {
         let a = |k: &str, repository: &str, wbs: &str| Anwendung { kuerzel: k.into(), name: k.into(), repository: repository.into(), wbs: wbs.into(), anforderungen: String::new() };
-        let mut e = Einstellungen::default();
-        e.quellen = Quellen { repository: String::new(), wbs: "plan/wbs.md".into(), anforderungen: "anf".into(), anwendungen: vec![a("kd", "", "/r/D/P/kd.md"), a("lc", "/r", "/r/D/P/lc.md"), a("xx", " ", "")] };
+        let quellen = Quellen { repository: String::new(), wbs: "plan/wbs.md".into(), anforderungen: "anf".into(), anwendungen: vec![a("kd", "", "/r/D/P/kd.md"), a("lc", "/r", "/r/D/P/lc.md"), a("xx", " ", "")] };
+        let mut e = Einstellungen { quellen, ..Default::default() };
         e.repository_ergaenzen();
         assert_eq!((e.quellen.repository.as_str(), e.quellen.wbs.as_str(), e.quellen.anforderungen.as_str()), ("plan", "plan/wbs.md", "anf"));
         let r: Vec<(&str, &str)> = e.quellen.anwendungen.iter().map(|a| (a.repository.as_str(), a.wbs.as_str())).collect();
