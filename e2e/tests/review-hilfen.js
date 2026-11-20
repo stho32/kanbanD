@@ -29,7 +29,7 @@ function budgetCommits(r, h) {
   gitAls(r, ADA, tag, 'branch', 'karte/8', h.e0);
 }
 
-/** F (#9): 25 Dateien zu 202.019 Byte Patch (R00206 AK 8: 20 mit patch, 5 nachladen) und eine Datei mit 3.001 Zeilen (gross). */
+/** F (#9) und F2 (#10): 25 Dateien zu 202.019 Byte Patch (R00206 AK 8: 20 mit patch, 5 nachladen) und eine Datei mit 3.001 Zeilen (gross). */
 function nachladeCommit(r, h) {
   const tag = '2026-04-02T09:00:00+00:00';
   gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
@@ -38,6 +38,14 @@ function nachladeCommit(r, h) {
   fs.writeFileSync(path.join(r, 'gross.txt'), zeilen(3001, 'g'));
   h.f = commitAlles(r, tag, '25 Dateien und eine große');
   gitAls(r, ADA, tag, 'branch', 'karte/9', h.f);
+  // F2 (#10, Nacharbeit 1): Geschwister von F mit denselben Pfaden und Größen, anderem Inhalt — dieselben Dateien laden nach
+  const tag2 = '2026-04-02T10:00:00+00:00';
+  gitAls(r, ADA, tag2, 'checkout', '-q', '--detach', h.k2);
+  const anders = ('b'.repeat(99) + '\n').repeat(2000);
+  for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.txt`), anders);
+  fs.writeFileSync(path.join(r, 'gross.txt'), zeilen(3001, 'h'));
+  h.f2 = commitAlles(r, tag2, '25 Dateien mit anderem Inhalt');
+  gitAls(r, ADA, tag2, 'branch', 'karte/10', h.f2);
 }
 
 /** D (#7): drei Hunks mit \r\n, U+2028 und ohne Zeilenende; neu, gelöscht, umbenannt (100 %), Modus, binär, Latin-1, Bidi und
@@ -101,7 +109,7 @@ function reviewRepository() {
   return geteilt;
 }
 
-/** Die Aufgaben der Probe (R00207 „Ausgangslage“): #1 wie R00205, #6 Rand c, #7 Merkmale, #8 Budget, #9 Nachladen; Register `kd` → R. */
+/** Die Aufgaben der Probe (R00207 „Ausgangslage“): #1 wie R00205, #6 Rand c, #7 Merkmale, #8 Budget, #9 Nachladen, #10 F und F2; Register `kd` → R. */
 function reviewVorbereiten(rep, { titel = {} } = {}) {
   const kd = x => `kd:${x}`;
   const aufgaben = {
@@ -110,10 +118,11 @@ function reviewVorbereiten(rep, { titel = {} } = {}) {
     7: [kd(rep.d)],
     8: [kd(rep.e), kd(rep.e0)],
     9: [kd(rep.f)],
+    10: [kd(rep.f), kd(rep.f2)],
   };
   const register = EINSTELLUNGEN_KOPF + `    kd: {name: KD, wbs: ${rep.r}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
   const dateien = { 'kanbanD.md': register };
-  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/000${nr}-aufgabe-${nr}.md`] = aufgabeDatei(nr, titel[nr] || `Aufgabe ${nr}`, verweise);
+  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/${String(nr).padStart(4, '0')}-aufgabe-${nr}.md`] = aufgabeDatei(nr, titel[nr] || `Aufgabe ${nr}`, verweise);
   dateien['boards/entwicklung.md'] = `# Entwicklung\n\n## Zu erledigen\n\n${Object.keys(aufgaben).map(n => `- #${n}`).join('\n')}\n\n## In Arbeit\n\n## Erledigt\n`;
   return ordner => {
     for (const [rel, inhalt] of Object.entries(dateien)) {

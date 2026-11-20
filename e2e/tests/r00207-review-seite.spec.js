@@ -33,10 +33,12 @@ async function halten(page, muster, antwort = null) {
     let frei; const tor = new Promise(r => { frei = r; });
     tore.push(frei);
     const wert = await tor;
-    if (wert && wert.status) return route.fulfill({ status: wert.status, contentType: 'application/json', body: JSON.stringify(wert.body || {}) });
-    if (wert === 'abbrechen') return route.abort();
+    // eine Anfrage, die die Seite inzwischen abgebrochen hat, lässt sich nicht mehr beantworten — das ist kein Fehler des Tests
+    const still = p => p.catch(() => {});
+    if (wert && wert.status) return still(route.fulfill({ status: wert.status, contentType: 'application/json', body: JSON.stringify(wert.body || {}) }));
+    if (wert === 'abbrechen') return still(route.abort());
     if (antwort) return antwort(route);
-    return route.continue();
+    return still(route.continue());
   });
   return { frei: (i, wert) => tore[i](wert), angehalten: () => tore.length };
 }
@@ -418,6 +420,87 @@ test.describe('R00207 Review-Seite eines Commits', () => {
       expect(new URL(z.datei[1]).searchParams.get('datei')).toBe('f22.txt');
     });
   }
+
+  /* ── Nacharbeit 1, Code-Review M2: eine späte datei=-Antwort nach einem Adress- oder Commitwechsel gilt nie ── */
+
+  /** Wie die i-te datei=-Anfrage endet: „abgebrochen“ oder „beantwortet“; „läuft noch“, wenn sie 3 s nach dem Aufruf von `bis()`
+      noch offen ist — weit vor der eigenen Frist des Nachladens (15 s), die sie sonst auch abbräche. */
+  function anfrageEnde(page, z, i) {
+    const ende = new Promise(fertig => {
+      const pruefe = r => { if (z.dateiAnfragen[i] === r) fertig(r.failure() ? 'abgebrochen' : 'beantwortet'); };
+      page.on('requestfinished', pruefe);
+      page.on('requestfailed', pruefe);
+    });
+    return { bis: () => Promise.race([ende, new Promise(r => setTimeout(() => r('läuft noch'), 3000))]) };
+  }
+
+  function dateiAnfragenMerken(page, z) {
+    z.dateiAnfragen = [];
+    page.on('request', r => { if (r.method() === 'GET' && new URL(r.url()).searchParams.has('datei')) z.dateiAnfragen.push(r); });
+  }
+
+  for (const [fall, wechsel] of [
+    ['anderer Verweis auf denselben Commit', async page => page.evaluate(f => { location.hash = `#/aufgaben/aufgabe/9/review?commit=kd%3A${f.slice(0, 7)}`; }, rep.f)],
+    ['Wechsel der Aufgabe und zurück', async page => {
+      await page.evaluate(f => { location.hash = `#/aufgaben/aufgabe/7/review?commit=kd%3A${f}`; }, rep.d);
+      await expect(page.locator('#rv-ctitel')).toContainText('Merkmale');
+      await page.evaluate(f => { location.hash = `#/aufgaben/aufgabe/9/review?commit=kd%3A${f.slice(0, 7)}`; }, rep.f);
+    }],
+  ]) {
+    test(`Nacharbeit 1 (Code M2): späte Antwort für Datei 20 nach ${fall} wird verworfen — „Lädt …“ ohne Code, dann der Code; höchstens eine Anfrage zugleich`, async ({ page }) => {
+      const { z, h } = await nachladenVorbereiten(page);
+      dateiAnfragenMerken(page, z);
+      await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+      await expect.poll(() => h.angehalten()).toBe(1);
+      const ende1 = anfrageEnde(page, z, 0);
+      await wechsel(page);
+      // der Wechsel bricht die laufende Anfrage ab und gibt so das Budget des Servers frei
+      expect(await ende1.bis()).toBe('abgebrochen');
+      await expect(page.locator('#rv-d20')).toContainText('Sie wird einzeln geladen.');
+      await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+      await expect.poll(() => h.angehalten()).toBe(2);
+      h.frei(0);
+      await page.evaluate(() => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))));
+      await expect(page.locator('#rv-d20 .df-laedt')).toHaveText('Lädt die Änderungen …');
+      await expect(page.locator('#rv-d20 table.dz')).toHaveCount(0);
+      // die zweite Anfrage läuft noch: eine weitere Datei wartet, statt eine zweite Anfrage zu stellen
+      await page.locator('#rv-d21').getByRole('button', { name: 'Nachladen' }).click();
+      await expect(page.locator('#rv-d21 .df-wartet')).toBeVisible();
+      expect(z.datei.length).toBe(2);
+      h.frei(1);
+      await expect(page.locator('#rv-d20 table.dz').first()).toBeVisible();
+      await expect(page.locator('#rv-d20')).not.toHaveAttribute('aria-busy', 'true');
+      await expect.poll(() => h.angehalten()).toBe(3);
+      expect(z.datei.length).toBe(3);
+      h.frei(2);
+      await expect(page.locator('#rv-d21 table.dz').first()).toBeVisible();
+    });
+  }
+
+  test('Nacharbeit 1 (Code M2): Blättern zu F2 mit denselben Pfaden — die späte Antwort aus F gilt nicht, Datei 20 zeigt den Inhalt von F2', async ({ page }) => {
+    const z = zaehlen(page);
+    dateiAnfragenMerken(page, z);
+    const h = await halten(page, url => url.pathname === '/api/aufgaben/10/diff' && url.searchParams.has('datei'));
+    await page.goto(reviewAdresse(k, 10, `kd:${rep.f}`));
+    await expect(page.locator(POS)).toHaveText('1 von 2');
+    await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+    await expect.poll(() => h.angehalten()).toBe(1);
+    const ende1 = anfrageEnde(page, z, 0);
+    await page.locator('#rv-vor').click();
+    expect(await ende1.bis()).toBe('abgebrochen');
+    await expect(page.locator(POS)).toHaveText('2 von 2');
+    await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+    await expect.poll(() => h.angehalten()).toBe(2);
+    h.frei(0);
+    h.frei(1);
+    const code = page.locator('#rv-d20 table.dz').first();
+    await expect(code).toBeVisible();
+    await expect(code).toContainText('b'.repeat(99));
+    await expect(code).not.toContainText('a'.repeat(99));
+    await expect(page.locator('#rv-d20')).not.toHaveAttribute('aria-busy', 'true');
+    expect(z.datei.length).toBe(2);
+    expect(new URL(z.datei[1]).searchParams.get('commit')).toBe(`kd:${rep.f2}`);
+  });
 
   test('AK 5: die gross-Datei lädt mit „Änderungen anzeigen“ einzeln und steht danach ganz gezeichnet (3.001 Zeilen und Kopf)', async ({ page }) => {
     const { z, h } = await nachladenVorbereiten(page);

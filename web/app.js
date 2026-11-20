@@ -987,9 +987,11 @@ const DIFF_FRIST_RUMPF_MS = 60000;
 const reviewSchmal = () => matchMedia('(max-width:640px)').matches;
 
 /** Liest den Diff mit eigener Frist: 15 s bis zum Kopf, 60 s für den Rumpf. Fehler haben die Form von `api` (`status`, `message`,
-    `daten`); eine abgelaufene Frist zählt als Zeitgrenze (503). Ein Abbruch durch den Browser gibt das Budget des Servers frei. */
-async function diffHolen(pfad) {
+    `daten`); eine abgelaufene Frist zählt als Zeitgrenze (503). Ein Abbruch durch den Browser gibt das Budget des Servers frei;
+    `abbruchSignal` bricht von außen ab (Adresswechsel), die Antwort wird dann ohnehin verworfen. */
+async function diffHolen(pfad, abbruchSignal = null) {
   const abbruch = new AbortController();
+  if (abbruchSignal) abbruchSignal.addEventListener('abort', () => abbruch.abort(), { once: true });
   let frist = setTimeout(() => abbruch.abort(), DIFF_FRIST_KOPF_MS);
   const fristFehler = () => Object.assign(new Error('Das Programm antwortete nicht innerhalb der Frist'), { status: 503, daten: null });
   try {
@@ -1018,7 +1020,10 @@ const fehlerVon = g => ({ status: g.status || 0, fehler: g.message, daten: g.dat
     des Commits derselben Aufgabe liest nur den Diff. Ist sie nicht gezeigt, fällt ihr Zustand weg. Ein Live-Ereignis liest nie. */
 function reviewAnstossen() {
   if (S.ui.view !== 'review') {
-    if (S.ui.review) S.ui.fokusNachListe = { nr: S.ui.review.nr, verweis: S.ui.review.herkunft };
+    if (S.ui.review) {
+      S.ui.fokusNachListe = { nr: S.ui.review.nr, verweis: S.ui.review.herkunft };
+      reviewNachladenAbbrechen(S.ui.review);
+    }
     S.ui.review = null;
     return;
   }
@@ -1027,6 +1032,7 @@ function reviewAnstossen() {
   let r = S.ui.review;
   if (!a || (r && r.adresse === hash)) return;
   const gleicheSeite = Boolean(r) && r.nr === a.nummer && r.basis === a.basis && r.slug === adresse.slug;
+  if (r) reviewNachladenAbbrechen(r);
   if (!gleicheSeite) {
     r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null };
     S.ui.reviewHerkunft = null;
@@ -1184,6 +1190,13 @@ function reviewDateiNeu(r, i) {
   reviewKlappenMerken(r);
 }
 
+/** Bricht die laufende Anfrage `datei=` ab, wenn die Seite ihre Adresse wechselt oder verlassen wird (Code-Review #209 M2): das gibt
+    das Budget des Servers frei; die Antwort gälte ohnehin nicht mehr. */
+function reviewNachladenAbbrechen(r) {
+  if (r.laufend) r.laufend.abbruch.abort();
+  r.laufend = null;
+}
+
 /** Nachladen einer Datei (ADR-0033 Punkt 6): höchstens eine Anfrage `datei=` zur Zeit; weitere warten sichtbar und starten von
     selbst, sobald die vorige zu Ende ist — auch mit Fehler. Nie eine Wiederholung ohne Klick. */
 function reviewNachladen(r, i) {
@@ -1194,20 +1207,22 @@ function reviewNachladen(r, i) {
   reviewDateiLaden(r, i);
 }
 
+/** Lädt Datei `i` nach. Jede Anfrage trägt ihren eigenen Lauf: eine Antwort gilt nur, solange genau dieser Lauf der laufende ist —
+    nie über den Index, denn nach einem Adresswechsel kann dieselbe Nummer neu laden (Code-Review #209 M2). */
 async function reviewDateiLaden(r, i) {
   const st = r.staende[i], d = r.dateien[i], c = r.diff.antwort.commits[0];
   const verweis = (r.diff.antwort.anwendung ? `${r.diff.antwort.anwendung}:` : '') + c.hash;
-  r.laufend = i;
+  const lauf = r.laufend = { i, abbruch: new AbortController() };
   st.laden = 'laeuft';
   st.fehler = null;
   reviewDateiNeu(r, i);
   let antwort = null, fehler = null;
   try {
-    antwort = await diffHolen(`/api/aufgaben/${r.nr}/diff?commit=${encodeURIComponent(verweis)}&datei=${encodeURIComponent(d.neu ?? d.alt)}`);
+    antwort = await diffHolen(`/api/aufgaben/${r.nr}/diff?commit=${encodeURIComponent(verweis)}&datei=${encodeURIComponent(d.neu ?? d.alt)}`, lauf.abbruch.signal);
   } catch (g) {
     fehler = fehlerVon(g);
   }
-  if (S.ui.review !== r || r.laufend !== i) return;
+  if (S.ui.review !== r || r.laufend !== lauf) return;
   r.laufend = null;
   const neu = antwort && zuordnen(r.dateien, i, antwort.dateien);
   if (neu) {
