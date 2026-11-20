@@ -7,8 +7,8 @@
 
   /** Die vier Zustandswörter des Repositorys (PO Z. 434) mit der Klasse ihrer Marke, in der Reihenfolge der Prüfung. */
   const REPOSITORY_ZUSTAENDE = Object.freeze({
-    leer: Object.freeze({ wort: 'kein Repository', klasse: 'leer' }),
-    ungeprueft: Object.freeze({ wort: 'noch nicht geprüft', klasse: 'offen' }),
+    leer: Object.freeze({ wort: 'kein Repository', klasse: 'ohne' }),
+    ungeprueft: Object.freeze({ wort: 'noch nicht geprüft', klasse: 'ungeprueft' }),
     erreichbar: Object.freeze({ wort: 'erreichbar', klasse: 'ja' }),
     fehlt: Object.freeze({ wort: 'nicht erreichbar', klasse: 'nein' }),
   });
@@ -50,5 +50,12 @@
     return REPOSITORY_ZUSTAENDE.fehlt;
   }
 
-  Object.assign(ziel, { REPOSITORY_ZUSTAENDE, startordner, pfadeZurDatei, repositoryZustand });
+  /** Zahl der Anwendungen, wie der Server zählt (`Anwendungen::aus`): die Standardanwendung, wenn sie einen Startordner
+      hat, dazu jede Anwendung des Registers. */
+  function anwendungenZahl(quellen) {
+    const standard = startordner(quellen.repository, quellen.wbs, quellen.anforderungen) ? 1 : 0;
+    return standard + (quellen.anwendungen || []).length;
+  }
+
+  Object.assign(ziel, { REPOSITORY_ZUSTAENDE, startordner, pfadeZurDatei, repositoryZustand, anwendungenZahl });
 })(typeof module !== 'undefined' ? module.exports : window);

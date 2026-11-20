@@ -702,13 +702,13 @@ function quelleLink(x) {
   const q = S.herkunft[x];
   return q ? `vscode://file${q.datei}:${q.zeile}` : null;
 }
-/** Standardanwendung (sources.wbs/requirements) und Register zusammen — wie der Server zählt. */
-function anwendungenZahl() {
+/** Standardanwendung und Register zusammen — wie der Server zählt (web/register.js). */
+function anwendungenImOrdner() {
   const q = (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen) || {};
-  return (q.wbs || q.anforderungen ? 1 : 0) + (q.anwendungen || []).length;
+  return anwendungenZahl(q);
 }
 /** Ohne Kürzel bei mehreren Anwendungen: der Server liefert sie bewusst nicht (R00053). */
-const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && !S.herkunft[x] && anwendungenZahl() > 1;
+const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && !S.herkunft[x] && anwendungenImOrdner() > 1;
 function vHerkunftChip(x) {
   const q = S.herkunft[x], h = quelleLink(x);
   // Der inhaltliche Schlüssel des Sicherers (R00138, ADR-0007 N3 Regel 2): die Stelle (Reihenfolge) überlebt eine fremde Liste nicht.
@@ -2273,7 +2273,7 @@ function vWbsVerwerfenPop() {
 function vErreichbar(a, feld) {
   const g = (S.anwendungen || {})[a.kuerzel];
   if (!a[feld]) return '';
-  if (!g || g[feld] !== a[feld]) return `<span class="erreich offen">${REPOSITORY_ZUSTAENDE.ungeprueft.wort}</span>`;
+  if (!g || g[feld] !== a[feld]) return `<span class="erreich ${REPOSITORY_ZUSTAENDE.ungeprueft.klasse}">${REPOSITORY_ZUSTAENDE.ungeprueft.wort}</span>`;
   return g.erreichbar[feld] ? `<span class="erreich ja" title="Pfad gefunden">erreichbar</span>` : `<span class="erreich nein" title="Pfad nicht gefunden — die Anwendung ist nicht erreichbar, alle Boards bleiben benutzbar">nicht erreichbar</span>`;
 }
 /** Was der Server zum Repository einer Anwendung zuletzt gemeldet hat: {repository, erreichbar} oder nichts. */
