@@ -10,7 +10,32 @@
    */
   function adresseLesen(hash) {
     const text = String(hash || '');
+    const review = reviewLesen(text);
+    if (review) return { sicht: 'review', slug: slugLesen(text), nummer: null, review };
     return { sicht: ansichtAusAdresse(text), slug: slugLesen(text), nummer: nummerLesen(text) };
+  }
+
+  /** Form eines Commit-Verweises, bevor er in eine Anfrage geht (ADR-0033 Punkt 1): Kürzel und Hash von 7 bis 64 Hex-Zeichen. */
+  const VERWEIS_FORM = /^([a-z0-9]{1,8}:)?[0-9a-fA-F]{7,64}$/;
+
+  /** Review-Seite `…/aufgabe/<nr>/review[?commit=<verweis>]` (R00207 FA 2): `nummer` ist die der Seite, nicht die des Fensters —
+      das Fenster bleibt auf dieser Adresse zu. Ein Verweis, der nicht in Form ist, kommt nie heraus, nur `ungueltig`. */
+  function reviewLesen(text) {
+    const m = /^#\/(board\/[^/]+|aufgaben)\/aufgabe\/([0-9]{1,9})\/review(?:\?(.*))?$/.exec(text);
+    const nummer = m && Number(m[2]);
+    if (!nummer) return null;
+    const basis = m[1] === 'aufgaben' ? 'aufgaben' : 'board';
+    const roh = new URLSearchParams(m[3] || '').get('commit');
+    if (roh === null) return { basis, nummer, commit: null, ungueltig: false };
+    const gueltig = VERWEIS_FORM.test(roh);
+    return { basis, nummer, commit: gueltig ? roh : null, ungueltig: !gueltig };
+  }
+
+  /** Die Adresse der Review-Seite; ohne `commit` die Seite ohne Verweis. */
+  function reviewAdresseBilden({ basis, slug, nummer, commit }) {
+    const seite = adresseBilden({ sicht: basis, slug, nummer });
+    if (!commit) return seite + '/review';
+    return seite + '/review?commit=' + encodeURIComponent(commit);
   }
 
   /** Der Router der Ansichten: Unbekanntes zeigt das Board. */
@@ -50,5 +75,5 @@
     return text + ' — gilt nur auf diesem Rechner';
   }
 
-  Object.assign(ziel, { adresseLesen, adresseBilden, linkRueckmeldung });
+  Object.assign(ziel, { adresseLesen, adresseBilden, reviewAdresseBilden, linkRueckmeldung });
 })(typeof module !== 'undefined' ? module.exports : window);

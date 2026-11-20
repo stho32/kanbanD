@@ -102,3 +102,47 @@ test('Rückmeldung nach „Link kopieren“: kopiert oder verweigert; auf localh
   assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: '192.168.1.20' }), 'Link kopiert');
   assert.strictEqual(linkRueckmeldung({ kopiert: true, hostname: 'localhost.example.org' }), 'Link kopiert');
 });
+
+/* ── R00207 B1017: Adresse der Review-Seite (ADR-0033 Punkt 1) ── */
+const { reviewAdresseBilden } = require('../../web/adresse.js');
+const V1 = '3f2a9c1d00112233445566778899aabbccddeeff';
+
+test('Review-Adresse in Board- und Aufgabenform: Sicht review, Fensternummer null, Verweis URL-dekodiert', () => {
+  assert.deepStrictEqual(adresseLesen(`#/board/entwicklung/aufgabe/7/review?commit=kd%3A${V1}`),
+    { sicht: 'review', slug: 'entwicklung', nummer: null, review: { basis: 'board', nummer: 7, commit: `kd:${V1}`, ungueltig: false } });
+  assert.deepStrictEqual(adresseLesen(`#/aufgaben/aufgabe/1/review?commit=${V1.slice(0, 7)}`),
+    { sicht: 'review', slug: null, nummer: null, review: { basis: 'aufgaben', nummer: 1, commit: V1.slice(0, 7), ungueltig: false } });
+  assert.strictEqual(adresseLesen(`#/aufgaben/aufgabe/1/review?commit=kd:${V1}`).review.commit, `kd:${V1}`, 'auch unkodiert');
+});
+
+test('Review-Adresse ohne commit: kein Verweis, nicht ungültig (zeigt den ersten Commit mit Diff)', () => {
+  assert.deepStrictEqual(adresseLesen('#/aufgaben/aufgabe/1/review').review, { basis: 'aufgaben', nummer: 1, commit: null, ungueltig: false });
+  assert.deepStrictEqual(adresseLesen('#/board/b/aufgabe/3/review?').review, { basis: 'board', nummer: 3, commit: null, ungueltig: false });
+});
+
+test('Form des Verweises: 7 und 64 Hex gültig, 6 und 65 Hex, fremde Zeichen, Kürzel über 8 Zeichen und kaputte Kodierung ungültig', () => {
+  const lies = c => adresseLesen('#/aufgaben/aufgabe/1/review?commit=' + c).review;
+  assert.strictEqual(lies('a'.repeat(7)).ungueltig, false);
+  assert.strictEqual(lies('A'.repeat(64)).ungueltig, false);
+  assert.strictEqual(lies('abcdefgh:' + 'a'.repeat(7)).ungueltig, false, 'Kürzel aus 8 Zeichen');
+  for (const c of ['a'.repeat(6), 'a'.repeat(65), 'kd:' + 'a'.repeat(6), 'kd:' + 'a'.repeat(65), '<script>alert(1)</script>', '%3Cscript%3E', 'abcdefghi:' + 'a'.repeat(7),
+    'KD:' + 'a'.repeat(7), ':' + 'a'.repeat(7), 'g'.repeat(7), 'kd%3A' + 'a'.repeat(7) + '%0A', '%E0%A4%A', 'kd:' + 'a'.repeat(7) + '%20']) {
+    const r = lies(c);
+    assert.deepStrictEqual([r.commit, r.ungueltig], [null, true], c);
+  }
+});
+
+test('Review-Adresse: Nummer wie im Fenster (Ziffern, höchstens neun), sonst keine Review-Adresse', () => {
+  assert.strictEqual(adresseLesen('#/aufgaben/aufgabe/x/review?commit=' + V1).sicht, 'aufgaben');
+  assert.strictEqual(adresseLesen('#/aufgaben/aufgabe/1234567890/review?commit=' + V1).sicht, 'aufgaben');
+  assert.strictEqual(adresseLesen('#/aufgaben/aufgabe/1/reviewx').sicht, 'aufgaben');
+  assert.strictEqual(adresseLesen('#/berichte/kosten/aufgabe/1/review').sicht, 'berichte/kosten');
+});
+
+test('reviewAdresseBilden: beide Formen, Verweis URL-kodiert; gelesen ergibt sie wieder dasselbe', () => {
+  assert.strictEqual(reviewAdresseBilden({ basis: 'board', slug: 'entwicklung', nummer: 7, commit: `kd:${V1}` }), `#/board/entwicklung/aufgabe/7/review?commit=kd%3A${V1}`);
+  assert.strictEqual(reviewAdresseBilden({ basis: 'aufgaben', slug: 'x', nummer: 1, commit: null }), '#/aufgaben/aufgabe/1/review');
+  const ziel = { basis: 'board', slug: 'zweit', nummer: 12, commit: `kd:${V1}` };
+  const r = adresseLesen(reviewAdresseBilden(ziel));
+  assert.deepStrictEqual([r.slug, r.review.basis, r.review.nummer, r.review.commit], ['zweit', 'board', 12, `kd:${V1}`]);
+});
