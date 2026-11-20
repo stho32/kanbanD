@@ -1,6 +1,6 @@
 # ADR-0033: Review-Seite eines Commits — Adresse hinter `/aufgabe/<nr>/review?commit=`, Diff als stehende Insel, gestaffeltes Zeichnen, Nachladen einzeln und ohne Selbstwiederholung
 
-**Status**: Akzeptiert (Punkte 1–9; Punkt 9 entschieden vom product-owner am 2026-11-20, po-entscheidungen Z. 411, mit der Bedingung „Blättern“; Nachtrag N1 für B3 #215 akzeptiert, N1.5 und N1.9 Vorgeschlagen bis zur Freigabe der Nachzeichnung)
+**Status**: Akzeptiert (Punkte 1–9; Punkt 9 entschieden vom product-owner am 2026-11-20, po-entscheidungen Z. 411, mit der Bedingung „Blättern“; Nachtrag N1 für B3 #215 akzeptiert, N1.5 und N1.9 vom product-owner bestätigt, po-entscheidungen Z. 437–441)
 **Datum**: 2026-11-20
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #209, Lauf 209-architekt-1)
 **Kontext-Anforderung**: — (Karte #209, nach Feinschnitt nur Scheibe B2 „Diff-Ansicht eines Commits“; die Anforderung schreibt der planer). Bezug: ADR-0007, ADR-0014, ADR-0029, ADR-0030, ADR-0032 (Punkte 6 und 8, N4, N5 auf `karte/213`), R00205 (B1), R00206 (A3), Artboard D0009 `#diff-fenster`, `#diff-raender`
@@ -113,12 +113,12 @@
 - [ ] gestalter: Zustand 503 „Antwortbudget“ (Seite und Datei) und die Hinweiszeile `dateien_gekappt` nachzeichnen; „über 20 MB“ und „380 KB“ aus den Rändern nehmen; Umschalter „Alle Änderungen | Ein Commit“ in B2 weglassen; Marke für Bidi- und Steuerzeichen.
 - [x] product-owner: Punkt 9 (2026-11-20, mit Bedingung „Blättern“).
 - [x] B3 (#215): `…/review` ohne `commit` zeigt den Gesamt-Diff; der Umschalter kommt dazu — entschieden in Nachtrag N1.
-- [ ] gestalter und product-owner: Nachzeichnung D0009 nach N1.9.
+- [x] gestalter und product-owner: Nachzeichnung D0009 nach N1.9 (freigegeben mit Änderung, po-entscheidungen Z. 437–441).
 - [ ] B4 (#216): die Hervorhebung zeichnet in dieselben Blöcke zu 500 Zeilen; Prism tokenisiert je Hunk-Seite (ADR-0032 Punkt 10). Das Zeichenbudget nach Punkt 5 wird mit Farbe neu gemessen.
 
 ## Nachtrag 2026-11-20 N1: „Alle Änderungen der Karte“ (B3, Karte #215) — Adresse und Umschalter, eine Reihe für alle Diff-Anfragen, Folge-Dateien, Hinweise, mehrere Anwendungen
 
-Der bisherige Text bleibt stehen; N1 gilt, wo er ihm widerspricht (Punkt 1 letzter Spiegelstrich, Punkt 6 „höchstens eine Anfrage `datei=` zur Zeit“, Punkt 9 „bis B3“). Entscheider: Claude (autonom, architekt, Auftrag Director Karte #215, Lauf 215-architekt-1). **Status N1: Akzeptiert; N1.5 und die Abweichungen von der Zeichnung in N1.9 sind Vorgeschlagen, bis der product-owner die Nachzeichnung freigibt.**
+Der bisherige Text bleibt stehen; N1 gilt, wo er ihm widerspricht (Punkt 1 letzter Spiegelstrich, Punkt 6 „höchstens eine Anfrage `datei=` zur Zeit“, Punkt 9 „bis B3“). Entscheider: Claude (autonom, architekt, Auftrag Director Karte #215, Lauf 215-architekt-1). **Status N1: Akzeptiert.** N1.5 und N1.9 hat der product-owner am 2026-11-20 bestätigt (po-entscheidungen Z. 437–441, Lauf 215-product-owner-1).
 
 **Belegt (Code, API A4 auf `karte/214`, 96e6db43, R00208 erledigt)**:
 - Antwort `{anwendung, spanne, commits, dateien, hinweise}`. `anwendung` ist das Kürzel, `""` für die Standardanwendung. `anwendung=<kürzel>` wählt, **auch leer** (= Standardanwendung); ohne den Parameter gilt die erste Anwendung in der Reihenfolge der Verweise (`src/dienst/gesamt_diff.rs:63`).
@@ -153,7 +153,7 @@ Der bisherige Text bleibt stehen; N1 gilt, wo er ihm widerspricht (Punkt 1 letzt
 - Ziel von „Ein Commit“: der zuletzt auf dieser Seite gezeigte Commit, sonst der erste mit Diff. Für den ersten gilt der Weg aus B2 (`reviewErsterCommit`, wartet auf die Liste, Rand (c) aus Punkt 9). Das `href` steht, sobald das Ziel bekannt ist.
 - **Keine Auswahl** (beantwortet PO Z. 416): In „Alle Änderungen“ ist jeder einbezogene Commit in der Commit-Liste der Seite und jeder Schrittkopf einer Folge-Datei (N1.4) ein Verweis auf `?commit=`, also in einem Schritt erreichbar. In „Ein Commit“ blättert man. Ein Dropdown wäre die dritte Auswahl aus derselben Liste.
 - Fokus nach dem Umschalten: auf den nun gewählten Teil des Umschalters, denn beide Teile stehen in beiden Ansichten. Nie auf `body`.
-- Seitentitel und Ansage nennen die Ansicht statt des Kurz-Hashs (Wortlaut planer).
+- Seitentitel in „Alle Änderungen“: „Review #<nr> · Alle Änderungen — kanbanD“; in „Ein Commit“ bleibt der Titel aus B2 (Z. 425). Die Ansage nennt die Zahlen in Worten, z. B. „Alle Änderungen der Aufgabe #219: 13 Dateien, 1.059 Zeilen hinzugefügt, 25 entfernt.“, nie „+“/„−“ (po-entscheidungen Z. 440).
 
 ### N1.2 Laden: eine Reihe für alle Diff-Anfragen der Seite (erweitert Punkte 3 und 6)
 
@@ -163,7 +163,7 @@ Der bisherige Text bleibt stehen; N1 gilt, wo er ihm widerspricht (Punkt 1 letzt
 - **Lauf-Kennung je Anfrage** (Lehre #209): Jede Anfrage trägt ein eigenes Objekt. Eine Antwort gilt nur, solange genau dieses Objekt der laufende Lauf von `S.ui.review` ist, nie über Index, Kürzel oder Namen. Umschalten, Wechsel des Commits oder der Adresse und Verlassen brechen die laufende Anfrage mit `AbortController` ab und leeren die Reihe.
 - Kein Zustand des Gesamt-Diffs übersteht das Umschalten, die Rückkehr zu „Alle Änderungen“ liest neu. Der Browser macht daraus von selbst eine bedingte Anfrage (gemessen). Der Server antwortet nach 2 Git-Prozessen mit 304 (ADR-0032 N6.10), solange sich kein Zweig bewegt hat. Hat sich einer bewegt, ist die neue Antwort die richtige. **`If-None-Match` setzt die Oberfläche nicht selbst**, sonst käme 304 als Fehler an.
 - Klappen werden je Anwendung unter `alle:<kürzel>` gemerkt (wie `klappenJe`) und gelten nur, wenn die Dateiliste gleich ist (dieselben Namen in derselben Reihenfolge).
-- Ein Live-Ereignis liest nicht (Punkt 3). Inkauf: neue Verweise an der Karte erscheinen erst nach Umschalten oder Neuladen.
+- Ein Live-Ereignis liest nicht (Punkt 3). Inkauf: neue Verweise an der Karte erscheinen erst nach Umschalten oder Neuladen. Ein Band „neu laden“ kommt nicht mit B3 (po-entscheidungen Z. 441); zeigt der Betrieb veraltete Reviews, wird es eine Folgekarte für B1 und B3.
 - Fristen wie Punkt 3 (`diffHolen`).
 
 ### N1.3 Insel und Abschnitte (erweitert Punkt 4)
@@ -182,7 +182,7 @@ Der bisherige Text bleibt stehen; N1 gilt, wo er ihm widerspricht (Punkt 1 letzt
 - Die Zahl in Liste und Kopf ist die Summe der Schritte darunter. Damit ist PO Z. 405 erfüllt. Inkauf: doppelt gezählte Zeilen (N6.6).
 - **Zeichenbudget seitenweit** (präzisiert Punkt 5): Gezählt werden die gezeichneten Zeilen aller Schritte mit `patch`. Eine Folge-Datei öffnet ganz oder gar nicht. „Die erste Datei immer“ gilt nur für die erste Datei der Seite. Nach der ersten, die nicht passt, öffnet keine weitere, auch nicht in später ankommenden Anwendungen. Ein Schritt ohne `patch` zählt nicht und unterbricht nicht. Gemessen liegt jede der 201 Karten darunter (höchstens 4.367 Zeilen), das Budget greift also nur bei Ausreißern.
 
-### N1.5 Ganz als Folge (präzisiert ADR-0032 N6.4 für die Oberfläche; Vorgeschlagen bis zur Freigabe der Nachzeichnung)
+### N1.5 Ganz als Folge (präzisiert ADR-0032 N6.4 für die Oberfläche; G2 bestätigt, po-entscheidungen Z. 438)
 
 | Option | Stärke | Schwäche |
 |---|---|---|
@@ -206,7 +206,7 @@ Der bisherige Text bleibt stehen; N1 gilt, wo er ihm widerspricht (Punkt 1 letzt
 - Ist eine Folge-Datei zusammen zu groß (`zu_gross_zum_anzeigen`), bleibt jeder Schritt über seinen Kopf („Ein Commit“, 8 MB je Datei) lesbar. Nichts ist still.
 - Nachladen geht durch die Reihe (N1.2). Lauf-Kennung und Fokus wie B2 (Code-Review #209 M2, UX-Review #209 M1).
 
-### N1.7 Hinweise in Worten (Wortlaut planer mit der Zeichnung, PO Z. 427)
+### N1.7 Hinweise in Worten (Wortlaute freigegeben, po-entscheidungen Z. 437 und 440; Vorgabe Z. 427)
 
 | `art` | Ort | Inhalt | Verweis |
 |---|---|---|---|
@@ -220,6 +220,12 @@ Der bisherige Text bleibt stehen; N1 gilt, wo er ihm widerspricht (Punkt 1 letzt
 | `zu_gross_zum_anzeigen` | Datei bzw. Schritt | Zustand wie B2 | Schrittkopf |
 | unbekannte `art` | Abschnitt | neutraler Satz mit dem Namen der Art | – |
 
+Wortlaute nach der Freigabe (Z. 437, 440):
+- Fremde Commits: „Die Änderungen des fremden Commits sind nicht zu sehen.“ bzw. „…; Änderungen fremder Commits fehlen.“ — nie „Zeilen … nirgends“, denn Kontextzeilen eines Kartenschritts dürfen fremden Text zeigen (Z. 426).
+- Ganz als Folge: „einen zusammengefassten Diff der ganzen Karte gibt es hier nicht“ — nicht „eine Summe … gibt es nicht“, denn Kopf und Liste zeigen die Summe der Schritte (N6.6).
+- Grund `nicht_linear`: „Die Commits der Karte folgen nicht auf einem Zweig aufeinander.“
+- Merge: „… ist ein Merge und in diesem Gesamtbild ausgelassen“ mit „einzeln ansehen“; Commit-Liste „nicht einbezogen: verwaist“ / „nicht einbezogen: Merge“; Abschnitte „Lädt die Änderungen der Anwendung <kürzel> …“, „Wartet, bis die Anwendung <kürzel> geladen ist …“, „Keine Änderungen zu zeigen“.
+
 Fremder Text: `verweis` bei `unlesbar` ist der Text der Aufgabendatei und geht nur über `sichtbarHtml` (Punkt 8), die Kurzform nur für Verweise in Form (`kurzVerweis`).
 
 ### N1.8 Was `web/diff.js` wiederverwendet, was neu ist
@@ -228,7 +234,7 @@ Fremder Text: `verweis` bei `unlesbar` ist der Text der Aufgabendatei und geht n
 - **Geändert**: `aufklappPlan` bekommt Restbudget und den Zustand „gesperrt“ und zählt Folge-Dateien über ihre Schritte. Er bleibt rein, und mit vollem Budget gibt er für B2 dasselbe wie heute (Einheitentest). `dateiHtml`, `inselHtml` und `dateilisteHtml` bekommen ein Präfix für Kennungen. `laufend`/`schlange` der Seite werden zur Reihe aus N1.2. `diffFehlerHtml` nennt ohne Verweis die Ansicht.
 - **Neu**: das reine Modul `web/gesamt.js` mit Node-Tests wie `diff.js`. Es enthält Folge-Datei und Schritte, Hinweis → Satz und Ziel, Abschnitt je Anwendung, Umschalter, Summen über Abschnitte, die Zuordnung der `datei=`-Antwort und die Wahl der nächsten Anfrage der Reihe. Grund: `diff.js` bleibt bei B2 und ist der Ort von B4 (#216, Hervorhebung in `codeHtml`). Getrennte Dateien vermeiden Konflikte zwischen den Karten (vgl. `vKarte`, gelerntes #201).
 
-### N1.9 Folgen für die Zeichnung D0009 (gestalter, Freigabe product-owner)
+### N1.9 Folgen für die Zeichnung D0009 (nachgezeichnet, freigegeben mit Änderung, po-entscheidungen Z. 437–440)
 
 - `#alle-aenderungen`:
   - (a) Folge-Datei ohne Statuswort, das Statuswort steht je Schritt (N1.4).
@@ -243,6 +249,7 @@ Fremder Text: `verweis` bei `unlesbar` ist der Text der Aufgabendatei und geht n
   - (i) Grund `fremd_zu_gross`.
   - (j) `ausgelassen` mit `unlesbar` und `anwendung_unbekannt`.
 - Kontrast in Ruhe, Hover, Fokus und „gewählt“, hell und dunkel, für den Umschalter und alle neuen Verweise. Die Komponentenregel muss `a:hover` (`web/kd-base.css:4`) schlagen (UX-Review #209 M2).
+- Rand des Umschalters: `--kd-muted` (6,47:1 hell, 6,97:1 dunkel) nur über den Modifikator `.seg.umsch`, nicht an der Basis `.seg`; `.btn` behält `--kd-line-strong` (po-entscheidungen Z. 439, Z. 418).
 
 ### N1.10 Durchsetzung (Abnahme-Proben für den planer)
 
