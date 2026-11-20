@@ -682,4 +682,177 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page.locator('#rv-d0 table.dz').first()).toBeVisible();
     await expect(page.locator('#rv-dk20')).toBeFocused();
   });
+  /* ── AK 9 Breite, Ziele, Knöpfe, Themen ── */
+
+  /** Rechte Kanten von Dateiliste, Leiste und Commit-Kopf; Breiten der Textspalten; Zeilen des 200-Zeichen-Pfads in der Dateiliste. */
+  const lageMessen = page => page.evaluate(() => {
+    const breite = document.documentElement.clientWidth;
+    const rechts = ['.dn', '.rv-leiste', '.rv-commit'].flatMap(sel => [...document.querySelectorAll(sel)].filter(e => e.getBoundingClientRect().right > breite + 0.5).map(() => sel));
+    const w = sel => Math.min(...[...document.querySelectorAll(sel)].map(e => e.getBoundingClientRect().width));
+    const pfad = [...document.querySelectorAll('.dn .p')].find(e => e.textContent.startsWith('pppp'));
+    const hoehe = parseFloat(getComputedStyle(pfad).lineHeight);
+    return { rechts, spalten: { pfad: w('.dn .p'), titel: w('.rv-commit h2'), zweige: w('.rv-zweige'), code: w('.df-sc') }, zeilen: Math.round(pfad.getBoundingClientRect().height / hoehe) };
+  });
+
+  for (const breite of [320, 414, 641, 768, 980, 1280]) {
+    test(`AK 9: ${breite} px hell und dunkel — die Seite scrollt nie quer, nur der Code-Bereich; Spalten ≥ 160 px und Pfad ≤ 3 Zeilen zwischen 641 und 980`, async ({ page }) => {
+      await breiteSetzen(page, breite, 900);
+      await merkmaleOeffnen(page);
+      await expect(datei(page, 'lang.txt').locator('table.dz')).toBeVisible();
+      for (const farbe of ['light', 'dark']) {
+        await thema(page, farbe);
+        expect(await breiteMessen(page, `Review ${breite} ${farbe}`)).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        // Blöcke außerhalb des Bildes zeichnet der Browser nicht (content-visibility): gemessen wird an der Zeile im Bild
+        await datei(page, 'lang.txt').locator('tr.add').scrollIntoViewIfNeeded();
+        expect(await breiteMessen(page, `Review ${breite} ${farbe}, lange Zeile im Bild`)).toEqual([]);
+        const quer = await datei(page, 'lang.txt').locator('.df-sc').evaluate(e => e.scrollWidth > e.clientWidth);
+        expect(quer, 'die lange Zeile scrollt in ihrem Code-Bereich').toBe(true);
+        const lage = await lageMessen(page);
+        expect(lage.rechts).toEqual([]);
+        if (breite >= 641 && breite <= 980) {
+          for (const [spalte, px] of Object.entries(lage.spalten)) expect(px, `${spalte} bei ${breite}`).toBeGreaterThanOrEqual(160);
+          expect(lage.zeilen, 'Pfad aus 200 Zeichen').toBeLessThanOrEqual(3);
+        }
+      }
+    });
+  }
+
+  test('AK 9: bis 640 px „‹“ und „›“ mit Namen „Voriger Commit, 2 von 4“ / „Nächster Commit, 4 von 4“, Symbol ≥ 3:1; darüber der Text im Namen', async ({ page }) => {
+    await breiteSetzen(page, 640, 800);
+    await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
+    await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Voriger Commit, 2 von 4');
+    await expect(page.locator('#rv-vor')).toHaveAttribute('aria-label', 'Nächster Commit, 4 von 4');
+    await expect(page.locator('#rv-zurueck')).toHaveText('‹');
+    for (const farbe of ['light', 'dark']) {
+      await thema(page, farbe);
+      for (const id of ['#rv-zurueck', '#rv-vor']) {
+        const [tinte, grund] = await page.locator(`${id} .bl-s`).evaluate(e => [getComputedStyle(e).color, getComputedStyle(e.closest('button')).backgroundColor]);
+        expect(await kontrastFarben(page, tinte, grund), `${id} ${farbe}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+    await breiteSetzen(page, 641, 800);
+    await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
+    await expect(page.locator('#rv-zurueck .t')).toHaveText('Zurück');
+  });
+
+  test('AK 9: jeder Knopf der Seite und der Liste trägt .btn mit der Randfarbe eines .btn außerhalb der Seite', async ({ page }) => {
+    const randVon = sel => page.evaluate(sel => [...document.querySelectorAll(sel)].map(e => [e.textContent.trim().slice(0, 30), e.classList.contains('btn'), getComputedStyle(e).borderTopColor]), sel);
+    const bezug = () => page.evaluate(() => { const b = document.createElement('button'); b.className = 'btn'; document.body.append(b); const f = getComputedStyle(b).borderTopColor; b.remove(); return f; });
+    const KNOEPFE = '#review .rv-leiste button, #review .rv-meld button, #review .df-hin button, #review .rv-randb button, #review .rv-lfehl button, #fenster .cl-alle';
+    await page.route('**/api/aufgaben/1/commits', async route => { const a = await route.fetch(); const json = await a.json(); json.commits = json.commits.filter(e => e.hash !== rep.w1); await route.fulfill({ response: a, json }); });
+    const proben = [[reviewAdresse(k, 9, `kd:${rep.f}`), '#rv-d25'], [reviewAdresse(k, 1, `kd:${rep.w1}`), '.rv-randb'], [reviewAdresse(k, 1, 'zz'), '.rv-meld'], [reviewAdresse(k, 6, null), '.rv-meld']];
+    let gezaehlt = 0;
+    for (const [adresse, anker] of proben) {
+      await page.goto(adresse);
+      await expect(page.locator(anker)).toBeVisible();
+      const soll = await bezug();
+      for (const [text, btn, rand] of await randVon(KNOEPFE)) { gezaehlt++; expect(btn, text).toBe(true); expect(rand, text).toBe(soll); }
+    }
+    await page.goto(`${k.adresse}#/board/entwicklung/aufgabe/1`);
+    await liveBereit(page);
+    await reiter(page, 'Commits');
+    await expect(page.locator('#fenster .cl-alle')).toBeVisible();
+    const soll = await bezug();
+    for (const [text, btn, rand] of await randVon(KNOEPFE)) { gezaehlt++; expect(btn, text).toBe(true); expect(rand, text).toBe(soll); }
+    expect(gezaehlt).toBeGreaterThanOrEqual(6);
+  });
+
+  /** Kontrast im Bereich: Text ≥ 4,5:1, Rand und Symbol der Marken ≥ 3:1; Text in „wartet“ und im Band nie in --kd-faint. */
+  async function kontrastPruefen(page, wo) {
+    const messungen = await kontrastMessen(page, ['#review', '#kopf']);
+    const fehler = messungen.filter(m => m.wert < 4.5).map(m => `${wo}: ${m.element} „${String(m.text).slice(0, 30)}“ ${m.wert.toFixed(2)}`);
+    const marken = await page.evaluate(() => [...document.querySelectorAll('#review .mk-z, #review .bl-s, #review .df-wartet svg, #review .rv-meld svg, #review .df-hin svg')].map(m => {
+      let grund = m.parentElement;
+      while (grund && getComputedStyle(grund).backgroundColor === 'rgba(0, 0, 0, 0)') grund = grund.parentElement;
+      const st = getComputedStyle(m);
+      // der Rand gegen den ersten deckenden Grund um die Marke, Symbol und Schrift gegen die Fläche der Marke selbst
+      return { text: m.textContent.slice(0, 20) || m.tagName, rand: st.borderTopStyle === 'none' ? null : st.borderTopColor, tinte: st.color, flaeche: st.backgroundColor === 'rgba(0, 0, 0, 0)' ? getComputedStyle(grund).backgroundColor : st.backgroundColor, aussen: getComputedStyle(grund).backgroundColor };
+    }));
+    for (const m of marken) {
+      if (m.rand && (await kontrastFarben(page, m.rand, m.aussen)) < 3) fehler.push(`${wo}: Rand ${m.text}`);
+      if ((await kontrastFarben(page, m.tinte, m.flaeche)) < 3) fehler.push(`${wo}: Symbol ${m.text}`);
+    }
+    const blass = await page.evaluate(() => { const p = document.createElement('p'); p.style.color = 'var(--kd-faint)'; document.body.append(p); const f = getComputedStyle(p).color; p.remove(); return [...document.querySelectorAll('#review .df-wartet, #review .rv-band')].filter(e => getComputedStyle(e).color === f).length; });
+    if (blass) fehler.push(`${wo}: Text in --kd-faint`);
+    return { fehler, gemessen: messungen.length };
+  }
+
+  for (const farbe of ['light', 'dark']) {
+    test(`AK 9: Kontrast ${farbe} an allen Zuständen — Laden, wartet, lädt, 503 an Seite und Datei, verwaist, Marken, gekappt, Rand b und c`, async ({ page }) => {
+      test.setTimeout(90000);
+      await thema(page, farbe);
+      const fehler = [];
+      const pruefe = async wo => { await thema(page, farbe); const r = await kontrastPruefen(page, wo); expect(r.gemessen, `${wo}: Text gemessen`).toBeGreaterThan(0); fehler.push(...r.fehler); };
+      // Laden der Seite
+      const diffVon1 = url => url.pathname === '/api/aufgaben/1/diff';
+      const h = await halten(page, diffVon1);
+      await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
+      await expect(page.locator('.rv-laedt')).toBeVisible();
+      await pruefe('Laden');
+      h.frei(0);
+      await expect(page.locator('.rv-band')).toBeVisible();
+      await pruefe('verwaist');
+      await page.unroute(diffVon1);
+      // 503 an der Seite, beide Arten
+      for (const [wo, f] of [['503 Budget', 'Antwortbudget von 64 MB belegt'], ['503 Zeit', 'Git antwortete nicht']]) {
+        await page.route('**/api/aufgaben/1/diff?**', route => route.fulfill({ status: 503, json: { fehler: f } }));
+        await page.goto(reviewAdresse(k, 1, `kd:${rep.k3}`));
+        await expect(page.locator('.rv-meld')).toBeVisible();
+        await pruefe(wo);
+        await page.unroute('**/api/aufgaben/1/diff?**');
+      }
+      // Rand c und b
+      await page.goto(reviewAdresse(k, 6, null));
+      await expect(page.locator('.rv-meld')).toBeVisible();
+      await pruefe('Rand c');
+      await page.route('**/api/aufgaben/1/commits', async route => { const a = await route.fetch(); const json = await a.json(); json.commits = json.commits.filter(e => e.hash !== rep.w1); await route.fulfill({ response: a, json }); });
+      await page.goto(reviewAdresse(k, 1, `kd:${rep.w1}`));
+      await expect(page.locator('.rv-randb')).toBeVisible();
+      await pruefe('Rand b');
+      // Marken und gekappt an #7
+      await page.route('**/api/aufgaben/7/diff?**', async route => { const a = await route.fetch(); const json = await a.json(); json.hinweise.push({ art: 'dateien_gekappt', gezeigt: 2000, gesamt: 2431 }); await route.fulfill({ response: a, json }); });
+      await page.goto(reviewAdresse(k, 7, `kd:${rep.d}`));
+      await expect(page.locator('.rv-gekappt')).toBeVisible();
+      await pruefe('Marken und gekappt');
+      // lädt, wartet, 503 an der Datei (#9)
+      const d = await halten(page, url => url.pathname === '/api/aufgaben/9/diff' && url.searchParams.has('datei'));
+      await page.goto(reviewAdresse(k, 9, `kd:${rep.f}`));
+      await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+      await page.locator('#rv-d21').getByRole('button', { name: 'Nachladen' }).click();
+      await page.locator('#rv-d22').getByRole('button', { name: 'Nachladen' }).click();
+      await expect(page.locator('#rv-d21 .df-wartet')).toBeVisible();
+      await pruefe('lädt und wartet');
+      d.frei(0, { status: 503, body: { fehler: 'Git antwortete nicht' } });
+      await expect.poll(() => d.angehalten()).toBe(2);
+      d.frei(1, { status: 503, body: { fehler: 'Antwortbudget von 64 MB belegt' } });
+      await expect(page.locator('#rv-d21 .df-hin.warn')).toBeVisible();
+      await expect(page.locator('#rv-d20 .df-hin.fehl')).toBeVisible();
+      await pruefe('503 an der Datei');
+      expect(fehler).toEqual([]);
+    });
+  }
+
+  test.describe('grober Zeiger', () => {
+    test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
+    test('AK 9/AK 1: bei grobem Zeiger ist jedes Ziel der Seite mindestens 48 × 48 px, jede Zeile der Liste mindestens 48 px hoch', async ({ page }) => {
+      await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
+      await expect(page.locator(POS)).toHaveText('3 von 4');
+      const klein = await page.evaluate(() => [...document.querySelectorAll('#kopf a[href], #review button, #review a[href]')].filter(e => e.checkVisibility()).map(e => { const r = e.getBoundingClientRect(); return [e.id || e.className, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 48 || h < 48));
+      expect(klein).toEqual([]);
+      expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'Review 414' })).toEqual([]);
+      await page.goto(`${k.adresse}#/board/entwicklung/aufgabe/1`);
+      await liveBereit(page);
+      await reiter(page, 'Commits');
+      await expect(page.locator('#fenster tbody tr.cl-z')).toHaveCount(5);
+      const flach = await page.locator('#fenster tbody tr.cl-z').evaluateAll(z => z.map(e => Math.round(e.getBoundingClientRect().height)).filter(h => h < 48));
+      expect(flach).toEqual([]);
+    });
+  });
+
+  test('AK 9: bei feinem Zeiger ist jedes Ziel der Seite mindestens 24 × 24 px', async ({ page }) => {
+    await page.goto(reviewAdresse(k, 7, `kd:${rep.d}`));
+    await expect(page.locator('#rv-ctitel')).toBeVisible();
+    expect(await zieleMessen(page, { zeiger: 'fein', ansicht: 'Review fein' })).toEqual([]);
+  });
 });

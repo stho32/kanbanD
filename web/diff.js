@@ -198,11 +198,19 @@
     return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td><td class="n" aria-hidden="true">${z.neu ?? ''}</td><td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c">${lesen}${sichtbarHtml(z.text, esc)}</td></tr>`;
   }
 
+  /** Geschätzte Breite eines Blocks in px: Chromium misst die Breite eines Elements mit `content-visibility: auto` für die
+      Quer-Rolle nach `contain-intrinsic-inline-size`, nicht nach dem Inhalt (geprobt in Chromium aus e2e/node_modules); ohne
+      Schätzung schnitte der Block lange Zeilen ab. Großzügig: 8 px je Zeichen (Monospace 12 px, ein Tab 4), dazu die Nummern. */
+  function blockBreite(zeilen) {
+    const zeichen = z => sichtbarTeile(z.text).reduce((n, t) => n + Array.from(t.text).reduce((m, c) => m + (c === '\t' ? 4 : c.codePointAt(0) > 0x2E7F ? 2 : 1), 0), 0);
+    return Math.ceil(Math.max(0, ...zeilen.map(zeichen)) * 8 + 140);
+  }
+
   /** Der Code-Bereich einer offenen Datei: Blöcke zu 500 Zeilen mit `content-visibility: auto` (ADR-0033 Punkt 5), je Block
       eine Tabelle mit dem Namen der Datei; der Bereich ist per Tab erreichbar und scrollt quer. */
   function codeHtml(patch, pfad, esc) {
     const name = `Änderungen in ${esc(sichtbarTeile(pfad).map(t => t.text).join(''))}`;
-    const teile = bloecke(patchZeilen(patch)).map(b => `<div class="dz-b" style="contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc)).join('')}</table></div>`);
+    const teile = bloecke(patchZeilen(patch)).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc)).join('')}</table></div>`);
     return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}">${teile.join('')}</div>`;
   }
 

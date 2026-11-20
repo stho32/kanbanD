@@ -1422,7 +1422,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .rv-kz .kz-reihe{gap:0;padding:0}
 .rv-rueck{display:flex;align-items:center;align-self:stretch;padding:0 var(--kd-s5);border-right:1px solid var(--kd-head-line);color:var(--kd-head-link);font-weight:600;white-space:nowrap}
 .rv-rueck:hover{background:var(--kd-head-line);text-decoration:none}
-.rv-h1{margin:0;padding:0 0 0 var(--kd-s4);font-size:13px;font-weight:600;white-space:nowrap}
+.rv-h1{margin:0;padding:0 0 0 var(--kd-s4);color:var(--kd-head-text);font-size:13px;font-weight:600;white-space:nowrap}
 .rv-titel{flex:1 1 auto;min-width:0;margin-left:6px;color:var(--kd-head-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rv-liest{flex:none;padding:0 var(--kd-s4);font-size:12px;color:var(--kd-head-muted);white-space:nowrap}
 .rv{flex:1;min-height:0;overflow:auto;background:var(--kd-bg);font-size:13px}
