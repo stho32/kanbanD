@@ -386,3 +386,17 @@ async fn eigen_mehrere_nennen_die_nummer_und_eine_neue_karte_derselben_anfrage_g
     assert_eq!(s, 201, "B wartet auf A aus derselben Anfrage: {a}");
     assert_eq!(lage.karte(7).await["braucht"], json!([{"nummer": 6, "titel": "A", "erledigt": false}]));
 }
+
+#[tokio::test]
+async fn eigen_kreis_gegen_den_stand_nach_dem_ganzen_aufruf_und_beim_anlegen() {
+    let lage = Lage::von_hand(&[(2, &["braucht:1"])]);
+    let antwort = lage.rufen(Method::PATCH, "api/aufgaben/mehrere", json!({"aenderungen": [{"nummer": 2, "labels": []}, {"nummer": 1, "labels": ["braucht:2"]}]})).await;
+    assert_eq!(antwort.0, 200, "die Kante #2 → #1 fällt im selben Aufruf weg: {}", antwort.1);
+    assert_eq!(eintraege(&lage.braucht(1).await), vec![(2, json!("Bau"), false)]);
+
+    let stale = Lage::von_hand(&[(2, &["braucht:6"])]);
+    let antwort = stale.rufen(Method::POST, "api/aufgaben", json!({"titel": "Neu", "labels": ["braucht:2"]})).await;
+    assert_eq!((antwort.0, fehler(&antwort)), (400, "„Neu“: braucht:2 schlösse einen Kreis: #6 → #2 → #6"), "{}", antwort.1);
+    let antwort = stale.labels_setzen(5, &["braucht:2"]).await;
+    assert_eq!(antwort.0, 200, "ohne #6 kein Kreis: {}", antwort.1);
+}

@@ -3,6 +3,7 @@
 
 use super::{Aufgabe, Board};
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 /// Meldung, wenn `braucht` im Rumpf eines Schreibaufrufs steht — geschrieben wird nur über `labels` (ADR-0035 Punkt 4).
 pub const BRAUCHT_UEBER_LABELS: &str = "braucht über labels setzen (braucht:<nr>)";
@@ -117,9 +118,69 @@ pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) ->
     Ok(ziele)
 }
 
+pub fn kreis_meldung(ziel: u32, kreis: &[u32]) -> String {
+    let pfeile: Vec<String> = kreis.iter().map(|n| format!("#{n}")).collect();
+    format!("braucht:{ziel} schlösse einen Kreis: {}", pfeile.join(" → "))
+}
+
+/// Der erste Kreis, den eine neue Kante schließt. `kanten` ist der Stand nach dem Schreiben (je Aufgabe die gedeuteten
+/// Nummern, in Label-Reihenfolge), `neue` sind die neuen Kanten `a → b` in Prüfreihenfolge. Gesucht wird je neuer Kante
+/// der kürzeste Weg von `b` zurück zu `a`; Kreise im Bestand ohne neue Kante stören nicht. Liefert `(a, b, [a, b, …, a])`.
+pub fn kreis_suchen(kanten: &BTreeMap<u32, Vec<u32>>, neue: &[(u32, u32)]) -> Option<(u32, u32, Vec<u32>)> {
+    neue.iter().find_map(|&(a, b)| weg(kanten, b, a).map(|w| (a, b, std::iter::once(a).chain(w).collect())))
+}
+
+/// Kürzester Weg `von → … → nach` (Breitensuche in Label-Reihenfolge), beide Enden eingeschlossen.
+fn weg(kanten: &BTreeMap<u32, Vec<u32>>, von: u32, nach: u32) -> Option<Vec<u32>> {
+    let mut vorgaenger: BTreeMap<u32, u32> = BTreeMap::new();
+    let mut warteschlange = std::collections::VecDeque::from([von]);
+    while let Some(knoten) = warteschlange.pop_front() {
+        if knoten == nach {
+            let mut w = vec![nach];
+            while let Some(&v) = vorgaenger.get(w.last().expect("nie leer")) {
+                w.push(v);
+            }
+            w.reverse();
+            return Some(w);
+        }
+        for &n in kanten.get(&knoten).into_iter().flatten() {
+            if n != von && !vorgaenger.contains_key(&n) {
+                vorgaenger.insert(n, knoten);
+                warteschlange.push_back(n);
+            }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn graph(k: &[(u32, &[u32])]) -> BTreeMap<u32, Vec<u32>> {
+        k.iter().map(|(a, b)| (*a, b.to_vec())).collect()
+    }
+
+    // R00214 B1088: Kreis aus 2 und 3 Knoten, aus zwei neuen Kanten im selben Aufruf, Bestandskreis ohne neue Kante
+    #[test]
+    fn kreis_je_lage() {
+        assert_eq!(kreis_suchen(&graph(&[(1, &[2]), (2, &[1])]), &[(1, 2)]), Some((1, 2, vec![1, 2, 1])), "AK 10");
+        assert_eq!(kreis_suchen(&graph(&[(1, &[3]), (3, &[2]), (2, &[1])]), &[(1, 3)]), Some((1, 3, vec![1, 3, 2, 1])), "AK 10, drei Knoten");
+        assert_eq!(kreis_suchen(&graph(&[(1, &[5]), (5, &[1])]), &[(1, 5), (5, 1)]), Some((1, 5, vec![1, 5, 1])), "zwei neue Kanten, die erste nennt ihn");
+        assert_eq!(kreis_suchen(&graph(&[(1, &[2]), (2, &[3]), (3, &[2])]), &[(1, 2)]), None, "Bestandskreis #2 ↔ #3 ohne neue Kante darin");
+        assert_eq!(kreis_suchen(&graph(&[(1, &[2]), (2, &[3]), (3, &[4])]), &[(1, 2)]), None, "Kette ohne Rückweg");
+        assert_eq!(kreis_suchen(&graph(&[(1, &[2]), (2, &[2, 9])]), &[(1, 2)]), None, "Selbstkante und unbekannte Nummer im Bestand");
+        let zwei_wege = graph(&[(1, &[2]), (2, &[3, 1]), (3, &[1])]);
+        assert_eq!(kreis_suchen(&zwei_wege, &[(1, 2)]), Some((1, 2, vec![1, 2, 1])), "der kürzeste Weg");
+        assert_eq!(kreis_suchen(&graph(&[(1, &[2]), (2, &[3]), (3, &[4]), (4, &[2])]), &[(1, 2)]), None, "Kreis hinter der neuen Kante, nicht durch sie");
+        assert_eq!(kreis_suchen(&graph(&[(1, &[2])]), &[]), None);
+    }
+
+    #[test]
+    fn kreis_meldung_in_pfeilform() {
+        assert_eq!(kreis_meldung(2, &[1, 2, 1]), "braucht:2 schlösse einen Kreis: #1 → #2 → #1");
+        assert_eq!(kreis_meldung(3, &[1, 3, 2, 1]), "braucht:3 schlösse einen Kreis: #1 → #3 → #2 → #1");
+    }
 
     // R00214 B1087: neu ist, was nicht gespeichert ist (ohne Groß/Klein); nur Labels mit Präfix
     #[test]

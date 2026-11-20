@@ -197,6 +197,10 @@ impl Kanban {
             plan.push((nummer, true));
             aufgaben.push(a);
         }
+        if let Some((nummer, meldung)) = tuer.kreis() {
+            let titel = aufgaben.iter().find(|a| a.nummer == nummer).map(|a| a.titel.as_str()).unwrap_or_default();
+            return Err(Fehler::Ungueltig(format!("„{titel}“: {meldung}")));
+        }
         #[cfg(test)]
         {
             let haken = self.zwischen_suche_und_schreiben.lock().unwrap().take();

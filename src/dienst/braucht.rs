@@ -4,7 +4,7 @@
 use super::Kanban;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Aufgabe, Board, abhaengigkeiten, an_der_tuer, braucht_nummern, neue_braucht_labels};
+use crate::modell::{Aufgabe, Board, abhaengigkeiten, an_der_tuer, braucht_nummern, kreis_meldung, kreis_suchen, neue_braucht_labels};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Setzt einer 400 den Vorsatz des Aufrufers voran (`#7: `, `„Titel“: `) — andere Fehler bleiben, wie sie sind.
@@ -21,13 +21,17 @@ pub(super) struct Tuer<'k> {
     kanban: &'k Kanban,
     /// Nummern mit Aufgabendatei im Ordner (lesbar, archiviert oder defekt), gelesen beim ersten neuen Label
     vorhanden: Option<BTreeSet<u32>>,
+    /// gedeutete Nummern je lesbarer Aufgabe vor dem Aufruf — der Bestand für die Kreisprüfung
+    kanten: BTreeMap<u32, Vec<u32>>,
     /// Labels nach dem Schreiben je geprüfter Aufgabe — auch neu angelegter, die es danach gibt
     nachher: BTreeMap<u32, Vec<String>>,
+    /// neue Kanten `a → b` in Prüfreihenfolge
+    neue: Vec<(u32, u32)>,
 }
 
 impl<'k> Tuer<'k> {
     pub(super) fn neu(kanban: &'k Kanban) -> Tuer<'k> {
-        Tuer { kanban, vorhanden: None, nachher: BTreeMap::new() }
+        Tuer { kanban, vorhanden: None, kanten: BTreeMap::new(), nachher: BTreeMap::new(), neue: vec![] }
     }
 
     /// Prüft die Labels der Aufgabe `nummer` nach ihrer Änderung: nur neu hinzukommende `braucht:`-Labels, der Reihe nach
@@ -40,7 +44,20 @@ impl<'k> Tuer<'k> {
         }
         self.ordner_lesen()?;
         let vorhanden = self.vorhanden.as_ref().expect("eben gelesen");
-        an_der_tuer(nummer, &neue, |n| vorhanden.contains(&n) || self.nachher.contains_key(&n)).map(|_| ()).map_err(Fehler::Ungueltig)
+        let ziele = an_der_tuer(nummer, &neue, |n| vorhanden.contains(&n) || self.nachher.contains_key(&n)).map_err(Fehler::Ungueltig)?;
+        self.neue.extend(ziele.into_iter().map(|z| (nummer, z)));
+        Ok(())
+    }
+
+    /// Der erste Kreis, den eine neue Kante im Stand nach allen geprüften Änderungen schließt: die Aufgabe, deren Label
+    /// ihn schlösse, und die Meldung (400 ohne Vorsatz). Kreise im Bestand ohne neue Kante stören nicht.
+    pub(super) fn kreis(&self) -> Option<(u32, String)> {
+        if self.neue.is_empty() {
+            return None;
+        }
+        let mut kanten = self.kanten.clone();
+        kanten.extend(self.nachher.iter().map(|(n, labels)| (*n, braucht_nummern(labels))));
+        kreis_suchen(&kanten, &self.neue).map(|(a, b, kreis)| (a, kreis_meldung(b, &kreis)))
     }
 
     fn ordner_lesen(&mut self) -> Result<(), Fehler> {
@@ -48,6 +65,7 @@ impl<'k> Tuer<'k> {
             let (gut, defekt) = self.kanban.ordner().aufgaben()?;
             let defekte = defekt.iter().filter_map(|d| d.pfad.rsplit('/').next().and_then(aufgabe::nummer_aus_dateiname));
             self.vorhanden = Some(gut.iter().map(|a| a.nummer).chain(defekte).collect());
+            self.kanten = gut.iter().map(|a| (a.nummer, braucht_nummern(&a.labels))).collect();
         }
         Ok(())
     }

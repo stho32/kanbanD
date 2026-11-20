@@ -37,7 +37,11 @@ impl Kanban {
             let boards = self.boards_fuer_klassen(std::slice::from_ref(aenderung))?;
             let vorher = a.labels.clone();
             let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, nummer, &e)).map_err(Fehler::Ungueltig)?;
-            Tuer::neu(self).pruefen(nummer, &vorher, &a.labels)?;
+            let mut tuer = Tuer::neu(self);
+            tuer.pruefen(nummer, &vorher, &a.labels)?;
+            if let Some((_, meldung)) = tuer.kreis() {
+                return Err(Fehler::Ungueltig(meldung));
+            }
             Ok((!felder.is_empty()).then(|| format!("#{nummer} geändert: {}", felder.join(", "))))
         })
     }
@@ -71,6 +75,10 @@ impl Kanban {
                 dateien.push(Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)));
             }
             ergebnis.push(a);
+        }
+        // Kreisprüfung gegen den Stand nach allen Änderungen des Aufrufs (R00214), bevor etwas geschrieben ist.
+        if let Some((nummer, meldung)) = tuer.kreis() {
+            return Err(Fehler::Ungueltig(format!("#{nummer}: {meldung}")));
         }
         if !dateien.is_empty() {
             let anzahl = match geaendert.len() {
