@@ -136,7 +136,7 @@ Der Nutzen: Ein Board, das mit dem Repository reist und seine Geschichte in Git
 trägt. Ein Agent kann es mit den Werkzeugen führen, die er ohnehin benutzt. Und es
 startet mit einem Befehl.
 
-Ein Agent führt Arbeitspakete, Phasen und Warteschlange auf dem Board statt in
+Ein Agent führt Aufgaben, Spalten und Warteschlange auf dem Board statt in
 eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
 
 ## Leitplanken
@@ -146,15 +146,16 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
   wird mit `cargo test` (Unit und Integration) und Playwright (E2E gegen das echte
   Programm).
 - **Ordneraufbau.** `<ordner>/kanbanD.md` trägt die Einstellungen (Personen, Klassen
-  als Vorgabe, Quellpfade), `<ordner>/aufgaben/` die Aufgaben (`0012-titel.md`, Anhänge unter
+  als Vorgabe, Register der Anwendungen), `<ordner>/aufgaben/` die Aufgaben (`0012-titel.md`, Anhänge unter
   `0012-titel/`), `<ordner>/boards/` die Boards (`<slug>.md`). Eine Board-Datei hat
   je Spalte eine Überschrift und je Aufgabe darunter eine Zeile mit ihrer Nummer,
   dazu wahlweise eigene Klassen;
   die letzte Spalte ist die Abschlussspalte.
 - **Board-Repository und Arbeits-Repository sind getrennt.** Die vielen Commits von
-  kanbanD liegen nicht in der Geschichte der Anwendung. `kanbanD.md` führt die
-  Anwendungen mit Kürzel und vollen Pfaden zu WBS und Anforderungen; Boards nennen
-  Kürzel, Herkunft wird als `kd:I0007` qualifiziert.
+  kanbanD liegen nicht in der Geschichte der Anwendung. `kanbanD.md` führt die Anwendungen mit Kürzel und dem Pfad ihres
+  Repositorys; Boards nennen Kürzel, Commit-Verweise werden als `kd:<hash>`
+  qualifiziert. Eine Herkunft wie `kd:I0007` ist ein Verweis, den kanbanD nicht
+  auflöst.
 - **Git ist Voraussetzung.** Ist der Ordner in keinem Git-Repository, legt kanbanD
   beim Start eines an. Der Git-Autor eines Commits ist die handelnde Person.
 - **Start mit einem Befehl.** `kanbanD <ordner>` startet die Anwendung und öffnet
@@ -191,8 +192,7 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
   Ein zweiter Ordner ist eine zweite Instanz.
 - **Keine Datenbank als Wahrheit.** Was nicht in den Dateien steht, gibt es nicht.
 - **Kein Git-Client.** kanbanD committet seine eigenen Aktionen im Board-Repository,
-  mehr nicht; im Repository einer Anwendung ändert es Dateien, committet dort aber
-  nie. Pull,
+  mehr nicht; im Repository einer Anwendung ändert es nichts. Pull,
   Push, Branch und Merge macht der Mensch mit seinen gewohnten Werkzeugen. kanbanD kommt mit dem zurecht, was dabei herauskommt.
   Im Arbeits-Repository liest kanbanD Commits nur. Kommentare, Freigaben oder Merge im
   Diff gibt es nicht.
@@ -230,3 +230,4 @@ eigenen Verwaltungsdateien; was er sonst abgleicht, steht an einem Ort.
 | 2026-11-18 | Zielbild „Mehrere Boards über einem Aufgabenbestand“ und Leitplanke „Ordneraufbau“: Klassen gelten je Board, ein Board kann eigene Klassen mit eigenen Farben tragen, ohne eigene gelten die Klassen des Ordners als Vorgabe; Personen bleiben ordnerweit — ersetzt „Personen und Klassen gelten für den ganzen Ordner und reisen mit ihm“. Grund: Entscheidung des Betreibers vom 2026-11-18 (Karte #200): ein eigenes Board für eine große Wartungsaufgabe trug die Klassen des Wartungsboards, die dort keinen Sinn ergeben |
 | 2026-11-19 | Zielbild „Die Arbeit hinter der Karte nachvollziehen“ neu (Commits und Agentenläufe an der Karte, lesend als Diff und Verlauf); Nicht-Ziel „Kein Git-Client“ ergänzt: im Arbeits-Repository nur lesen, keine Kommentare, Freigaben oder Merge im Diff; Leitplanke „Die Dateien sind der einzige Speicher“ um die Ausnahme für unversionierte, gezippte Transkripte ergänzt — Entscheidung des Betreibers vom 2026-11-19 (Karten #207, #208, po-entscheidungen Z. 361 und 376) |
 | 2026-11-20 | Zielbild „Die WBS als Stand, die Aufgaben als Fortschritt“ ersetzt durch „Die Aufgaben sind der Stand“, Nicht-Ziel „keine zweite WBS“ geschärft zu „Kein Ersatz für Vision, Anforderungen und WBS“ — Grund (Betreiber): die WBS ist ein Planungswerkzeug; sobald es die Aufgaben gibt, ist sie nur noch etwas für den Entwickler, alle WBS-Funktionen kommen aus kanbanD heraus (Karte #224) |
+| 2026-11-20 | Leitplanke „Board-Repository und Arbeits-Repository …“, Nicht-Ziel „Kein Git-Client“, Nutzen und Ordneraufbau an „Die Aufgaben sind der Stand“ angepasst: Register mit Repository statt WBS-Pfad, Herkunft unaufgelöst, keine Änderung im Arbeits-Repository — Folge der Entscheidung des Betreibers vom selben Tag (#224–#228) |
