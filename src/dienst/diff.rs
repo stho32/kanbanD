@@ -2,7 +2,7 @@
 //! Patch-Lauf mit Bytegrenze, einzeln nachladen; live aus dem Arbeits-Repository, nur lesend, ohne die Sperre.
 
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Vergleich};
-use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, dateiliste, diffdatei, getroffen, im_bezug_zugeordnet, lauf_der_liste, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, zahlen_im_bezug, zahlen_mit_pfaden};
+use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, dateiliste, diffdatei, getroffen, im_bezug_zugeordnet, lauf_der_liste, nicht_zugeordnet_im_bezug, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, zahlen_im_bezug, zahlen_mit_pfaden};
 use std::path::Path;
 use std::time::Instant;
 
@@ -61,21 +61,18 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassun
         return Ok(Diffinhalt { dateien, hinweise });
     }
     if mit_pfadangabe {
-        // abgeschlossen gegen die gelesene Liste vor der Kappe: der Lauf sieht ganze Einträge, Git paart wie dort (N7.7);
+        // abgeschlossen gegen die gelesene Liste vor der Kappe: der Lauf sieht ganze Einträge (N7.7);
         // die Angabe ist Teil der Liste und bleibt so unter 1 MB (N5.5 S1)
         let bezug: Vec<Diffdatei> = roh_lesen(&roh.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?.into_iter().map(|r| diffdatei(r, None)).collect();
         let pfade_bezug: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
         let angabe = abschliessen(im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().cloned()), &pfade_bezug);
         let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_PATCH_LAUF, frist)?;
-        let zuordnung = patches_zuordnen_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung);
-        if !im_bezug_zugeordnet(zuordnung, roh.abgeschnitten).map_err(Inhaltsfehler::Form)? {
-            // ein getroffener Eintrag liegt hinter dem Schnitt der Liste: einzeln nachzuladen, nie 500 (N7.7)
-            for &i in &im_lauf {
-                (dateien[i].patch, dateien[i].stuecke, dateien[i].nachladen) = (None, None, true);
-            }
-        }
+        // ein Lauf mit Pfadangabe ist kein Beleg (N7.8): Git paart gleich bewertete Quellen je nach Matrix anders, und ein
+        // getroffener Eintrag hinter dem Schnitt der Liste fehlt im Bezug — wer kein Stück hat, ist `nachladen`, nie 500
+        nicht_zugeordnet_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung);
     } else {
+        // ohne Pfadangabe gegen die vollständige Liste: streng, ein fehlendes Stück ist ein Fehler (N7.8)
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &[], GRENZE_PATCH_LAUF, frist)?;
         patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
     }

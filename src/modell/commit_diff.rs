@@ -289,6 +289,15 @@ pub enum Verteilung {
 /// gelesen waren), einzeln geladen `gross`. `Err`, wenn im ganzen Lauf einer Datei ein Stück fehlt oder vor dem Schnitt
 /// ein Stück übrig bleibt, das zu einer Datei des Laufs gehört (die Zählprüfung, auch im abgeschnittenen Lauf).
 pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Result<(), String> {
+    zuordnen(dateien, im_lauf, aus, abgeschnitten, verteilung, fassung, true).map(|_| ())
+}
+
+/// Der Kern von [`patches_zuordnen`]. `streng`: wie dort beschrieben. Nicht streng (ein Lauf mit Pfadangabe, ADR-0032
+/// N7.8): eine Datei ohne alle ihre Stücke bricht nichts ab — sie wird wie nach einem Abbruch behandelt (`nachladen` bzw.
+/// `gross`), die übrigen behalten ihren Patch, übrige Stücke sind fremd. Liefert die Stellen (aus `im_lauf`) der Dateien
+/// ohne alle ihre Stücke.
+fn zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung, streng: bool) -> Result<Vec<usize>, String> {
+    let mut ohne = vec![];
     let alle = stuecke(aus);
     let ganze = if abgeschnitten { alle.len().saturating_sub(1) } else { alle.len() };
     let mut benutzt = vec![false; ganze];
@@ -303,19 +312,24 @@ pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8]
             ab = k + 1;
         }
         if eigene.len() < d.stueckzahl() {
-            if !abgeschnitten {
+            if streng && !abgeschnitten {
                 return Err(format!("Patch-Lauf: „{}“ ({}) hat {} von {} Stücken", d.name(), d.status, eigene.len(), d.stueckzahl()));
             }
             // getroffen: was von ihr da ist, zählt nur für die Grenze
             let angefangen = alle.get(ganze).filter(|s| gehoert(d, eigene.len(), s));
             let gelesen: usize = eigene.iter().map(|&k| hunks(alle[k]).len()).sum::<usize>() + angefangen.map_or(0, |s| hunks(s).len());
-            for &rest in &im_lauf[stelle..] {
-                abbrechen(&mut dateien[rest], verteilung);
+            let rest = if streng { &im_lauf[stelle..] } else { &im_lauf[stelle..=stelle] };
+            for &r in rest {
+                abbrechen(&mut dateien[r], verteilung);
             }
+            ohne.extend_from_slice(rest);
             if verteilung == Verteilung::Liste && gelesen > GRENZE_PATCH_DATEI {
                 dateien[i].gross = true;
             }
-            break;
+            if streng {
+                break;
+            }
+            continue;
         }
         let d = &mut dateien[i];
         let laenge: usize = eigene.iter().map(|&k| hunks(alle[k]).len()).sum();
@@ -336,10 +350,10 @@ pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8]
         }
     }
     let gehoert_einer = |k: usize| im_lauf.iter().any(|&i| (0..dateien[i].stueckzahl()).any(|t| gehoert(&dateien[i], t, alle[k])));
-    if let Some(k) = (0..ganze).find(|&k| !benutzt[k] && gehoert_einer(k)) {
+    if streng && let Some(k) = (0..ganze).find(|&k| !benutzt[k] && gehoert_einer(k)) {
         return Err(format!("Patch-Lauf: Stück {k} gehört zu einer Datei des Laufs, steht aber nicht an ihrer Stelle"));
     }
-    Ok(())
+    Ok(ohne)
 }
 
 /// Die Stellen der Einträge, die eine gegen sie abgeschlossene Pfadangabe (`abschliessen`) trifft. Git wählt auch `…/`
@@ -357,27 +371,51 @@ pub fn getroffen(angabe: &[Vec<u8>], eintraege: &[&[Vec<u8>]]) -> Vec<usize> {
 /// streng. Danach bekommen nur die Dateien `im_lauf` ihr Ergebnis; die Stücke der mitgenommenen sind verworfen.
 #[allow(clippy::too_many_arguments)]
 pub fn patches_zuordnen_im_bezug(dateien: &mut [Diffdatei], im_lauf: &[usize], bezug: &[Diffdatei], angabe: &[Vec<u8>], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Result<(), String> {
+    im_bezug(dateien, im_lauf, bezug, angabe, aus, abgeschnitten, verteilung, fassung, true).map(|_| ())
+}
+
+/// Wie [`patches_zuordnen_im_bezug`], aber nicht streng (ADR-0032 N7.8): ein Lauf mit Pfadangabe ist eine Abkürzung,
+/// kein Beleg — Git paart gleich bewertete Umbenennungsquellen je nach Größe der Matrix anders, auch gegen eine
+/// abgeschlossene Angabe. Eine Datei aus `im_lauf` ohne ihr Stück (oder ohne Eintrag im Bezug) bricht nichts ab: sie ist
+/// `nachladen` (Liste) bzw. `gross` (einzeln) und wird gemeldet; die übrigen behalten ihren Patch. Ein Stück, das ein
+/// anders gepaarter Eintrag mit demselben Blob-Paar trägt, hat denselben Inhalt — nie ein fremder Patch.
+#[allow(clippy::too_many_arguments)]
+pub fn nicht_zugeordnet_im_bezug(dateien: &mut [Diffdatei], im_lauf: &[usize], bezug: &[Diffdatei], angabe: &[Vec<u8>], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Vec<usize> {
+    im_bezug(dateien, im_lauf, bezug, angabe, aus, abgeschnitten, verteilung, fassung, false).unwrap_or_default()
+}
+
+/// Der gemeinsame Kern der Zuordnung im Bezug; `streng` wie [`zuordnen`]. Liefert die Stellen (aus `im_lauf`) ohne Stück.
+#[allow(clippy::too_many_arguments)]
+fn im_bezug(dateien: &mut [Diffdatei], im_lauf: &[usize], bezug: &[Diffdatei], angabe: &[Vec<u8>], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung, streng: bool) -> Result<Vec<usize>, String> {
     let pfade: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
     let mut lauf: Vec<Diffdatei> = getroffen(angabe, &pfade).into_iter().map(|j| bezug[j].clone()).collect();
     let stelle: std::collections::HashMap<(&[Vec<u8>], &str), usize> = lauf.iter().enumerate().map(|(j, d)| ((d.pfade_roh.as_slice(), d.status.as_str()), j)).collect();
     let mut paare = vec![];
+    let mut ohne = vec![];
     for &i in im_lauf {
         let d = &dateien[i];
-        let Some(&j) = stelle.get(&(d.pfade_roh.as_slice(), d.status.as_str())) else {
-            return Err(format!("Patch-Lauf: „{}“ ({}) steht nicht im Bezugslauf", d.name(), d.status));
-        };
-        paare.push((i, j));
+        match stelle.get(&(d.pfade_roh.as_slice(), d.status.as_str())) {
+            Some(&j) => paare.push((i, j)),
+            None if streng => return Err(format!("Patch-Lauf: „{}“ ({}) steht nicht im Bezugslauf", d.name(), d.status)),
+            None => ohne.push(i),
+        }
     }
     drop(stelle);
+    for &i in &ohne {
+        abbrechen(&mut dateien[i], verteilung);
+    }
     for &(i, j) in &paare {
         std::mem::swap(&mut dateien[i], &mut lauf[j]);
     }
     let alle: Vec<usize> = (0..lauf.len()).collect();
-    let ergebnis = patches_zuordnen(&mut lauf, &alle, aus, abgeschnitten, verteilung, fassung);
+    let ergebnis = zuordnen(&mut lauf, &alle, aus, abgeschnitten, verteilung, fassung, streng);
     for &(i, j) in &paare {
         std::mem::swap(&mut dateien[i], &mut lauf[j]);
     }
-    ergebnis
+    let fehlend = ergebnis?;
+    ohne.extend(paare.iter().filter(|&&(_, j)| fehlend.contains(&j)).map(|&(i, _)| i));
+    ohne.sort_unstable();
+    Ok(ohne)
 }
 
 /// Verbindet die Zähler eines Laufs, dessen Pfadangabe gegen den Bezug abgeschlossen ist (`abschliessen`), mit den
@@ -848,6 +886,33 @@ mod tests {
         assert!(im_bezug_zugeordnet(zuordnung(), false).is_err(), "vollständiger Bezug: streng");
         assert_eq!(im_bezug_zugeordnet(Ok(()), true), Ok(true));
         assert_eq!(im_bezug_zugeordnet(Ok(()), false), Ok(true));
+    }
+
+    // R00211 AK 7 (ADR-0032 N7.8): ein Lauf mit Pfadangabe ist kein Beleg — paart Git dort eine gleich bewertete Quelle
+    // anders (`R s2 → dst` statt `R s1 → dst`, dafür `D s1` statt `D s2`), bekommen `R s1 → dst` und `D s2` kein Stück
+    // und werden gemeldet und `nachladen`; `m` behält seinen Patch, das fremde Stück `D s1` ist verworfen, kein Fehler.
+    // Abgeschnitten: wer ganz vor dem Schnitt steht, behält seinen Patch; der Rest ist gemeldet.
+    #[test]
+    fn nicht_zugeordnete_im_bezug_gemeldet() {
+        let mut rs1 = neu("dst", "R");
+        (rs1.pfade_roh, rs1.blobs.0) = (vec![b"s1".to_vec(), b"dst".to_vec()], blob("s1-"));
+        let mut ds2 = neu("s2", "D");
+        ds2.blobs.0 = blob("s2-");
+        let bezug = vec![neu("m", "M"), ds2.clone(), rs1.clone()];
+        let pfade: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
+        let angabe = crate::modell::abschliessen([b"m".to_vec(), b"s2".to_vec(), b"s1".to_vec(), b"dst".to_vec()], &pfade);
+        let mut ds1 = neu("s1", "D");
+        ds1.blobs.0 = blob("s1-");
+        let anders = format!("diff --git a/s2 b/dst\nsimilarity index 80%\nrename from s2\nrename to dst\nindex {}..{} 100644\n--- a/s2\n+++ b/dst\n@@ -5 +5 @@\n-x2\n+neu\n", blob("s2-"), rs1.blobs.1);
+        let aus = format!("{}{}{}", stueck(&bezug[0], 0, "@@ -1 +1 @@\n-a\n+b\n"), stueck(&ds1, 0, "@@ -1 +0,0 @@\n-x1\n"), anders);
+        assert!(patches_zuordnen_im_bezug(&mut bezug.clone(), &[0, 1, 2], &bezug, &angabe, aus.as_bytes(), false, Verteilung::Liste, Fassung::Patch).is_err(), "Gegenprobe: streng ist es ein Fehler");
+        let mut d = bezug.clone();
+        assert_eq!(nicht_zugeordnet_im_bezug(&mut d, &[0, 1, 2], &bezug, &angabe, aus.as_bytes(), false, Verteilung::Liste, Fassung::Patch), [1, 2]);
+        assert_eq!(d.iter().map(|d| (d.patch.as_deref(), d.nachladen)).collect::<Vec<_>>(), [(Some("@@ -1 +1 @@\n-a\n+b\n"), false), (None, true), (None, true)]);
+        let mut e = bezug.clone();
+        let schnitt = aus.find("diff --git a/s1").unwrap() + 20;
+        assert_eq!(nicht_zugeordnet_im_bezug(&mut e, &[0, 1, 2], &bezug, &angabe, &aus.as_bytes()[..schnitt], true, Verteilung::Liste, Fassung::Patch), [1, 2]);
+        assert_eq!((e[0].patch.is_some(), e[1].nachladen, e[2].nachladen), (true, true, true));
     }
 
     // ADR-0032 N5.2 Regel 1: die Hashes werden auf Gleichheit verglichen — ein gekürzter Hash (Präfix des vollen) ist
