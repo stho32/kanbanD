@@ -320,14 +320,15 @@ pub enum Diffart {
 }
 
 /// Ein Lauf `diff-tree` mit Bytegrenze (ADR-0032 N4.3, N4.4, N4.7): Form und Inhalt bestimmt dieses Modul — `-r`,
-/// Umbenennungen mit `-M50% -l1000`, Submodule kurz —, die Schalter der Befehlszeile der Startort; `pfade` gehen
-/// wörtlich nach `--` (bei einer Umbenennung beide Pfade, sonst wird sie zu `A`).
+/// Umbenennungen mit `-M50% -l1000`, Submodule kurz, im Patch volle Blob-Hashes (`--full-index`, N5.2) —, die Schalter
+/// der Befehlszeile der Startort; `pfade` gehen wörtlich nach `--` (bei einer Umbenennung beide Pfade, sonst wird sie
+/// zu `A`).
 pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
     let mut args = vec!["-r", "-M50%", "-l1000", "--ignore-submodules=none"];
     args.extend_from_slice(match art {
         Diffart::Roh => &["--raw", "-z"][..],
         Diffart::Zahlen => &["--numstat", "-z"],
-        Diffart::Patch => &["-p", "--submodule=short"],
+        Diffart::Patch => &["-p", "--full-index", "--submodule=short"],
     });
     match vergleich.eltern {
         Some(eltern) => args.extend(["--end-of-options", eltern, vergleich.commit]),
@@ -784,7 +785,7 @@ mod tests {
         let [neu, alt]: [&str; 2] = kopf.split_whitespace().collect::<Vec<_>>().try_into().unwrap();
         let log = git(&r, Befehl::Log, &["--no-walk", "-p", "--format=%H", "--end-of-options", neu], Lauf::mit(ZEITGRENZE)).unwrap();
         assert!(log.status.success(), "log: {}", String::from_utf8_lossy(&log.stderr));
-        for args in [&["-r", "-M50%", "-l1000", "--raw", "-z", alt, neu][..], &["-r", "-M50%", "-l1000", "--numstat", "-z", alt, neu], &["-r", "-M50%", "-l1000", "-p", "--submodule=short", alt, neu], &["-r", "--root", "--no-commit-id", "-p", alt]] {
+        for args in [&["-r", "-M50%", "-l1000", "--raw", "-z", alt, neu][..], &["-r", "-M50%", "-l1000", "--numstat", "-z", alt, neu], &["-r", "-M50%", "-l1000", "-p", "--full-index", "--submodule=short", alt, neu], &["-r", "--root", "--no-commit-id", "-p", alt]] {
             let teil = git_teil(&r, Befehl::DiffTree, args, &[b"a.txt"], 1 << 20, Instant::now() + ZEITGRENZE).unwrap_or_else(|f| panic!("{args:?}: {f:?}"));
             assert!(!teil.abgeschnitten && !teil.ausgabe.is_empty(), "{args:?}");
         }

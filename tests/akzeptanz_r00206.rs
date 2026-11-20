@@ -396,10 +396,12 @@ async fn us3_grosse_dateien_als_merkmal() {
 
 /// Ein Git-Skript: der Patch-Lauf (`diff-tree` ohne `--raw` und `--numstat`) schreibt die Kopfzeilen von riesig.txt und
 /// danach endlos `+aaaa…`-Zeilen, je MB die Zahl der geschriebenen Bytes in `zaehler`; alles andere geht ans echte Git.
-fn endlos_skript(a: &R204) -> String {
+/// Die Zeile `index` trägt wie bei `--full-index` die vollen Hashes (`blob`: der Blob von riesig.txt) — sonst wäre das
+/// Stück fremd (ADR-0032 N5.2).
+fn endlos_skript(a: &R204, blob: &str) -> String {
     let zaehler = a.basis.join("zaehler");
     let zeile = format!("+{}", "a".repeat(1023));
-    git_skript(a, &format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*) ;; *diff-tree*)\necho $$ >> {pids}\nprintf 'diff --git a/riesig.txt b/riesig.txt\\nnew file mode 100644\\nindex 0000000..1111111\\n--- /dev/null\\n+++ b/riesig.txt\\n@@ -0,0 +1,3 @@\\n'\nn=0\nwhile :; do if yes '{zeile}' | head -c 1048576; then n=$((n+1048576)); echo $n > {z}; else sleep 60; fi; done\n;; esac", pids = a.basis.join("pids").display(), z = zaehler.display()))
+    git_skript(a, &format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*) ;; *diff-tree*)\necho $$ >> {pids}\nprintf 'diff --git a/riesig.txt b/riesig.txt\\nnew file mode 100644\\nindex 0000000000000000000000000000000000000000..{blob}\\n--- /dev/null\\n+++ b/riesig.txt\\n@@ -0,0 +1,3 @@\\n'\nn=0\nwhile :; do if yes '{zeile}' | head -c 1048576; then n=$((n+1048576)); echo $n > {z}; else sleep 60; fi; done\n;; esac", pids = a.basis.join("pids").display(), z = zaehler.display()))
 }
 
 #[tokio::test]
@@ -408,7 +410,7 @@ async fn ak09_ausgabe_mit_abbruch() {
     std::fs::write(l.a.r.join("riesig.txt"), "1\n2\n3\n").unwrap();
     let h = commit(&l.a.r, "riesig");
     l.anhaengen(&[&h]);
-    let pfad = endlos_skript(&l.a);
+    let pfad = endlos_skript(&l.a, &git(&l.a.r, &["rev-parse", &format!("{h}:riesig.txt")]));
     let lauf = l.starten(&[("PATH", &pfad)]);
     for (abfrage, hoechstens, hinweise) in [(format!("commit=kd:{h}"), 5 << 20, json!([])), (format!("commit=kd:{h}&datei=riesig.txt"), 21 << 20, json!([{"art": "zu_gross_zum_anzeigen", "datei": "riesig.txt"}]))] {
         let _ = std::fs::remove_file(l.a.basis.join("pids"));
@@ -765,4 +767,171 @@ async fn lesewege(adresse: &str) -> Vec<String> {
         texte.push(reqwest::get(format!("{adresse}{pfad}")).await.unwrap().text().await.unwrap());
     }
     texte
+}
+
+// ---- AK 21: Zuordnung von Patch und Datei, Typwechsel, Pfade (Code-Review M1, ADR-0032 N5.2, N5.5 S1) ---------------
+
+/// Der Patch-Text, den Git für eine gelöschte (`zeichen` `-`) oder neue (`+`) Datei mit diesem Inhalt schreibt.
+fn ganzer_patch(zeichen: char, inhalt: &str) -> String {
+    let n = inhalt.lines().count();
+    let bereich = if n == 1 { "1".to_string() } else { format!("1,{n}") };
+    let kopf = if zeichen == '-' { format!("@@ -{bereich} +0,0 @@\n") } else { format!("@@ -0,0 +{bereich} @@\n") };
+    kopf + &inhalt.lines().map(|z| format!("{zeichen}{z}\n")).collect::<String>()
+}
+
+/// Zeilen mit eigenem Text je Datei: `n` Zeilen zu je `breite` Byte (mit Zeilenumbruch).
+fn zeilen(name: &str, n: usize, breite: usize) -> String {
+    (0..n).map(|i| format!("{:<w$}\n", format!("{name}-{i}"), w = breite - 1)).collect()
+}
+
+/// Setup A (Probe P5): Commit 1 legt `foo/bar` (4.000 Zeilen zu 51 Byte) und `foo2` an, Commit 2 löscht beide und legt
+/// die Datei `foo` an; mit `zz` dazu `zz00`…`zz19` (je 2.500 Zeilen zu 100 Byte) in Commit 1, gelöscht in Commit 2.
+/// Setup C: Commit 3 macht aus der Datei `foo` wieder das Verzeichnis mit `foo/bar`. Liefert (Commit 2, Commit 3).
+fn typwechsel(l: &Lage, zz: bool) -> (String, String) {
+    let r = &l.a.r;
+    std::fs::create_dir_all(r.join("foo")).unwrap();
+    std::fs::write(r.join("foo/bar"), zeilen("bar", 4000, 51)).unwrap();
+    std::fs::write(r.join("foo2"), "foo2 inhalt\n").unwrap();
+    for i in (0..20).filter(|_| zz) {
+        std::fs::write(r.join(format!("zz{i:02}")), zeilen(&format!("zz{i:02}"), 2500, 100)).unwrap();
+    }
+    commit(r, "Verzeichnis foo");
+    std::fs::remove_dir_all(r.join("foo")).unwrap();
+    std::fs::remove_file(r.join("foo2")).unwrap();
+    for i in (0..20).filter(|_| zz) {
+        std::fs::remove_file(r.join(format!("zz{i:02}"))).unwrap();
+    }
+    std::fs::write(r.join("foo"), "datei\n").unwrap();
+    let c2 = commit(r, "Datei foo");
+    std::fs::remove_file(r.join("foo")).unwrap();
+    std::fs::create_dir_all(r.join("foo")).unwrap();
+    std::fs::write(r.join("foo/bar"), zeilen("bar", 4000, 51)).unwrap();
+    let c3 = commit(r, "wieder Verzeichnis foo");
+    l.anhaengen(&[&c2, &c3]);
+    (c2, c3)
+}
+
+#[tokio::test]
+async fn ak21a_c_typwechsel_zwischen_datei_und_verzeichnis() {
+    let l = ausgangslage();
+    let (c2, c3) = typwechsel(&l, false);
+    let lauf = l.starten(&[]);
+    // (a) Setup A: Verzeichnis foo/ → Datei foo
+    let a = holen(&lauf.adresse, 1, &format!("commit=kd:{c2}&datei=foo"), None).await;
+    assert_eq!(a.status, 200, "{}", a.text);
+    let e = a.json();
+    assert_eq!(dateien(&e).iter().map(|f| (f["neu"].as_str(), f["status"].as_str())).collect::<Vec<_>>(), [(Some("foo"), Some("A"))]);
+    assert_eq!(datei(&e, "foo")["patch"], json!("@@ -0,0 +1 @@\n+datei\n"));
+    let d = diff(&lauf.adresse, &c2).await;
+    assert_eq!((&datei(&d, "foo/bar")["gross"], datei(&d, "foo/bar").get("patch")), (&json!(true), None));
+    assert_eq!(datei(&d, "foo2")["patch"], json!("@@ -1 +0,0 @@\n-foo2 inhalt\n"), "nicht der Patch von foo/bar");
+    assert_eq!(datei(&d, "foo")["patch"], json!("@@ -0,0 +1 @@\n+datei\n"));
+    // (c) Setup C: Datei foo → Verzeichnis foo/
+    let e = holen(&lauf.adresse, 1, &format!("commit=kd:{c3}&datei=foo"), None).await;
+    assert_eq!(e.status, 200, "{}", e.text);
+    assert_eq!(dateien(&e.json()).iter().map(|f| (f["alt"].as_str(), f["status"].as_str(), f["patch"].as_str())).collect::<Vec<_>>(), [(Some("foo"), Some("D"), Some("@@ -1 +0,0 @@\n-datei\n"))]);
+    let e = holen(&lauf.adresse, 1, &format!("commit=kd:{c3}&datei=foo/bar"), None).await.json();
+    assert_eq!((dateien(&e).len(), &datei(&e, "foo/bar")["patch"]), (1, &json!(ganzer_patch('+', &zeilen("bar", 4000, 51)))));
+    let d = diff(&lauf.adresse, &c3).await;
+    assert_eq!((datei(&d, "foo")["patch"].as_str(), &datei(&d, "foo/bar")["gross"]), (Some("@@ -1 +0,0 @@\n-datei\n"), &json!(true)));
+    // beide Richtungen auch als Text: je Datei nur ihr eigenes Stück
+    for (c, name, eigen) in [(&c2, "foo", "new file mode"), (&c3, "foo", "deleted file mode")] {
+        let t = holen(&lauf.adresse, 1, &format!("commit=kd:{c}&datei={name}&format=patch"), None).await;
+        assert_eq!(t.status, 200, "{}", t.text);
+        assert!(t.text.starts_with(&format!("diff --git a/foo b/foo\n{eigen}")) && t.text.matches("diff --git").count() == 1 && !t.text.contains("foo/bar"), "{}", t.text);
+    }
+    let t = holen(&lauf.adresse, 1, &format!("commit=kd:{c2}&format=patch"), None).await;
+    assert_eq!(t.status, 200, "{}", t.text);
+    assert!(t.text.contains("diff --git a/foo/bar b/foo/bar\n# kanbanD: Patch fehlt (gross)\n") && t.text.contains("@@ -1 +0,0 @@\n-foo2 inhalt\n"), "{}", &t.text[..t.text.len().min(2000)]);
+    assert_eq!(t.text.matches("bar-0").count(), 0, "kein Stück von foo/bar im Text");
+    let t = holen(&lauf.adresse, 1, &format!("commit=kd:{c3}&format=patch"), None).await;
+    assert!(t.status == 200 && t.text.contains("diff --git a/foo/bar b/foo/bar\n# kanbanD: Patch fehlt (gross)\n") && t.text.matches("bar-0").count() == 0, "{}", &t.text[..t.text.len().min(2000)]);
+}
+
+#[tokio::test]
+async fn ak21b_viele_stuecke_im_abgeschnittenen_lauf() {
+    let l = ausgangslage();
+    let (c2, _) = typwechsel(&l, true);
+    let lauf = l.starten(&[]);
+    let d = diff(&lauf.adresse, &c2).await;
+    let mut gezeigt = 0;
+    for i in 0..20 {
+        let name = format!("zz{i:02}");
+        let f = datei(&d, &name);
+        assert_eq!((&f["minus"], &f["gross"]), (&json!(2500), &json!(false)), "{name}");
+        match f["patch"].as_str() {
+            Some(p) => {
+                assert_eq!(p, ganzer_patch('-', &zeilen(&name, 2500, 100)), "{name}: eigener Patch, Kopf passt zu minus");
+                gezeigt += 1;
+            }
+            None => assert_eq!(f["nachladen"], json!(true), "{name}: ohne Patch nur nachladen"),
+        }
+    }
+    assert!((1..20).contains(&gezeigt), "der Lauf ist abgeschnitten: {gezeigt} von 20 mit Patch");
+    assert_eq!(datei(&d, "foo2")["patch"], json!("@@ -1 +0,0 @@\n-foo2 inhalt\n"));
+    for f in dateien(&d).iter().filter(|f| f["patch"].is_string()) {
+        let p = f["patch"].as_str().unwrap();
+        let name = f["neu"].as_str().or(f["alt"].as_str()).unwrap();
+        assert!(!p.contains("bar-0") || name == "foo/bar", "{name} zeigt ein Stück von foo/bar");
+    }
+}
+
+/// Ein Commit auf HEAD von R, im Objektspeicher gebaut (ohne Arbeitsbaum): `dateien` sind (Pfad, Inhalt).
+fn im_objektspeicher(r: &Path, dateien: &[(String, String)]) -> String {
+    let index = r.join(".git").join("kd-test-index");
+    let mit_index = |args: &[&str], eingabe: Option<&str>| {
+        use std::io::Write;
+        let mut k = std::process::Command::new("git").arg("-C").arg(r).args(args).env("GIT_INDEX_FILE", &index).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn().unwrap();
+        k.stdin.take().unwrap().write_all(eingabe.unwrap_or_default().as_bytes()).unwrap();
+        let aus = k.wait_with_output().unwrap();
+        assert!(aus.status.success(), "{args:?}");
+        String::from_utf8(aus.stdout).unwrap().trim().to_string()
+    };
+    mit_index(&["read-tree", "HEAD"], None);
+    let mut liste = String::new();
+    for (pfad, inhalt) in dateien {
+        let blob = mit_index(&["hash-object", "-w", "--stdin"], Some(inhalt));
+        liste.push_str(&format!("100644 blob {blob}\t{pfad}\n"));
+    }
+    mit_index(&["update-index", "--add", "--index-info"], Some(&liste));
+    let baum = mit_index(&["write-tree"], None);
+    let c = git_am(r, ADA, X1_DATUM, &["commit-tree", "-p", "HEAD", "-m", "im Objektspeicher", &baum]);
+    std::fs::remove_file(&index).unwrap();
+    c
+}
+
+#[tokio::test]
+async fn ak21e_lange_pfade_und_summe_der_pfadangabe() {
+    let l = ausgangslage();
+    let r = &l.a.r;
+    let lang = "k".repeat(130_000);
+    // Variante über der Grenze eines einzelnen Arguments (MAX_ARG_STRLEN 131.072 Byte): heute 500 „Argument list too long“
+    let laenger = "m".repeat(140_000);
+    let c = im_objektspeicher(r, &[(lang.clone(), "lang\n".into()), (laenger.clone(), "laenger\n".into()), ("gross3001.txt".into(), "x\n".repeat(3001)), ("eins.txt".into(), "eins\n".into()), ("zwei.txt".into(), "zwei\n".into())]);
+    let viele: Vec<(String, String)> = (0..1500).map(|i| (format!("{i:04}{}", "p".repeat(996)), format!("{i}\n"))).chain([("gross3001.txt".to_string(), "x\n".repeat(3001))]).collect();
+    let v = im_objektspeicher(r, &viele);
+    l.anhaengen(&[&c, &v]);
+    // zählt die Bytes der Befehlszeile jedes Patch-Laufs (diff-tree ohne --raw und --numstat)
+    let zaehler = l.a.basis.join("pfadangabe");
+    let pfad = git_skript(&l.a, &format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*) ;; *diff-tree*) printf '%s' \"$*\" | wc -c >> {};; esac", zaehler.display()));
+    let lauf = l.starten(&[("PATH", &pfad)]);
+    let a = holen(&lauf.adresse, 1, &format!("commit=kd:{c}"), None).await;
+    assert_eq!(a.status, 200, "{}", &a.text[..a.text.len().min(300)]);
+    let d = a.json();
+    for p in [&lang, &laenger] {
+        let f = datei(&d, p);
+        assert_eq!((&f["gross"], f.get("patch")), (&json!(true), None), "langer Pfad: gross ohne Patch");
+        assert!(d["hinweise"].as_array().unwrap().iter().any(|h| h["art"] == "zu_gross_zum_anzeigen" && h["datei"] == p.as_str()), "Hinweis zu_gross_zum_anzeigen");
+    }
+    assert_eq!((datei(&d, "eins.txt")["patch"].as_str(), datei(&d, "zwei.txt")["patch"].as_str()), (Some("@@ -0,0 +1 @@\n+eins\n"), Some("@@ -0,0 +1 @@\n+zwei\n")));
+    assert_eq!(datei(&d, "gross3001.txt")["gross"], json!(true));
+    let _ = std::fs::remove_file(&zaehler);
+    let a = holen(&lauf.adresse, 1, &format!("commit=kd:{v}"), None).await;
+    assert_eq!(a.status, 200, "{}", &a.text[..a.text.len().min(300)]);
+    let d = a.json();
+    let laeufe: Vec<usize> = lies(&l.a.basis, "pfadangabe").split_whitespace().map(|z| z.parse().unwrap()).collect();
+    assert!(!laeufe.is_empty() && laeufe.iter().all(|n| *n <= (1 << 20) + 4096), "Befehlszeilen der Patch-Läufe: {laeufe:?}");
+    for f in dateien(&d).iter().filter(|f| f["neu"] != "gross3001.txt") {
+        assert!(f["patch"].is_string() || f["nachladen"] == true, "{}: Patch oder nachladen", &f["neu"].as_str().unwrap()[..4]);
+    }
 }

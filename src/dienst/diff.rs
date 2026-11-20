@@ -2,7 +2,7 @@
 //! Patch-Lauf mit Bytegrenze, einzeln nachladen; live aus dem Arbeits-Repository, nur lesend, ohne die Sperre.
 
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Vergleich};
-use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Hinweis, Verteilung, dateiliste, diffdatei, patches_zuordnen, roh_lesen, zahlen_lesen};
+use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Hinweis, Verteilung, dateiliste, diffdatei, lauf_der_liste, patches_zuordnen, roh_lesen, zahlen_mit_pfaden};
 use std::path::Path;
 use std::time::Instant;
 
@@ -44,8 +44,8 @@ pub fn inhalt_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, auswahl: A
     }
 }
 
-/// Die Liste: zwei Läufe der Dateiliste (je 1 MB), Kappe, Zeilengrenze, dann ein Patch-Lauf (4 MB) für die übrigen
-/// Dateien — die großen erreichen ihn nie (ADR-0032 N4.3).
+/// Die Liste: zwei Läufe der Dateiliste (je 1 MB), Kappe, Zeilengrenze und Pfadlänge, dann ein Patch-Lauf (4 MB) für
+/// die übrigen Dateien — die großen erreichen ihn nie, die Pfadangabe bleibt unter 1 MB (ADR-0032 N4.3, N5.5 S1).
 fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
     let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, &[], GRENZE_DATEILISTE, frist)?;
     let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &[], GRENZE_DATEILISTE, frist)?;
@@ -54,14 +54,10 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, frist: Instant)
     if (dateien.len() as u64) < gesamt {
         hinweise.push(Hinweis::DateienGekappt { gezeigt: dateien.len(), gesamt });
     }
-    for d in dateien.iter_mut().filter(|d| d.zu_viele_zeilen()) {
-        d.gross = true;
-    }
-    let im_lauf: Vec<usize> = (0..dateien.len()).filter(|i| !dateien[*i].gross).collect();
+    let (im_lauf, mit_pfadangabe) = lauf_der_liste(&mut dateien, gesamt);
+    hinweise.extend(dateien.iter().filter(|d| d.pfad_zu_lang()).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }));
     if !im_lauf.is_empty() {
-        // alle gezeigten Dateien im Lauf: ohne Pfadangabe — sonst wörtlich die Pfade der Dateien im Lauf
-        let alle = im_lauf.len() as u64 == gesamt;
-        let pfade: Vec<&[u8]> = if alle { vec![] } else { im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().map(Vec::as_slice)).collect() };
+        let pfade: Vec<&[u8]> = if mit_pfadangabe { im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().map(Vec::as_slice)).collect() } else { vec![] };
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_PATCH_LAUF, frist)?;
         patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste).map_err(Inhaltsfehler::Form)?;
     }
@@ -69,7 +65,8 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, frist: Instant)
 }
 
 /// Eine Datei: die Dateiliste ungekappt bis 20 MB (nur `--raw -z`), der Name gegen `neu` (bei gelöschten `alt`) —
-/// nur Pfade aus dieser Liste erreichen Git, wörtlich; dann Zähler und Patch bis 20 MB für genau diese Pfade.
+/// nur Pfade aus dieser Liste erreichen Git, wörtlich; dann Zähler und Patch bis 20 MB für genau diese Pfade. Die
+/// Pfadangabe trifft auch `foo/…`: Zähler verbinden sich über die Pfade, Stücke über die Blob-Hashes (ADR-0032 N5.2).
 fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
     let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, &[], GRENZE_EINZELN, frist)?;
     let liste = roh_lesen(&roh.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?;
@@ -80,8 +77,13 @@ fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, frist: Instant) 
     let pfade: Vec<Vec<u8>> = treffer.iter().flat_map(|d| d.pfade_roh.clone()).collect();
     let pfade: Vec<&[u8]> = pfade.iter().map(Vec::as_slice).collect();
     let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &pfade, GRENZE_DATEILISTE, frist)?;
-    let zahlen = zahlen_lesen(&zahlen.ausgabe).filter(|z| z.len() == treffer.len()).ok_or_else(|| Inhaltsfehler::Form("Zähler passen nicht zur Datei".into()))?;
-    let mut dateien: Vec<Diffdatei> = treffer.into_iter().zip(zahlen).map(|(d, z)| Diffdatei { plus: z.map_or(0, |z| z.0), minus: z.map_or(0, |z| z.1), binaer: z.is_none(), ..d }).collect();
+    let mut zahlen = zahlen_mit_pfaden(&zahlen.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Zähler von diff-tree unlesbar".into()))?;
+    let mut dateien = vec![];
+    for d in treffer {
+        let stelle = zahlen.iter().position(|(_, p)| *p == d.pfade_roh).ok_or_else(|| Inhaltsfehler::Form("Zähler passen nicht zur Datei".into()))?;
+        let (z, _) = zahlen.remove(stelle);
+        dateien.push(Diffdatei { plus: z.map_or(0, |z| z.0), minus: z.map_or(0, |z| z.1), binaer: z.is_none(), ..d });
+    }
     let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_EINZELN, frist)?;
     let alle: Vec<usize> = (0..dateien.len()).collect();
     patches_zuordnen(&mut dateien, &alle, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln).map_err(Inhaltsfehler::Form)?;
@@ -99,7 +101,7 @@ use crate::modell::{Anwendungen, Commitzustand, GRENZEN_VERSION, HASH_MAX, Verwe
 use serde::Serialize;
 
 /// Längster Pfad, den `datei=` nennen darf (Byte, wie `PATH_MAX`).
-pub const DATEI_HOECHSTENS: usize = 4096;
+pub const DATEI_HOECHSTENS: usize = crate::modell::PFAD_HOECHSTENS;
 
 /// Wie die Antwort aussieht: JSON (Form F2) oder Text (`format=patch`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

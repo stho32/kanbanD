@@ -40,7 +40,7 @@ fn befehlszeilen_von_diff_tree() {
     assert_eq!(zeilen, [
         format!("{schalter} --raw -z --end-of-options {k1} {k2}"),
         format!("{schalter} --numstat -z --end-of-options {k1} {k2}"),
-        format!("{schalter} -p --submodule=short --end-of-options {k1} {k2} -- a.txt"),
-        format!("{schalter} -p --submodule=short --root --no-commit-id --end-of-options {k1}"),
+        format!("{schalter} -p --full-index --submodule=short --end-of-options {k1} {k2} -- a.txt"),
+        format!("{schalter} -p --full-index --submodule=short --root --no-commit-id --end-of-options {k1}"),
     ]);
 }
