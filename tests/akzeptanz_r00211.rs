@@ -562,4 +562,41 @@ async fn ak10_streng_nur_ohne_pfadangabe() {
     let datei = |n: &str| dateien(&d).iter().find(|f| name(f) == n).unwrap().clone();
     assert_eq!((datei("b.txt")["nachladen"].clone(), datei("b.txt")["patch"].clone()), (json!(true), Value::Null), "{d}");
     assert_eq!(datei("a.txt")["patch"], json!("@@ -1 +1 @@\n-a\n+a2\n"), "{d}");
+    // `datei=b.txt`: die Abkürzung findet das Stück nicht, der Rückfall ohne Angabe gegen die vollständige Liste auch
+    // nicht → streng 500 (N7.8)
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k1}&datei=b.txt")).await;
+    assert_eq!((s, t.contains("„b.txt“ (M) hat 0 von 1 Stücken")), (500, true), "{t}");
+}
+
+/// AK 1 mit N7.8 (eigene Variante, Pre-Mortem N7 (f)): in Fall (a) trägt die abgeschlossene Angabe — `datei=d/x` liest
+/// Dateiliste, Zähler und Patch je einmal, die beiden letzten mit Pfadangabe, ohne Rückfall. Mutant „Angabe nicht
+/// abschließen“: Git paart neu, der Rückfall heilt die Antwort, doch die Läufe verraten ihn.
+#[tokio::test]
+async fn ak1_abgeschlossene_angabe_traegt_ohne_rueckfall() {
+    let l = Lage::neu();
+    let k = fall_a(&l, |_| {});
+    let spur = l.r.parent().unwrap().join("spur");
+    let pfad = l.git_skript(&format!("case \"$*\" in *diff-tree*) eval letztes=\\${{$#}}; for a in --raw --numstat -p; do case \" $* \" in *\" $a \"*) echo \"$a $letztes\" >> {};; esac; done;; esac", spur.display()));
+    let lauf = l.starten_mit(&[&k], &[("PATH", &pfad)]);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=d/x")).await;
+    assert_eq!(s, 200, "{t}");
+    let laeufe: Vec<String> = std::fs::read_to_string(&spur).unwrap().lines().map(String::from).collect();
+    assert_eq!(laeufe, ["--raw --", "--numstat d/x/inner", "-p d/x/inner"], "Dateiliste ohne, Zähler und Patch mit Angabe (letzter Pfad sortiert)");
+}
+
+/// AK 8 (N7.8, eigene Variante): die Abkürzung mit Pfadangabe ist kein Beleg — liefert sie keine passenden Zähler bzw.
+/// kein Stück (ein Git-Skript leert die Ausgabe jedes Laufs mit Pfadangabe), folgt der Rückfall ohne Angabe: `datei=`
+/// auf jeden Namen von Fall (a) ergibt 200, bytegleich. Mutanten: Zähler bzw. Stück ohne Rückfall streng → 500.
+#[tokio::test]
+async fn ak8_rueckfall_wenn_die_abkuerzung_nichts_belegt() {
+    for lauf_art in ["--numstat", "-p"] {
+        let l = Lage::neu();
+        let k = fall_a(&l, |_| {});
+        let stuecke = l.stuecke(&k);
+        let leer = format!("eval letztes=\\${{$#}}; case \"$*\" in *diff-tree*{lauf_art}*) if [ \"$letztes\" != \"--\" ]; then exit 0; fi;; esac");
+        let pfad = l.git_skript(&leer);
+        let lauf = l.starten_mit(&[&k], &[("PATH", &pfad)]);
+        let liste = liste_pruefen(&lauf.adresse, &k, &stuecke).await;
+        datei_auf_jeden_namen(&lauf.adresse, &k, &liste, &stuecke).await;
+    }
 }

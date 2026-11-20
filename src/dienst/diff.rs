@@ -89,10 +89,15 @@ fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, fassung: Fassung
     if ziele.is_empty() {
         return Err(Inhaltsfehler::DateiFehlt { liste_abgeschnitten });
     }
-    let (angabe, bezug) = bezug_der_datei(&rohe, &ziele);
+    let pfade: Vec<&[Vec<u8>]> = rohe.iter().map(|r| r.pfade.as_slice()).collect();
+    let angabe = abschliessen(ziele.iter().flat_map(|&i| rohe[i].pfade.iter().cloned()), &pfade);
     if liste_abgeschnitten || !angabe_passt(&angabe) {
+        drop((pfade, angabe));
         return ohne_angabe(wurzel, vergleich, rohe, liste_abgeschnitten, &ziele, fassung, frist);
     }
+    // die Einträge der Liste, die die Angabe trifft, in ihrer Reihenfolge, noch ohne Zähler
+    let bezug: Vec<Diffdatei> = getroffen(&angabe, &pfade).into_iter().map(|j| diffdatei(rohe[j].clone(), None)).collect();
+    drop(pfade);
     // die Dateiliste ist nur Zwischenstand: frei vor dem Patch-Lauf (ADR-0032 N5.1 Regel 6); es bleiben die getroffenen
     drop(rohe);
     if let Some(inhalt) = mit_angabe(wurzel, vergleich, name, &angabe, bezug, fassung, frist)? {
@@ -183,15 +188,6 @@ fn ohne_angabe(wurzel: &Path, vergleich: Vergleich, rohe: Vec<Rohdatei>, liste_a
     let dateien: Vec<Diffdatei> = dateien.into_iter().map(|(_, d)| d).collect();
     let hinweise = dateien.iter().filter(|d| d.gross).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }).collect();
     Ok(Diffinhalt { dateien, hinweise })
-}
-
-/// Die Pfadangabe für die Einträge `ziele`, abgeschlossen gegen die Dateiliste, und die Einträge der Liste, die sie
-/// trifft (in der Reihenfolge der Liste, noch ohne Zähler).
-fn bezug_der_datei(rohe: &[Rohdatei], ziele: &[usize]) -> (Vec<Vec<u8>>, Vec<Diffdatei>) {
-    let pfade: Vec<&[Vec<u8>]> = rohe.iter().map(|r| r.pfade.as_slice()).collect();
-    let angabe = abschliessen(ziele.iter().flat_map(|&i| rohe[i].pfade.iter().cloned()), &pfade);
-    let bezug = getroffen(&angabe, &pfade).into_iter().map(|j| diffdatei(rohe[j].clone(), None)).collect();
-    (angabe, bezug)
 }
 
 // ---- Dienst: Zulassung, ETag, Gesamtgrenze ---------------------------------------------------------------------------
