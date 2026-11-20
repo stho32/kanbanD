@@ -24,7 +24,8 @@ const os = require('os');
 const path = require('path');
 const { expect } = require('@playwright/test');
 
-const PROGRAMM = path.resolve(__dirname, '../../target/debug/kanbanD');
+// CARGO_TARGET_DIR (Build-Cache außerhalb des Arbeitsbaums) gilt für den Bau in bauen.js und für den Start hier
+const PROGRAMM = path.join(process.env.CARGO_TARGET_DIR || path.resolve(__dirname, '../../target'), 'debug/kanbanD');
 
 // Kein automatisches `git gc` in den Testordnern: es läuft nach einem Commit losgelöst im Hintergrund weiter und
 // schreibt noch in .git/objects/pack, während `stoppen` den Ordner löscht (ENOTEMPTY auf der CI). Gilt für kanbanD
