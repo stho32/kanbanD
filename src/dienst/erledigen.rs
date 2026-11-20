@@ -9,7 +9,7 @@ use super::zugregeln::{archivierte, zug_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, Person, Schluesseltreffer, signal_unbekannt};
+use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, Person, Schluesseltreffer, ist_erledigt, signal_unbekannt};
 use crate::pruefungen::Warnung;
 use serde::Serialize;
 
@@ -144,14 +144,15 @@ pub(super) enum Erledigungslage {
 
 /// Reine Entscheidung in der Reihenfolge des Ablaufs: archiviert oder in der Abschlussspalte, nicht auf dem Board,
 /// Agent in einer Menschen-Spalte (melden statt bewegen), sonst erledigen.
+/// „Erledigt“ entscheidet `ist_erledigt` — dieselbe Funktion deutet `braucht:` (R00214, ADR-0035 Pre-Mortem c).
 pub(super) fn lage(a: &Aufgabe, b: &Board, art: Art, signal: &str) -> Erledigungslage {
-    let abschluss = b.abschlussspalte().map(|s| s.name.as_str());
-    let Some(von) = b.spalte_von(a.nummer).map(|s| s.name.clone()) else {
-        return if a.archiviert.is_some() { Erledigungslage::SchonErledigt } else { Erledigungslage::NichtAufBoard };
-    };
-    if a.archiviert.is_some() || abschluss == Some(von.as_str()) {
+    if ist_erledigt(a, [b]) {
         return Erledigungslage::SchonErledigt;
     }
+    let Some(von) = b.spalte_von(a.nummer).map(|s| s.name.clone()) else {
+        return Erledigungslage::NichtAufBoard;
+    };
+    let abschluss = b.abschlussspalte().map(|s| s.name.as_str());
     if b.entnahme_erlaubt(art, a.nummer).is_err() {
         return if a.signale.iter().any(|s| s == signal) { Erledigungslage::SchonGemeldet } else { Erledigungslage::Melden };
     }
@@ -254,6 +255,21 @@ mod tests {
         assert_eq!(lage(&gemeldet, &b, Art::Agent, "anderes"), Erledigungslage::Melden, "nur das genannte Signal zählt");
         assert_eq!(lage(&karte(8), &b, Art::Mensch, "behoben"), erledigen("Eingang"), "Menschen-Spalten sperren nur Agenten");
         assert_eq!(lage(&gemeldet, &b, Art::Mensch, "behoben"), erledigen("Eingang"));
+    }
+
+    // R00214 B1084 (ADR-0035 Pre-Mortem c): `erledigen` und das Lesefeld `braucht` teilen „erledigt“ — für jede Karte
+    // des Boards und jede, die nicht darauf liegt, archiviert oder nicht, sagen beide dasselbe
+    #[test]
+    fn lage_und_braucht_teilen_erledigt() {
+        let b = fabrik();
+        for nr in [3, 7, 8, 9] {
+            for archiviert in [false, true] {
+                let mut a = karte(nr);
+                a.archiviert = archiviert.then(|| "2026-11-01".into());
+                let schon = lage(&a, &b, Art::Mensch, "behoben") == Erledigungslage::SchonErledigt;
+                assert_eq!(schon, ist_erledigt(&a, [&b]), "#{nr} archiviert={archiviert}");
+            }
+        }
     }
 
     fn git(pfad: &std::path::Path, args: &[&str]) -> String {

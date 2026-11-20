@@ -3,6 +3,7 @@
 mod anwendungen;
 mod aufgabe;
 mod board;
+mod braucht;
 mod commit_diff;
 mod gesamt_diff;
 mod commit_eintrag;
@@ -18,6 +19,7 @@ pub(crate) use commit_diff::zitiert;
 pub use gesamt_diff::{Abschnitt, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Folgedatei, GRENZE_NAMEN, GRENZE_PFADANGABE, Gesamtdatei, Grund, LEERER_BAUM, Linienpunkt, Schritt, Spanne, Spannenlauf, Zform, abschliessen, abschnitte_patch, abschnitte_z, folge_bilden, hinweiszeile, leerer_baum, namen_lesen, ordnen, spanne_lesen};
 pub use commit_eintrag::{Commiteintrag, Commitzustand, TITEL_HOECHSTENS, ZWEIGE_HOECHSTENS, Zweige, titel_kuerzen};
 pub use commit_verweis::{Ersetzungsfehler, HASH_MAX, HASH_MIN, HOECHSTZAHL_PAARE, Paar, Verweisfehler, Verweisform, ersetzungen_lesen, lesen as verweis_lesen};
+pub use braucht::{Deutung, braucht_nummern, deuten as braucht_deuten, ist_erledigt};
 pub use board::{Belegung, Berichtsfilter, Bestandseinstellung, Bewegfehler, Board, ColumnOwnerEintrag, Eigentuemer, Einstellung, Einstellungsaenderung, Einstellungsaenderungen, Entnahmesperre, FIEBER_AUFLOESUNGEN, FIEBER_PERZENTILE, Fieber, Grenzverletzung, Grenzverletzungen, Klassengeltung, Linie, Spalte, SpaltenAenderung, Spaltenbelegung, Spaltenfehler, Staerke, Termin, ist_datum, ist_hexfarbe, meint_human_wert, slug_gueltig, spaltenname_gueltig};
 pub use kosteneintrag::{Kosteneintrag, ROLLE_HOECHSTENS_ZEICHEN, Roheintrag};
 pub use kosten::{Gesamt, HOECHSTWERT_CENT, HOECHSTZAHL_POSITIONEN, Kosten, Position, Rohkosten, Rohposition, Wert};
