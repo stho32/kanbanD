@@ -934,3 +934,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #229 R00211 Nacharbeit 1 (N7.8) | B1067 Liste: Einträge ohne Stück nachladen, streng nur ohne Pfadangabe | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #229 R00211 Nacharbeit 1 (N7.8) | B1068 datei=: Rückfall ohne Pfadangabe, E2BIG, 404 nach PO Z. 447 | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-20 | Karte #229 R00211 Nacharbeit 1 (N7.8) | B1069 Zufallsprobe mit gleich bewerteten Quellen, Mutanten, Gate (AK 8 gross2 offen) | Standard | 1-2h | 1,3h | 1,3h | autonom |
+| 2026-11-20 | Karte #229 R00211 Nacharbeit 2 (N7.9) | B1074 Vorabgrenze der Argumente am Startort je Plattform | Standard | 1-2h | 0,2h | 0,2h | autonom |

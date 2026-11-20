@@ -137,7 +137,8 @@ pub enum Arbeitsrepofehler {
     Zeitgrenze,
     /// Git ließ sich nicht starten oder lieferte etwas Unerwartetes.
     Start(String),
-    /// Der Kern startete Git nicht: Argumente und Umgebung zusammen über ARG_MAX (`E2BIG`) — mit der Meldung.
+    /// Git nicht gestartet: Argumente über der Vorabgrenze (ADR-0032 N7.9) oder, als zweites Netz, vom Kern mit `E2BIG`
+    /// abgewiesen — mit der Meldung.
     ArgumenteZuLang(String),
     /// Die Ausgabe überschritt die Zeilengrenze; der Prozess wurde beendet (ADR-0032 N3.4).
     ZuvielAusgabe(usize),
@@ -145,6 +146,75 @@ pub enum Arbeitsrepofehler {
 
 thread_local! {
     static AUFRUFE: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Wofür die Vorabgrenze der Argumente gerechnet wird (ADR-0032 N7.9): der Kern zählt unter Unix je Argument die Bytes,
+/// das NUL und einen Zeiger; Windows begrenzt die ganze Kommandozeile in UTF-16-Einheiten (Trenner und Anführungszeichen).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Plattform {
+    Linux,
+    MacOs,
+    Windows,
+}
+
+impl Plattform {
+    /// Die Plattform, für die das Programm gebaut ist.
+    pub const HIER: Plattform = if cfg!(windows) {
+        Plattform::Windows
+    } else if cfg!(target_os = "macos") {
+        Plattform::MacOs
+    } else {
+        Plattform::Linux
+    };
+
+    /// Höchstens so viel dürfen die Argumente zählen ([`argumente_zaehlen`]), damit Git startet — unter den Grenzen
+    /// des Kerns (Linux ARG_MAX 2 MiB, macOS 1 MiB, Windows 32.767 Zeichen) mit Platz für die Umgebung.
+    pub fn vorabgrenze(self) -> usize {
+        match self {
+            Plattform::Linux => 1_835_008,
+            Plattform::MacOs => 786_432,
+            Plattform::Windows => 32_000,
+        }
+    }
+}
+
+/// Was die Argumente auf der Plattform zählen: Unix je Argument Länge in Byte + 1 (NUL) + 8 (Zeiger), Windows je
+/// Argument Länge in UTF-16-Einheiten + 3 (Trenner, zwei Anführungszeichen).
+pub fn argumente_zaehlen(argumente: &[impl AsRef<std::ffi::OsStr>], plattform: Plattform) -> usize {
+    let je = |a: &std::ffi::OsStr| match plattform {
+        Plattform::Linux | Plattform::MacOs => a.as_encoded_bytes().len() + 1 + 8,
+        Plattform::Windows => a.to_string_lossy().encode_utf16().count() + 3,
+    };
+    argumente.iter().map(|a| je(a.as_ref())).sum()
+}
+
+/// Passen die Argumente unter die Grenze? Genau auf der Grenze startet Git noch.
+pub fn argumente_passen(argumente: &[impl AsRef<std::ffi::OsStr>], plattform: Plattform, grenze: usize) -> bool {
+    argumente_zaehlen(argumente, plattform) <= grenze
+}
+
+#[cfg(test)]
+thread_local! {
+    static VORABGRENZE: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+/// Im Test: die Vorabgrenze dieses Threads verkleinern (`None`: die der Plattform), wie `grenze_namen` (N7.3).
+#[cfg(test)]
+pub fn vorabgrenze_setzen(grenze: Option<usize>) {
+    VORABGRENZE.with(|g| g.set(grenze));
+}
+
+/// Die Vorabgrenze am Startort (ADR-0032 N7.9): Programm und alle Argumente des fertigen Befehls; darüber startet kein
+/// Git, sondern `ArgumenteZuLang` wie bei E2BIG (das als zweites Netz bleibt).
+fn vorab_pruefen(c: &Command) -> Result<(), Arbeitsrepofehler> {
+    let grenze = Plattform::HIER.vorabgrenze();
+    #[cfg(test)]
+    let grenze = VORABGRENZE.with(Cell::get).unwrap_or(grenze);
+    let argumente: Vec<&std::ffi::OsStr> = std::iter::once(c.get_program()).chain(c.get_args()).collect();
+    if argumente_passen(&argumente, Plattform::HIER, grenze) {
+        return Ok(());
+    }
+    Err(Arbeitsrepofehler::ArgumenteZuLang(format!("Argumente zählen {} — über der Vorabgrenze {grenze}", argumente_zaehlen(&argumente, Plattform::HIER))))
 }
 
 /// Wie viele Git-Prozesse dieses Modul im laufenden Thread gestartet hat — die Probe „Lesen startet kein Git“ (AK 10)
@@ -517,6 +587,7 @@ impl Lauf<'_> {
 /// Der eine Startort für Git in einem Arbeits-Repository: fester Befehl, Argumentliste, Umgebung, Zeitgrenze, Zähler.
 pub(crate) fn git(ordner: &Path, befehl: Befehl, args: &[&str], lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
     let c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
+    vorab_pruefen(&c)?;
     AUFRUFE.with(|n| n.set(n.get() + 1));
     ausfuehren(c, lauf)
 }
@@ -586,6 +657,7 @@ pub(crate) fn git_teil(ordner: &Path, befehl: Befehl, args: &[&str], pfade: &[&[
     let mut c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
     // `--` auch ohne Pfade: eine Datei mit dem Namen einer Revision macht sie sonst mehrdeutig
     c.arg("--").args(pfade.iter().map(|p| std::ffi::OsStr::from_bytes(p)));
+    vorab_pruefen(&c)?;
     let zeitgrenze = grenze_bis(frist)?;
     AUFRUFE.with(|n| n.set(n.get() + 1));
     teil_ausfuehren(c, eingabe, zeitgrenze, bytegrenze)
@@ -740,6 +812,46 @@ fn leeren(strom: Option<impl Read>, grenze: Option<(Grenze, Arc<AtomicBool>)>) -
 mod tests {
     use super::*;
     use std::ffi::OsStr;
+
+    // R00211 AK 12 (ADR-0032 N7.9): die Vorabgrenze der Argumente je Plattform als reine Rechnung — Unix je Argument
+    // Länge + 1 (NUL) + 8 (Zeiger), Windows je Argument UTF-16-Länge + 3; genau auf der Grenze startet Git noch
+    #[test]
+    fn vorabgrenze_je_plattform() {
+        let a = |t: &str| OsStr::new(t).to_os_string();
+        let zehn = [a("0123456789"), a("abcdefghij"), a("ABCDEFGHIJ")];
+        assert_eq!(argumente_zaehlen(&zehn, Plattform::Linux), 57);
+        assert_eq!(argumente_zaehlen(&zehn, Plattform::MacOs), 57);
+        let fuenf = [a("abcde"), a("fghij")];
+        assert_eq!(argumente_zaehlen(&fuenf, Plattform::Windows), 16);
+        assert_eq!(argumente_zaehlen(&[a("ä")], Plattform::Windows), 4, "„ä“ ist eine UTF-16-Einheit");
+        assert_eq!(argumente_zaehlen(&[a("😀")], Plattform::Windows), 5, "„😀“ sind zwei UTF-16-Einheiten");
+        assert_eq!(argumente_zaehlen(&[a("ä")], Plattform::Linux), 11, "„ä“ sind zwei Byte");
+        // genau auf der Grenze: ein Argument der Länge n zählt n + 9 (Unix) bzw. n + 3 (Windows)
+        let laenge = |n: usize| [OsString::from("x".repeat(n))];
+        for (p, grenze, extra) in [(Plattform::Linux, 1_835_008, 9), (Plattform::MacOs, 786_432, 9), (Plattform::Windows, 32_000, 3)] {
+            assert_eq!(p.vorabgrenze(), grenze, "{p:?}");
+            assert!(argumente_passen(&laenge(grenze - extra), p, grenze), "{p:?}: genau {grenze} startet");
+            assert!(!argumente_passen(&laenge(grenze - extra + 1), p, grenze), "{p:?}: {} startet nicht", grenze + 1);
+        }
+    }
+
+    // R00211 AK 12: über der Vorabgrenze startet kein Git — `ArgumenteZuLang`, der Zähler der Starts bleibt stehen
+    #[test]
+    fn ueber_der_vorabgrenze_kein_start() {
+        let tmp = tempfile::tempdir().unwrap();
+        let vorher = aufrufe();
+        vorabgrenze_setzen(Some(10));
+        let f = git(tmp.path(), Befehl::RevParse, &["--git-dir"], Lauf::mit(Duration::from_secs(5))).unwrap_err();
+        vorabgrenze_setzen(None);
+        assert!(matches!(f, Arbeitsrepofehler::ArgumenteZuLang(_)), "{f:?}");
+        assert_eq!(aufrufe(), vorher, "kein Git gestartet");
+        let pfad: &[u8] = b"a";
+        vorabgrenze_setzen(Some(10));
+        let f = git_teil(tmp.path(), Befehl::DiffTree, &["-r"], &[pfad], None, 100, Instant::now() + Duration::from_secs(5)).unwrap_err();
+        vorabgrenze_setzen(None);
+        assert!(matches!(f, Arbeitsrepofehler::ArgumenteZuLang(_)), "{f:?}");
+        assert_eq!(aufrufe(), vorher, "kein Git gestartet");
+    }
 
     /// Alle Befehle der abschließenden Liste — ein neuer gehört hier dazu.
     const ALLE: [Befehl; 7] = [Befehl::RevParse, Befehl::CatFile, Befehl::Log, Befehl::ForEachRef, Befehl::RevList, Befehl::DiffTree, Befehl::MergeBase];
