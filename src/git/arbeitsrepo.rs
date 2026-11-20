@@ -137,6 +137,8 @@ pub enum Arbeitsrepofehler {
     Zeitgrenze,
     /// Git ließ sich nicht starten oder lieferte etwas Unerwartetes.
     Start(String),
+    /// Der Kern startete Git nicht: Argumente und Umgebung zusammen über ARG_MAX (`E2BIG`) — mit der Meldung.
+    ArgumenteZuLang(String),
     /// Die Ausgabe überschritt die Zeilengrenze; der Prozess wurde beendet (ADR-0032 N3.4).
     ZuvielAusgabe(usize),
 }
@@ -614,7 +616,10 @@ enum Gelesen {
 /// Der gemeinsame innere Teil von [`git`] und [`git_teil`]: starten, schreiben, mitlesen, warten, Gruppe beenden.
 fn lesend_ausfuehren(mut c: Command, eingabe: Option<&[u8]>, zeitgrenze: Duration, grenze: Option<Grenze>) -> Result<Gelesen, Arbeitsrepofehler> {
     let art = if eingabe.is_some() { Stdio::piped() } else { Stdio::null() };
-    let mut kind = c.stdin(art).stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0).spawn().map_err(|e| Arbeitsrepofehler::Start(e.to_string()))?;
+    let mut kind = c.stdin(art).stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0).spawn().map_err(|e| match e.kind() {
+        std::io::ErrorKind::ArgumentListTooLong => Arbeitsrepofehler::ArgumenteZuLang(e.to_string()),
+        _ => Arbeitsrepofehler::Start(e.to_string()),
+    })?;
     let gruppe = kind.id() as i32;
     // nicht abgewartet: hält ein Kind von Git `stdin` offen, ohne zu lesen, hinge sonst die Anfrage
     if let Some(text) = eingabe {

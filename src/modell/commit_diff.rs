@@ -434,6 +434,19 @@ pub fn zahlen_im_bezug(getroffene: &mut [Diffdatei], zahlen: Vec<Zaehler>) -> Re
     Ok(())
 }
 
+/// Passt eine Pfadangabe unter die Grenze von 1 MB (ADR-0032 N5.5 S1, ARG_MAX)? Gezählt je Pfad seine Länge, 1 Byte NUL
+/// und 8 Byte für den Zeiger, wie der Kern beim Start die Argumente zählt (Director #229, R00211 AK 8).
+pub fn angabe_passt(angabe: &[Vec<u8>]) -> bool {
+    angabe.iter().map(|p| p.len() + 1 + 8).sum::<usize>() <= GRENZE_DATEILISTE
+}
+
+/// Bis zu wie vielen Byte der Zähler-Lauf (`--numstat -z`) ohne Pfadangabe gelesen werden muss, damit die Einträge mit
+/// diesen Pfaden (die ersten der Dateiliste, in ihrer Reihenfolge) ganz darin stehen: je Eintrag höchstens zwei Zahlen zu
+/// 20 Ziffern, zwei Tabulatoren, ein NUL für den leeren Pfad einer Umbenennung, dazu je Pfad Länge + NUL.
+pub fn zaehler_bis<'a>(eintraege: impl Iterator<Item = &'a [Vec<u8>]>) -> usize {
+    eintraege.map(|pfade| 43 + pfade.iter().map(|p| p.len() + 1).sum::<usize>()).sum()
+}
+
 /// Was aus der Zuordnung über einen Bezug wird (ADR-0032 N7.7): gelungen → `Ok(true)`. Ist der Bezug abgeschnitten,
 /// kann ein getroffener Eintrag hinter dem Schnitt liegen, und Git paart dann anders als der Bezug; scheitert die
 /// Zuordnung in diesem Fall → `Ok(false)`, die Dateien sind nicht zuzuordnen (Liste `nachladen`, `datei=` 404 „Dateiliste
@@ -886,6 +899,33 @@ mod tests {
         assert!(im_bezug_zugeordnet(zuordnung(), false).is_err(), "vollständiger Bezug: streng");
         assert_eq!(im_bezug_zugeordnet(Ok(()), true), Ok(true));
         assert_eq!(im_bezug_zugeordnet(Ok(()), false), Ok(true));
+    }
+
+    // R00211 AK 8 (Director zu ARG_MAX): die Grenze von 1 MB für eine Pfadangabe zählt je Pfad Länge + 1 (NUL) + 8
+    // (Zeiger) — 145.000 Pfade zu 6 Byte sind nach Bytes 1.015.000 (darunter), gezählt 2.175.000 (darüber); genau an der
+    // Grenze passt sie, ein Byte mehr nicht
+    #[test]
+    fn angabe_zaehlt_nul_und_zeiger() {
+        let p = |n: usize, laenge: usize| vec![vec![b'p'; laenge]; n];
+        assert!(!angabe_passt(&p(145_000, 6)));
+        assert!(angabe_passt(&p(1, GRENZE_DATEILISTE - 9)));
+        assert!(!angabe_passt(&p(1, GRENZE_DATEILISTE - 8)));
+        assert!(angabe_passt(&p(GRENZE_DATEILISTE / 16, 7)));
+        assert!(!angabe_passt(&p(GRENZE_DATEILISTE / 16 + 1, 7)));
+    }
+
+    // R00211 AK 8: die Zähler bis zum Eintrag `ziel` stehen ganz in den ersten `zaehler_bis` Byte des Laufs ohne
+    // Pfadangabe — auch mit den längsten Zahlen und bei Umbenennungen (`plus\tminus\t\0alt\0neu\0`) —, der nächste nicht
+    #[test]
+    fn zaehler_bis_zum_ziel() {
+        let p = |n: &[&str]| n.iter().map(|x| x.as_bytes().to_vec()).collect::<Vec<_>>();
+        let eintraege = [p(&["a"]), p(&["alt/b", "neu/b"]), p(&["c"])];
+        let max = u64::MAX.to_string();
+        let lauf = format!("{max}\t{max}\ta\0{max}\t{max}\t\0alt/b\0neu/b\0{max}\t{max}\tc\0");
+        let grenze = zaehler_bis(eintraege.iter().take(2).map(Vec::as_slice));
+        let gelesen = zahlen_mit_pfaden(&lauf.as_bytes()[..grenze.min(lauf.len())]).unwrap();
+        assert_eq!(gelesen.len(), 2, "beide Einträge bis zum Ziel ganz, der dritte nicht mehr");
+        assert_eq!(gelesen[1].1, eintraege[1]);
     }
 
     // R00211 AK 7 (ADR-0032 N7.8): ein Lauf mit Pfadangabe ist kein Beleg — paart Git dort eine gleich bewertete Quelle

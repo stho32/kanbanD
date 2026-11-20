@@ -125,7 +125,7 @@ fn abbruch(f: Arbeitsrepofehler) -> Fehler {
     match f {
         Arbeitsrepofehler::Zeitgrenze => Fehler::Zeitgrenze(format!("Git in einem Arbeits-Repository antwortete nicht innerhalb von {} s — keine Liste", GESAMTGRENZE.as_secs())),
         Arbeitsrepofehler::ZuvielAusgabe(n) => Fehler::Zeitgrenze(format!("die Zweigliste eines Arbeits-Repositorys hat mehr als {n} Zeilen — keine Liste")),
-        Arbeitsrepofehler::RepositoryFehlt(m) | Arbeitsrepofehler::Start(m) => Fehler::Intern(format!("git: {m}")),
+        Arbeitsrepofehler::RepositoryFehlt(m) | Arbeitsrepofehler::Start(m) | Arbeitsrepofehler::ArgumenteZuLang(m) => Fehler::Intern(format!("git: {m}")),
         Arbeitsrepofehler::KeinCommit => Fehler::Intern("git: kein Commit".into()),
     }
 }

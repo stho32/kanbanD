@@ -220,7 +220,7 @@ fn repo_fehler(f: Arbeitsrepofehler, text: &str, anwendung: &Anwendung) -> Fehle
         Arbeitsrepofehler::KeinCommit => verweis(format!("„{}“ ist im Repository {name} kein Commit — nicht vorhanden, mehrdeutig (längeren Hash nennen) oder ein anderes Objekt", nachricht::wert(text))),
         Arbeitsrepofehler::Zeitgrenze => Fehler::Zeitgrenze(format!("Git im Repository {name} antwortete nicht in {} s — nichts geschrieben", arbeitsrepo::ZEITGRENZE.as_secs())),
         Arbeitsrepofehler::ZuvielAusgabe(n) => Fehler::Zeitgrenze(format!("Git im Repository {name} lieferte mehr als {n} Zeilen — abgebrochen")),
-        Arbeitsrepofehler::Start(grund) => Fehler::Intern(format!("git: {grund}")),
+        Arbeitsrepofehler::Start(grund) | Arbeitsrepofehler::ArgumenteZuLang(grund) => Fehler::Intern(format!("git: {grund}")),
     }
 }
 

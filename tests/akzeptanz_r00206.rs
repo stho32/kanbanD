@@ -498,12 +498,12 @@ async fn ak11_einzeln_nachladen() {
     }
     let pfadangaben: Vec<String> = spur(&spurdatei).into_iter().filter(|z| z.contains(" -- ")).collect();
     assert_eq!(pfadangaben, Vec::<String>::new(), "kein fremder Text erreicht Git als Pfadangabe");
-    // eine bis zur Grenze abgeschnittene Dateiliste: 404 mit dem Grund
+    // eine bis zur Grenze abgeschnittene Dateiliste: 404 mit dem Grund (Wortlaut seit R00211 AK 9, PO Z. 447)
     let pfad = git_skript(&l.a, "case \"$*\" in *diff-tree*--raw*) while :; do printf ':000000 100644 0000000000000000000000000000000000000000 1111111111111111111111111111111111111111 A\\0%01000d\\0' 0; done;; esac");
     let lauf = l.starten(&[("PATH", &pfad)]);
     let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}&datei=fehlt.txt"), None).await;
     assert_eq!(a.status, 404, "{}", a.text);
-    assert!(a.json()["fehler"].as_str().unwrap().contains("Dateiliste zu groß"), "{}", a.text);
+    assert!(a.json()["fehler"].as_str().unwrap().contains("Dateiliste des Commits ist zu groß"), "{}", a.text);
     // auch die Liste liest die Dateiliste mit Grenze: der endlose Lauf endet bei 1 MB, nicht an der Gesamtgrenze
     let start = Instant::now();
     let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}"), None).await;
