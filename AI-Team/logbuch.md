@@ -1266,3 +1266,19 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #225 | Detailplanung | product-owner | bestanden | 0 min | Zustandswörter, Hinweis WBS-Feld, Hinweistext (c1929cb6, Z. 434–436) · claude · opus · Lauf 225-product-owner-1 |
 | 2026-11-20 | #225 | Detailplanung | planer | bestanden | 1 min | UX-Vorprüfung eingearbeitet, 12 AK (629b6679) · claude · opus · Lauf 225-planer-3 |
 | 2026-11-20 | #225 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung: Muss 1/2 geschlossen · claude · sonnet · Lauf 225-ux-reviewer-2 |
+| 2026-11-20 | #215 | Architektur | architekt | bestanden | 9 min | ADR-0033 N1 (898d9c10) · claude · opus · Lauf 215-architekt-1 · 3,31 $ · Karte gesamt 3,31 $ |
+| 2026-11-20 | #214 | Entwicklung | entwickler | bestanden | 1 h 7 min | B1025–B1029, Gate 1085/1350/2096, p95 298 ms · claude · Lauf 214-entwickler-1 · 12,87 $ · Karte gesamt 21,33 $ |
+| 2026-11-20 | #214 | Auto-Reviews | architektur-reviewer | bestanden | 1 min | kein Muss, 2 Sollte (ADR/A00011 nachführen, Fitness-Test Startort) · claude · sonnet · Lauf 214-architektur-reviewer-1 · 0,44 $ · Karte gesamt 21,77 $ |
+| 2026-11-20 | #214 | Auto-Reviews | security-reviewer | bestanden | 8 min | kein Muss, 2 Sollte (Datei mit Hash-Namen, refs/replace) · claude · sonnet · Lauf 214-security-reviewer-1 · 1,35 $ · Karte gesamt 23,12 $ |
+| 2026-11-20 | #215 | Detailplanung | gestalter | bestanden | 15 min | D0009 B3 nachgezeichnet (9c24a009) · claude · sonnet · Lauf 215-gestalter-1 · 3,08 $ · Karte gesamt 6,39 $ |
+| 2026-11-20 | #215 | Detailplanung | product-owner | bestanden | 1 min | D0009 B3 frei mit Änderung (0df1ffaa, Z. 437–441) · claude · opus · Lauf 215-product-owner-1 |
+| 2026-11-20 | #215 | Detailplanung | gestalter | bestanden | 0 min | Wortlaute nach PO (538e96f9) · claude · sonnet · Lauf 215-gestalter-2 |
+| 2026-11-20 | #215 | Detailplanung | architekt | bestanden | 0 min | ADR-0033 N1 ganz akzeptiert (acbb2e9b) · claude · opus · Lauf 215-architekt-2 |
+| 2026-11-20 | #215 | Detailplanung | planer | bestanden | 8 min | R00210, I0200, B1041–B1048 (a29df625) · claude · opus · Lauf 215-planer-1 · 2,91 $ · Karte gesamt 9,30 $ |
+| 2026-11-20 | #215 | Detailplanung | product-owner | bestanden | 0 min | Ein Commit ohne Diff (ef5caac2, Z. 442) · claude · opus · Lauf 215-product-owner-2 |
+| 2026-11-20 | #215 | Detailplanung | ux-reviewer | befund | 3 min | Vorprüfung kriterium_fehlt: M1 Ansage, M2 Fehlerzustände, S1–S10 · claude · sonnet · Lauf 215-ux-reviewer-1 · 0,50 $ · Karte gesamt 9,80 $ |
+| 2026-11-20 | #215 | Detailplanung | planer | bestanden | 2 min | UX-Vorprüfung eingearbeitet (3efa8c84, 49cefca6) · claude · opus · Lauf 215-planer-2 |
+| 2026-11-20 | #215 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung: M1/M2 geschlossen · claude · sonnet · Lauf 215-ux-reviewer-2 |
+| 2026-11-20 | #215 | Detailplanung | product-owner | bestanden | 0 min | S2/O2 (331c83cc, Z. 443–444) · claude · opus · Lauf 215-product-owner-3 |
+| 2026-11-20 | #215 | Detailplanung | planer | bestanden | 0 min | R00210 nach Z. 443–444 (cdd72c1a) · claude · opus · Lauf 215-planer-3 |
+| 2026-11-20 | #215 | Detailplanung | gestalter | bestanden | 0 min | D0009 Texte nach Z. 443–444 (a788ba5e) · claude · sonnet · Lauf 215-gestalter-3 |
