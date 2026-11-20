@@ -1190,7 +1190,11 @@ function reviewDateiNeu(r, i) {
   if (alt) {
     const fokus = alt.contains(document.activeElement) ? document.activeElement.id : null;
     alt.outerHTML = dateiHtml(r.dateien[i], i, r.staende[i], r.hinweise, esc);
-    if (fokus !== null) (document.getElementById(fokus) || document.getElementById('rv-dk' + i)).focus({ preventScroll: true });
+    if (fokus !== null) {
+      // über den einen Fokusweg (fokusVersuchen), ohne zu rollen: der Fokus bleibt, wo er war
+      const ziel = fokus && document.getElementById(fokus) ? '#' + CSS.escape(fokus) : '#rv-dk' + i;
+      fokusVersuchen(ziel, null, null, { selektor: ziel, sichtbar: false });
+    }
   }
   reviewKlappenMerken(r);
 }
