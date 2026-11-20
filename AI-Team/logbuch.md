@@ -1140,3 +1140,18 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #211 | Auto-Reviews | code-reviewer | bestanden | 2 min | B1 behoben, Mutant .take(1) rot; S1/S2 erledigt · claude · sonnet · Lauf 211-code-reviewer-2 · 0,25 $ · Karte gesamt 26,88 $ |
 | 2026-11-20 | #211 | Entwicklertest | entwicklertester | bestanden | 8 min | US-1..US-8 erfüllt; Doku-Lücken als Sollte · claude · sonnet · Lauf 211-entwicklertester-1 · 1,22 $ · Karte gesamt 28,10 $ |
 | 2026-11-20 | #211 | Entwicklertest | entwickler | bestanden | 20 min | Rebase auf main 38ed80b7, Konflikte beidseitig gelöst; cargo 989, node 1247, PW 1966/0 · claude · Lauf 211-entwickler-3 · 0,58 $ · Karte gesamt 28,68 $ |
+
+**Retrospektive #211** (Scheibe A2: Commit-Liste einer Karte per API lesen, 2026-11-20, 28,68 $ gemessen, ausgeliefert 9383eb98)
+- Gut: Messen vor dem Bauen hat das Verfahren gerettet. Der architekt maß für Z1 1 s statt der angenommenen 200 ms, der entwickler entschied in B0998 selbst für Z5 (148–184 ms). Die Entscheidungsregel in N3.4 („ohne Rückfrage“) hat eine Schleife über den Director gespart.
+- Teuer: Erster Lauf auf Opus 15,90 $ (1 h 18 min), Nacharbeit 5,00 $. Vier Muss kamen erst in den Reviews: Erreichbarkeit über Merges ungetestet, Lazy-Fetch, Enkel hält die Pipe, keine Obergrenze gleichzeitiger Lesevorgänge. Alle vier waren mit Proben belegt; der security-reviewer auf Sonnet hat für 1,51 $ das gefunden, was 15 $ Opus übersehen hatte.
+- Lehre (Sicherheit, für alle Karten mit Fremdprozessen): Eine gehärtete Umgebung schließt nicht jeden Weg, auf dem Git selbst Programme startet. `GIT_NO_LAZY_FETCH` gehört dazu, ab Git 2.44 vorhanden. Eine Zeitgrenze gilt erst dann, wenn auch nach normalem Prozessende die Gruppe beendet und die Lesethreads nur bis zur Frist abgewartet werden. Eine API ohne Konto braucht eine Obergrenze für gleichzeitige teure Vorgänge.
+- Lehre (Zusammenführen): Erhöhen zwei Karten dieselbe Zählzeile in einem Vertragstest um eins, führt Git das ohne Konflikt und falsch zusammen (+1 statt +2). Nur das Gate fand es.
+- Zusammenführen: 17 Commits mit Code-Konflikten aus #219 gingen an einen entwickler auf Sonnet zurück (0,58 $), statt sie von Hand zu lösen.
+- Befund außerhalb: #221 (WBS-Sicht startet Git ungehärtet, Serverstart hängt bei FIFO) im Backlog, Freigabe durch den Betreiber.
+- Sollte ohne Karte:
+  - README nennt „höchstens 15 s“, OpenAPI 10 s.
+  - Nach 503 fehlt der Hinweis „erneut versuchen“.
+  - `Commitzustand` hat keine Beschreibung je Wert.
+  - Mindestversion Git 2.44 für `GIT_NO_LAZY_FETCH` ist nicht dokumentiert.
+  - Die Lesegrenze ist nicht fair; Lesethreads eines setsid-Enkels leben weiter.
+  - `-l1000` fehlt in `metadaten`.
