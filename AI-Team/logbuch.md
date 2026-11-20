@@ -1182,3 +1182,39 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Sollte ohne Karte:**
   - „(0)“ bei Status 0 bleibt, weil AK 7 die Form vorgibt.
   - Bei 768 px bricht der Autor mitten im Wort.
+| 2026-11-20 | #209 | Architektur | architekt | bestanden | 6 min | ADR-0033 (29382c95) · claude · opus · Lauf 209-architekt-1 · 2,23 $ · Karte gesamt 2,23 $ |
+| 2026-11-20 | #209 | Detailplanung | product-owner | bestanden | 0 min | Punkt 9 entschieden (f6261319, Z. 411–413) · claude · opus · Lauf 209-product-owner-1 · 0,20 $ · Karte gesamt 2,43 $ |
+| 2026-11-20 | #209 | Detailplanung | architekt | bestanden | 0 min | ADR-0033 Punkt 9 akzeptiert (66af480a) · claude · opus · Lauf 209-architekt-2 |
+| 2026-11-20 | #209 | Detailplanung | gestalter | bestanden | 11 min | D0009 nachgezeichnet (30430c4b) · claude · sonnet · Lauf 209-gestalter-1 · 2,20 $ · Karte gesamt 4,63 $ |
+| 2026-11-20 | #213 | Entwicklung | entwickler | bestanden | 49 min | Nacharbeit 1: B1015/B1016, Gate 1055/1300/2028 · claude · Lauf 213-entwickler-2 · 12,04 $ · Karte gesamt 38,06 $ |
+| 2026-11-20 | #209 | Detailplanung | product-owner | bestanden | 3 min | D0009 freigegeben mit Änderung (c29fa2a3, Z. 414–418) · claude · opus · Lauf 209-product-owner-2 · 1,06 $ · Karte gesamt 5,69 $ |
+| 2026-11-20 | #213 | Auto-Reviews | code-reviewer | bestanden | 8 min | Wiederholung: M1 geschlossen · claude · sonnet · Lauf 213-code-reviewer-2 |
+| 2026-11-20 | #209 | Detailplanung | planer | bestanden | 7 min | R00207, I0197, B1017–B1024 (3d9c1f18) · claude · opus · Lauf 209-planer-1 · 2,82 $ · Karte gesamt 8,51 $ |
+| 2026-11-20 | #209 | Detailplanung | product-owner | bestanden | 0 min | Fragen 1/2 entschieden (fa7c4044, Z. 419–421) · claude · opus · Lauf 209-product-owner-3 |
+| 2026-11-20 | #209 | Detailplanung | architekt | bestanden | 0 min | Zeichenbudget präzisiert (6a8b8d97) · claude · opus · Lauf 209-architekt-3 |
+| 2026-11-20 | #209 | Detailplanung | planer | bestanden | 1 min | R00207 nachgeführt (a4b4bd69) · claude · opus · Lauf 209-planer-2 |
+| 2026-11-20 | #213 | Auto-Reviews | security-reviewer | bestanden | 5 min | Wiederholung: M-S1 geschlossen; neues Sollte Budget als Sperre · claude · sonnet · Lauf 213-security-reviewer-2 |
+| 2026-11-20 | #213 | Entwicklertest | entwicklertester | bestanden | 5 min | AK 1–21 im echten Programm, Abnahme-Probe bestanden · claude · sonnet · Lauf 213-entwicklertester-1 · 0,83 $ · Karte gesamt 38,89 $ |
+| 2026-11-20 | #209 | Detailplanung | ux-reviewer | befund | 2 min | Vorprüfung: kriterium_fehlt, 2 Muss, 12 Sollte · claude · sonnet · Lauf 209-ux-reviewer-1 · 0,35 $ · Karte gesamt 8,86 $ |
+| 2026-11-20 | #209 | Detailplanung | product-owner | bestanden | 1 min | Wortlaute nach UX-Vorprüfung (31ba7774, Z. 422–425) · claude · opus · Lauf 209-product-owner-4 |
+| 2026-11-20 | #209 | Detailplanung | planer | bestanden | 2 min | UX-Vorprüfung eingearbeitet (23f4b63d) · claude · opus · Lauf 209-planer-3 |
+| 2026-11-20 | #209 | Detailplanung | ux-reviewer | befund | 0 min | Nachprüfung: Muss 1 zu, Fokusziel bei Seitenfehlern fehlt · claude · sonnet · Lauf 209-ux-reviewer-2 |
+| 2026-11-20 | #209 | Detailplanung | planer | bestanden | 1 min | Fokusziel Seitenfehler, Titel-Probe (5c5559c1) · claude · opus · Lauf 209-planer-4 |
+
+**Retrospektive #213** (Scheibe A3: Diff eines Commits per API lesen, 2026-11-20, 38,89 $ gemessen, ausgeliefert a77ff787)
+- **Gut:** Opus hat B1010–B1014 in 1 h 5 min für 17,74 $ gebaut, mit 31 Mutanten und einer Gleichheits-Probe gegen eine feindliche Konfiguration. Die Probe fand zwei Lücken, die die Einzelproben nicht suchten (`--ext-diff` startet den Treiber aus .gitattributes; Submodule fehlten bei `diff.ignoreSubmodules=all`).
+- **Zwei Muss erst in den Reviews** (Sonnet, zusammen 2,24 $):
+  - Zuordnung über den Pfad: `--literal-pathspecs foo` trifft auch `foo/…`. Bei einem Typwechsel Datei ↔ Verzeichnis kam deshalb ein falscher Patch an die Datei.
+  - Speicher ohne Grenze je ungelesener Antwort, ohne Konto: +196 MB bei 6 Verbindungen.
+- **Ablauf der Nacharbeit:** Zuerst entschied der architekt (N5 mit gemessener Probe auf derselben axum/hyper-Version), dann der planer (AK 20/21), dann Opus (49 min, 12,04 $). Die Wiederholungen der Reviews liefen fortgesetzt und gezielt.
+- **Lehre (Diff und Zuordnung):** Stücke eines Patches nie über Namen zuordnen. Volle Blob-Hashes (`--full-index`) sind der eindeutige Schlüssel. Die Stückzahl gilt auch im abgeschnittenen Lauf bis zum Schnitt.
+- **Lehre (Speicher):**
+  - Ein Budget für Antwortbytes begrenzt nur die Buchung, solange glibc freigegebene große Puffer im Heap hält; erst `mallopt(M_MMAP_THRESHOLD)` begrenzt den Speicher.
+  - `Bytes::slice` hält den ganzen Puffer fest.
+  - Eine Zeitgrenze im Body-Strom greift bei einem Client, der nicht liest, nie; nötig ist eine Wache außerhalb des Stroms.
+- **Befund außerhalb der Karte:** #223 im Backlog. Das Budget lässt sich ohne Konto als Sperre halten, und die Anhänge haben dasselbe Speichermuster.
+- **Kosten nicht gemessen:** Fortgesetzte Läufe (SendMessage) haben kein eigenes Protokoll. Die Wiederholungen von Code- und Security-Review fehlen deshalb im Preis.
+- **Sollte ohne Karte:**
+  - Die Zeitzone +00:00 erscheint als `Z`.
+  - Eine 9-MB-Datei steht in der Liste als `gross` und `nachladen` zugleich.
+  - Bei gleichem Blob-Hash trägt `format=patch` den Kopf der anderen Datei.
