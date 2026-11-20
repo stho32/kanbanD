@@ -1401,3 +1401,22 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Sollte ohne Karte:**
   - Toter Doc-Link `Anwendungen::aufloesen` in `src/modell/commit_verweis.rs:48`.
   - Lange Verweise brechen nicht um (`.org{white-space:nowrap}`, Altlast); auf der Karte läuft der Anfang links heraus.
+| 2026-11-20 | #229 | Entwicklertest | entwicklertester | bestanden | 13 min | US-1..US-5, UI, 75k/145k ohne 500 · claude · sonnet · Lauf 229-entwicklertester-1 · 1,20 $ · Karte gesamt 29,61 $ |
+| 2026-11-20 | #228 | Architektur | architekt | bestanden | 3 min | ADR-0035: Label braucht:<nr> ist der Träger (9cc640c8) · claude · opus · Lauf 228-architekt-1 |
+
+**Retrospektive #229** (Vorrang-Bug: Diff je Commit, `datei=` bei Typwechsel gab 500, 2026-11-20, 29,61 $ gemessen, ausgeliefert e7ae885a)
+- **Gut:**
+  - Die Zufallsproben trugen die Karte. Die erste fand den Typwechsel. Die des code-reviewers fand eine neue Klasse: Git paart gleich bewertete Umbenennungsquellen je nach Größe der Matrix anders. Damit waren 65 von 300 Seeds 500.
+  - Nach zwei Nacharbeiten: 0 mal 500 über 1.200 + 800 + 1.230 Seeds aus drei unabhängigen Erzeugern.
+  - Die Entscheidungen des architekt stehen in ADR-0032 N7.8/N7.9: Ein Lauf mit Pfadangabe ist eine Abkürzung, kein Beleg; die Vorabgrenze der Argumente gilt je Plattform.
+- **Zwei Nacharbeiten, die Schleifenbremse wurde erreicht, aber nicht überschritten:**
+  - Nacharbeit 1 deckte AK 8 nur bis 75.000 Dateien.
+  - Erst die Frage an den architekt brachte die Windows-Lücke ans Licht: Dort kommt E2BIG nie an, und die Liste gibt schon ab etwa 300 Pfaden 500.
+- **Lehre (Zufallsprobe):** Der Erzeuger muss die Klassen bilden, in denen das Werkzeug nicht deterministisch ist (gleich bewertete Quellen plus Datei `gross`). Sonst prüft die Probe nur den gutmütigen Raum. `tie` und `tie2h.py` gehören in künftige Diff-Karten.
+- **Lehre (Abweichung des entwicklers):** Er hielt sich nicht an die Director-Vorgabe „+9 je Pfad“, weil sonst ein Bestandstest rot geworden wäre, und nannte das offen. Der architekt hat die Abweichung mit N7.9 nachträglich gedeckt. Eine Abweichung mit Grund im Bericht ist besser als stilles Befolgen.
+- **Lehre (Merge):** Der Rebase über #215/#226 brauchte eine WBS-Lösung nach #155. Dafür gibt es jetzt das Skript `wbs_loesen.py` im Scratchpad des Directors: eigene Knoten aus der Karte, sonst main.
+- **Neue Karten:**
+  - #230 (Vorrang): Gesamt-Diff mit gleich bewerteten Quellen.
+  - #233: Metadaten-Lauf über 75.000 Dateien beschleunigen.
+  - #234: Satz über fremde Commits bei 0 fremden.
+- **Optional ohne Karte:** Der Kopf eines Zwillings in `format=patch` kann den Namen des anderen tragen. Die Umgebung zählt nicht zur Vorabgrenze; E2BIG ist das zweite Netz.
