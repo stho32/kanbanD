@@ -1385,3 +1385,19 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #226 | Auto-Reviews | ux-reviewer | bestanden | 12 min | kein Muss; 2 Sollte lange Verweise (Altlast) · claude · sonnet · Lauf 226-ux-reviewer-2 · 0,87 $ · Karte gesamt 8,36 $ |
 | 2026-11-20 | #226 | Entwicklertest | entwicklertester | bestanden | 10 min | US-1..US-6 erfüllt, keine Befunde · claude · sonnet · Lauf 226-entwicklertester-1 · 0,86 $ · Karte gesamt 9,22 $ |
 | 2026-11-20 | #229 | Entwicklung | entwickler | bestanden | 37 min | Nacharbeit 2 B1074–B1076, AK 1–12, Gate grün bis Wackler · claude · Lauf 229-entwickler-3 |
+| 2026-11-20 | #229 | Auto-Reviews | code-reviewer | bestanden | 19 min | Wiederholung: M1 zu, 800 Seeds 0/0, Mutanten tot · claude · sonnet · Lauf 229-code-reviewer-2 |
+| 2026-11-20 | #226 | Entwicklung | entwickler | bestanden | 3 min | Stil-Flush in kontrast.spec.js, 40/40, Gegenprobe 16/20 rot · claude · Lauf 226-entwickler-2 |
+| 2026-11-20 | #229 | Auto-Reviews | security-reviewer | bestanden | 11 min | Wiederholung: S1–S3 zu, kein Muss/Sollte · claude · sonnet · Lauf 229-security-reviewer-2 · 0,43 $ · Karte gesamt 28,41 $ |
+
+**Retrospektive #226** (S4 des WBS-Rückbaus: Herkunft als Text ohne Auflösung, 2026-11-20, ca. 9,5 $ gemessen, ausgeliefert bfb3cc32)
+- **Gut:**
+  - Sonnet baute den Rückbau in 36 min (2,77 $).
+  - Die UX-Vorprüfung hatte die Höhe 16 px vor dem Bau festgelegt, deshalb fanden Code- und UX-Review kein Muss.
+  - Die Legacy-Probe an Kopien aller vier Boards (363 Aufgaben, 547 Einträge, bytegleich) lief zweimal unabhängig: entwickler und entwicklertester.
+- **Gate rot auf main:** `kontrast.spec.js` „Warten auf ruhenden Zustand“ wackelte in 2 von 6 Läufen.
+  - Der Test wechselte das Thema ohne Stil-Flush. Die Farbübergänge der `a.org`-Chips hatten das verdeckt; B1061 hat sie zu Recht entfernt.
+  - Behoben mit einem Flush im Test (Gegenprobe 16 von 20 rot, danach 40/40).
+- **Lehre (Rückbau von CSS):** Wer einen Übergang oder eine Animation entfernt, fährt die Tests, die auf laufende Übergänge warten, wiederholt (`--repeat-each`). Fremde Übergänge können eine Lücke im Test verdeckt haben.
+- **Sollte ohne Karte:**
+  - Toter Doc-Link `Anwendungen::aufloesen` in `src/modell/commit_verweis.rs:48`.
+  - Lange Verweise brechen nicht um (`.org{white-space:nowrap}`, Altlast); auf der Karte läuft der Anfang links heraus.
