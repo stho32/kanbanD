@@ -116,18 +116,26 @@ pub enum Diffformat {
 /// Die Anfrage `GET …/diff` nach dem Lesen der Abfrage; `bekannt` ist der Wert von `If-None-Match`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diffanfrage {
-    pub commit: String,
+    /// ohne `commit` der Gesamt-Diff der Karte (R00208)
+    pub commit: Option<String>,
+    /// nur ohne `commit`: die Anwendung des Gesamt-Diffs (leer = Standardanwendung)
+    pub anwendung: Option<String>,
     pub datei: Option<String>,
     pub format: Diffformat,
     pub bekannt: Option<String>,
 }
 
 impl Diffanfrage {
-    /// Die Abfrage `commit`, `datei`, `format` — ohne Git: `commit` fehlt, `format` unbekannt, `datei` leer, mit NUL oder
-    /// länger als [`DATEI_HOECHSTENS`] → 400.
+    /// Die Abfrage `commit`, `anwendung`, `datei`, `format` — ohne Git: `anwendung` zusammen mit `commit`, `format`
+    /// unbekannt, `datei` leer, mit NUL oder länger als [`DATEI_HOECHSTENS`] → 400. Ohne `commit` gilt der Gesamt-Diff
+    /// der Karte (R00208, ersetzt „ohne commit 400“ aus R00206).
     pub fn aus_paaren(paare: &[(String, String)], bekannt: Option<String>) -> Result<Diffanfrage, Fehler> {
         let wert = |name: &str| paare.iter().find(|(k, _)| k == name).map(|(_, w)| w.clone());
-        let commit = wert("commit").ok_or_else(|| Fehler::Ungueltig("commit fehlt — GET …/diff?commit=<verweis> nennt einen Commit-Verweis der Karte".into()))?;
+        let commit = wert("commit");
+        let anwendung = wert("anwendung");
+        if commit.is_some() && anwendung.is_some() {
+            return Err(Fehler::Ungueltig("anwendung gilt nur ohne commit — der Verweis trägt sein Kürzel".into()));
+        }
         let format = match wert("format").as_deref() {
             None => Diffformat::Json,
             Some("patch") => Diffformat::Patch,
@@ -139,7 +147,7 @@ impl Diffanfrage {
                 return Err(Fehler::Ungueltig(format!("datei ist leer, enthält NUL oder ist länger als {DATEI_HOECHSTENS} Byte")));
             }
         }
-        Ok(Diffanfrage { commit, datei, format, bekannt })
+        Ok(Diffanfrage { commit, anwendung, datei, format, bekannt })
     }
 }
 
@@ -180,13 +188,14 @@ impl Kanban {
     /// den Handler + [`GESAMTGRENZE`]), danach 503 — nie eine Teilantwort. Der fertige Rumpf belegt noch im Platz der
     /// Lesegrenze seinen Platz im Antwortbudget, ohne Warten; passt er nicht, sofort 503 (ADR-0032 N5.1).
     pub fn diff_lesen(&self, nr: u32, anfrage: &Diffanfrage, frist: Instant) -> Result<Diffantwort, Fehler> {
+        let Some(commit) = anfrage.commit.as_deref() else { return self.gesamt_diff_lesen(nr, anfrage, frist) };
         let aufgabe = self.ordner().aufgabe(nr)?;
-        let form = Verweisform::lesen(&anfrage.commit).map_err(|f| Fehler::Verweis { meldung: f.meldung, verweis: f.verweis, fehlt: false })?;
+        let form = Verweisform::lesen(commit).map_err(|f| Fehler::Verweis { meldung: f.meldung, verweis: f.verweis, fehlt: false })?;
         let treffer: Vec<&String> = aufgabe.commits.iter().filter(|c| super::commits::passt(c, &form)).collect();
         let gespeichert = match treffer.as_slice() {
             [v] => v.as_str(),
-            [] => return Err(Fehler::Verweis { meldung: format!("#{nr} hat keinen Commit-Verweis „{}“", crate::nachricht::wert(&anfrage.commit)), verweis: anfrage.commit.clone(), fehlt: true }),
-            mehrere => return Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::nachricht::wert(&anfrage.commit), mehrere.len()), verweis: anfrage.commit.clone(), fehlt: false }),
+            [] => return Err(Fehler::Verweis { meldung: format!("#{nr} hat keinen Commit-Verweis „{}“", crate::nachricht::wert(commit)), verweis: commit.to_string(), fehlt: true }),
+            mehrere => return Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::nachricht::wert(commit), mehrere.len()), verweis: commit.to_string(), fehlt: false }),
         };
         let quellen = self.ordner().einstellungen()?.unwrap_or_default().quellen;
         let anwendungen = Anwendungen::aus(&quellen);
@@ -243,7 +252,7 @@ fn zustand(zustand: Commitzustand, grund: Option<String>) -> Fehler {
 }
 
 /// Repository fehlt oder verweigert → 404 `repository_fehlt` mit Grund; Zeitgrenze → 503; sonst 500.
-fn repo_fehler(f: Arbeitsrepofehler) -> Fehler {
+pub(super) fn repo_fehler(f: Arbeitsrepofehler) -> Fehler {
     match f {
         Arbeitsrepofehler::RepositoryFehlt(grund) => zustand(Commitzustand::RepositoryFehlt, Some(grund)),
         anders => abbruch(anders),
@@ -251,7 +260,7 @@ fn repo_fehler(f: Arbeitsrepofehler) -> Fehler {
 }
 
 /// Zeitgrenze → 503 ohne Teilantwort; alles andere ist ein Fehler des Programms.
-fn abbruch(f: Arbeitsrepofehler) -> Fehler {
+pub(super) fn abbruch(f: Arbeitsrepofehler) -> Fehler {
     match f {
         Arbeitsrepofehler::Zeitgrenze => Fehler::Zeitgrenze(format!("Git im Arbeits-Repository antwortete nicht innerhalb von {} s — kein Diff", GESAMTGRENZE.as_secs())),
         Arbeitsrepofehler::ZuvielAusgabe(n) => Fehler::Zeitgrenze(format!("Git lieferte mehr als {n} Zeilen — kein Diff")),
@@ -326,7 +335,7 @@ mod tests {
     }
 
     fn anfrage(c1: &str, format: Diffformat) -> Diffanfrage {
-        Diffanfrage { commit: format!("kd:{c1}"), datei: None, format, bekannt: None }
+        Diffanfrage { commit: Some(format!("kd:{c1}")), anwendung: None, datei: None, format, bekannt: None }
     }
 
     // R00206 AK 20 (f), ADR-0032 N5.1 Regel 2: der fertige Rumpf belegt das Budget noch im Platz der Lesegrenze — der

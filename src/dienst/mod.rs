@@ -15,6 +15,8 @@ mod commits_lesen;
 pub use commits_lesen::GESAMTGRENZE;
 pub mod antwortbudget;
 pub mod diff;
+mod gesamt_diff;
+pub use gesamt_diff::Gesamtdiff;
 mod zweigcache;
 mod lesegrenze;
 mod board_anlegen;
@@ -88,6 +90,8 @@ pub struct Kanban {
     lesegrenze: lesegrenze::Lesegrenze,
     /// Platz aller Antworten 200 von `GET …/diff`, bis der Client sie gelesen hat (ADR-0032 N5.1)
     antwortbudget: antwortbudget::Antwortbudget,
+    /// Bytegrenze des Namenslaufs im Gesamt-Diff (R00208, ADR-0032 N6.8); Tests verkleinern sie (AK 4)
+    grenze_namen: usize,
     /// Testnaht (R00206 B1015): läuft einmal direkt nach dem Belegen des Antwortbudgets, mit der Zahl belegter Plätze der
     /// Lesegrenze
     #[cfg(test)]
@@ -147,7 +151,7 @@ impl Schritt {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(),
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN,
             #[cfg(test)]
             nach_dem_belegen: Mutex::default(),
             #[cfg(test)]

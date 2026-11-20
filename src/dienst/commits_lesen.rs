@@ -89,6 +89,12 @@ impl Kanban {
     /// der zweiten Probe, nur bei gleichem Fingerabdruck. Die Sperre des Caches hält nie über einen Git-Prozess.
     fn zweige(&self, wurzel: &Path, commits: &[&str], frist: Instant) -> Result<HashMap<String, Zweige>, Arbeitsrepofehler> {
         let fingerabdruck = arbeitsrepo::fingerabdruck(wurzel, frist)?;
+        self.zweige_mit(wurzel, &fingerabdruck, commits, frist)
+    }
+
+    /// Wie [`Kanban::zweige`], mit einem schon gelesenen Fingerabdruck (Gesamt-Diff: derselbe Lauf trägt den `ETag`).
+    pub(super) fn zweige_mit(&self, wurzel: &Path, fingerabdruck: &str, commits: &[&str], frist: Instant) -> Result<HashMap<String, Zweige>, Arbeitsrepofehler> {
+        let fingerabdruck = fingerabdruck.to_string();
         let schluessel = abdruck(&fingerabdruck);
         let mut ergebnis: HashMap<String, Zweige> = HashMap::new();
         {

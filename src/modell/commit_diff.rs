@@ -506,6 +506,18 @@ pub(crate) fn zitiert(name: &str) -> String {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 #[serde(tag = "art", rename_all = "snake_case")]
 pub enum Hinweis {
+    /// Gesamt-Diff (R00208): die ganze Anwendung erscheint als Folge, nie netto
+    GanzAlsFolge { grund: super::gesamt_diff::Grund },
+    /// Gesamt-Diff: so viele fremde Commits in der Spanne, so viele Folge-Dateien
+    FremdDazwischen { commits: usize, dateien: usize },
+    /// Gesamt-Diff: die übrigen Anwendungen mit Verweisen an der Karte
+    WeitereAnwendungen { anwendungen: Vec<String> },
+    /// Gesamt-Diff: der Verweis ist auf keinem Zweig und nicht einbezogen
+    Verwaist { verweis: String },
+    /// Gesamt-Diff: ein Merge an der Karte, einzeln über `?commit=` lesbar
+    MergeAusgelassen { verweis: String },
+    /// Gesamt-Diff: der Verweis ist nicht lesbar (`fehlt`, `unlesbar`, `anwendung_unbekannt`)
+    Ausgelassen { verweis: String, zustand: super::Commitzustand },
     /// die Liste zeigt `gezeigt` von `gesamt` Dateien
     DateienGekappt { gezeigt: usize, gesamt: u64 },
     /// die einzeln geladene Datei ist über der Grenze für einzeln geladene Dateien
