@@ -1041,13 +1041,23 @@ function reviewAnstossen() {
 }
 
 /** Ein Präfix ohne Kürzel aus einem geteilten Link (R00207 AK 2): die API kennt Präfixe nur mit Kürzel (R00206 FA 2). Ist die Liste
-    da, wird er über die Hashes der Einträge mit Diff zum vollen Verweis; passt er zu keinem oder zu mehreren, geht er wörtlich hinaus
-    und die API sagt, was ihm fehlt. Gezählt wird danach wie immer über den vollen Hash der Antwort (Rand a). */
+    da, wird er über die Hashes aller Einträge mit Hash zum vollen Verweis; passt er zu keinem oder zu mehreren, geht er wörtlich
+    hinaus und die API sagt, was ihm fehlt. Ohne Liste geht er nie hinaus: liest sie noch, wartet er, scheitert sie, meldet die Seite
+    das mit „Erneut versuchen“ (reviewBild). Gezählt wird danach wie immer über den vollen Hash der Antwort (Rand a). */
 function reviewPraefixAufloesen(r) {
-  if (!r.commit || r.commit.includes(':') || r.diff || !r.liste || r.liste.status === 'laedt') return;
+  if (!r.commit || r.commit.includes(':') || r.diff || !r.liste || r.liste.status !== 'da') return;
   const praefix = r.commit.toLowerCase();
-  const passend = r.liste.status === 'da' ? r.liste.eintraege.filter(e => e.hash && e.hash.toLowerCase().startsWith(praefix)) : [];
+  const passend = r.liste.eintraege.filter(e => e.hash && e.hash.toLowerCase().startsWith(praefix));
   reviewDiffLesen(r, passend.length === 1 ? passend[0].verweis : r.commit);
+}
+
+/** „Erneut versuchen“ am Diff: liest den Verweis, der zuletzt hinausging — beim Präfix ohne Kürzel also den aufgelösten; ging
+    noch keiner hinaus, wird der Präfix wie beim ersten Mal über die Liste aufgelöst (Code-Review #209 M1). */
+function reviewDiffWiederholen(r) {
+  const verweis = r.diff ? r.diff.verweis : r.commit;
+  r.diff = null;
+  if (verweis.includes(':')) reviewDiffLesen(r, verweis);
+  else reviewPraefixAufloesen(r);
 }
 
 /** Liest `GET …/commits`; die Antwort gilt nur, solange dieselbe Seite steht und niemand inzwischen neu gelesen hat. */
@@ -1122,6 +1132,9 @@ function reviewBild(r) {
     if (liste.status === 'da' && folge(liste.eintraege, null).art === 'keine') return { art: 'keine', eintraege: liste.eintraege };
     return { art: 'laedt' };
   }
+  // ein Präfix ohne Kürzel wartet auf die Liste; ohne sie gibt es keinen Diff
+  const praefixWartet = !r.commit.includes(':') && !r.diff;
+  if (praefixWartet && liste.status === 'fehler') return { art: 'liste_fehler' };
   if (!r.diff || r.diff.status === 'laedt') return { art: 'laedt' };
   if (r.diff.status === 'fehler') return { art: 'diff_fehler' };
   const c = r.diff.antwort.commits[0];
@@ -1224,7 +1237,7 @@ function vReview() {
   let inhalt;
   if (b.art === 'ungueltig') inhalt = meldungHtml({ rolle: 'status', kopf: 'Verweis ungültig.', text: 'Die Adresse nennt keinen Commit in gültiger Form.', knoepfe: zurListe });
   else if (b.art === 'unbekannt') inhalt = meldungHtml({ rolle: 'status', kopf: `Aufgabe #${r.nr} gibt es nicht.`, knoepfe: knopf(r.basis === 'board' ? 'Zum Board' : 'Zu den Aufgaben', 'review-weg') });
-  else if (b.art === 'liste_fehler') inhalt = meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(commitsFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe });
+  else if (b.art === 'liste_fehler') inhalt = meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(r.commit ? listeFehlerText(r.liste.fehler) : commitsFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe });
   else if (b.art === 'keine') inhalt = keineHtml(b.eintraege, esc);
   else if (b.art === 'laedt') inhalt = `<p class="rv-laedt" role="status" aria-busy="true">${r.commit ? `Liest den Diff von ${esc(kurzVerweis(r.commit))} …` : 'Liest die Commits der Aufgabe …'}</p>`;
   else if (b.art === 'diff_fehler') inhalt = diffFehlerHtml(r.diff.fehler, r.commit, esc);
@@ -2564,7 +2577,7 @@ async function aktion(a, arg, wert) {
         if (!r) break;
         r.fokusOffen = true;
         if (arg === 'liste' && (!r.liste || r.liste.status !== 'laedt')) reviewListeLesen(r);
-        if (arg === 'diff' && r.commit && (!r.diff || r.diff.status !== 'laedt')) reviewDiffLesen(r, r.commit);
+        if (arg === 'diff' && r.commit && (!r.diff || r.diff.status !== 'laedt')) reviewDiffWiederholen(r);
         break;
       }
       case 'review-klappe': {

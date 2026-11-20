@@ -314,6 +314,13 @@
     return meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: `Der Diff ließ sich nicht lesen: ${grund} (${f.status}).`, knoepfe: erneut + ZUR_LISTE });
   }
 
+  const B1_FEHLERKOPF = 'Die Commits ließen sich nicht lesen: ';
+  /** Kopf der Seite, wenn ein Präfix ohne Kürzel ohne die Liste bleibt (Code-Review #209 S1): ohne Liste kein Diff; Grund und
+      Status wie in B1 (`fehlerText` aus commits.js), der Anfang wie der Teilfehler aus FA 8. */
+  function listeFehlerText(f) {
+    return 'Die Liste der Commits ließ sich nicht lesen: ' + commitsFehlerText(f).slice(B1_FEHLERKOPF.length);
+  }
+
   /** Rand (c): keine Einträge mit Diff — Verweis, Zustandswort und Hinweis je Eintrag wie in der Liste. */
   function keineHtml(eintraege, esc) {
     const zeilen = eintraege.map(e => {
@@ -336,7 +343,7 @@
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
-  Object.assign(ziel, { kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText });
+  Object.assign(ziel, { kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);

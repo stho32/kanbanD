@@ -130,3 +130,9 @@ test('Commit-Kopf: Titel als h2 mit tabindex -1, verwaist mit „auf keinem Zwei
   assert.strictEqual(d.dateienWort(0), '0 Dateien');
   assert.ok(!d.commitKopfHtml(c, 'kd', { zustand: 'auf_zweig', zweige: ['main'] }, esc).includes('rv-band'));
 });
+
+test('Nacharbeit 1 (Code S1): Kopf „Die Liste der Commits ließ sich nicht lesen: <Grund> (<Status>).“ mit dem Grund wie in B1, auch ohne Antwort und bei 503', () => {
+  assert.strictEqual(d.listeFehlerText({ status: 500, fehler: 'innen kaputt' }), 'Die Liste der Commits ließ sich nicht lesen: innen kaputt (500).');
+  assert.strictEqual(d.listeFehlerText({ status: 0, fehler: 'x' }), 'Die Liste der Commits ließ sich nicht lesen: keine Verbindung zum Programm (0).');
+  assert.strictEqual(d.listeFehlerText({ status: 503, fehler: null }), 'Die Liste der Commits ließ sich nicht lesen: Das Repository antwortete nicht innerhalb von 10 Sekunden (503).');
+});

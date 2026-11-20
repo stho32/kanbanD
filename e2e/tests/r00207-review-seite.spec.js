@@ -281,6 +281,56 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     });
   }
 
+  /* ── Nacharbeit 1, Code-Review M1 und S1: ein Präfix ohne Kürzel geht nie wörtlich hinaus, auch nicht beim Wiederholen ── */
+
+  const verweiseDer = anfragen => anfragen.map(u => new URL(u).searchParams.get('commit'));
+  const ZEIT_503 = { status: 503, body: { fehler: 'Git antwortete nicht innerhalb von 10 s' } };
+
+  test('Nacharbeit 1 (Code M1): „Erneut versuchen“ nach 503 liest mit dem aufgelösten Verweis kd:<voll>, nie mit dem nackten Präfix', async ({ page }) => {
+    const z = zaehlen(page);
+    const h = await halten(page, '**/api/aufgaben/1/diff?**');
+    await page.goto(reviewAdresse(k, 1, rep.v1.slice(0, 7)));
+    await expect.poll(() => h.angehalten()).toBe(1);
+    h.frei(0, ZEIT_503);
+    await expect(page.locator('.rv-meld')).toContainText('Zeitgrenze überschritten.');
+    await page.locator('#rv-erneut').click();
+    await expect.poll(() => h.angehalten()).toBe(2);
+    h.frei(1);
+    await expect(page.locator(POS)).toHaveText('3 von 4');
+    await expect(page.locator('#rv-ctitel')).toHaveText('v.txt anlegen');
+    expect(verweiseDer(z.diff)).toEqual([`kd:${rep.v1}`, `kd:${rep.v1}`]);
+  });
+
+  test('Nacharbeit 1 (Code S1/M1): scheitert die Liste bei nacktem Präfix, steht „Die Liste der Commits ließ sich nicht lesen …“ mit „Erneut versuchen“; gelesen wird erst nach der Liste und nur kd:<voll>', async ({ page }) => {
+    const z = zaehlen(page);
+    const liste = await halten(page, '**/api/aufgaben/1/commits');
+    const h = await halten(page, '**/api/aufgaben/1/diff?**');
+    await page.goto(reviewAdresse(k, 1, rep.v1.slice(0, 7)));
+    await expect.poll(() => liste.angehalten()).toBe(1);
+    liste.frei(0, { status: 500, body: { fehler: 'innen kaputt' } });
+    const meldung = page.locator('.rv-meld');
+    await expect(meldung).toContainText('Die Liste der Commits ließ sich nicht lesen: innen kaputt (500).');
+    await expect(meldung).toHaveAttribute('role', 'alert');
+    await expect(meldung).not.toContainText('Commit-Verweis');
+    await expect(page.locator('#rv-meld')).toBeFocused();
+    expect(z.diff.length).toBe(0);
+    // Wiederholen, während die Liste noch liest: der Diff wartet auf sie
+    await meldung.getByRole('button', { name: 'Erneut versuchen' }).click();
+    await expect.poll(() => liste.angehalten()).toBe(2);
+    await expect(page.locator('.rv-laedt')).toBeVisible();
+    expect(z.diff.length).toBe(0);
+    liste.frei(1);
+    await expect.poll(() => h.angehalten()).toBe(1);
+    h.frei(0, ZEIT_503);
+    await expect(meldung).toContainText('Zeitgrenze überschritten.');
+    await page.locator('#rv-erneut').click();
+    await expect.poll(() => h.angehalten()).toBe(2);
+    h.frei(1);
+    await expect(page.locator(POS)).toHaveText('3 von 4');
+    expect(verweiseDer(z.diff)).toEqual([`kd:${rep.v1}`, `kd:${rep.v1}`]);
+    expect(z.commits.length).toBe(2);
+  });
+
   /* ── AK 7 Verzögerte Antworten, Insel, Live ── */
 
   test('AK 7 (1): die gehaltene Antwort für K3 kommt nach dem Wechsel zu W1 — sie wird verworfen, keine Folgeanfrage', async ({ page }) => {
