@@ -333,10 +333,10 @@ async fn fachantworten_und_ungueltiges_utf8_im_abfragewert_antworten_woertlich_w
     for (pfad, status, rumpf) in [
         ("api/aufgaben/999", 404, r#"{"fehler":"Aufgabe #999 gibt es nicht"}"#),
         ("api/berichte/verlauf?board=gibtsnicht", 404, r#"{"fehler":"Board „gibtsnicht“ gibt es nicht"}"#),
-        ("api/aufgaben?unsinn=1", 400, r#"{"fehler":"Unbekannter Filter „unsinn“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte"}"#),
+        ("api/aufgaben?unsinn=1", 400, r#"{"fehler":"Unbekannter Filter „unsinn“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte"}"#),
         ("api/aufgaben?board=%FF", 400, "{\"fehler\":\"Board-Name „\u{FFFD}“ ungültig: 1–40 Zeichen aus a–z, 0–9, -\"}"),
         ("api/berichte/verlauf?board=%FF", 400, "{\"fehler\":\"Board-Name „\u{FFFD}“ ungültig: 1–40 Zeichen aus a–z, 0–9, -\"}"),
-        ("api/aufgaben?%FF=1", 400, "{\"fehler\":\"Unbekannter Filter „\u{FFFD}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte\"}"),
+        ("api/aufgaben?%FF=1", 400, "{\"fehler\":\"Unbekannter Filter „\u{FFFD}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte\"}"),
         ("api/boards/x?archivierte=%FF", 404, r#"{"fehler":"Board „x“ gibt es nicht"}"#),
         ("api/aufgaben/1/anhaenge/x.txt", 404, r##"{"fehler":"#1 hat keinen Anhang „x.txt“"}"##),
     ] {

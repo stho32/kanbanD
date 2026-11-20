@@ -18,6 +18,8 @@ pub struct Aufgabenfilter {
     pub labels: Vec<String>,
     /// R00098: genau dieser Schlüssel, mit Groß/Klein
     pub schluessel: Vec<String>,
+    /// R00214: `ja` — mindestens eine offene Abhängigkeit (`braucht`), `nein` — keine
+    pub wartet: Vec<bool>,
     pub archivierte: Archivierte,
 }
 
@@ -43,6 +45,11 @@ impl Aufgabenfilter {
                 "reserviert" => f.reserviert.push(v.clone()),
                 "label" => f.labels.push(v.clone()),
                 "key" => f.schluessel.push(v.trim().to_string()),
+                "wartet" => f.wartet.push(match v.as_str() {
+                    "ja" => true,
+                    "nein" => false,
+                    _ => return Err(Fehler::Ungueltig(format!("wartet={v}: ja oder nein"))),
+                }),
                 "archivierte" => {
                     f.archivierte = match v.as_str() {
                         "ja" => Archivierte::Mit,
@@ -51,7 +58,7 @@ impl Aufgabenfilter {
                         _ => return Err(Fehler::Ungueltig(format!("archivierte={v}: ja, nein oder nur"))),
                     }
                 }
-                _ => return Err(Fehler::Ungueltig(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, archivierte"))),
+                _ => return Err(Fehler::Ungueltig(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte"))),
             }
         }
         if !f.spalten.is_empty() && f.board.is_none() {
@@ -60,7 +67,8 @@ impl Aufgabenfilter {
         Ok(f)
     }
 
-    /// Trifft der Filter die Aufgabe? `board` ist das Board aus `board=` (schon gelesen), `heute` als JJJJ-MM-TT für `signal=due`.
+    /// Trifft der Filter die Aufgabe? `board` ist das Board aus `board=` (schon gelesen), `heute` als JJJJ-MM-TT für `signal=due`;
+    /// für `wartet` muss `braucht` der Aufgabe gerechnet sein.
     pub fn passt(&self, a: &Aufgabe, board: Option<&Board>, heute: &str) -> bool {
         let oder = |liste: &[String], trifft: &dyn Fn(&str) -> bool| liste.is_empty() || liste.iter().any(|w| trifft(w));
         let spalte = board.and_then(|b| b.spalte_von(a.nummer));
@@ -78,12 +86,18 @@ impl Aufgabenfilter {
             && oder(&self.zustaendige, &|z| a.zustaendige.iter().any(|x| x == z))
             && oder(&self.labels, &|l| a.labels.iter().any(|x| label_trifft(l, x)))
             && oder(&self.schluessel, &|k| a.schluessel.as_ref().is_some_and(|x| x.text() == k))
+            && (self.wartet.is_empty() || self.wartet.contains(&wartet(a)))
             && oder(&self.reserviert, &|r| match r {
                 "ja" => a.reservierung.is_some(),
                 "nein" => a.reservierung.is_none(),
                 instanz => a.reservierung.as_ref().is_some_and(|x| x.gehoert(instanz)),
             })
     }
+}
+
+/// R00214: mindestens eine Abhängigkeit ist nicht erledigt (eine ohne lesbare Datei ist es nie).
+fn wartet(a: &Aufgabe) -> bool {
+    a.braucht.iter().flatten().any(|b| !b.erledigt)
 }
 
 /// Endet das Muster auf `*`, genügt das Präfix davor (kein Escape: ein Label, das selbst auf `*` endet,
@@ -235,6 +249,29 @@ mod tests {
         a[2].labels = vec!["wichtig*".into()];
         a[1].labels = vec!["wichtiger".into()];
         assert_eq!(getroffen(&a, &[("label", "wichtig*")]), vec![2, 3], "kein Escape: Präfix trifft auch längere Labels");
+    }
+
+    // R00214 B1086: wartet=ja — mindestens eine Abhängigkeit, die nicht erledigt ist (auch eine ohne Datei); nein — die übrigen
+    #[test]
+    fn wartet_ja_nein() {
+        use crate::modell::Abhaengigkeit;
+        let mit = |nr: u32, erledigt: &[bool]| {
+            let mut a = aufgabe(nr, None, false);
+            a.braucht = Some(erledigt.iter().enumerate().map(|(i, e)| Abhaengigkeit { nummer: 100 + i as u32, titel: None, erledigt: *e }).collect());
+            a
+        };
+        let alle = vec![mit(1, &[]), mit(2, &[false]), mit(3, &[true]), mit(4, &[true, false]), mit(5, &[true, true])];
+        assert_eq!(getroffen(&alle, &[("wartet", "ja")]), vec![2, 4]);
+        assert_eq!(getroffen(&alle, &[("wartet", "nein")]), vec![1, 3, 5]);
+        assert_eq!(getroffen(&alle, &[("wartet", "ja"), ("wartet", "nein")]), vec![1, 2, 3, 4, 5], "mehrfach: ODER");
+        let mut alt = mit(6, &[false]);
+        alt.archiviert = Some("2026-10-01".into());
+        assert_eq!(getroffen(&[alt.clone()], &[("wartet", "ja")]), Vec::<u32>::new(), "Archivregel R00092");
+        assert_eq!(getroffen(&[alt], &[("wartet", "ja"), ("archivierte", "ja")]), vec![6]);
+        for falsch in ["vielleicht", "", "JA", "true"] {
+            let Err(Fehler::Ungueltig(text)) = Aufgabenfilter::aus_paaren(&paare(&[("wartet", falsch)])) else { panic!("400 erwartet: {falsch}") };
+            assert_eq!(text, format!("wartet={falsch}: ja oder nein"));
+        }
     }
 
     #[test]
