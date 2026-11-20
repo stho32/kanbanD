@@ -470,6 +470,7 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(page.locator(`${PANEL} ${STATUS}`)).toHaveText('Liest die Commits aus dem Repository …');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toHaveCount(0);
+    const drei = zaehlen(page, 3);
     await page.locator('.ka[data-id="3"] .id').click();
     await expect(page.locator(`${PANEL} .cl-kopf h3`)).toHaveText('COMMITS 8');
     await expect(page.locator(STATUS)).toHaveText('8 Commits gelesen');
@@ -484,6 +485,8 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(page.locator(STATUS)).toHaveText('8 Commits gelesen');
     expect(await kurzListe(page)).toEqual(dreiBlock(rep).map(kurz).concat([`xx:${rep.k1.slice(0, 7)}`, `xy:${rep.k1.slice(0, 7)}`, 'kd:3f2a9c1;rm -rf x']));
     expect(await page.locator(`${PANEL} .cl-fuss span`).first().innerText()).toBe(stand3);
+    // ohne „Aufgabe noch dieselbe“ setzte die späte Antwort den Zustand auf #1 zurück, und das Zeichnen läse #3 ein zweites Mal
+    expect(drei, 'die verworfene Antwort löst kein zweites Lesen von #3 aus').toHaveLength(1);
   });
 
   test('AK 6: verspätete Antwort für #1 nach dem Wechsel auf „Inhalt“ — das Fenster bleibt auf „Inhalt“, „Commits“ erscheint nicht', async ({ page }) => {
