@@ -1258,3 +1258,11 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Stil J11 (Ternaries) wird nicht befolgt.
   - `aufgabe/abc/review` zeigt das Board ohne Meldung.
   - ADR-0033 und `DIFF_LESEN` versprechen einen Präfix ab 7 Zeichen, ohne Kürzel kommt aber 404.
+| 2026-11-20 | #225 | Architektur | architekt | bestanden | 1 min | ADR-0034 akzeptiert mit N1 (8e053333) · claude · opus · Lauf 225-architekt-1 |
+| 2026-11-20 | #225 | Detailplanung | planer | befund | 8 min | R00209, I0199 B1035–B1040; Widerspruch ADR-0034 Regel 1 zur unveränderten Factory · claude · opus · Lauf 225-planer-1 · 2,88 $ · Karte gesamt 2,88 $ |
+| 2026-11-20 | #225 | Detailplanung | architekt | bestanden | 1 min | ADR-0034 N2 Übergangsform (4d2430d5) · claude · opus · Lauf 225-architekt-2 |
+| 2026-11-20 | #225 | Detailplanung | planer | bestanden | 0 min | R00209 nach N2 (9e439027) · claude · opus · Lauf 225-planer-2 |
+| 2026-11-20 | #225 | Detailplanung | ux-reviewer | befund | 1 min | Vorprüfung kriterium_fehlt: 2 Muss (Vorschau, Quellen-Erreichbarkeit), 6 Sollte · claude · sonnet · Lauf 225-ux-reviewer-1 · 0,27 $ · Karte gesamt 3,15 $ |
+| 2026-11-20 | #225 | Detailplanung | product-owner | bestanden | 0 min | Zustandswörter, Hinweis WBS-Feld, Hinweistext (c1929cb6, Z. 434–436) · claude · opus · Lauf 225-product-owner-1 |
+| 2026-11-20 | #225 | Detailplanung | planer | bestanden | 1 min | UX-Vorprüfung eingearbeitet, 12 AK (629b6679) · claude · opus · Lauf 225-planer-3 |
+| 2026-11-20 | #225 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung: Muss 1/2 geschlossen · claude · sonnet · Lauf 225-ux-reviewer-2 |
