@@ -396,6 +396,18 @@ pub fn zahlen_im_bezug(getroffene: &mut [Diffdatei], zahlen: Vec<Zaehler>) -> Re
     Ok(())
 }
 
+/// Was aus der Zuordnung über einen Bezug wird (ADR-0032 N7.7): gelungen → `Ok(true)`. Ist der Bezug abgeschnitten,
+/// kann ein getroffener Eintrag hinter dem Schnitt liegen, und Git paart dann anders als der Bezug; scheitert die
+/// Zuordnung in diesem Fall → `Ok(false)`, die Dateien sind nicht zuzuordnen (Liste `nachladen`, `datei=` 404 „Dateiliste
+/// zu groß“). Bei vollständigem Bezug bleibt die Prüfung streng: der Fehler (500).
+pub fn im_bezug_zugeordnet(ergebnis: Result<(), String>, bezug_abgeschnitten: bool) -> Result<bool, String> {
+    match ergebnis {
+        Ok(()) => Ok(true),
+        Err(_) if bezug_abgeschnitten => Ok(false),
+        Err(f) => Err(f),
+    }
+}
+
 /// Die Teile hintereinander in einem Puffer genau ihrer Größe.
 fn zusammen<'a>(teile: impl Iterator<Item = &'a [u8]> + Clone) -> Vec<u8> {
     let mut puffer = Vec::with_capacity(teile.clone().map(<[u8]>::len).sum());
@@ -817,6 +829,25 @@ mod tests {
         // einer fehlt
         let mut g = vec![neu("b", "D"), neu("d/x", "D")];
         assert!(zahlen_im_bezug(&mut g, vec![(Some((0, 11)), p(&["d/x"]))]).is_err());
+    }
+
+    // R00211 AK 3 (m5): Fall (a) mit abgeschnittenem Bezug — `R b → d/x/inner` liegt hinter dem Schnitt, die Angabe `d/x`
+    // trifft im Lauf `d/x/inner`, und Git paart `R d/x → d/x/inner`; `D d/x` findet sein Stück nicht. Abgeschnitten heißt
+    // das „nicht zuzuordnen“, vollständig bleibt es der Fehler; gelungen ist gelungen.
+    #[test]
+    fn abgeschnittener_bezug_nur_am_schnitt_ohne_fehler() {
+        let mut dx = neu("d/x", "D");
+        dx.blobs.0 = blob("X und y");
+        let bezug = vec![dx.clone()];
+        let pfade: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
+        let angabe = crate::modell::abschliessen([b"d/x".to_vec()], &pfade);
+        let neu_gepaart = format!("diff --git a/d/x b/d/x/inner\nsimilarity index 90%\nrename from d/x\nrename to d/x/inner\nindex {}..{} 100644\n--- a/d/x\n+++ b/d/x/inner\n@@ -11 +10,0 @@\n-y\n", dx.blobs.0, blob("X"));
+        let zuordnung = || patches_zuordnen_im_bezug(&mut bezug.clone(), &[0], &bezug, &angabe, neu_gepaart.as_bytes(), false, Verteilung::Liste, Fassung::Patch);
+        assert!(zuordnung().is_err(), "Gegenprobe: Git hat neu gepaart");
+        assert_eq!(im_bezug_zugeordnet(zuordnung(), true), Ok(false));
+        assert!(im_bezug_zugeordnet(zuordnung(), false).is_err(), "vollständiger Bezug: streng");
+        assert_eq!(im_bezug_zugeordnet(Ok(()), true), Ok(true));
+        assert_eq!(im_bezug_zugeordnet(Ok(()), false), Ok(true));
     }
 
     // ADR-0032 N5.2 Regel 1: die Hashes werden auf Gleichheit verglichen — ein gekürzter Hash (Präfix des vollen) ist

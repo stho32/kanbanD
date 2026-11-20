@@ -2,7 +2,7 @@
 //! Patch-Lauf mit Bytegrenze, einzeln nachladen; live aus dem Arbeits-Repository, nur lesend, ohne die Sperre.
 
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Vergleich};
-use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, dateiliste, diffdatei, getroffen, lauf_der_liste, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, zahlen_im_bezug, zahlen_mit_pfaden};
+use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, dateiliste, diffdatei, getroffen, im_bezug_zugeordnet, lauf_der_liste, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, zahlen_im_bezug, zahlen_mit_pfaden};
 use std::path::Path;
 use std::time::Instant;
 
@@ -68,7 +68,13 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassun
         let angabe = abschliessen(im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().cloned()), &pfade_bezug);
         let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_PATCH_LAUF, frist)?;
-        patches_zuordnen_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
+        let zuordnung = patches_zuordnen_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung);
+        if !im_bezug_zugeordnet(zuordnung, roh.abgeschnitten).map_err(Inhaltsfehler::Form)? {
+            // ein getroffener Eintrag liegt hinter dem Schnitt der Liste: einzeln nachzuladen, nie 500 (N7.7)
+            for &i in &im_lauf {
+                (dateien[i].patch, dateien[i].stuecke, dateien[i].nachladen) = (None, None, true);
+            }
+        }
     } else {
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &[], GRENZE_PATCH_LAUF, frist)?;
         patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
@@ -90,14 +96,26 @@ fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, fassung: Fassung
     if angabe.is_empty() {
         return Err(Inhaltsfehler::DateiFehlt { liste_abgeschnitten });
     }
+    // abgeschnittene Liste: ein getroffener Eintrag hinter dem Schnitt lässt Git anders paaren — 404, nie 500 (N7.7);
+    // ebenso eine abgeschlossene Angabe über 1 MB (N7.2, ARG_MAX nach N5.5 S1)
+    let am_schnitt = Inhaltsfehler::DateiFehlt { liste_abgeschnitten: true };
+    if angabe.iter().map(Vec::len).sum::<usize>() > GRENZE_DATEILISTE {
+        return Err(am_schnitt);
+    }
     let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
-    let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &pfade, GRENZE_DATEILISTE, frist)?;
+    // die Zähler der getroffenen Einträge sind kürzer als ihr Teil der Dateiliste: dieselbe Grenze schneidet sie nie
+    let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, &pfade, GRENZE_DATEILISTE_EINZELN, frist)?;
     let zahlen = zahlen_mit_pfaden(&zahlen.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Zähler von diff-tree unlesbar".into()))?;
-    zahlen_im_bezug(&mut bezug, zahlen).map_err(Inhaltsfehler::Form)?;
+    if !im_bezug_zugeordnet(zahlen_im_bezug(&mut bezug, zahlen), liste_abgeschnitten).map_err(Inhaltsfehler::Form)? {
+        return Err(am_schnitt);
+    }
     let mut dateien: Vec<Diffdatei> = bezug.iter().filter(|d| d.name() == name).cloned().collect();
     let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, GRENZE_EINZELN, frist)?;
     let alle: Vec<usize> = (0..dateien.len()).collect();
-    patches_zuordnen_im_bezug(&mut dateien, &alle, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln, fassung).map_err(Inhaltsfehler::Form)?;
+    let zuordnung = patches_zuordnen_im_bezug(&mut dateien, &alle, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln, fassung);
+    if !im_bezug_zugeordnet(zuordnung, liste_abgeschnitten).map_err(Inhaltsfehler::Form)? {
+        return Err(am_schnitt);
+    }
     let hinweise = dateien.iter().filter(|d| d.gross).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }).collect();
     Ok(Diffinhalt { dateien, hinweise })
 }

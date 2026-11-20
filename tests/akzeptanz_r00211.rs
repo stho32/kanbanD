@@ -296,3 +296,54 @@ async fn ak1_e_umbenennungs_zwilling_im_typwechsel() {
     assert_eq!(dateien(&liste).iter().map(|f| (f["status"].as_str().unwrap(), name(f))).collect::<Vec<_>>(), [("R", "c"), ("R", "m")], "{liste}");
     datei_auf_jeden_namen(&lauf.adresse, &k, &liste, &stuecke).await;
 }
+
+/// AK 3, US-5: Fall (a) und so viele neue Dateien `d/x/a<nnnn>…` mit Namen von 200 Zeichen, dass die Dateiliste über 1 MB
+/// liegt und `R b → d/x/inner` hinter dem Schnitt steht. Die Liste: 200, `d/x` `nachladen` ohne Patch, nie 500;
+/// `datei=d/x` (Liste bis 20 MB vollständig): 200 wie AK 1.
+#[tokio::test]
+async fn ak3_abgeschnittene_liste_mit_umbenennung_hinter_dem_schnitt() {
+    let l = Lage::neu();
+    let fuell = "f".repeat(195);
+    let k = fall_a(&l, |l| {
+        for i in 0..3600 {
+            l.schreiben(&format!("d/x/a{i:04}{fuell}"), &format!("a{i}\n"));
+        }
+    });
+    let roh = git_r(&l.r, &["diff-tree", "-r", "-M50%", "-l1000", "--raw", "-z", &format!("{k}^"), &k]);
+    assert!(roh.len() > 1 << 20, "Dateiliste {} Byte, nicht über 1 MB", roh.len());
+    let schnitt = roh.as_bytes()[..1 << 20].iter().rposition(|b| *b == 0).unwrap();
+    assert!(roh[..schnitt].find("d/x/inner").is_none(), "R b → d/x/inner steht vor dem Schnitt");
+    let stuecke = l.stuecke(&k);
+    let lauf = l.starten(&k);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}")).await;
+    assert_eq!(s, 200, "{t}");
+    let d: Value = serde_json::from_str(&t).unwrap();
+    let dx = dateien(&d).iter().find(|f| name(f) == "d/x").unwrap();
+    assert_eq!((&dx["nachladen"], &dx["patch"]), (&json!(true), &Value::Null), "{dx}");
+    let (s, text) = holen(&lauf.adresse, &format!("commit=kd:{k}&format=patch")).await;
+    assert_eq!(s, 200, "{text}");
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=d/x")).await;
+    assert_eq!(s, 200, "{t}");
+    let e: Value = serde_json::from_str(&t).unwrap();
+    assert_eq!(dateien(&e)[0]["patch"].as_str().unwrap(), hunks(stueck_von(&stuecke, dx)));
+}
+
+/// Eigene Variante zu AK 3 (ADR-0032 N7.2 „die Grenze von 1 MB für die Pfadangabe gilt für die abgeschlossene Angabe“,
+/// N5.5 S1 ARG_MAX): Fall (a) mit so vielen Dateien unter `d/x/`, dass die gegen die Liste abgeschlossene Angabe von
+/// `datei=d/x` über 1 MB läge → 404 „Dateiliste zu groß“, nie 500; die Liste bleibt 200.
+#[tokio::test]
+async fn ak3_abgeschlossene_angabe_ueber_1_mb() {
+    let l = Lage::neu();
+    let fuell = "f".repeat(195);
+    let k = fall_a(&l, |l| {
+        for i in 0..5300 {
+            l.schreiben(&format!("d/x/a{i:04}{fuell}"), &format!("a{i}\n"));
+        }
+    });
+    let lauf = l.starten(&k);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=d/x")).await;
+    assert_eq!(s, 404, "{t}");
+    assert!(t.contains("Dateiliste zu groß"), "{t}");
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}")).await;
+    assert_eq!(s, 200, "{t}");
+}
