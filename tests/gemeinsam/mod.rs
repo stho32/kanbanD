@@ -135,6 +135,112 @@ pub fn langsames_git(r: &Path, d: &str) -> String {
     format!("{}:{}", ordner.display(), std::env::var("PATH").unwrap())
 }
 
+// ---- R00215: viele Verbindungen, die nach der Statuszeile nichts mehr lesen (R00206 AK 20 b, R00208 AK 8) ------------
+
+unsafe extern "C" {
+    fn setsockopt(fd: i32, ebene: i32, name: i32, wert: *const std::ffi::c_void, laenge: u32) -> i32;
+}
+
+/// So viele Anfragen sind höchstens zugleich unterwegs — wie die Plätze der Lesegrenze des Programms
+/// (`LESEN_HOECHSTENS`): dann wartet keine Anfrage auf einen Platz, und die Frist misst nur ihren eigenen Lauf.
+pub const UNTERWEGS_HOECHSTENS: usize = 4;
+
+/// N Verbindungen, deren Statuszeile gelesen ist; alle noch offen, nach der Statuszeile ungelesen.
+pub struct Gestaffelt {
+    pub verbindungen: Vec<(std::net::TcpStream, u16)>,
+    /// Die größte Zahl Anfragen, die zugleich unterwegs waren (Platz genommen, Statuszeile noch nicht da).
+    pub hoechstens_unterwegs: usize,
+}
+
+impl Gestaffelt {
+    /// Wie viele Verbindungen noch offen sind und ungelesene Bytes der Antwort vor sich haben.
+    pub fn offen_und_ungelesen(&self) -> usize {
+        self.verbindungen.iter().filter(|(s, _)| wartet_auf_leser(s)).count()
+    }
+}
+
+/// Öffnet `n` Verbindungen auf `pfad`, höchstens [`UNTERWEGS_HOECHSTENS`] zugleich unterwegs: Platz nehmen vor dem
+/// Verbinden, freigeben nach dem Eingang der Statuszeile. Gelesen wird je Verbindung nur die Statuszeile.
+pub fn gestaffelt(adresse: &str, pfad: &str, n: usize) -> Gestaffelt {
+    let plaetze = Plaetze::default();
+    let verbindungen = std::thread::scope(|s| {
+        let faeden: Vec<_> = (0..n).map(|_| s.spawn(|| {
+            let _platz = plaetze.nehmen();
+            nur_statuszeile(adresse, pfad)
+        })).collect();
+        faeden.into_iter().map(|t| t.join().unwrap()).collect()
+    });
+    Gestaffelt { verbindungen, hoechstens_unterwegs: plaetze.zustand.lock().unwrap().1 }
+}
+
+/// Zähler der Anfragen unterwegs und ihr Höchststand.
+#[derive(Default)]
+struct Plaetze {
+    zustand: std::sync::Mutex<(usize, usize)>,
+    frei: std::sync::Condvar,
+}
+
+struct Platz<'a>(&'a Plaetze);
+
+impl Plaetze {
+    fn nehmen(&self) -> Platz<'_> {
+        let mut z = self.frei.wait_while(self.zustand.lock().unwrap(), |z| z.0 >= UNTERWEGS_HOECHSTENS).unwrap();
+        z.0 += 1;
+        z.1 = z.1.max(z.0);
+        Platz(self)
+    }
+}
+
+impl Drop for Platz<'_> {
+    fn drop(&mut self) {
+        self.0.zustand.lock().unwrap().0 -= 1;
+        self.0.frei.notify_one();
+    }
+}
+
+/// Eine Verbindung mit kleinem Empfangspuffer (`SO_RCVBUF` 4096), die die Anfrage sendet und nur die Statuszeile liest.
+fn nur_statuszeile(adresse: &str, pfad: &str) -> (std::net::TcpStream, u16) {
+    use std::io::{Read, Write};
+    use std::os::fd::AsRawFd;
+    let ziel = adresse.trim_start_matches("http://").trim_end_matches('/');
+    let mut s = std::net::TcpStream::connect(ziel).unwrap();
+    let klein: i32 = 4096;
+    assert_eq!(unsafe { setsockopt(s.as_raw_fd(), 1, 8, (&raw const klein).cast(), 4) }, 0, "SO_RCVBUF");
+    s.write_all(format!("GET /{pfad} HTTP/1.1\r\nHost: {ziel}\r\n\r\n").as_bytes()).unwrap();
+    let mut zeile = vec![];
+    let mut b = [0u8; 1];
+    while !zeile.ends_with(b"\r\n") {
+        s.read_exact(&mut b).unwrap();
+        zeile.push(b[0]);
+    }
+    let status = String::from_utf8(zeile).unwrap().split_whitespace().nth(1).unwrap().parse().unwrap();
+    (s, status)
+}
+
+/// Offen und mit ungelesenen Bytes: ein Blick ohne Lesen findet Daten (kein Ende der Verbindung).
+fn wartet_auf_leser(s: &std::net::TcpStream) -> bool {
+    s.set_nonblocking(true).unwrap();
+    let blick = s.peek(&mut [0u8; 1]);
+    s.set_nonblocking(false).unwrap();
+    matches!(blick, Ok(1))
+}
+
+/// Der Rest einer kleinen Antwort mit `Content-Length` (die Statuszeile ist schon gelesen): der Rumpf als Text.
+pub fn rest_lesen(s: &mut std::net::TcpStream) -> String {
+    use std::io::Read;
+    let mut kopf = vec![];
+    let mut b = [0u8; 1];
+    while !kopf.ends_with(b"\r\n\r\n") {
+        s.read_exact(&mut b).unwrap();
+        kopf.push(b[0]);
+    }
+    let kopf = String::from_utf8(kopf).unwrap().to_ascii_lowercase();
+    let laenge: usize = kopf.lines().find_map(|z| z.strip_prefix("content-length:")).unwrap().trim().parse().unwrap();
+    let mut rumpf = vec![0u8; laenge];
+    s.read_exact(&mut rumpf).unwrap();
+    String::from_utf8(rumpf).unwrap()
+}
+
 pub fn git(pfad: &Path, args: &[&str]) -> String {
     let a = Command::new("git").arg("-C").arg(pfad).args(args).output().unwrap();
     String::from_utf8_lossy(&a.stdout).trim().to_string()

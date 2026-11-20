@@ -3,7 +3,7 @@
 // (`Lage`, `gesamt`, `nie_fremd`) → Treiber (`holen`: URL, Header, Status) → Programm.
 mod gemeinsam;
 
-use gemeinsam::{LANGSAM_D, Laufendes, git, git_am, langsames_git, lies, starten_mit};
+use gemeinsam::{LANGSAM_D, Laufendes, UNTERWEGS_HOECHSTENS, gestaffelt, git, git_am, langsames_git, lies, rest_lesen, starten_mit};
 use serde_json::{Value, json};
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
@@ -649,45 +649,6 @@ async fn ak06_beschreibung() {
 
 // ---- AK 8: Antwortbudget wie A3 (R00206 AK 20 b mit N = 30, ohne commit) · US-6 ----------------------------------------
 
-unsafe extern "C" {
-    fn setsockopt(fd: i32, ebene: i32, name: i32, wert: *const std::ffi::c_void, laenge: u32) -> i32;
-}
-
-/// Eine Verbindung, die die Anfrage schickt, die Statuszeile liest und dann nichts mehr (kleiner Empfangspuffer).
-fn langsam(adresse: &str, pfad: &str) -> (std::net::TcpStream, u16) {
-    use std::io::{Read, Write};
-    use std::os::fd::AsRawFd;
-    let ziel = adresse.trim_start_matches("http://").trim_end_matches('/');
-    let mut s = std::net::TcpStream::connect(ziel).unwrap();
-    let klein: i32 = 4096;
-    assert_eq!(unsafe { setsockopt(s.as_raw_fd(), 1, 8, (&raw const klein).cast(), 4) }, 0, "SO_RCVBUF");
-    s.write_all(format!("GET /{pfad} HTTP/1.1\r\nHost: {ziel}\r\n\r\n").as_bytes()).unwrap();
-    let mut zeile = vec![];
-    let mut b = [0u8; 1];
-    while !zeile.ends_with(b"\r\n") {
-        s.read_exact(&mut b).unwrap();
-        zeile.push(b[0]);
-    }
-    let status = String::from_utf8(zeile).unwrap().split_whitespace().nth(1).unwrap().parse().unwrap();
-    (s, status)
-}
-
-/// Der Rest einer kleinen Antwort mit `Content-Length`: der Rumpf als Text.
-fn rest_lesen(s: &mut std::net::TcpStream) -> String {
-    use std::io::Read;
-    let mut kopf = vec![];
-    let mut b = [0u8; 1];
-    while !kopf.ends_with(b"\r\n\r\n") {
-        s.read_exact(&mut b).unwrap();
-        kopf.push(b[0]);
-    }
-    let kopf = String::from_utf8(kopf).unwrap().to_ascii_lowercase();
-    let laenge: usize = kopf.lines().find_map(|z| z.strip_prefix("content-length:")).unwrap().trim().parse().unwrap();
-    let mut rumpf = vec![0u8; laenge];
-    s.read_exact(&mut rumpf).unwrap();
-    String::from_utf8(rumpf).unwrap()
-}
-
 #[tokio::test]
 async fn ak08_antwortbudget() {
     let l = ausgangslage();
@@ -701,7 +662,10 @@ async fn ak08_antwortbudget() {
     assert!(groesse > 7 << 20, "{groesse}");
     let adresse = lauf.adresse.clone();
     let pfad = "api/aufgaben/12/diff?datei=gross1.txt".to_string();
-    let verbindungen = tokio::task::spawn_blocking(move || std::thread::scope(|s| (0..30).map(|_| s.spawn(|| langsam(&adresse, &pfad))).collect::<Vec<_>>().into_iter().map(|t| t.join().unwrap()).collect::<Vec<_>>())).await.unwrap();
+    let g = tokio::task::spawn_blocking(move || gestaffelt(&adresse, &pfad, 30)).await.unwrap();
+    assert!((2..=UNTERWEGS_HOECHSTENS).contains(&g.hoechstens_unterwegs), "{} Anfragen zugleich unterwegs", g.hoechstens_unterwegs);
+    assert_eq!(g.offen_und_ungelesen(), 30, "alle offen, nach der Statuszeile ungelesen");
+    let verbindungen = g.verbindungen;
     let ok = verbindungen.iter().filter(|(_, s)| *s == 200).count();
     assert!(ok >= 1 && ok <= (64 << 20) / groesse, "{ok} × 200 bei {groesse} Byte");
     for (mut s, status) in verbindungen.into_iter().filter(|(_, s)| *s != 200) {
