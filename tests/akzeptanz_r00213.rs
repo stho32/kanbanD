@@ -285,9 +285,9 @@ async fn ak1_ak2_gleich_bewertete_quellen_netto_und_mit_fremdem_commit() {
 }
 
 /// Ein Git-Skript für `Lage::git_skript`: jeder Patch-Lauf von `diff-tree` lässt das erste Stück von `pfad` weg (im
-/// Folge-Lauf also nur das des ersten Commits).
+/// Folge-Lauf also nur das des ersten Commits; die Kopfzeile des nächsten Commits bleibt).
 fn ohne_stueck(pfad: &str) -> String {
-    format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*|*diff-tree*--name*) ;; *diff-tree*) $echt \"$@\" | awk '/^diff --git /{{weg = ($0 == \"diff --git a/{pfad} b/{pfad}\" && !gesehen++)}} !weg'; exit 0;; esac")
+    format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*|*diff-tree*--name*) ;; *diff-tree*) $echt \"$@\" | awk '/^[0-9a-f][0-9a-f]*$/{{weg = 0}} /^diff --git /{{weg = ($0 == \"diff --git a/{pfad} b/{pfad}\" && !gesehen++)}} !weg'; exit 0;; esac")
 }
 
 /// AK 3 (Netto), N7.10 Regel: streng (500) nur, wenn der Netto-Patch-Lauf dieselbe Angabe hat wie die Netto-Liste. Ein
