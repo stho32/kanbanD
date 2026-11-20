@@ -205,22 +205,17 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(chips.locator('.vh')).toHaveText('(entfernt)');
   });
 
-  test('AK 2: keine E-Mail-Adresse, kein Knopf „Alle Änderungen ansehen“, kein Verweis; Klick auf Hash und Zeile ändert Adresse und Ansicht nicht', async ({ page }) => {
+  // R00207 FA 1 kehrt den Punkt „kein Knopf, kein Verweis“ dieser Probe um (PO Z. 409): mit B2 kommen Knopf und genau ein Verweis je Zeile mit Diff.
+  test('AK 2: keine E-Mail-Adresse; Knopf „Alle Änderungen ansehen“ und genau ein Verweis je Zeile mit Diff (R00207 FA 1), keiner bei V2', async ({ page }) => {
     await commitsOeffnen(page);
     await expect(page.locator(ZEILEN)).toHaveCount(5);
     const alles = await text(page.locator(PANEL));
     expect(alles).not.toContain('@');
     expect(alles).not.toContain('ada@example.org');
-    await expect(page.locator(`${PANEL} a[href]`)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Alle Änderungen/ })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /Alle Änderungen/ })).toHaveCount(0);
-    const adresse = page.url();
-    const zeile = zeileMit(page, kurz(rep.k3));
-    await zeile.locator('.cl-hash').click();
-    await zeile.locator('.cl-c-titel').click();
-    expect(page.url()).toBe(adresse);
-    await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Commits');
-    await expect(page.locator(ZEILEN)).toHaveCount(5);
+    await expect(page.locator(`${PANEL} .cl-kopf`).getByRole('link', { name: 'Alle Änderungen ansehen' })).toHaveCount(1);
+    for (const [hash, anzahl] of [[rep.k3, 1], [rep.w1, 1], [rep.v1, 1], [rep.r1, 1], [rep.v2, 0]]) {
+      expect(await zeileMit(page, kurz(hash)).evaluate(z => z.querySelectorAll('a[href]').length), kurz(hash)).toBe(anzahl);
+    }
     // weder sortieren noch filtern, keine Spalte „Dateien“
     await expect(page.locator(`${PANEL} thead button, ${PANEL} thead [data-act], ${PANEL} input, ${PANEL} select`)).toHaveCount(0);
     expect(await page.locator(`${PANEL} thead th`).allInnerTexts()).toEqual(['Commit', 'Titel', 'Autor', 'Datum', '+ / −', 'Zustand']);
@@ -861,7 +856,8 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await expect(page.locator(ZEILEN)).toHaveCount(8);
     await ausloeser(page).focus();
     const reihe = [];
-    for (let i = 0; i < 12; i++) {
+    // R00207 FA 1: jede Zeile mit Diff ist ein Tab-Stopp mehr (Verweis auf die Review-Seite), dazu „Alle Änderungen ansehen“
+    for (let i = 0; i < 24; i++) {
       await page.keyboard.press('Tab');
       const stand = await page.evaluate(() => {
         const e = document.activeElement, st = getComputedStyle(e);

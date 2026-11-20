@@ -396,4 +396,98 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(gross.locator('.df-inhalt button')).toHaveCount(0);
     await expect(page.locator('#rv-dk25')).toBeFocused();
   });
+  /* ── AK 1 Einstieg aus der Liste ── */
+
+  async function listeOeffnen(page, nr = 1) {
+    await page.goto(`${k.adresse}#/board/entwicklung/aufgabe/${nr}`);
+    await expect(page.getByRole('dialog', { name: `Aufgabe #${nr}` })).toBeVisible();
+    await liveBereit(page);
+    await reiter(page, 'Commits');
+    await expect(page.locator('#fenster tbody tr.cl-z').first()).toBeVisible();
+  }
+  const zeile = (page, hash) => page.locator('#fenster tbody tr.cl-z').filter({ has: page.locator('th .cl-hash', { hasText: new RegExp(`^${kurz(hash)}$`) }) });
+
+  test('AK 1: je Zeile mit Diff genau ein Verweis mit Namen; Hash und Rand der Zeile treffen ihn; V2 ohne Verweis', async ({ page }) => {
+    await listeOeffnen(page);
+    for (const [hash, titel, wort] of [[rep.k3, 'c.txt anlegen', 'auf 2 Zweigen'], [rep.w1, 'b.txt anlegen', 'auf Zweig karte/1'], [rep.v1, 'v.txt anlegen', 'auf keinem Zweig'], [rep.r1, 'r.txt anlegen', 'auf Zweig o/x']]) {
+      const z = zeile(page, hash);
+      expect(await z.evaluate(e => e.querySelectorAll('a[href]').length)).toBe(1);
+      const verweis = z.locator('a[href]');
+      await expect(verweis).toHaveAttribute('aria-label', `Commit ${kurz(hash)}, ${titel}, ${wort}`);
+      expect(decodeURIComponent(await verweis.getAttribute('href'))).toBe(`#/board/entwicklung/aufgabe/1/review?commit=kd:${hash}`);
+      const kasten = await z.boundingBox();
+      for (const [x, y] of [[kasten.x + 4, kasten.y + 4], [kasten.x + kasten.width - 6, kasten.y + kasten.height - 4]]) {
+        expect(await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e && e.closest('a') && e.closest('a').getAttribute('href'); }, [x, y])).toBe(await verweis.getAttribute('href'));
+      }
+    }
+    expect(await zeile(page, rep.v2).evaluate(e => e.querySelectorAll('a[href]').length)).toBe(0);
+  });
+
+  test('AK 1/US-1: Linksklick auf die Zeile V1 → „3 von 4“ mit Band; zweimal blättern; ein Browser-Zurück → Fenster mit „Commits“, Fokus auf V1', async ({ page }) => {
+    await listeOeffnen(page);
+    const laenge = await page.evaluate(() => history.length);
+    const z = zeile(page, rep.v1);
+    const kasten = await z.boundingBox();
+    await page.mouse.click(kasten.x + kasten.width - 8, kasten.y + 6);
+    await expect(page.locator(POS)).toHaveText('3 von 4');
+    await expect(page.locator('.rv-band')).toBeVisible();
+    await expect(page.locator('#fenster')).toHaveCount(0);
+    expect(await page.evaluate(() => history.length)).toBe(laenge + 1);
+    await page.locator('#rv-vor').click();
+    await expect(page.locator(POS)).toHaveText('4 von 4');
+    await expect(page.locator('#rv-zurueck')).toBeFocused();
+    await page.locator('#rv-zurueck').click();
+    await page.locator('#rv-zurueck').click();
+    await expect(page.locator(POS)).toHaveText('2 von 4');
+    expect(await page.evaluate(() => history.length)).toBe(laenge + 1);
+    await page.goBack();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await expect(page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]')).toHaveAttribute('aria-label', 'Ansicht: Commits');
+    expect(page.url()).toMatch(/#\/board\/entwicklung\/aufgabe\/1$/);
+    await expect(zeile(page, rep.v1).locator('a.cl-ziel')).toBeFocused();
+  });
+
+  test('AK 1: „← #1“ nach dem Öffnen aus der Liste geht einen Schritt zurück, Fokus auf dem Verweis der Zeile', async ({ page }) => {
+    await listeOeffnen(page);
+    const laenge = await page.evaluate(() => history.length);
+    await zeile(page, rep.w1).locator('a.cl-ziel').click();
+    await expect(page.locator(POS)).toHaveText('2 von 4');
+    await expect(page.locator('#rv-rueckweg')).toBeFocused();
+    await page.locator('#rv-rueckweg').click();
+    await expect(zeile(page, rep.w1).locator('a.cl-ziel')).toBeFocused();
+    expect(await page.evaluate(() => history.length)).toBe(laenge + 1);
+    expect(page.url()).toMatch(/#\/board\/entwicklung\/aufgabe\/1$/);
+    // es war ein Schritt zurück im Verlauf (nicht ersetzt): vorwärts steht wieder die Review-Seite
+    await page.goForward();
+    await expect(page.locator(POS)).toHaveText('2 von 4');
+  });
+
+  test('AK 1/US-2: „Alle Änderungen ansehen“ zeigt K3 „1 von 4“ ohne Zurück; die Adresse nennt danach den vollen Verweis', async ({ page }) => {
+    await listeOeffnen(page);
+    await page.getByRole('link', { name: 'Alle Änderungen ansehen' }).click();
+    await expect(page.locator(POS)).toHaveText('1 von 4');
+    await expect(page.locator('#rv-zurueck')).toHaveCount(0);
+    expect(page.url()).toContain(`/review?commit=kd%3A${rep.k3}`);
+  });
+
+  test('AK 1/US-8: „Alle Änderungen ansehen“ an #6 → „Keine Änderungen zu zeigen …“, Adresse ohne ?commit=, „Zurück zur Liste der Commits“ ins Fenster', async ({ page }) => {
+    await listeOeffnen(page, 6);
+    await page.getByRole('link', { name: 'Alle Änderungen ansehen' }).click();
+    await expect(page.locator('.rv-meld')).toContainText('Keine Änderungen zu zeigen.');
+    expect(page.url()).toMatch(/\/aufgabe\/6\/review$/);
+    await page.getByRole('button', { name: 'Zurück zur Liste der Commits' }).click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #6' })).toBeVisible();
+    await expect(page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]')).toBeFocused();
+  });
+
+  test('AK 1: Strg+Klick auf den Verweis bleibt ein Link — die Seite selbst wechselt nicht', async ({ page, context }) => {
+    await listeOeffnen(page);
+    const neu = context.waitForEvent('page');
+    await zeile(page, rep.k3).locator('a.cl-ziel').click({ modifiers: ['Control'] });
+    const tab = await neu;
+    await tab.waitForLoadState();
+    expect(decodeURIComponent(tab.url())).toContain(`/review?commit=kd:${rep.k3}`);
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await tab.close();
+  });
 });

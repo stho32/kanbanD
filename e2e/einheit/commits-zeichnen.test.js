@@ -31,12 +31,27 @@ test('Zeile: Kurz-Hash als Zeilenüberschrift (scope=row) mit dem vollen Verweis
   assert.match(html, /<span class="cl-pl">\+3<\/span> <span class="cl-mi">−0<\/span><span class="vh"> Zeilen<\/span>/);
 });
 
-test('kein Verweis, kein Knopf „Alle Änderungen ansehen“: in B1 gibt es weder href noch ein Ziel an Hash oder Zeile (das kommt mit B2)', () => {
-  const html = liste([auf(), verwaist, fehlt, repoWeg, unbekannt, unlesbar]);
-  assert.doesNotMatch(html, /href=/);
-  assert.doesNotMatch(html, /<a[\s>]/);
-  assert.doesNotMatch(html, /Alle Änderungen/);
-  assert.doesNotMatch(html, /data-act="[^"]*(ansehen|oeffnen)/);
+// R00207 FA 1 ersetzt die Aussage von R00205 AK 2 „kein Knopf, kein Verweis“ (PO Z. 409): mit B2 kommen Knopf und Verweise.
+const ziel = v => `#/aufgaben/aufgabe/1/review?commit=${encodeURIComponent(v)}`;
+test('R00207 FA 1: genau ein Verweis je Eintrag mit Diff (auf_zweig, verwaist) auf …/review?commit=<voller verweis>, keiner ohne Diff', () => {
+  const eintraege = [auf(), verwaist, fehlt, repoWeg, unbekannt, unlesbar];
+  const html = commitsListeHtml(eintraege, new Set(), esc, ziel);
+  const zeilen = html.split('<tr class="cl-z').slice(1);
+  assert.deepStrictEqual(zeilen.map(z => (z.match(/<a [^>]*href=/g) || []).length), [1, 1, 0, 0, 0, 0]);
+  assert.match(zeilen[0], new RegExp(`<a class="cl-hash cl-ziel" href="#/aufgaben/aufgabe/1/review\\?commit=kd%3A${K3}" data-act="review-oeffnen" data-arg="kd:${K3}" aria-label="Commit kd:${K3.slice(0, 7)}, c\\.txt anlegen, auf 2 Zweigen" title="kd:${K3}">kd:${K3.slice(0, 7)}</a>`));
+  assert.match(zeilen[1], /aria-label="Commit kd:bbbbbbb, v\.txt anlegen, auf keinem Zweig"/);
+  assert.doesNotMatch(commitsListeHtml(eintraege, new Set(), esc), /href=/, 'ohne Ziel (Node-Proben von B1) kein Verweis');
+});
+
+test('R00207 FA 1: der Name nennt bei mehreren Zweigen ihre Zahl, fremder Titel bleibt maskiert', () => {
+  const html = commitsListeHtml([auf({ zweige: ['a', 'b'], entfernte_zweige: [], titel: '<img src=x> "q"' })], new Set(), esc, ziel);
+  assert.match(html, /aria-label="Commit kd:[0-9a-f]{7}, &lt;img src=x&gt; &quot;q&quot;, auf 2 Zweigen"/);
+  assert.match(commitsListeHtml([auf({ zweige: [], entfernte_zweige: ['o/x'] })], new Set(), esc, ziel), /, auf Zweig o\/x"/);
+});
+
+test('R00207 FA 1: Kopf mit dem Knopf „Alle Änderungen ansehen“ (.btn) auf …/review, auch ohne Eintrag mit Diff', () => {
+  assert.match(commitsKopfHtml(5, '#/aufgaben/aufgabe/6/review'), /<a class="btn cl-alle" href="#\/aufgaben\/aufgabe\/6\/review" data-act="review-oeffnen" data-arg="">Alle Änderungen ansehen<\/a>/);
+  assert.doesNotMatch(commitsKopfHtml(5), /Alle Änderungen/);
 });
 
 test('Zustandswörter stehen sichtbar: in der Marke .cl-zs mit Symbol davor, nie innerhalb von .vh; paarweise verschieden', () => {

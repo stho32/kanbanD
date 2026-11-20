@@ -459,7 +459,9 @@ function vVerlaufWer(wer) {
 }
 /** Die Ansicht „Commits“ (R00205): nur lesend; Zustand und Zeichnen stehen in web/commits.js, gelesen wird in app.js (commitsLesen). */
 function vCommitsPanel() {
-  return commitsAnsichtHtml(S.ui.commits || { status: 'laedt', stand: null }, esc);
+  const basis = S.ui.view === 'aufgaben' ? 'aufgaben' : 'board';
+  const ziel = verweis => reviewAdresseBilden({ basis, slug: S.ui.slug, nummer: S.ui.offen, commit: verweis });
+  return commitsAnsichtHtml(S.ui.commits || { status: 'laedt', stand: null }, esc, ziel);
 }
 function vVerlaufPanel() {
   const u = S.ui;

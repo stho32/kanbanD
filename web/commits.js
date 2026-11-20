@@ -161,27 +161,49 @@
     return `<span class="cl-zs cl-${m.ton}">${symbol(m.symbol)}${esc(m.wort)}</span><p class="cl-zh">${esc(m.hinweis)}</p>`;
   }
 
-  function zeileHtml(e, i, offen, esc) {
+  /** Zustandswort im Namen des Verweises (R00207 FA 1): „auf Zweig <name>“, „auf <n> Zweigen“ oder das Wort des Zustands. */
+  function zustandImNamen(w) {
+    if (!w.zweige) return w.zustand ? w.zustand.wort : '';
+    const z = w.zweige, alle = [...z.lokal, ...z.entfernt];
+    const anzahl = alle.length + z.nichtAufgefuehrt;
+    return anzahl === 1 ? `auf Zweig ${alle[0]}` : `auf ${anzahl} Zweigen`;
+  }
+
+  /** Einträge mit Diff (R00206): nur sie tragen einen Verweis auf die Review-Seite. */
+  const MIT_DIFF = ['auf_zweig', 'verwaist'];
+
+  /** Der Kurz-Hash: mit `ziel` und Diff genau ein Verweis je Zeile, dessen Fläche per `::after` die ganze Zeile ist (R00207 FA 1, PO Z. 425). */
+  function hashHtml(e, w, esc, ziel) {
+    if (ziel && MIT_DIFF.includes(e.zustand) && e.hash) {
+      const name = `Commit ${w.kurz}, ${w.titel || ''}, ${zustandImNamen(w)}`;
+      return `<a class="cl-hash cl-ziel" href="${esc(ziel(e.verweis))}" data-act="review-oeffnen" data-arg="${esc(e.verweis)}" aria-label="${esc(name)}" title="${esc(w.verweis)}">${esc(w.kurz)}</a>`;
+    }
+    return `<span class="cl-hash${e.hash ? '' : ' cl-roh'}" title="${esc(w.verweis)}">${esc(w.kurz)}</span>`;
+  }
+
+  function zeileHtml(e, i, offen, esc, ziel) {
     const w = zeilenwerte(e);
     const wert = text => (w.ohneMetadaten ? KEINE_ANGABE : text);
     const titel = wert(`${esc(w.titel)}${w.gekuerzt ? `<span class="cl-kurz" title="${esc(GEKUERZT_HINWEIS)}">gekürzt</span>` : ''}`);
     const datum = wert(`<span title="${esc(w.datumTitel)}">${esc(w.datum)}</span>`);
     const zahlen = wert(w.zahlen && `<span class="cl-pl">+${tausender(e.plus)}</span> <span class="cl-mi">−${tausender(e.minus)}</span><span class="vh"> Zeilen</span>`);
-    const hash = `<span class="cl-hash${e.hash ? '' : ' cl-roh'}" title="${esc(w.verweis)}">${esc(w.kurz)}</span>`;
+    const hash = hashHtml(e, w, esc, ziel);
     const zeile = `<tr class="cl-z${w.ohneMetadaten ? ' cl-ohne' : ''}"><th scope="row" class="cl-c-hash">${hash}</th><td class="cl-c-titel">${titel}</td><td class="cl-c-autor">${wert(esc(w.autor))}</td><td class="cl-c-datum">${datum}</td><td class="cl-c-pm cl-r">${zahlen}</td><td class="cl-c-zst">${zustandsZelle(w, i, offen, esc)}</td></tr>`;
     return offen && w.zweige ? zeile + zweigeKlappe(w.zweige, i, esc) : zeile;
   }
 
   /** Die Tabelle der Liste im querscrollbaren Rahmen (Gruppe mit Namen, per Tab fokussierbar). `klappen` nennt die Zeilen mit offener Zweigliste. */
-  function commitsListeHtml(eintraege, klappen, esc) {
+  function commitsListeHtml(eintraege, klappen, esc, ziel = null) {
     const kopf = SPALTEN.map(name => `<th scope="col"${name === '+ / −' ? ' class="cl-r"' : ''}>${name}</th>`).join('');
-    const zeilen = eintraege.map((e, i) => zeileHtml(e, i, klappen.has(i), esc)).join('');
+    const zeilen = eintraege.map((e, i) => zeileHtml(e, i, klappen.has(i), esc, ziel)).join('');
     return `<div class="cl-rahmen" tabindex="0" role="group" aria-label="Commits dieser Aufgabe, ältester zuerst"><table class="cl-tab"><thead><tr>${kopf}</tr></thead><tbody>${zeilen}</tbody></table></div>`;
   }
 
   /** Kopf der Ansicht: „COMMITS“ mit der Zahl der Einträge (ohne Zahl, solange gelesen wird). */
-  function commitsKopfHtml(anzahl) {
-    return `<div class="cl-kopf"><h3>COMMITS ${anzahl == null ? '' : `<span class="mono">${anzahl}</span>`}</h3><span class="cl-hin">an dieser Aufgabe hinterlegt · ältester zuerst</span></div>`;
+  function commitsKopfHtml(anzahl, alleZiel = null) {
+    // „Alle Änderungen ansehen“ führt in B2 auf …/review, auch ohne Eintrag mit Diff (R00207 FA 1, ADR-0033 Punkt 9)
+    const alle = alleZiel ? `<a class="btn cl-alle" href="${alleZiel}" data-act="review-oeffnen" data-arg="">Alle Änderungen ansehen</a>` : '';
+    return `<div class="cl-kopf"><h3>COMMITS ${anzahl == null ? '' : `<span class="mono">${anzahl}</span>`}</h3><span class="cl-hin">an dieser Aufgabe hinterlegt · ältester zuerst</span>${alle}</div>`;
   }
 
   /** Fuß: „liest nur“ mit der Uhrzeit der letzten erfolgreichen Antwort und „Neu lesen“; beim Lesen `aria-disabled` statt `disabled`, damit der Fokus bleibt. */
@@ -198,7 +220,7 @@
   const LEER_SATZ = 'Ein Agent hinterlegt sie über die API (<span class="mono">POST /api/aufgaben/{nr}/commits</span>); siehe Endpunktliste unter <a href="/api" target="_blank" rel="noopener">/api</a>.';
 
   /** Inhalt der Ansicht je Zustand: Laden (Hinweis im Statusbereich), Fehler (Meldung im Statusbereich), leer und Liste (Statusbereich nur zum Vorlesen). */
-  function inhaltHtml(c, esc) {
+  function inhaltHtml(c, esc, ziel) {
     if (c.status === 'laedt') return statusBereich('cl-laedt', 'Liest die Commits aus dem Repository …', esc);
     if (c.status === 'fehler') {
       const knopf = '<button type="button" class="cl-knopf" id="commits-erneut" data-act="commits-lesen">Erneut versuchen</button>';
@@ -206,13 +228,14 @@
     }
     const ansage = statusBereich('vh', gelesenText(c.eintraege.length), esc);
     if (!c.eintraege.length) return `${ansage}<div class="cl-leer">An dieser Aufgabe sind keine Commits hinterlegt.<br><span>${LEER_SATZ}</span></div>`;
-    return ansage + commitsListeHtml(c.eintraege, c.klappen, esc);
+    return ansage + commitsListeHtml(c.eintraege, c.klappen, esc, ziel);
   }
 
-  /** Die ganze Ansicht „Commits“ aus dem Zustand der Oberfläche (`S.ui.commits`): `{status, eintraege, stand, fehler, klappen}`. */
-  function commitsAnsichtHtml(c, esc) {
+  /** Die ganze Ansicht „Commits“ aus dem Zustand der Oberfläche (`S.ui.commits`): `{status, eintraege, stand, fehler, klappen}`;
+      `ziel(verweis)` bildet die Adresse der Review-Seite (ohne Verweis: `…/review`). */
+  function commitsAnsichtHtml(c, esc, ziel = null) {
     const anzahl = c.status === 'liste' && c.eintraege.length ? c.eintraege.length : null;
-    return `<div class="mod-main cl-panel">${commitsKopfHtml(anzahl)}${inhaltHtml(c, esc)}${commitsFussHtml({ stand: c.stand, laedt: c.status === 'laedt' })}</div>`;
+    return `<div class="mod-main cl-panel">${commitsKopfHtml(anzahl, ziel && esc(ziel(null)))}${inhaltHtml(c, esc, ziel)}${commitsFussHtml({ stand: c.stand, laedt: c.status === 'laedt' })}</div>`;
   }
 
   Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml });

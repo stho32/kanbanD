@@ -1363,6 +1363,12 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .cl-c-zst{width:220px}
 .cl-ohne [aria-hidden="true"]{color:var(--kd-muted)}
 .cl-tab tbody tr.cl-z:hover>*{background:var(--kd-accent-weak)}
+/* Verweis auf die Review-Seite (R00207 FA 1): die ganze Zeile ist sein Ziel, ein Tab-Stopp; die Zweigklappe liegt darüber. */
+.cl-tab tbody tr.cl-z{position:relative}
+.cl-ziel{color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
+.cl-ziel::after{content:"";position:absolute;inset:0}
+.cl-tab .cl-mehr{position:relative;z-index:1}
+.cl-kopf .cl-alle{margin-left:auto;height:auto;min-block-size:max(var(--kd-row),var(--kd-ziel))}
 .cl-tab tbody tr.cl-ohne:hover>*{background:var(--kd-surface)}
 .cl-tab tr.cl-zw>td{background:var(--kd-bg);padding:6px var(--kd-s3) 8px 120px;font-size:12px}
 .cl-tab tr.cl-zw p{margin:2px 0}

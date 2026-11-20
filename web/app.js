@@ -965,6 +965,13 @@ async function commitsLesen(nr) {
   const a = S.ui.offen === nr && aufgabe(nr);
   if (S.ui.commits !== lauf || !a || ansichtDerAufgabe(a) !== 'commits') return;
   S.ui.commits = { nr, klappen: new Set(), ...ergebnis };
+  // Zurück von der Review-Seite (R00207 FA 13): Fokus auf den Verweis, von dem sie geöffnet wurde, sonst auf die Ansichtswahl
+  const zurueck = S.ui.fokusNachListe;
+  if (zurueck && zurueck.nr === nr) {
+    S.ui.fokusNachListe = null;
+    const verweis = zurueck.verweis && ergebnis.status === 'liste' && ergebnis.eintraege.some(e => e.verweis === zurueck.verweis);
+    S.ui.fokus = verweis ? `#fenster a.cl-ziel[data-arg="${CSS.escape(zurueck.verweis)}"]` : '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
+  }
   render();
 }
 
@@ -1264,9 +1271,10 @@ function reviewZurueck() {
 /** Öffnet die Review-Seite aus der Ansicht „Commits“ mit einem neuen Verlaufseintrag samt Marke (ADR-0033 Punkt 2). */
 function reviewOeffnen(verweis) {
   const u = S.ui;
-  if (!u.offen || (u.view !== 'board' && u.view !== 'aufgaben')) return;
+  if (!u.offen) return;
   u.reviewHerkunft = verweis || null;
-  history.pushState(REVIEW_AUS_DER_LISTE, '', reviewAdresseBilden({ basis: u.view, slug: u.slug, nummer: u.offen, commit: verweis || null }));
+  const basis = u.view === 'aufgaben' ? 'aufgaben' : 'board';
+  history.pushState(REVIEW_AUS_DER_LISTE, '', reviewAdresseBilden({ basis, slug: u.slug, nummer: u.offen, commit: verweis || null }));
   adresseGewechselt();
 }
 
