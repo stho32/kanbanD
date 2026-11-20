@@ -930,3 +930,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1056 Abgeschnittener Bezug: nachladen bzw. 404 statt 500 | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1057 Zufallsprobe über ?commit= mit 1.200 Seeds, Mutanten | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-20 | Karte #229 R00211 (Diff je Commit: Pfadangabe bei Typwechsel ohne 500) | B1058 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5h | 0,4h | 0,4h | autonom |
+| 2026-11-20 | Karte #229 R00211 Nacharbeit 1 (N7.8) | B1066 Abnahme-Proben rot — gleich bewertete Quellen, Rückfall, E2BIG, 404-Wortlaut, Strenge | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

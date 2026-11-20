@@ -75,11 +75,29 @@ impl Lage {
 
     /// Aufgabe #1 mit genau dem Verweis `kd:<k>`, dann das Programm gestartet.
     fn starten(&self, k: &str) -> Laufendes {
-        std::fs::write(self.board.join("aufgaben/0001-k.md"), format!("---\nid: 1\ntitle: Karte 1\ncommits:\n  - \"kd:{k}\"\n---\n")).unwrap();
+        self.starten_mit(&[k], &[])
+    }
+
+    /// Aufgabe #1 mit genau den Verweisen `kd:<k>` je Commit, dann das Programm mit `umgebung` gestartet.
+    fn starten_mit<S: AsRef<str>>(&self, commits: &[S], umgebung: &[(&str, &str)]) -> Laufendes {
+        let verweise: String = commits.iter().map(|k| format!("  - \"kd:{}\"\n", k.as_ref())).collect();
+        std::fs::write(self.board.join("aufgaben/0001-k.md"), format!("---\nid: 1\ntitle: Karte 1\ncommits:\n{verweise}---\n")).unwrap();
         std::fs::write(self.board.join("boards/fabrik.md"), "# fabrik\n\n## Entwicklung\n\n- [#1](../aufgaben/0001-k.md)\n").unwrap();
         git(&self.board, &["add", "-A"]);
         git(&self.board, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Karte"]);
-        starten_mit(&self.board, &["--port", "0", "--host", "127.0.0.1"], &[])
+        starten_mit(&self.board, &["--port", "0", "--host", "127.0.0.1"], umgebung)
+    }
+
+    /// Ein `git` vorn im PATH des Servers (wie `git_skript` in `akzeptanz_r00206.rs`): für Läufe des Startorts in R führt
+    /// es `bei_r` aus (`$echt` ist das echte Git), alles andere geht ans echte Git. Liefert den Wert für `PATH`.
+    fn git_skript(&self, bei_r: &str) -> String {
+        let echt = String::from_utf8(std::process::Command::new("sh").args(["-c", "command -v git"]).output().unwrap().stdout).unwrap().trim().to_string();
+        let ordner = self.r.parent().unwrap().join("bin");
+        std::fs::create_dir_all(&ordner).unwrap();
+        let skript = format!("#!/bin/sh\necht={echt}\ncase \"$*\" in *\"{r}\"*core.hooksPath=/dev/null*)\n{bei_r}\n;; esac\nexec $echt \"$@\"\n", r = self.r.display());
+        std::fs::write(ordner.join("git"), skript).unwrap();
+        std::fs::set_permissions(ordner.join("git"), std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        format!("{}:{}", ordner.display(), std::env::var("PATH").unwrap())
     }
 
     /// Orakel „bytegleich“: die Stücke von `git diff-tree -p` **ohne Pfadangabe** (R00211, Ausgangslage).
@@ -328,11 +346,11 @@ async fn ak3_abgeschnittene_liste_mit_umbenennung_hinter_dem_schnitt() {
     assert_eq!(dateien(&e)[0]["patch"].as_str().unwrap(), hunks(stueck_von(&stuecke, dx)));
 }
 
-/// Eigene Variante zu AK 3 (ADR-0032 N7.2 „die Grenze von 1 MB für die Pfadangabe gilt für die abgeschlossene Angabe“,
-/// N5.5 S1 ARG_MAX): Fall (a) mit so vielen Dateien unter `d/x/`, dass die gegen die Liste abgeschlossene Angabe von
-/// `datei=d/x` über 1 MB läge → 404 „Dateiliste zu groß“, nie 500; die Liste bleibt 200.
+/// Eigene Variante zu AK 3, berichtigt durch AK 8 (ADR-0032 N7.8): Fall (a) mit so vielen Dateien unter `d/x/`, dass die
+/// gegen die Liste abgeschlossene Angabe von `datei=d/x` über 1 MB läge (ARG_MAX, N5.5 S1) → Rückfall ohne Pfadangabe:
+/// 200 mit `D d/x` und bytegleichem Patch, nie 500; die Liste bleibt 200. Vor N7.8: 404 „Dateiliste zu groß“.
 #[tokio::test]
-async fn ak3_abgeschlossene_angabe_ueber_1_mb() {
+async fn ak3_ak8_abgeschlossene_angabe_ueber_1_mb_faellt_zurueck() {
     let l = Lage::neu();
     let fuell = "f".repeat(195);
     let k = fall_a(&l, |l| {
@@ -340,10 +358,16 @@ async fn ak3_abgeschlossene_angabe_ueber_1_mb() {
             l.schreiben(&format!("d/x/a{i:04}{fuell}"), &format!("a{i}\n"));
         }
     });
+    let stuecke = l.stuecke(&k);
     let lauf = l.starten(&k);
     let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=d/x")).await;
-    assert_eq!(s, 404, "{t}");
-    assert!(t.contains("Dateiliste zu groß"), "{t}");
+    assert_eq!(s, 200, "{t}");
+    let e: Value = serde_json::from_str(&t).unwrap();
+    let dx = &dateien(&e)[0];
+    assert_eq!((dateien(&e).len(), &dx["status"], &dx["minus"]), (1, &json!("D"), &json!(11)), "{e}");
+    assert_eq!(dx["patch"].as_str().unwrap(), hunks(stueck_von(&stuecke, dx)));
+    let (s, text) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=d/x&format=patch")).await;
+    assert_eq!((s, text.as_str()), (200, stueck_von(&stuecke, dx)));
     let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}")).await;
     assert_eq!(s, 200, "{t}");
 }
@@ -409,4 +433,133 @@ async fn ak4_seed_72_geloeschter_zwilling_unter_dem_ziel() {
 async fn ak4_seed_645_typwechsel_beider_richtungen_mit_grossen_dateien() {
     let (g1, g5, g6) = (zeilen("g1", 3002), zeilen("g5", 3006), zeilen("g6", 3007));
     fester_fall(&[("g0", &g5), ("g2/x", &g1), ("k5-1", &g1)], &[("g0", &g6), ("g2", &g6), ("k5-1/inner", &g1)]).await;
+}
+
+// ---- Nacharbeit 1 (ADR-0032 N7.8): ein Lauf mit Pfadangabe ist eine Abkürzung, kein Beleg --------------------------
+
+/// Variante `v` der Abnahme-Probe `tie2f.py` (Code-Review M1): Commit A legt `n` = 2 bis 4 Quellen `s<i>` an, je die
+/// Zeilen `l0 l1 l2 l3` und eine eigene Zeile, dazu `gross` mit 3.010 + `v` Zeilen; Commit B löscht alle und legt `dst`
+/// und `dst2` an, je `l0..l3` und eine eigene Zeile. Alle Quellen sind für beide Ziele gleich bewertet; die Liste läuft
+/// wegen `gross` mit Pfadangabe. Liefert B.
+fn gleich_bewertet(l: &Lage, v: usize) -> String {
+    let basis: String = (0..4).map(|i| format!("l{i}\n")).collect();
+    let quellen: Vec<(String, String)> = (0..2 + v % 3).map(|i| (format!("s{i}"), format!("{basis}x{i}-{v}\n"))).collect();
+    let gross = (0..3010 + v).map(|i| format!("g{i}\n")).collect::<String>();
+    let vorher: Vec<(&str, &str)> = quellen.iter().map(|(p, c)| (p.as_str(), c.as_str())).chain([("gross", gross.as_str())]).collect();
+    let (dst, dst2) = (format!("{basis}neu{v}\n"), format!("{basis}neu2-{v}\n"));
+    baeume(l, &vorher, &[("dst", &dst), ("dst2", &dst2)])
+}
+
+/// AK 7, AK 8, US-6: 40 Varianten mit gleich bewerteten Quellen. Je Variante die Liste als JSON und mit `format=patch`:
+/// 200, jeder Patch bytegleich zum Lauf ohne Pfadangabe, ein Eintrag ohne Stück `nachladen` statt 500; dann `datei=` auf
+/// jeden Namen (darin jede `nachladen`-Datei): 200 und bytegleich. Vor dem Fix in den Varianten mit vier Quellen 500
+/// „Patch-Lauf: „dst“ (R) hat 0 von 1 Stücken“.
+#[tokio::test]
+async fn ak7_ak8_gleich_bewertete_quellen_in_40_varianten() {
+    let l = Lage::neu();
+    let commits: Vec<String> = (0..40).map(|v| gleich_bewertet(&l, v)).collect();
+    let lauf = l.starten_mit(&commits, &[]);
+    let mut mit_nachladen = 0;
+    for k in &commits {
+        let stuecke = l.stuecke(k);
+        let liste = liste_pruefen(&lauf.adresse, k, &stuecke).await;
+        assert!(dateien(&liste).iter().any(|f| f["gross"] == json!(true)), "{k}: gross fehlt — die Liste liefe ohne Pfadangabe");
+        if dateien(&liste).iter().any(|f| f["nachladen"] == json!(true)) {
+            mit_nachladen += 1;
+        }
+        datei_auf_jeden_namen(&lauf.adresse, k, &liste, &stuecke).await;
+    }
+    assert!(mit_nachladen > 0, "keine Variante paarte mit Pfadangabe anders — die Probe prüft die Klasse nicht");
+}
+
+/// AK 8: Rückfall ohne Pfadangabe mit dem Stück hinter 8 MB. Vorgänger: Datei `x`; K löscht sie, legt 5.300 Dateien
+/// unter `x/` an (abgeschlossene Angabe von `datei=x` über 1 MB → Rückfall) und davor in der Reihenfolge `a-riesig` mit
+/// über 8 MB Patch. `datei=x` → 200, `D x` mit `minus` wie in der Liste, `gross` ohne Patch, Hinweis
+/// `zu_gross_zum_anzeigen`. Vor dem Fix: 404 „Dateiliste zu groß“.
+#[tokio::test]
+async fn ak8_rueckfall_mit_stueck_hinter_8_mb_ist_gross() {
+    let l = Lage::neu();
+    l.schreiben("x", "x0\nx1\nx2\n");
+    l.commit("Vorgänger");
+    l.loeschen("x");
+    let fuell = "f".repeat(200);
+    for i in 0..5300 {
+        l.schreiben(&format!("x/{i:04}{fuell}"), "q\n");
+    }
+    l.schreiben("a-riesig", &(0..320_000).map(|i| format!("riesige Zeile {i:>12}\n")).collect::<String>());
+    let k = l.commit("K");
+    let lauf = l.starten(&k);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=x")).await;
+    assert_eq!(s, 200, "{t}");
+    let d: Value = serde_json::from_str(&t).unwrap();
+    let x = &dateien(&d)[0];
+    assert_eq!((dateien(&d).len(), &x["status"], &x["minus"], &x["gross"], &x["patch"]), (1, &json!("D"), &json!(3), &json!(true), &Value::Null), "{d}");
+    assert_eq!(d["hinweise"], json!([{"art": "zu_gross_zum_anzeigen", "datei": "x"}]));
+}
+
+/// AK 8 (Director, E2BIG): startet Git mit der abgeschlossenen Angabe nicht, weil Argumente und Umgebung zusammen über
+/// ARG_MAX liegen, löst das den Rückfall ohne Pfadangabe aus. Die Instanz läuft mit Füllvariablen bis 150 KB unter
+/// ARG_MAX (sie gehen an jedes Git); Fall (a) mit 1.000 Dateien unter `d/x/` gibt eine Angabe von etwa 210 KB — unter der
+/// gezählten Grenze von 1 MB, zusammen mit der Umgebung über ARG_MAX. `datei=d/x` → 200 wie AK 1. Vor dem Fix: 500
+/// „git: Argument list too long (os error 7)“.
+#[tokio::test]
+async fn ak8_e2big_beim_start_faellt_zurueck() {
+    let l = Lage::neu();
+    let fuell = "f".repeat(195);
+    let k = fall_a(&l, |l| {
+        for i in 0..1000 {
+            l.schreiben(&format!("d/x/a{i:04}{fuell}"), &format!("a{i}\n"));
+        }
+    });
+    let stuecke = l.stuecke(&k);
+    let arg_max: usize = String::from_utf8(std::process::Command::new("getconf").arg("ARG_MAX").output().unwrap().stdout).unwrap().trim().parse().unwrap();
+    let wert = "u".repeat(100_000);
+    let namen: Vec<String> = (0..(arg_max - 150_000) / 100_020).map(|i| format!("KD_FUELLE_{i:04}")).collect();
+    let umgebung: Vec<(&str, &str)> = namen.iter().map(|n| (n.as_str(), wert.as_str())).collect();
+    let lauf = l.starten_mit(&[&k], &umgebung);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=d/x")).await;
+    assert_eq!(s, 200, "{t}");
+    let e: Value = serde_json::from_str(&t).unwrap();
+    let dx = &dateien(&e)[0];
+    assert_eq!((&dx["status"], &dx["minus"]), (&json!("D"), &json!(11)), "{e}");
+    assert_eq!(dx["patch"].as_str().unwrap(), hunks(stueck_von(&stuecke, dx)));
+}
+
+/// AK 9, US-7: Die Dateiliste von `datei=` ist an der Grenze abgeschnitten (ein Git-Skript liefert endlos Einträge), und
+/// auch der Rückfall findet den Namen nicht → 404 mit dem Wortlaut nach PO Z. 447 und dem vollen Hash; ohne den Pfad
+/// aus der Anfrage und ohne „MB“.
+#[tokio::test]
+async fn ak9_liste_zu_gross_wortlaut() {
+    let l = Lage::neu();
+    let k = fall_a(&l, |_| {});
+    let pfad = l.git_skript("case \"$*\" in *diff-tree*--raw*) while :; do printf ':000000 100644 0000000000000000000000000000000000000000 1111111111111111111111111111111111111111 A\\0%01000d\\0' 0; done;; esac");
+    let lauf = l.starten_mit(&[&k], &[("PATH", &pfad)]);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k}&datei=gesucht%2Fdatei.txt")).await;
+    assert_eq!(s, 404, "{t}");
+    let fehler = serde_json::from_str::<Value>(&t).unwrap()["fehler"].as_str().unwrap().to_string();
+    assert_eq!(fehler, format!("Diese Datei lässt sich hier nicht einzeln laden: Die Dateiliste des Commits ist zu groß. Lokal lesbar mit `git show {k} -- ` und dem Pfad der Datei."));
+    assert!(!fehler.contains("gesucht") && !fehler.contains("MB"), "{fehler}");
+}
+
+/// AK 10: streng (500) nur im Lauf ohne Pfadangabe gegen die vollständige Liste. Ein Git-Skript lässt im Patch-Lauf das
+/// Stück von `b.txt` weg. K1 (nur `a.txt`, `b.txt`: Lauf ohne Angabe) → 500 „hat 0 von 1 Stücken“; K2 (dazu `gross`:
+/// Lauf mit Angabe) → 200, `b.txt` `nachladen` ohne Patch, `a.txt` mit Patch. Mutanten: m7 (Lauf mit Angabe wieder
+/// streng) macht K2 rot, m8 (`nachladen` auch ohne Angabe) macht K1 rot.
+#[tokio::test]
+async fn ak10_streng_nur_ohne_pfadangabe() {
+    let l = Lage::neu();
+    let k1 = baeume(&l, &[("a.txt", "a\n"), ("b.txt", "b\n")], &[("a.txt", "a2\n"), ("b.txt", "b2\n")]);
+    let gross = zeilen("g", 3001);
+    let k2 = baeume(&l, &[("a.txt", "a\n"), ("b.txt", "b\n")], &[("a.txt", "a2\n"), ("b.txt", "b2\n"), ("gross", &gross)]);
+    let ohne_b = "case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*) ;; *diff-tree*) $echt \"$@\" | awk '/^diff --git /{weg = ($0 == \"diff --git a/b.txt b/b.txt\")} !weg'; exit 0;; esac";
+    let pfad = l.git_skript(ohne_b);
+    let lauf = l.starten_mit(&[&k1, &k2], &[("PATH", &pfad)]);
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k1}")).await;
+    assert_eq!((s, t.contains("„b.txt“ (M) hat 0 von 1 Stücken")), (500, true), "{t}");
+    let (s, t) = holen(&lauf.adresse, &format!("commit=kd:{k2}")).await;
+    assert_eq!(s, 200, "{t}");
+    let d: Value = serde_json::from_str(&t).unwrap();
+    let datei = |n: &str| dateien(&d).iter().find(|f| name(f) == n).unwrap().clone();
+    assert_eq!((datei("b.txt")["nachladen"].clone(), datei("b.txt")["patch"].clone()), (json!(true), Value::Null), "{d}");
+    assert_eq!(datei("a.txt")["patch"], json!("@@ -1 +1 @@\n-a\n+a2\n"), "{d}");
 }
