@@ -601,6 +601,9 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .anw .felder{border-top:0;grid-template-columns:110px minmax(0,1fr)}
 .erreich{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted)}
 .erreich.nein{color:var(--kd-warn)}
+/* Hinweis unter dem Feld „WBS“ einer Anwendung (R00209, PO Z. 435): ruhig wie .hin, unter dem Feld */
+.felder>.feld-hinweis{grid-column:2;display:block;min-height:0;padding:2px var(--kd-s2) 6px;font-size:11.5px;line-height:1.4;color:var(--kd-muted)}
+.felder>.feld-hinweis[hidden]{display:none}
 .org.mehrdeutig{color:var(--kd-warn)}
 .klz.pz .pk{justify-self:center}
 .klz.pz.still{background:var(--kd-bg)}

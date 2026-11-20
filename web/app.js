@@ -239,7 +239,7 @@ function gewaehltesBoard(zustand) {
 let geladenerStand = null;
 /** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
 const defekterGrund = (slug, zustand) => ((zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
-const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.fieberCache, S.anwendungen, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
+const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
 /** Nur die neueste Antwort wird übernommen (R00110, ADR-0014): jedes Laden zieht beim Start eine Nummer aus dem Takt; übernommen
     wird nur, was neuer ist als das zuletzt übernommene desselben Ziels — Hauptstand oder Fenster — und als die Marke der Schlange. */
@@ -310,13 +310,20 @@ async function sichtLaden(zustand) {
   const fieberCache = view === 'berichte/fieber' && slug ? await api('GET', `/api/boards/${encodeURIComponent(slug)}/fieber/cache`).catch(f => { if (f.status !== 423) throw f; fbFehler = f.message; return { abschnitte: [] }; }) : null;
   // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
   const anwendungen = view === 'einrichten' ? await api('GET', '/api/anwendungen') : S.anwendungen;
+  // dazu das Repository der Quellen, wie es gespeichert ist, mit Erreichbarkeit (R00209 AK 10)
+  const quellenStand = view === 'einrichten' ? quellenStandAus(await api('GET', '/api/einstellungen')) : S.quellenStand;
   let wbs = null, wbsFehler = null;
   if (view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
   // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
   const pruefWbs = {};
   // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
   if (view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
-  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, wbs, wbsFehler, pruefWbs } };
+  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, quellenStand, wbs, wbsFehler, pruefWbs } };
+}
+
+/** Aus `GET /api/einstellungen`: das gespeicherte Repository der Quellen und ob sein Ordner da ist. */
+function quellenStandAus(einstellungen) {
+  return { repository: einstellungen.quellen.repository, erreichbar: einstellungen.quellen.erreichbar.repository };
 }
 
 /** Nach der Übernahme: die gelesene Sicht samt ihrer Folgen für Vollbild, Einrichten und gemerktes Board, dann das offene Fenster. */
@@ -641,6 +648,23 @@ function warteschlange(anfrage) {
     Schreibwirkung wie eine Anfrage: der zweite Klick ihrer Geste träfe die nachgerückte Zeile (R00148 AK 11, ADR-0025 N2). */
 function entwurfGeaendert() {
   if (laufenderAusloeser) laufenderAusloeser.schreibt = true;
+}
+
+/** Zustandswort am Feld „Repository“ beim Tippen nachführen, ohne neu zu zeichnen (der Fokus bleibt im Feld). */
+function repositoryZustandZeigen(marke, wert, gespeichert) {
+  if (!marke) return;
+  const z = repositoryZustand(wert, gespeichert);
+  marke.textContent = z.wort;
+  marke.className = `erreich ${z.klasse}`;
+}
+
+/** Hinweis am Feld „WBS“ einer Anwendung zeigen, solange es gefüllt ist (PO Z. 435), und mit dem Feld vorlesen. */
+function wbsHinweisZeigen(feld, hinweis, wert) {
+  if (!hinweis) return;
+  const gefuellt = Boolean(wert);
+  hinweis.hidden = !gefuellt;
+  if (gefuellt) feld.setAttribute('aria-describedby', hinweis.id);
+  else feld.removeAttribute('aria-describedby');
 }
 
 /** Gibt die Sperre eines Auslösers frei, sobald seine Anfrage beantwortet ist — auch bei einem Fehlschlag (ADR-0025 Regel 2). */
@@ -3250,11 +3274,19 @@ async function aktion(a, arg, wert) {
       case 'a-add': {
         const kuerzel = ($('#nak').value || '').trim().toLowerCase(), name = (wert || '').trim();
         if (!kuerzel || !name) { u.einr.fehler = 'Kürzel und Name nötig'; break; }
-        u.einr.quellen.anwendungen = [...(u.einr.quellen.anwendungen || []), { kuerzel, name, wbs: '', anforderungen: '' }];
-        u.fokus = `[data-ef="awbs"][data-i="${u.einr.quellen.anwendungen.length - 1}"]`;
+        u.einr.quellen.anwendungen = [...(u.einr.quellen.anwendungen || []), { kuerzel, name, repository: '', wbs: '', anforderungen: '' }];
+        u.fokus = `[data-ef="arepo"][data-i="${u.einr.quellen.anwendungen.length - 1}"]`;
         break;
       }
-      case 'a-del': u.einr.quellen.anwendungen.splice(+arg, 1); entwurfGeaendert(); break;
+      case 'a-del': {
+        // Der Fokus geht auf die Nachbarzeile (die nachrückende, sonst die vorige), ohne Zeile auf „Neues Anwendungskürzel“ (R00209 AK 10)
+        const register = u.einr.quellen.anwendungen;
+        register.splice(+arg, 1); entwurfGeaendert();
+        const nachbar = Math.min(+arg, register.length - 1);
+        if (nachbar >= 0) u.fokus = `[data-act="a-del"][data-arg="${nachbar}"]`;
+        else u.fokus = '#nak';
+        break;
+      }
       case 'klassen-wahl': {
         // „eigene Klassen“ beginnt mit einer Kopie der Vorgabe (R00195 AK 8); der bearbeitete Satz übersteht das Hin- und Herschalten
         if (arg === 'eigen' && !u.setup.klassen) u.setup.klassen = kopie(vorgabeDesOrdners(S.zustand.einstellungen));
@@ -3306,7 +3338,11 @@ async function aktion(a, arg, wert) {
           u.einr.gespeichert = true;
           render();
           break;
-        } catch (f) { u.einr.fehler = f.message; break; }
+        } catch (f) {
+          // Der Entwurf bleibt stehen; der Fokus liegt auf der Meldung, nie auf body (R00209 AK 12)
+          u.einr.fehler = f.message; u.fokus = '#einr-fehler';
+          break;
+        }
       }
       case 'col-l': case 'col-r': {
         const d = u.setup.spalten, i = +arg, j = a === 'col-l' ? i - 1 : i + 1;
@@ -3663,12 +3699,18 @@ document.addEventListener('input', e => {
     if (ef === 'slabel') d.signale[i].bezeichnung = v;
     if (ef === 'shex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.signale[i].farbe = v.trim().toLowerCase();
     if (ef === 'khex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.klassen[i].farbe = v.trim().toLowerCase();
+    if (ef === 'repo') d.quellen.repository = v;
     if (ef === 'wbs') d.quellen.wbs = v;
     if (ef === 'anf') d.quellen.anforderungen = v;
     if (ef === 'aname') d.quellen.anwendungen[i].name = v;
+    if (ef === 'arepo') d.quellen.anwendungen[i].repository = v;
     if (ef === 'awbs') d.quellen.anwendungen[i].wbs = v;
     if (ef === 'aanf') d.quellen.anwendungen[i].anforderungen = v;
     d.fehler = null; d.gespeichert = false;
+    if (['repo', 'wbs', 'anf', 'arepo', 'awbs', 'aanf'].includes(ef)) e.target.title = v;
+    if (ef === 'repo') repositoryZustandZeigen($('#quellen-repo'), v, S.quellenStand || undefined);
+    if (ef === 'arepo') repositoryZustandZeigen($(`#anw-repo-${i}`), v, gespeichertesRepository(d.quellen.anwendungen[i].kuerzel));
+    if (ef === 'awbs') wbsHinweisZeigen(e.target, $(`#anw-wbs-hinweis-${i}`), v);
     $('#einr-vorschau').textContent = einstellungenText(d);
     return;
   }

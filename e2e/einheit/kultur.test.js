@@ -39,7 +39,7 @@ test('Zeitstempel in ms: lang, mit Wochentag Mo–So wie deDatum (R00073), Achse
 test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel', () => {
   assert.deepStrictEqual(FELDER, {
     board: 'Board', column: 'Spalte', class: 'Klasse', origins: 'Herkunft', assignees: 'Zuständig', labels: 'Labels', due: 'Fällig', estimate: 'Geschätzt',
-    'wbs-effects': 'Wirkungen', phases: 'Phasen', reservation: 'Reservierung', wbs: 'WBS', requirements: 'Anforderungen',
+    'wbs-effects': 'Wirkungen', phases: 'Phasen', reservation: 'Reservierung', repository: 'Repository', wbs: 'WBS', requirements: 'Anforderungen',
     ich: 'Ich', agents: 'Agenten', spalten: 'Spalten',
     reporting: 'Zählt in Berichten', signals: 'Signale', key: 'Schlüssel',
   });

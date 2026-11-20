@@ -28,15 +28,16 @@ test.describe('R00053', () => {
     await page.getByLabel('Neues Anwendungskürzel').fill('kd');
     await page.getByLabel('Neuer Anwendungsname').fill('kanbanD');
     await page.keyboard.press('Enter');
-    await expect(page.getByLabel('WBS-Pfad kd')).toBeFocused();
-    await page.keyboard.type(path.join(kd, 'plan.md'));
+    // R00209 AK 10: der Fokus steht im Feld „Repository“ der neuen Zeile; WBS und Anforderungen folgen darunter
+    await expect(page.getByLabel('Repository kd', { exact: true })).toBeFocused();
+    await page.getByLabel('WBS-Pfad kd').fill(path.join(kd, 'plan.md'));
     await page.getByLabel('Anforderungspfad kd').fill(path.join(kd, 'anf'));
-    await expect(page.locator('#einr-vorschau')).toContainText(`applications:\n    kd: {name: kanbanD, wbs: ${path.join(kd, 'plan.md')}, requirements: ${path.join(kd, 'anf')}}`);
+    await expect(page.locator('#einr-vorschau')).toContainText(`applications:\n    kd: {name: kanbanD, repository: ${kd}, wbs: ${path.join(kd, 'plan.md')}, requirements: ${path.join(kd, 'anf')}}`);
     await page.getByRole('button', { name: 'Speichern' }).click();
     await expect(page.getByText('gespeichert')).toBeVisible();
     const zeile = page.locator('.anw[data-anwendung="kd"]');
-    await expect(zeile.locator('.erreich.ja')).toHaveCount(2);
-    expect(k.lies('kanbanD.md')).toContain(`    kd: {name: kanbanD, wbs: ${path.join(kd, 'plan.md')}, requirements: ${path.join(kd, 'anf')}}\n`);
+    await expect(zeile.locator('.erreich.ja')).toHaveCount(3);
+    expect(k.lies('kanbanD.md')).toContain(`    kd: {name: kanbanD, repository: ${kd}, wbs: ${path.join(kd, 'plan.md')}, requirements: ${path.join(kd, 'anf')}}\n`);
     // das Board ist jetzt gebunden: seine Phasen-Spalten trägt kanbanD als eigene Aktion nach (R00058)
     expect(+k.git('rev-list', '--count', 'HEAD', '--', 'kanbanD.md')).toBe(vorher + 1);
     expect(k.git('log', '-1', '--format=%an|%s', '--', 'kanbanD.md')).toBe('Stefan|Einstellungen geändert');
@@ -51,7 +52,8 @@ test.describe('R00053', () => {
     await page.goto(k.adresse + '#/einrichten');
     const zeile = page.locator('.anw[data-anwendung="kd"]');
     await expect(zeile.locator('.erreich.nein')).toHaveText('nicht erreichbar');
-    await expect(zeile.locator('.erreich.ja')).toHaveCount(1);
+    // R00209: das Repository (der Ordner) und die Anforderungen bleiben erreichbar, nur die WBS-Datei fehlt
+    await expect(zeile.locator('.erreich.ja')).toHaveCount(2);
     await page.getByRole('link', { name: 'Board' }).click();
     await expect(page.locator('.ka[data-id="1"] .org', { hasText: 'kd:I0007' })).toHaveAttribute('title', /Quelle nicht gefunden/);
     await page.locator('.ka[data-id="1"]').dragTo(page.locator('.bahn[data-col="Erledigt"] .flaeche'));

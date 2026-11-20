@@ -465,8 +465,8 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
     expect(verstoesse(felder)).toEqual([]);
     expect(beschriftungen(felder)).toEqual(['Ich', 'Agenten', 'Board', 'Spalten', 'WBS', 'Anforderungen']);
     expect(await start.locator('.felder .sl').allTextContents()).toEqual(['ich', 'agents', 'board', 'spalten', 'wbs', 'requirements']);
-    // die Vorschau zeigt weiter die Datei
-    await expect(page.locator('#vorschau-einstellungen')).toContainText('requirements:');
+    // die Vorschau zeigt weiter die Datei; leere Pfade schreibt sie nicht mehr, repository immer (R00209)
+    await expect(page.locator('#vorschau-einstellungen')).toContainText('sources:\n  repository: ""');
   });
 });
 

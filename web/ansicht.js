@@ -22,11 +22,14 @@ function einstellungenText(e) {
   for (const p of e.personen) s += `\n  ${yamlSkalar(p.kuerzel)}: {name: ${yamlSkalar(p.name)}, kind: ${p.art === 'agent' ? 'agent' : 'human'}${p.aktiv === false ? ', active: false' : ''}}`;
   s += '\n' + klassenText(ungestrichen(e.klassen));
   if ((e.signale || []).length) s += '\nsignals:' + e.signale.map(g => `\n  ${yamlSkalar(g.schluessel)}: {label: ${yamlSkalar(g.bezeichnung)}, color: ${yamlSkalar(g.farbe)}}`).join('');
-  s += `\nsources:\n  wbs: ${yamlSkalar(e.quellen.wbs)}\n  requirements: ${yamlSkalar(e.quellen.anforderungen)}`;
+  const pfade = q => pfadeZurDatei(q).map(([schluessel, wert]) => `${schluessel}: ${yamlSkalar(wert)}`);
+  s += '\nsources:' + pfade(e.quellen).map(zeile => `\n  ${zeile}`).join('');
   const register = [...(e.quellen.anwendungen || [])].sort((a, b) => (a.kuerzel < b.kuerzel ? -1 : a.kuerzel > b.kuerzel ? 1 : 0));
-  if (register.length) s += '\n  applications:' + register.map(a => `\n    ${yamlSkalar(a.kuerzel)}: {name: ${yamlSkalar(a.name)}, wbs: ${yamlSkalar(a.wbs)}, requirements: ${yamlSkalar(a.anforderungen)}}`).join('');
-  return s + '\n---';
+  if (register.length) s += '\n  applications:' + register.map(a => `\n    ${yamlSkalar(a.kuerzel)}: {name: ${yamlSkalar(a.name.trim())}, ${pfade(a).join(', ')}}`).join('');
+  return s + '\n---' + EINSTELLUNGEN_TEXT;
 }
+/** Der Text unter dem Frontmatter von kanbanD.md, wie src/format/einstellungen.rs `schreiben` ihn schreibt (R00209 AK 11). */
+const EINSTELLUNGEN_TEXT = '\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n';
 function boardText(titel, spalten) {
   return `# ${titel}\n` + spalten.map(s => `\n## ${s}\n`).join('');
 }
@@ -2265,16 +2268,44 @@ function vWbsVerwerfenPop() {
 }
 
 /* ── Einrichten: Personen, Klassen, Quellen, Anwendungen ── */
-/** Erreichbarkeit eines Pfads, wie der Server sie zuletzt gemeldet hat — nur solange der Pfad gespeichert ist. */
+/** Erreichbarkeit eines Pfads zu WBS oder Anforderungen, wie der Server sie zuletzt gemeldet hat — nur solange der Pfad
+    gespeichert ist; ein leeres Feld trägt kein Wort (R00209: beide Felder sind nicht mehr nötig). */
 function vErreichbar(a, feld) {
   const g = (S.anwendungen || {})[a.kuerzel];
-  if (!g || g[feld] !== a[feld]) return `<span class="erreich" title="wird beim Speichern geprüft">—</span>`;
+  if (!a[feld]) return '';
+  if (!g || g[feld] !== a[feld]) return `<span class="erreich offen">${REPOSITORY_ZUSTAENDE.ungeprueft.wort}</span>`;
   return g.erreichbar[feld] ? `<span class="erreich ja" title="Pfad gefunden">erreichbar</span>` : `<span class="erreich nein" title="Pfad nicht gefunden — die Anwendung ist nicht erreichbar, alle Boards bleiben benutzbar">nicht erreichbar</span>`;
 }
+/** Was der Server zum Repository einer Anwendung zuletzt gemeldet hat: {repository, erreichbar} oder nichts. */
+function gespeichertesRepository(kuerzel) {
+  const g = (S.anwendungen || {})[kuerzel];
+  if (!g) return undefined;
+  return { repository: g.repository, erreichbar: g.erreichbar.repository };
+}
+/** Das Feld „Repository“ mit seinem sichtbaren Zustandswort (PO Z. 434), das mit dem Feld vorgelesen wird. */
+function vRepositoryFeld({ ef, i, wert, beschriftung, zustandId, gespeichert }) {
+  const z = repositoryZustand(wert, gespeichert);
+  const index = i === undefined ? '' : ` data-i="${i}"`;
+  return `${vBeschriftung('repository')}<span class="w"><input class="mini-inp full" data-ef="${ef}"${index} value="${esc(wert)}" title="${esc(wert)}" placeholder="/voller/pfad/zum/Repository" aria-label="${esc(beschriftung)}" aria-describedby="${zustandId}"><span class="erreich ${z.klasse}" id="${zustandId}">${z.wort}</span></span>`;
+}
+/** Hinweis unter dem gefüllten Feld „WBS“ einer Anwendung (PO Z. 435) — ruhig, ohne Sperre; bei leerem Feld verborgen. */
+const WBS_HINWEIS = 'Die Factory erkennt die Anwendung an diesem Pfad. Leeren erst, wenn die Factory umgestellt ist.';
 function vRegister(d) {
   const register = d.quellen.anwendungen || [];
-  const zeilen = register.map((a, i) => `<div class="anw" data-anwendung="${esc(a.kuerzel)}"><div class="klz az"><span class="pk pk-0">${esc(a.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(a.kuerzel)}</span><input class="inp" data-ef="aname" data-i="${i}" value="${esc(a.name)}" aria-label="Name der Anwendung ${esc(a.kuerzel)}"><span></span><button class="btn btn-sym" data-act="a-del" data-arg="${i}" title="aus dem Register entfernen – Aufgaben behalten ihre Herkunft" aria-label="Anwendung ${esc(a.kuerzel)} entfernen">✕</button></div><div class="felder">${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-ef="awbs" data-i="${i}" value="${esc(a.wbs)}" placeholder="/voller/pfad/Dokumentation/Planung/app.md" aria-label="WBS-Pfad ${esc(a.kuerzel)}">${vErreichbar(a, 'wbs')}</span>${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-ef="aanf" data-i="${i}" value="${esc(a.anforderungen)}" placeholder="/voller/pfad/Anforderungen" aria-label="Anforderungspfad ${esc(a.kuerzel)}">${vErreichbar(a, 'anforderungen')}</span></div></div>`).join('');
+  const zeilen = register.map((a, i) => {
+    const repository = vRepositoryFeld({ ef: 'arepo', i, wert: a.repository || '', beschriftung: `Repository ${a.kuerzel}`, zustandId: `anw-repo-${i}`, gespeichert: gespeichertesRepository(a.kuerzel) });
+    const hinweisId = `anw-wbs-hinweis-${i}`, mitWbs = Boolean(a.wbs);
+    const beschrieben = mitWbs ? ` aria-describedby="${hinweisId}"` : '';
+    const wbs = `${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-ef="awbs" data-i="${i}" value="${esc(a.wbs)}" title="${esc(a.wbs)}" placeholder="/voller/pfad/Dokumentation/Planung/app.md" aria-label="WBS-Pfad ${esc(a.kuerzel)}"${beschrieben}>${vErreichbar(a, 'wbs')}</span><div class="feld-hinweis" id="${hinweisId}"${mitWbs ? '' : ' hidden'}>${WBS_HINWEIS}</div>`;
+    const anforderungen = `${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-ef="aanf" data-i="${i}" value="${esc(a.anforderungen)}" title="${esc(a.anforderungen)}" placeholder="/voller/pfad/Anforderungen" aria-label="Anforderungspfad ${esc(a.kuerzel)}">${vErreichbar(a, 'anforderungen')}</span>`;
+    return `<div class="anw" data-anwendung="${esc(a.kuerzel)}"><div class="klz az"><span class="pk pk-0">${esc(a.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(a.kuerzel)}</span><input class="inp" data-ef="aname" data-i="${i}" value="${esc(a.name)}" aria-label="Name der Anwendung ${esc(a.kuerzel)}"><span></span><button class="btn btn-sym" data-act="a-del" data-arg="${i}" title="aus dem Register entfernen – Aufgaben behalten ihre Herkunft" aria-label="Anwendung ${esc(a.kuerzel)} entfernen">✕</button></div><div class="felder">${repository}${wbs}${anforderungen}</div></div>`;
+  }).join('');
   return `${zeilen}<div class="klz az"><span class="pk pk-0">+</span><input class="inp mono" id="nak" placeholder="kürzel" aria-label="Neues Anwendungskürzel"><input class="inp" id="nan" placeholder="Name · Enter" data-enter="a-add" aria-label="Neuer Anwendungsname"><span></span><span></span></div>`;
+}
+/** Die Quellen (Standardanwendung ohne Kürzel): Repository mit Zustandswort wie eine Anwendung, dazu WBS und Anforderungen. */
+function vQuellen(d) {
+  const repository = vRepositoryFeld({ ef: 'repo', wert: d.quellen.repository || '', beschriftung: 'Repository', zustandId: 'quellen-repo', gespeichert: S.quellenStand || undefined });
+  return `<div class="felder">${repository}${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-ef="wbs" value="${esc(d.quellen.wbs)}" title="${esc(d.quellen.wbs)}" aria-label="WBS-Pfad"></span>${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-ef="anf" value="${esc(d.quellen.anforderungen)}" title="${esc(d.quellen.anforderungen)}" aria-label="Anforderungspfad"></span></div>`;
 }
 
 /** Die Klassen eines Entwurfs, wie sie gespeichert werden: ohne die gestrichenen Zeilen und ohne deren Marke. */
@@ -2308,9 +2339,9 @@ function vEinrichten() {
   return `<div class="einrichten"><div class="einr breit"><h2 class="einr-kopf">PERSONEN <span class="mono">people:</span></h2><div class="hin">Menschen sind unter „Ich bin …“ wählbar; Agenten nennen sich an der API selbst. Stilllegen statt entfernen – der Name bleibt an Karten und Zeiten lesbar.</div>${personen}<div class="klz pz"><span class="pk pk-0">+</span><input class="inp mono" id="npk" placeholder="kürzel" aria-label="Neues Kürzel"><input class="inp" id="npn" placeholder="Name · Enter" data-enter="p-add" aria-label="Neuer Name"><span class="seg art" role="radiogroup" aria-label="Art der neuen Person"><span class="${u.nart !== 'agent' ? 'an' : ''}" data-act="n-art" data-arg="human" role="radio" aria-checked="${u.nart !== 'agent'}">Mensch</span><span class="${u.nart === 'agent' ? 'an' : ''}" data-act="n-art" data-arg="agent" role="radio" aria-checked="${u.nart === 'agent'}">Agent</span></span><span></span></div>
 <h2 class="einr-kopf">KLASSEN <span class="mono">classes:</span></h2><div class="hin">Eine Aufgabe trägt höchstens eine Klasse; sie färbt die Karte und ist filterbar mit <span class="mono">class:schlüssel</span>.</div>${klassen}
 ${vSignaleEinrichten(d)}
-<h2 class="einr-kopf">QUELLEN <span class="mono">sources:</span></h2><div class="felder">${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-ef="wbs" value="${esc(d.quellen.wbs)}" aria-label="WBS-Pfad"></span>${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-ef="anf" value="${esc(d.quellen.anforderungen)}" aria-label="Anforderungspfad"></span></div>
-<h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und die vollen Pfade zu WBS und Anforderungen im Arbeits-Repository. Aufgaben nennen ihre Herkunft dann als <span class="mono">kd:I0007</span>; Boards binden Anwendungen mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
-${d.fehler ? `<div class="warnh" role="alert">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted">gespeichert</span>' : ''}</div></div>
+<h2 class="einr-kopf">QUELLEN <span class="mono">sources:</span></h2>${vQuellen(d)}
+<h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie <span class="mono">kd:&lt;hash&gt;</span>. WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist. Aufgaben nennen ihre Herkunft als <span class="mono">kd:I0007</span>; Boards binden mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
+${d.fehler ? `<div class="warnh" id="einr-fehler" role="alert" tabindex="-1">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted">gespeichert</span>' : ''}</div></div>
 <aside class="einr"><h2 class="einr-kopf">KANBAND.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d))}</pre></aside></div>`;
 }
 
