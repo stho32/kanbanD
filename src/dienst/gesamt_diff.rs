@@ -7,7 +7,7 @@ use super::Kanban;
 use super::diff::{Diffantwort, Diffanfrage, Diffcommit, Diffformat, abbruch, repo_fehler};
 use crate::fehler::Fehler;
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Metadaten, Objekt, Teil, Vergleich, Vielart};
-use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschliessen, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, leerer_baum, namen_lesen, ordnen, patch_text, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen};
+use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschliessen, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, leerer_baum, namen_lesen, nicht_zugeordnet_im_bezug, ordnen, patch_text, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -350,13 +350,21 @@ impl Gesamtlauf<'_> {
                     let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
                     let patch = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist))?;
                     rest = if patch.abgeschnitten { 0 } else { budget - patch.ausgabe.len() };
-                    // mit Angabe über alle Einträge der Netto-Liste, die sie trifft: kein Zwilling nimmt ein fremdes Stück
-                    let zuordnung = if mit_angabe {
-                        patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
+                    // streng nur mit genau der Angabe der Netto-Liste (auch „keine“): dann sieht Git dieselbe Matrix und paart
+                    // wie dort (N7.10); jede kleinere Angabe ist eine Abkürzung — ein Eintrag ohne Stück ist `nachladen`
+                    let bezug_angabe: Vec<&Vec<u8>> = if einteilung.fremd.is_empty() { vec![] } else { einteilung.karte.iter().collect() };
+                    let gleich = angabe.iter().eq(bezug_angabe.iter().copied());
+                    if gleich || verteilung == Verteilung::Einzeln {
+                        // mit Angabe über alle Einträge der Netto-Liste, die sie trifft: kein Zwilling nimmt ein fremdes Stück
+                        let zuordnung = if mit_angabe {
+                            patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
+                        } else {
+                            patches_zuordnen(&mut nettodateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
+                        };
+                        zuordnung.map_err(|f| Fehler::Intern(format!("git: {f}")))?;
                     } else {
-                        patches_zuordnen(&mut nettodateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
-                    };
-                    zuordnung.map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+                        nicht_zugeordnet_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
+                    }
                 }
             }
             for (i, n) in stellen.into_iter().zip(nettodateien) {

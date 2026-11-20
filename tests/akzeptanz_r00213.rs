@@ -283,3 +283,38 @@ async fn ak1_ak2_gleich_bewertete_quellen_netto_und_mit_fremdem_commit() {
     }
     assert!(mit_nachladen > 0, "keine Variante paarte mit Pfadangabe anders — die Probe prüft die Klasse nicht");
 }
+
+/// Ein Git-Skript für `Lage::git_skript`: jeder Patch-Lauf von `diff-tree` lässt das Stück von `pfad` weg.
+fn ohne_stueck(pfad: &str) -> String {
+    format!("case \"$*\" in *diff-tree*--raw*|*diff-tree*--numstat*|*diff-tree*--name*) ;; *diff-tree*) $echt \"$@\" | awk '/^diff --git /{{weg = ($0 == \"diff --git a/{pfad} b/{pfad}\")}} !weg'; exit 0;; esac")
+}
+
+/// AK 3 (Netto), N7.10 Regel: streng (500) nur, wenn der Netto-Patch-Lauf dieselbe Angabe hat wie die Netto-Liste. Ein
+/// Git-Skript lässt das Stück von `b.txt` weg.
+/// - K1 (nur Karte, alles im Lauf): Liste und Patch ohne Angabe → 500 „„b.txt“ (M) hat 0 von 1 Stücken“.
+/// - Karte K2, fremder Commit F (an `f.txt`), K3: Liste und Patch mit `D_karte` → 500.
+/// - K4 wie K1 und dazu `gross`: Patch mit kleinerer Angabe → 200, `b.txt` `nachladen`, `a.txt` mit Patch.
+#[tokio::test]
+async fn ak3_netto_streng_nur_bei_gleicher_angabe() {
+    let l = Lage::neu();
+    let a = |t: &str| (format!("{t}\n"));
+    l.baum(&[("a.txt", a("a")), ("b.txt", a("b")), ("f.txt", a("f"))], "A");
+    let k1 = l.baum(&[("a.txt", a("a1")), ("b.txt", a("b1")), ("f.txt", a("f"))], "K1");
+    let k2 = l.baum(&[("a.txt", a("a2")), ("b.txt", a("b2")), ("f.txt", a("f"))], "K2");
+    l.baum(&[("a.txt", a("a2")), ("b.txt", a("b2")), ("f.txt", a("f2"))], "F");
+    let k3 = l.baum(&[("a.txt", a("a3")), ("b.txt", a("b3")), ("f.txt", a("f2"))], "K3");
+    let gross: String = (0..3001).map(|i| format!("g{i}\n")).collect();
+    let k4 = l.baum(&[("a.txt", a("a4")), ("b.txt", a("b4")), ("f.txt", a("f2")), ("gross", gross)], "K4");
+    let pfad = l.git_skript(&ohne_stueck("b.txt"));
+    let lauf = l.starten(&[(1, vec![k1]), (2, vec![k2, k3]), (3, vec![k4])], &[("PATH", &pfad)]);
+    for nr in [1, 2] {
+        let (s, t) = holen(&lauf.adresse, nr, "").await;
+        assert_eq!((s, t.contains("„b.txt“ (M) hat 0 von 1 Stücken")), (500, true), "#{nr}: {t}");
+    }
+    let (s, t) = holen(&lauf.adresse, 3, "").await;
+    assert_eq!(s, 200, "#3: {t}");
+    let d: Value = serde_json::from_str(&t).unwrap();
+    let datei = |n: &str| dateien(&d).iter().find(|f| name(f) == n).unwrap().clone();
+    assert_eq!((datei("b.txt")["nachladen"].clone(), datei("b.txt")["patch"].clone()), (json!(true), Value::Null), "{d}");
+    assert_eq!(datei("a.txt")["patch"], json!("@@ -1 +1 @@\n-a3\n+a4\n"), "{d}");
+}
