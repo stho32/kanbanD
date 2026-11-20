@@ -1,6 +1,7 @@
 // R00206 AK 16 (b, c), ADR-0032 N4.3, N4.7: die Befehlszeilen von `diff-tree`, wie Git sie sieht (`GIT_TRACE` des
 // eigenen Testprozesses) — Form und Inhalt nennt das Modul selbst. Eigene Testdatei, weil die Umgebungsvariable für den
-// ganzen Prozess gilt. Tötet die gleichwertigen Mutanten „-M50% weg“, „-l1000 weg“, „--ignore-submodules=none weg“.
+// ganzen Prozess gilt. Tötet die gleichwertigen Mutanten „-M50% weg“, „-l1000 weg“, „--ignore-submodules=none weg“
+// und „kein `--` ohne Pfade“ (Security S1, #214: eine Datei mit dem Namen einer Revision macht sie sonst mehrdeutig).
 use kanband::git::arbeitsrepo::{self, Diffart, Vergleich};
 use std::path::Path;
 use std::process::Command;
@@ -38,9 +39,9 @@ fn befehlszeilen_von_diff_tree() {
     let zeilen: Vec<&str> = text.lines().filter(|z| z.contains("trace: built-in: git diff-tree")).map(|z| z.split("trace: built-in: ").nth(1).unwrap()).collect();
     let schalter = "git diff-tree --no-ext-diff --no-textconv --no-color -r '-M50%' -l1000 --ignore-submodules=none";
     assert_eq!(zeilen, [
-        format!("{schalter} --raw -z --end-of-options {k1} {k2}"),
-        format!("{schalter} --numstat -z --end-of-options {k1} {k2}"),
+        format!("{schalter} --raw -z --end-of-options {k1} {k2} --"),
+        format!("{schalter} --numstat -z --end-of-options {k1} {k2} --"),
         format!("{schalter} -p --full-index --submodule=short --end-of-options {k1} {k2} -- a.txt"),
-        format!("{schalter} -p --full-index --submodule=short --root --no-commit-id --end-of-options {k1}"),
+        format!("{schalter} -p --full-index --submodule=short --root --no-commit-id --end-of-options {k1} --"),
     ]);
 }

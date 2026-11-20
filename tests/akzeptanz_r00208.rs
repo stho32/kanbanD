@@ -940,7 +940,6 @@ async fn antworten(adresse: &str, l: &Lage) -> Vec<(u16, String)> {
 // Gesamt-Diff, `format=patch`, `datei=` und die Commit-Liste antworten 200, bytegleich zur Antwort ohne diese Dateien
 // (heute 404 `repository_fehlt` „ambiguous argument … both revision and filename“)
 #[tokio::test]
-#[ignore = "erwartet rot: S1 der Nacharbeit 1 (#214)"]
 async fn s1_dateien_mit_hash_namen() {
     let l = ausgangslage();
     let lauf = l.starten(&[]);
@@ -973,7 +972,6 @@ async fn s1_dateien_mit_hash_namen() {
 
 // S2 Abnahme-Probe: `git replace <K1> <evil>` → 200 ohne FREMD-Zeile, bytegleich zur Antwort ohne den Ref
 #[tokio::test]
-#[ignore = "erwartet rot: S2 der Nacharbeit 1 (#214)"]
 async fn s2_replace_refs_schmuggeln_nichts() {
     let l = ausgangslage();
     let lauf = l.starten(&[]);

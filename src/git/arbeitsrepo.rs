@@ -2,10 +2,12 @@
 //! [`crate::git::committen`], das nur das Board-Repository kennt.
 //!
 //! - **Nur lesend**, aus einer abschließenden Liste ([`Befehl`]); kein `add`, `commit`, `checkout`, `fetch`, `gc`.
-//! - **Argumentliste ohne Shell**, `--end-of-options` vor jedem Verweis; die Form des Verweises prüft der Aufrufer vorher
+//! - **Argumentliste ohne Shell**, `--end-of-options` vor und `--` hinter den Revisionen (`log`, `rev-list`, `diff-tree`:
+//!   eine Datei mit dem Namen eines Hashes macht ihn sonst mehrdeutig); die Form des Verweises prüft der Aufrufer vorher
 //!   ([`crate::modell::Verweisform`]) — dieses Modul ist die zweite Linie, nicht die erste.
 //! - Umgebung `GIT_OPTIONAL_LOCKS=0` (kein Auffrischen des Index), `GIT_TERMINAL_PROMPT=0` (nie fragen),
-//!   `GIT_NO_LAZY_FETCH=1` (ein Teilklon holt fehlende Objekte nie nach, startet also kein Programm aus der Konfiguration); Variablen, die
+//!   `GIT_NO_LAZY_FETCH=1` (ein Teilklon holt fehlende Objekte nie nach, startet also kein Programm aus der Konfiguration),
+//!   `GIT_NO_REPLACE_OBJECTS=1` (`refs/replace` schiebt keinen anderen Commit unter einen Hash); Variablen, die
 //!   Git auf ein anderes Repository umlenken (`GIT_DIR` …) oder fremde Programme und Konfiguration einschleusen
 //!   (`GIT_CONFIG_*`, `GIT_EXTERNAL_DIFF`, Pager, `GIT_EXEC_PATH`, `GIT_ASKPASS`, `GIT_SSH_COMMAND`), werden entfernt, die
 //!   System- und die Benutzerkonfiguration abgeschaltet, vor jedem Befehl `core.fsmonitor` und `core.hooksPath` gesperrt.
@@ -266,6 +268,7 @@ pub fn metadaten(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<Hash
     // `--ignore-submodules=none`: `diff.ignoreSubmodules` ließe `log` Submodule sonst still weglassen (R00206 AK 16 b)
     let mut args = vec!["--no-walk=unsorted", "-z", "--root", "-M", "-l1000", "--ignore-submodules=none", "--diff-merges=first-parent", "--numstat", LOG_FORMAT, "--end-of-options"];
     args.extend_from_slice(commits);
+    args.push("--");
     let aus = lesen(wurzel, Befehl::Log, &args, None, frist)?;
     log_lesen(&aus).ok_or_else(|| Arbeitsrepofehler::Start("Ausgabe von git log unlesbar".into()))
 }
@@ -382,7 +385,7 @@ pub enum Vielart {
 /// Zeile `<commit> <eltern>…`, neuester zuerst.
 pub fn linie(wurzel: &Path, letzter: &str, hoechstens: usize, frist: Instant) -> Result<Vec<u8>, Arbeitsrepofehler> {
     let anzahl = format!("--max-count={hoechstens}");
-    lesen(wurzel, Befehl::RevList, &["--first-parent", "--parents", &anzahl, "--end-of-options", letzter], None, frist)
+    lesen(wurzel, Befehl::RevList, &["--first-parent", "--parents", &anzahl, "--end-of-options", letzter, "--"], None, frist)
 }
 
 /// Höchstzahl der Zeilen von `rev-list` (ADR-0032 N3.4); darüber wird der Lauf abgebrochen, nie gekürzt.
@@ -536,6 +539,8 @@ fn gehaertet(ordner: &Path, vor: &[&str], befehl: &str, args: &[&str], vorhanden
     // ein Teilklon (`extensions.partialclone`) holte fehlende Objekte sonst von selbst nach — und startete dabei
     // `uploadpack`, `core.sshCommand` oder `credential.helper` aus der Konfiguration des Repositorys
     c.env("GIT_NO_LAZY_FETCH", "1");
+    // `refs/replace/<hash>` ersetzte einen Commit durch einen anderen — Fingerabdruck und ETag sehen das nicht
+    c.env("GIT_NO_REPLACE_OBJECTS", "1");
     for v in UMLENKUNGEN.into_iter().chain(PROGRAMME) {
         c.env_remove(v);
     }
@@ -577,9 +582,8 @@ pub struct Teil {
 pub(crate) fn git_teil(ordner: &Path, befehl: Befehl, args: &[&str], pfade: &[&[u8]], eingabe: Option<&[u8]>, bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
     assert!(befehl.liefert_teil(), "{} liefert nie einen Teil — git() benutzen", befehl.name());
     let mut c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
-    if !pfade.is_empty() {
-        c.arg("--").args(pfade.iter().map(|p| std::ffi::OsStr::from_bytes(p)));
-    }
+    // `--` auch ohne Pfade: eine Datei mit dem Namen einer Revision macht sie sonst mehrdeutig
+    c.arg("--").args(pfade.iter().map(|p| std::ffi::OsStr::from_bytes(p)));
     let zeitgrenze = grenze_bis(frist)?;
     AUFRUFE.with(|n| n.set(n.get() + 1));
     teil_ausfuehren(c, eingabe, zeitgrenze, bytegrenze)
@@ -752,7 +756,7 @@ mod tests {
             assert!(entfernt(n), "{n} bleibt: {env:?}");
         }
         assert!(!entfernt("GIT_TRACE") && !entfernt("HOME"), "sonst bleibt die Umgebung: {env:?}");
-        for gesetzt in [("GIT_CONFIG_NOSYSTEM", "1"), ("GIT_CONFIG_GLOBAL", "/dev/null"), ("GIT_OPTIONAL_LOCKS", "0"), ("GIT_TERMINAL_PROMPT", "0"), ("GIT_NO_LAZY_FETCH", "1")] {
+        for gesetzt in [("GIT_CONFIG_NOSYSTEM", "1"), ("GIT_CONFIG_GLOBAL", "/dev/null"), ("GIT_OPTIONAL_LOCKS", "0"), ("GIT_TERMINAL_PROMPT", "0"), ("GIT_NO_LAZY_FETCH", "1"), ("GIT_NO_REPLACE_OBJECTS", "1")] {
             assert!(env.contains(&(gesetzt.0.to_string(), Some(gesetzt.1.to_string()))), "{gesetzt:?} fehlt: {env:?}");
         }
     }
