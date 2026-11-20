@@ -31,7 +31,7 @@ macro_rules! braucht_wartet {
 }
 macro_rules! braucht_tuer {
     () => {
-        "Abhängigkeiten über labels (braucht:<nr>, die Karte wartet auf #nr): neu hinzukommende braucht:-Labels prüft kanbanD an der Tür, unverändert mitgeschickte nicht — je 400, nichts wird geschrieben: andere Form mit dem Präfix („braucht: erwartet eine Kartennummer (braucht:12)“), Selbstbezug („#n kann nicht auf sich selbst warten“), Nummer ohne Aufgabendatei im Ordner, archivierte zählen als vorhanden („#n gibt es nicht (braucht:n)“), Kreis über alle Aufgaben des Ordners nach dem Schreiben („braucht:n schlösse einen Kreis: #a → #b → #a“); das Feld braucht ist nur lesbar — braucht im Rumpf → 400 „braucht über labels setzen (braucht:<nr>)“"
+        "Abhängigkeiten über labels (braucht:<nr>, die Karte wartet auf #nr): neu hinzukommende braucht:-Labels prüft kanbanD an der Tür, unverändert mitgeschickte nicht — je 400, nichts wird geschrieben: andere Form mit dem Präfix („braucht: erwartet eine Kartennummer (braucht:12)“), Selbstbezug („#n kann nicht auf sich selbst warten“), Nummer ohne Aufgabendatei im Ordner, archivierte zählen als vorhanden („Aufgabe #n gibt es nicht (braucht:n)“), Kreis über alle Aufgaben des Ordners nach dem Schreiben („braucht:n ergäbe einen Kreis: #a → #b → #a“); das Feld braucht ist nur lesbar — braucht im Rumpf → 400 „braucht über labels setzen (braucht:<nr>)“"
     };
 }
 pub(crate) use {braucht_lesen, braucht_tuer, braucht_wartet};

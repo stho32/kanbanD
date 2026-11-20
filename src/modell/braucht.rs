@@ -74,7 +74,7 @@ pub fn abhaengigkeiten<'a>(labels: &[String], finde: impl Fn(u32) -> Option<&'a 
 }
 
 // ---- Prüfung an der Tür (ADR-0035 Punkt 2) ----------------------------------------------------------------------------
-// Die Meldungen stehen hier an einer Stelle; der Wortlaut von „gibt es nicht“ und „Kreis“ ist ein Vorschlag (PO-Frage 2).
+// Die Meldungen stehen hier an einer Stelle; Wortlaut nach Entscheidung des PO (po-entscheidungen Z. 452).
 // Sie nennen nur Nummern und festen Text, nie den Rest eines abgewiesenen Labels (R00214, Sicherheit).
 
 /// Ein Label mit dem Präfix `braucht:` in anderer Form.
@@ -85,7 +85,7 @@ pub fn selbstbezug_meldung(nummer: u32) -> String {
 }
 
 pub fn unbekannt_meldung(nummer: u32) -> String {
-    format!("#{nummer} gibt es nicht (braucht:{nummer})")
+    format!("Aufgabe #{nummer} gibt es nicht (braucht:{nummer})")
 }
 
 /// Die neu hinzukommenden Labels mit dem Präfix `braucht:` — „neu“ heißt: in der gespeicherten Liste steht es nicht,
@@ -120,7 +120,7 @@ pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) ->
 
 pub fn kreis_meldung(ziel: u32, kreis: &[u32]) -> String {
     let pfeile: Vec<String> = kreis.iter().map(|n| format!("#{n}")).collect();
-    format!("braucht:{ziel} schlösse einen Kreis: {}", pfeile.join(" → "))
+    format!("braucht:{ziel} ergäbe einen Kreis: {}", pfeile.join(" → "))
 }
 
 /// Der erste Kreis, den eine neue Kante schließt. `kanten` ist der Stand nach dem Schreiben (je Aufgabe die gedeuteten
@@ -178,8 +178,8 @@ mod tests {
 
     #[test]
     fn kreis_meldung_in_pfeilform() {
-        assert_eq!(kreis_meldung(2, &[1, 2, 1]), "braucht:2 schlösse einen Kreis: #1 → #2 → #1");
-        assert_eq!(kreis_meldung(3, &[1, 3, 2, 1]), "braucht:3 schlösse einen Kreis: #1 → #3 → #2 → #1");
+        assert_eq!(kreis_meldung(2, &[1, 2, 1]), "braucht:2 ergäbe einen Kreis: #1 → #2 → #1");
+        assert_eq!(kreis_meldung(3, &[1, 3, 2, 1]), "braucht:3 ergäbe einen Kreis: #1 → #3 → #2 → #1");
     }
 
     // R00214 B1087: neu ist, was nicht gespeichert ist (ohne Groß/Klein); nur Labels mit Präfix
@@ -201,7 +201,7 @@ mod tests {
             assert_eq!(an_der_tuer(5, &[falsch], gibt_es), Err(FORM_MELDUNG.to_string()), "{falsch}");
         }
         assert_eq!(an_der_tuer(5, &["braucht:5"], gibt_es), Err("#5 kann nicht auf sich selbst warten".into()));
-        assert_eq!(an_der_tuer(5, &["braucht:999"], gibt_es), Err("#999 gibt es nicht (braucht:999)".into()));
+        assert_eq!(an_der_tuer(5, &["braucht:999"], gibt_es), Err("Aufgabe #999 gibt es nicht (braucht:999)".into()));
         assert_eq!(an_der_tuer(5, &["braucht:4", "Braucht:1", "braucht:4"], gibt_es), Ok(vec![4, 1]));
         assert_eq!(an_der_tuer(5, &["braucht:999", "braucht:x"], gibt_es), Err(unbekannt_meldung(999)), "der erste Fehler in Label-Reihenfolge");
         assert_eq!(an_der_tuer(5, &["braucht:x", "braucht:5"], gibt_es), Err(FORM_MELDUNG.into()));

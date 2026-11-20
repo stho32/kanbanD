@@ -283,7 +283,8 @@ async fn ak08_selbstbezug_wird_abgewiesen() {
 #[tokio::test]
 async fn ak09_unbekannte_nummer_abgewiesen_archivierte_angenommen() {
     let lage = Lage::neu();
-    abgewiesen(&lage, 5, &["braucht:999"], "#999").await;
+    let meldung = abgewiesen(&lage, 5, &["braucht:999"], "#999").await;
+    assert_eq!(meldung, "Aufgabe #999 gibt es nicht (braucht:999)", "Wortlaut PO Z. 452");
     let commits = lage.commits();
     let (s, a) = lage.labels_setzen(5, &["braucht:4"]).await;
     assert_eq!(s, 200, "{a}");
@@ -294,7 +295,8 @@ async fn ak09_unbekannte_nummer_abgewiesen_archivierte_angenommen() {
 #[tokio::test]
 async fn ak10_kreis_wird_abgewiesen_und_benannt() {
     let lage = Lage::von_hand(&[(2, &["braucht:1"])]);
-    abgewiesen(&lage, 1, &["braucht:2"], "#1 → #2 → #1").await;
+    let meldung = abgewiesen(&lage, 1, &["braucht:2"], "#1 → #2 → #1").await;
+    assert_eq!(meldung, "braucht:2 ergäbe einen Kreis: #1 → #2 → #1", "Wortlaut PO Z. 452");
 
     let lang = Lage::von_hand(&[(2, &["braucht:1"]), (3, &["braucht:2"])]);
     abgewiesen(&lang, 1, &["braucht:3"], "#1 → #3 → #2 → #1").await;
@@ -303,7 +305,7 @@ async fn ak10_kreis_wird_abgewiesen_und_benannt() {
     let (commits, eins, fuenf) = (mehrere.commits(), mehrere.datei(1), mehrere.datei(5));
     let antwort = mehrere.rufen(Method::PATCH, "api/aufgaben/mehrere", json!({"aenderungen": [{"nummer": 1, "labels": ["braucht:5"]}, {"nummer": 5, "labels": ["braucht:1"]}]})).await;
     assert_eq!(antwort.0, 400, "{}", antwort.1);
-    assert!(fehler(&antwort).contains("#1 → #5 → #1"), "{}", antwort.1);
+    assert_eq!(fehler(&antwort), "#1: braucht:5 ergäbe einen Kreis: #1 → #5 → #1", "Vorsatz bei mehrere: {}", antwort.1);
     assert_eq!((mehrere.commits(), mehrere.datei(1), mehrere.datei(5)), (commits, eins, fuenf), "keine Datei geändert, kein Commit");
 }
 
@@ -404,7 +406,7 @@ async fn eigen_kreis_gegen_den_stand_nach_dem_ganzen_aufruf_und_beim_anlegen() {
 
     let stale = Lage::von_hand(&[(2, &["braucht:6"])]);
     let antwort = stale.rufen(Method::POST, "api/aufgaben", json!({"titel": "Neu", "labels": ["braucht:2"]})).await;
-    assert_eq!((antwort.0, fehler(&antwort)), (400, "„Neu“: braucht:2 schlösse einen Kreis: #6 → #2 → #6"), "{}", antwort.1);
+    assert_eq!((antwort.0, fehler(&antwort)), (400, "„Neu“: braucht:2 ergäbe einen Kreis: #6 → #2 → #6"), "{}", antwort.1);
     let antwort = stale.labels_setzen(5, &["braucht:2"]).await;
     assert_eq!(antwort.0, 200, "ohne #6 kein Kreis: {}", antwort.1);
 }

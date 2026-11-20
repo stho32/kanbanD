@@ -50,7 +50,7 @@ impl<'k> Tuer<'k> {
     }
 
     /// Der erste Kreis, den eine neue Kante im Stand nach allen geprüften Änderungen schließt: die Aufgabe, deren Label
-    /// ihn schlösse, und die Meldung (400 ohne Vorsatz). Kreise im Bestand ohne neue Kante stören nicht.
+    /// ihn ergäbe, und die Meldung (400 ohne Vorsatz). Kreise im Bestand ohne neue Kante stören nicht.
     pub(super) fn kreis(&self) -> Option<(u32, String)> {
         if self.neue.is_empty() {
             return None;
