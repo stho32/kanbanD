@@ -26,6 +26,7 @@ dateien! {
     "commits.js" => "text/javascript; charset=utf-8",
     "register.js" => "text/javascript; charset=utf-8",
     "diff.js" => "text/javascript; charset=utf-8",
+    "gesamt.js" => "text/javascript; charset=utf-8",
     "filter.js" => "text/javascript; charset=utf-8",
     "kopfzeile.js" => "text/javascript; charset=utf-8",
     "zeiten.js" => "text/javascript; charset=utf-8",

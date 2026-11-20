@@ -142,25 +142,28 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page.locator('#rv-ctitel')).toHaveText('c.txt anlegen');
   });
 
-  test('AK 3 (c): #6 ohne Eintrag mit Diff → „Keine Änderungen zu zeigen …“, Adresse ohne ?commit=, Rückweg ins Fenster', async ({ page }) => {
+  // umgestellt mit R00210 (AK 4): Rand (c) steht im Abschnitt der Anwendung, die seitenweiten Einträge darüber
+  test('AK 3 (c): #6 ohne Eintrag mit Diff → Abschnitt „Keine Änderungen zu zeigen.“, Adresse ohne ?commit=, Rückweg ins Fenster (R00210 umgestellt)', async ({ page }) => {
     await page.goto(reviewAdresse(k, 6, null));
-    const meldung = page.locator('.rv-meld');
-    await expect(meldung).toContainText('Keine Änderungen zu zeigen. Zu keinem Commit der Aufgabe gibt es einen Diff:');
-    await expect(meldung).toContainText('nicht mehr im Repository');
-    await expect(meldung).toContainText('Anwendung unbekannt');
-    await expect(meldung).toContainText('Anwendung „xy“ ist unter Einrichten nicht eingetragen.');
-    await expect(page.locator('#rv-meld')).toBeFocused();
+    const abschnitt = page.locator('#rv-a0');
+    await expect(abschnitt).toContainText('Keine Änderungen zu zeigen. Zu den Verweisen dieser Anwendung gibt es keinen Diff.');
+    await expect(abschnitt).toContainText('nicht mehr im Repository');
+    await expect(page.locator('#rv-seite-hw')).toContainText('Anwendung unbekannt');
+    await expect(page.locator('#rv-seite-hw')).toContainText('Anwendung „xy“ ist unter Einrichten nicht eingetragen.');
+    await expect(page.locator('#rv-rueckweg')).toBeFocused();
     expect(page.url()).toMatch(/\/review$/);
-    await page.getByRole('button', { name: 'Zurück zur Liste der Commits' }).click();
+    await page.locator('#rv-rueckweg').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #6' })).toBeVisible();
     await expect(page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]')).toHaveAttribute('aria-label', 'Ansicht: Commits');
   });
 
-  test('…/review ohne commit zeigt den ersten Commit mit Diff und ersetzt die Adresse (zwei Anfragen)', async ({ page }) => {
+  // umgestellt mit R00210 (FA 1): …/review ohne commit zeigt „Alle Änderungen“ und die Adresse bleibt
+  test('…/review ohne commit zeigt „Alle Änderungen“, die Adresse bleibt (zwei Anfragen, R00210 umgestellt)', async ({ page }) => {
     const z = zaehlen(page);
     await page.goto(reviewAdresse(k, 1, null));
-    await expect(page.locator(POS)).toHaveText('1 von 4');
-    expect(decodeURIComponent(page.url())).toMatch(new RegExp(`review\\?commit=kd:${rep.k3}$`));
+    await expect(page.locator('#rv-u-alle')).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('#rv-a0')).toBeVisible();
+    expect(page.url()).toMatch(/\/aufgabe\/1\/review$/);
     expect([z.commits.length, z.diff.length]).toEqual([1, 1]);
   });
 
@@ -622,20 +625,24 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page.locator(POS)).toHaveText('2 von 4');
   });
 
-  test('AK 1/US-2: „Alle Änderungen ansehen“ zeigt K3 „1 von 4“ ohne Zurück; die Adresse nennt danach den vollen Verweis', async ({ page }) => {
+  // umgestellt mit R00210 (FA 1, 2): „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; „Ein Commit“ führt auf den ersten mit Diff
+  test('AK 1/US-2: „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; „Ein Commit“ zeigt K3 „1 von 4“ ohne Zurück mit vollem Verweis (R00210 umgestellt)', async ({ page }) => {
     await listeOeffnen(page);
     await page.getByRole('link', { name: 'Alle Änderungen ansehen' }).click();
+    await expect(page.locator('#rv-u-alle')).toHaveAttribute('aria-current', 'page');
+    await page.locator('#rv-u-commit').click();
     await expect(page.locator(POS)).toHaveText('1 von 4');
     await expect(page.locator('#rv-zurueck')).toHaveCount(0);
     expect(page.url()).toContain(`/review?commit=kd%3A${rep.k3}`);
   });
 
-  test('AK 1/US-8: „Alle Änderungen ansehen“ an #6 → „Keine Änderungen zu zeigen …“, Adresse ohne ?commit=, „Zurück zur Liste der Commits“ ins Fenster', async ({ page }) => {
+  // umgestellt mit R00210 (AK 4): Rand (c) steht im Abschnitt; zurück über „← #6“
+  test('AK 1/US-8: „Alle Änderungen ansehen“ an #6 → Abschnitt „Keine Änderungen zu zeigen.“, Adresse ohne ?commit=, „← #6“ ins Fenster (R00210 umgestellt)', async ({ page }) => {
     await listeOeffnen(page, 6);
     await page.getByRole('link', { name: 'Alle Änderungen ansehen' }).click();
-    await expect(page.locator('.rv-meld')).toContainText('Keine Änderungen zu zeigen.');
+    await expect(page.locator('#rv-a0')).toContainText('Keine Änderungen zu zeigen.');
     expect(page.url()).toMatch(/\/aufgabe\/6\/review$/);
-    await page.getByRole('button', { name: 'Zurück zur Liste der Commits' }).click();
+    await page.locator('#rv-rueckweg').click();
     await expect(page.getByRole('dialog', { name: 'Aufgabe #6' })).toBeVisible();
     await expect(page.locator('#fenster [data-act="fenster-menue"][data-arg="ansicht"]')).toBeFocused();
   });
@@ -779,12 +786,18 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page).toHaveTitle(`(1 ▶) Review #7 · ${kurz(rep.d)} — kanbanD`);
   });
 
-  for (const [fall, nr, commit, warten] of [['?commit=zzz (ungültig)', 1, 'zzz', '.rv-meld'], ['#6 ohne Verweis (Rand c)', 6, null, '.rv-meld'], ['gehaltene Liste ohne Verweis', 1, null, '.rv-laedt']]) {
-    test(`Nacharbeit 1 (UX S3): Fenstertitel ohne Kurzform bei ${fall} lautet „Review #${nr} — kanbanD“`, async ({ page }) => {
-      if (warten === '.rv-laedt') await halten(page, '**/api/aufgaben/1/commits');
-      await page.goto(reviewAdresse(k, nr, commit));
-      await expect(page.locator(warten)).toBeVisible();
-      await expect(page).toHaveTitle(`Review #${nr} — kanbanD`);
+  test('Nacharbeit 1 (UX S3): Fenstertitel ohne Kurzform bei ?commit=zzz (ungültig) lautet „Review #1 — kanbanD“', async ({ page }) => {
+    await page.goto(reviewAdresse(k, 1, 'zzz'));
+    await expect(page.locator('.rv-meld')).toBeVisible();
+    await expect(page).toHaveTitle('Review #1 — kanbanD');
+  });
+  // umgestellt mit R00210 (FA 3): …/review ohne Verweis ist „Alle Änderungen“ mit eigenem Titel, auch bei gehaltener Liste
+  for (const [fall, nr, liste] of [['#6 ohne Verweis (Rand c)', 6, false], ['gehaltene Liste ohne Verweis', 1, true]]) {
+    test(`Nacharbeit 1 (UX S3): Fenstertitel bei ${fall} lautet „Review #${nr} · Alle Änderungen — kanbanD“ (R00210 umgestellt)`, async ({ page }) => {
+      if (liste) await halten(page, '**/api/aufgaben/1/commits');
+      await page.goto(reviewAdresse(k, nr, null));
+      await expect(page.locator('#rv-a0')).toBeVisible();
+      await expect(page).toHaveTitle(`Review #${nr} · Alle Änderungen — kanbanD`);
     });
   }
 
@@ -834,15 +847,16 @@ test.describe('R00207 Review-Seite eines Commits', () => {
 
   /* ── AK 10 Tastatur und Bedienhilfe ── */
 
-  test('AK 10: Tab-Folge Rückweg, Zurück, Vor, Alle einklappen, Dateiliste, Kopf und Code je Datei; Enter und Leertaste klappen, Fokus bleibt, Fokusring', async ({ page }) => {
+  // umgestellt mit R00210 (FA 2): der Umschalter steht auch in „Ein Commit“, zwischen Rückweg und Blättern
+  test('AK 10: Tab-Folge Rückweg, Umschalter, Zurück, Vor, Alle einklappen, Dateiliste, Kopf und Code je Datei; Enter und Leertaste klappen, Fokus bleibt, Fokusring (R00210 umgestellt)', async ({ page }) => {
     await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
     await expect(page.locator('#rv-rueckweg')).toBeFocused();
     const reihe = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       await page.keyboard.press('Tab');
       reihe.push(await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); return { id: e.id || e.className, ring: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0 }; }));
     }
-    expect(reihe.map(r => r.id)).toEqual(['rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-dk0', 'df-sc']);
+    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-u-commit', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-dk0', 'df-sc']);
     for (const r of reihe) expect(r.ring, `Fokusring an ${r.id}`).toBe(true);
     await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
     await expect(page.locator(POS)).toHaveAttribute('aria-live', 'polite');
@@ -928,7 +942,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     const bezug = () => page.evaluate(() => { const b = document.createElement('button'); b.className = 'btn'; document.body.append(b); const f = getComputedStyle(b).borderTopColor; b.remove(); return f; });
     const KNOEPFE = '#review .rv-leiste button, #review .rv-meld button, #review .df-hin button, #review .rv-randb button, #review .rv-lfehl button, #fenster .cl-alle';
     await page.route('**/api/aufgaben/1/commits', async route => { const a = await route.fetch(); const json = await a.json(); json.commits = json.commits.filter(e => e.hash !== rep.w1); await route.fulfill({ response: a, json }); });
-    const proben = [[reviewAdresse(k, 9, `kd:${rep.f}`), '#rv-d25'], [reviewAdresse(k, 1, `kd:${rep.w1}`), '.rv-randb'], [reviewAdresse(k, 1, 'zz'), '.rv-meld'], [reviewAdresse(k, 6, null), '.rv-meld']];
+    const proben = [[reviewAdresse(k, 9, `kd:${rep.f}`), '#rv-d25'], [reviewAdresse(k, 1, `kd:${rep.w1}`), '.rv-randb'], [reviewAdresse(k, 1, 'zz'), '.rv-meld'], [reviewAdresse(k, 6, null), '#rv-a0']];
     let gezaehlt = 0;
     for (const [adresse, anker] of proben) {
       await page.goto(adresse);
@@ -991,7 +1005,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
       }
       // Rand c und b
       await page.goto(reviewAdresse(k, 6, null));
-      await expect(page.locator('.rv-meld')).toBeVisible();
+      await expect(page.locator('#rv-a0')).toBeVisible();
       await pruefe('Rand c');
       await page.route('**/api/aufgaben/1/commits', async route => { const a = await route.fetch(); const json = await a.json(); json.commits = json.commits.filter(e => e.hash !== rep.w1); await route.fulfill({ response: a, json }); });
       await page.goto(reviewAdresse(k, 1, `kd:${rep.w1}`));

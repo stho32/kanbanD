@@ -115,3 +115,8 @@ test('Summe der Leiste: über geladene Abschnitte, „· Anwendung wb lädt noch
   const html = g.summeHtml([da(antwort2), { status: 'laedt', kuerzel: 'wb' }, { status: 'wartet', kuerzel: 'xx' }], esc);
   assert.strictEqual(ohneTags(html), '2 Dateien · +5 −2 · Anwendung wb lädt noch …');
 });
+
+test('seitenweite Einträge: „Anwendung unbekannt“ mit dem Hinweis der Liste, das Kürzel aus dem Verweis', () => {
+  const html = g.seitenHinweiseHtml([{ verweis: 'xy:' + hash('a'), zustand: 'anwendung_unbekannt' }], esc);
+  assert.match(ohneTags(html), /^xy:aaaaaaa Anwendung unbekannt Anwendung „xy“ ist unter Einrichten nicht eingetragen\.$/);
+});

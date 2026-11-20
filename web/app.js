@@ -1047,6 +1047,7 @@ function reviewAnstossen() {
     if (S.ui.review) {
       S.ui.fokusNachListe = { nr: S.ui.review.nr, verweis: S.ui.review.herkunft };
       reviewNachladenAbbrechen(S.ui.review);
+      reviewAlleAbbrechen(S.ui.review);
     }
     S.ui.review = null;
     return;
@@ -1056,16 +1057,20 @@ function reviewAnstossen() {
   let r = S.ui.review;
   if (!a || (r && r.adresse === hash)) return;
   const gleicheSeite = Boolean(r) && r.nr === a.nummer && r.basis === a.basis && r.slug === adresse.slug;
-  if (r) reviewNachladenAbbrechen(r);
+  if (r) { reviewNachladenAbbrechen(r); reviewAlleAbbrechen(r); }
   if (!gleicheSeite) {
-    r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null };
+    r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, alle: null, zuletzt: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null };
     S.ui.reviewHerkunft = null;
   }
-  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, fokusOffen: true, laufend: null, schlange: [] });
+  let ansicht = 'commit';
+  if (!a.commit && !a.ungueltig) ansicht = 'alle';
+  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, ansicht, fokusOffen: true, laufend: null, schlange: [] });
   if (a.ungueltig) { r.diff = null; reviewFokus(r); return; }
   if (!gleicheSeite) reviewListeLesen(r);
   r.diff = null;
-  if (!a.commit) reviewErsterCommit(r);
+  r.alle = null;
+  // „Alle Änderungen“ (R00210 FA 1): die Adresse bleibt, gelesen wird der Gesamt-Diff; kein Zustand übersteht das Umschalten
+  if (ansicht === 'alle') reviewAlleLesen(r);
   else if (a.commit.includes(':')) reviewDiffLesen(r, a.commit);
   else reviewPraefixAufloesen(r);
 }
@@ -1102,21 +1107,25 @@ async function reviewListeLesen(r) {
   }
   if (S.ui.review !== r || r.liste !== lauf) return;
   r.liste = ergebnis;
-  reviewErsterCommit(r);
   reviewPraefixAufloesen(r);
   reviewFokus(r);
   render();
 }
 
-/** `…/review` ohne Verweis: sobald die Liste da ist, zeigt die Seite den ersten Commit mit Diff und ersetzt die Adresse (Rand c: bleibt). */
-function reviewErsterCommit(r) {
-  if (r.commit || r.ungueltig || !r.liste || r.liste.status !== 'da') return;
-  const f = folge(r.liste.eintraege, null);
-  if (f.art !== 'erster') return;
-  reviewAdresseErsetzen(r, f.erster);
-  r.commit = f.erster;
-  r.adresse = location.hash;
-  reviewDiffLesen(r, f.erster);
+/** Ziel von „Ein Commit“ (R00210 FA 2, ADR-0033 N1.1): der zuletzt auf dieser Seite gezeigte Commit, sonst der erste mit Diff aus der
+    Liste (Weg aus B2); scheitert die Liste, der erste einbezogene aus der Diff-Antwort (UX-Vorprüfung S1). null, solange es noch
+    keins gibt oder die Aufgabe keinen Commit mit Diff hat (PO Z. 442) — dann steht der Teil gedämpft ohne Verweis. */
+function reviewCommitZiel(r) {
+  if (r.zuletzt) return r.zuletzt;
+  const liste = r.liste;
+  if (liste && liste.status === 'da') {
+    const f = folge(liste.eintraege, null);
+    if (f.art === 'erster') return f.erster;
+    return null;
+  }
+  const erster = r.alle && r.alle.abschnitte.find(ab => ab.status === 'da' && ab.antwort.commits.length);
+  if (liste && liste.status === 'fehler' && erster) return erster.antwort.commits[0].verweis;
+  return null;
 }
 
 /** Ersetzt die Adresse der Seite durch die mit `verweis`, ohne Verlaufseintrag; die Marke „aus der Liste“ bleibt. */
@@ -1137,7 +1146,10 @@ async function reviewDiffLesen(r, verweis) {
   }
   if (S.ui.review !== r || r.diff !== lauf) return;
   r.diff = ergebnis;
-  if (ergebnis.status === 'da') reviewDateienAufbauen(r, ergebnis.antwort);
+  if (ergebnis.status === 'da') {
+    reviewDateienAufbauen(r, ergebnis.antwort);
+    r.zuletzt = (antwortKuerzel(ergebnis.antwort)) + ergebnis.antwort.commits[0].hash;
+  }
   reviewFokus(r);
   render();
 }
@@ -1157,10 +1169,12 @@ function reviewBild(r) {
   if (r.ungueltig) return { art: 'ungueltig' };
   const liste = r.liste || { status: 'laedt' };
   if (liste.status === 'fehler' && fehlerArt(liste.fehler, 'commits') === 'aufgabe_unbekannt') return { art: 'unbekannt' };
-  if (!r.commit) {
-    if (liste.status === 'fehler') return { art: 'liste_fehler' };
-    if (liste.status === 'da' && folge(liste.eintraege, null).art === 'keine') return { art: 'keine', eintraege: liste.eintraege };
-    return { art: 'laedt' };
+  if (r.ansicht === 'alle') {
+    const erste = (r.alle && r.alle.erste) || { status: 'laedt' };
+    if (erste.status === 'fehler' && erste.fehler.status === 404) return { art: 'alle_ohne_verweise' };
+    if (erste.status === 'fehler') return { art: 'alle_fehler' };
+    if (erste.status === 'da') return { art: 'alle' };
+    return { art: 'alle_laedt' };
   }
   // ein Präfix ohne Kürzel wartet auf die Liste; ohne sie gibt es keinen Diff
   const praefixWartet = !r.commit.includes(':') && !r.diff;
@@ -1177,8 +1191,11 @@ function reviewBild(r) {
 function reviewFokus(r) {
   if (!r.fokusOffen) return;
   const b = reviewBild(r);
-  if (b.art === 'laedt' || (b.art === 'diff' && b.liste.status === 'laedt')) return;
+  if (b.art === 'laedt' || b.art === 'alle_laedt' || (b.art === 'diff' && b.liste.status === 'laedt')) return;
   r.fokusOffen = false;
+  // nach dem Umschalten bleibt der Fokus auf dem gewählten Teil des Umschalters (R00210 FA 13)
+  if (r.fokusZiel) { S.ui.fokus = r.fokusZiel; r.fokusZiel = null; return; }
+  if (b.art === 'alle') { S.ui.fokus = '#rv-rueckweg'; return; }
   if (b.art !== 'diff') { S.ui.fokus = '#rv-meld'; return; }
   if (b.liste.status === 'fehler') { S.ui.fokus = '#rv-ctitel'; return; }
   const f = b.folge;
@@ -1195,7 +1212,12 @@ function reviewFokus(r) {
 /** Schlüssel der Insel (ADR-0033 Punkt 4): Aufgabe und voller Hash des gezeigten Diffs; ohne Diff keiner. */
 function reviewInselSchluessel() {
   const r = S.ui.review;
-  if (S.ui.view !== 'review' || !r || !r.diff || r.diff.status !== 'da') return null;
+  if (S.ui.view !== 'review' || !r) return null;
+  if (r.ansicht === 'alle') {
+    if (r.alle && r.alle.erste.status === 'da') return `${r.nr}:alle`;
+    return null;
+  }
+  if (!r.diff || r.diff.status !== 'da') return null;
   return `${r.nr}:${r.diff.antwort.commits[0].hash}`;
 }
 
@@ -1275,22 +1297,306 @@ async function reviewDateiLaden(r, i) {
   render();
 }
 
+/* ── Alle Änderungen der Aufgabe (R00210, ADR-0033 N1): Abschnitte je Anwendung, eine Reihe für alle Anfragen an `…/diff` ── */
+
+const antwortKuerzel = antwort => (antwort.anwendung ? `${antwort.anwendung}:` : '');
+
+/** Ort einer Datei des Gesamtbilds aus `data-arg` „<a>:<i>“; null in „Ein Commit“ oder ohne geladenen Abschnitt. */
+function reviewOrt(r, arg) {
+  if (!r || r.ansicht !== 'alle' || !r.alle || !/^\d+:\d+$/.test(String(arg))) return null;
+  const [a, i] = String(arg).split(':').map(Number);
+  const ab = r.alle.abschnitte[a];
+  if (!ab || ab.status !== 'da' || !ab.staende[i]) return null;
+  return { a, i, st: ab.staende[i] };
+}
+
+/** Bricht die laufende Anfrage des Gesamtbilds ab und leert die Reihe (N1.2): Umschalten, Adresswechsel, Verlassen. */
+function reviewAlleAbbrechen(r) {
+  const alle = r.alle;
+  if (!alle) return;
+  if (alle.reihe.laufend) alle.reihe.laufend.abbruch.abort();
+  alle.reihe.laufend = null;
+  alle.reihe.wartend = [];
+  alle.reihe.anwendungen = [];
+}
+
+/** Öffnet „Alle Änderungen“: ein neues Gesamtbild, die erste Anfrage ohne `anwendung` durch die Reihe. */
+function reviewAlleLesen(r) {
+  reviewAlleAbbrechen(r);
+  const alle = r.alle = { erste: { status: 'laedt' }, abschnitte: [], reihe: { laufend: null, wartend: [], anwendungen: [] }, plan: { rest: BUDGET_ZEILEN, gesperrt: false, erste: true }, ansage: '' };
+  reviewAlleAnfragen(r, alle, { art: 'erste' });
+}
+
+/** Die nächste Anfrage der Reihe starten (naechsteAnfrage aus gesamt.js): Datei vor noch nicht begonnenen Anwendungen. */
+function reviewAlleWeiter(r, alle) {
+  const naechste = naechsteAnfrage(alle.reihe);
+  if (!naechste) return;
+  if (naechste.art === 'datei') {
+    alle.reihe.wartend.shift();
+    reviewAlleAnfragen(r, alle, naechste);
+    return;
+  }
+  alle.reihe.anwendungen.shift();
+  reviewAlleAnfragen(r, alle, { art: 'anwendung', a: alle.abschnitte.findIndex(ab => ab.kuerzel === naechste.kuerzel && ab.status === 'wartet') });
+}
+
+/** Eine Anfrage an `…/diff` mit eigenem Lauf (Lehre #209): die Antwort gilt nur, solange genau dieser Lauf der laufende des
+    Gesamtbilds ist — nie über Index, Kürzel oder Namen. `If-None-Match` setzt die Seite nicht selbst (N1.2). */
+async function reviewAlleAnfragen(r, alle, auftrag) {
+  const lauf = alle.reihe.laufend = { ...auftrag, abbruch: new AbortController() };
+  let pfad = `/api/aufgaben/${r.nr}/diff`;
+  if (auftrag.art === 'anwendung') {
+    const ab = alle.abschnitte[auftrag.a];
+    ab.status = 'laedt';
+    pfad += `?anwendung=${encodeURIComponent(ab.kuerzel)}`;
+  }
+  if (auftrag.art === 'datei') {
+    const ab = alle.abschnitte[auftrag.a], d = ab.antwort.dateien[auftrag.i], st = ab.staende[auftrag.i];
+    st.laden = 'laeuft';
+    st.fehler = null;
+    st.wartetAuf = null;
+    // der Name aus der Antwort, nie ein Text der Oberfläche; `anwendung=` immer, bei der Standardanwendung leer (N1.6)
+    pfad += `?datei=${encodeURIComponent(istFolge(d) ? d.pfad : d.neu ?? d.alt)}&anwendung=${encodeURIComponent(ab.antwort.anwendung)}`;
+  }
+  reviewAlleNachziehen(r, alle, auftrag);
+  let antwort = null, fehler = null;
+  try {
+    antwort = await diffHolen(pfad, lauf.abbruch.signal);
+  } catch (g) {
+    fehler = fehlerVon(g);
+  }
+  if (S.ui.review !== r || r.alle !== alle || alle.reihe.laufend !== lauf) return;
+  alle.reihe.laufend = null;
+  const merk = reviewLesepositionMerken();
+  if (auftrag.art === 'erste') reviewAlleErste(r, alle, antwort, fehler);
+  if (auftrag.art === 'anwendung') reviewAlleAbschnitt(r, alle, auftrag.a, antwort, fehler);
+  if (auftrag.art === 'datei') reviewAlleDatei(r, alle, auftrag, antwort, fehler);
+  reviewAlleWeiter(r, alle);
+  reviewAnsageSetzen(r, alle);
+  reviewFokus(r);
+  render();
+  reviewLesepositionHalten(merk);
+}
+
+/** Die erste Antwort: Abschnitt der ersten Anwendung, dazu je weitere Anwendung ein wartender Abschnitt in der Reihe. */
+function reviewAlleErste(r, alle, antwort, fehler) {
+  if (fehler) { alle.erste = { status: 'fehler', fehler }; return; }
+  alle.erste = { status: 'da' };
+  alle.abschnitte.push(reviewAbschnittAufbauen(r, alle, antwort));
+  weitereAnwendungen(antwort.hinweise).forEach(kuerzel => {
+    alle.abschnitte.push({ status: 'wartet', kuerzel });
+    alle.reihe.anwendungen.push(kuerzel);
+  });
+}
+
+/** Ein geladener Abschnitt: Klappen aus dem Plan des seitenweiten Budgets, oder wie zuletzt bei gleicher Dateiliste (`alle:<kürzel>`). */
+function reviewAbschnittAufbauen(r, alle, antwort) {
+  const dateien = antwort.dateien;
+  const { offen, stand } = aufklappPlanSeite(dateien, antwort.hinweise, alle.plan);
+  alle.plan = stand;
+  const gemerkt = r.klappenJe[`alle:${antwort.anwendung}`];
+  const namen = dateien.map(d => (istFolge(d) ? d.pfad : d.neu ?? d.alt)).join('\n');
+  const ohnePatch = d => !istFolge(d) && d.status !== 'D' && dateiZustand(d, antwort.hinweise) !== 'patch';
+  const staende = dateien.map((d, i) => {
+    let auf = offen[i] || ohnePatch(d) || (istFolge(d) && !d.schritte.some(s => dateiZustand(s, antwort.hinweise) === 'patch'));
+    if (gemerkt && gemerkt.namen === namen) auf = gemerkt.offen[i];
+    return { offen: auf, laden: null, fehler: null, wartetAuf: null };
+  });
+  return { status: 'da', kuerzel: antwort.anwendung, antwort: { ...antwort, dateien: dateien.slice(), hinweise: (antwort.hinweise || []).slice() }, staende, namen };
+}
+
+function reviewAlleAbschnitt(r, alle, a, antwort, fehler) {
+  if (fehler) {
+    alle.abschnitte[a] = { status: 'fehler', kuerzel: alle.abschnitte[a].kuerzel, fehler: { ...fehler, art: fehlerArt(fehler, 'diff') } };
+  } else {
+    alle.abschnitte[a] = reviewAbschnittAufbauen(r, alle, antwort);
+  }
+  reviewAbschnittNeu(r, alle, a);
+}
+
+/** Die Antwort auf `datei=` ersetzt den Eintrag (zuordnenGesamt); eine Folge-Datei öffnet danach ganz. */
+function reviewAlleDatei(r, alle, { a, i }, antwort, fehler) {
+  const ab = alle.abschnitte[a], st = ab.staende[i];
+  const neu = antwort && zuordnenGesamt(ab.antwort.dateien, i, antwort.dateien);
+  if (neu) {
+    ab.antwort.dateien[i] = neu;
+    ab.antwort.hinweise.push(...(antwort.hinweise || []).filter(h => h.art === 'zu_gross_zum_anzeigen'));
+    st.laden = null;
+  } else {
+    st.laden = 'fehler';
+    const f = fehler || { status: 404, fehler: 'Die Datei fehlt in der Antwort' };
+    st.fehler = { art: fehlerArt(f, 'diff'), status: f.status, text: esc(f.status === 0 ? 'keine Verbindung zum Programm' : f.fehler || 'unbekannter Fehler') };
+  }
+  st.offen = true;
+  const fokusInDerDatei = document.activeElement && document.activeElement.closest && document.activeElement.closest(`#rv-d${a}-${i}`);
+  reviewGesamtDateiNeu(r, a, i);
+  if (fokusInDerDatei || document.activeElement === document.body) S.ui.fokus = `#rv-dk${a}-${i}`;
+}
+
+/** Nach dem Start einer Anfrage: der startende Abschnitt bzw. die startende Datei und alle wartenden zeigen, worauf sie warten. */
+function reviewAlleNachziehen(r, alle, auftrag) {
+  if (alle.erste.status !== 'da') { render(); return; }
+  const laufend = alle.reihe.laufend;
+  let wartetAuf = null;
+  if (laufend && laufend.art !== 'erste') wartetAuf = esc(alle.abschnitte[laufend.a].kuerzel);
+  alle.abschnitte.forEach((ab, a) => {
+    if (ab.status === 'wartet' && ab.wartetAuf !== wartetAuf) { ab.wartetAuf = wartetAuf; reviewAbschnittNeu(r, alle, a); }
+    if (ab.status === 'laedt' && auftrag.art === 'anwendung' && auftrag.a === a) reviewAbschnittNeu(r, alle, a);
+  });
+  alle.reihe.wartend.forEach(({ a, i }) => {
+    const st = alle.abschnitte[a].staende[i];
+    let auf = null;
+    if (laufend && laufend.art === 'anwendung') auf = wartetAuf;
+    if (st.wartetAuf !== auf) { st.wartetAuf = auf; reviewGesamtDateiNeu(r, a, i); }
+  });
+  if (auftrag.art === 'datei') reviewGesamtDateiNeu(r, auftrag.a, auftrag.i);
+  render();
+}
+
+/** Die Ansage (R00210 FA 3, UX-Vorprüfung M1): erst, wenn alle Abschnitte entschieden sind; Zahlen der geladenen, jeder gescheiterte einmal. */
+function reviewAnsageSetzen(r, alle) {
+  if (alle.erste.status !== 'da') return;
+  if (alle.abschnitte.some(ab => ab.status === 'laedt' || ab.status === 'wartet')) return;
+  const gescheitert = alle.abschnitte.filter(ab => ab.status === 'fehler').map(ab => ab.kuerzel);
+  alle.ansage = ansageText(r.nr, abschnittSummen(alle.abschnitte), gescheitert);
+}
+
+/** Kontext des Zeichnens für gesamt.js: maskieren, Adresse eines Commits, Titel aus der Liste. */
+function reviewGesamtKontext(r) {
+  const titelVon = verweis => {
+    const e = r.liste && r.liste.status === 'da' && r.liste.eintraege.find(x => x.verweis === verweis);
+    return (e && e.titel) || null;
+  };
+  return { esc, adresse: verweis => reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: verweis }), titelVon };
+}
+
+/** Hängt einen Abschnitt in die stehende Insel (N1.3): nur sein Knoten wird ersetzt. Stand der Fokus darin, steht er danach auf
+    der Überschrift des Abschnitts — nie auf body. */
+function reviewAbschnittNeu(r, alle, a) {
+  const alt = document.getElementById(`rv-a${a}`);
+  if (!alt) return;
+  const fokusDarin = alt.contains(document.activeElement);
+  alt.outerHTML = abschnittHtml(alle.abschnitte[a], a, reviewGesamtKontext(r));
+  const seite = document.getElementById('rv-seite-hw');
+  const seiteNeu = seitenHinweiseHtml(seitenHinweise(alle.abschnitte.filter(ab => ab.status === 'da').map(ab => ab.antwort.hinweise)), esc);
+  if (seite && seite.outerHTML !== seiteNeu) seite.outerHTML = seiteNeu;
+  if (fokusDarin) fokusVersuchen(`#rv-a${a}-t`, null, null, { selektor: `#rv-a${a}-t`, sichtbar: false });
+}
+
+/** Zeichnet eine Datei des Gesamtbilds neu (Klappe, Nachladen); der Fokus bleibt auf demselben Element oder geht auf den Kopf. */
+function reviewGesamtDateiNeu(r, a, i) {
+  const alt = document.getElementById(`rv-d${a}-${i}`);
+  const ab = r.alle.abschnitte[a];
+  if (alt) {
+    const fokus = alt.contains(document.activeElement) ? document.activeElement.id : null;
+    alt.outerHTML = abschnittDateiHtml(ab, a, i, reviewGesamtKontext(r));
+    if (fokus !== null) {
+      const ziel = fokus && document.getElementById(fokus) ? '#' + CSS.escape(fokus) : `#rv-dk${a}-${i}`;
+      fokusVersuchen(ziel, null, null, { selektor: ziel, sichtbar: false });
+    }
+  }
+  reviewAlleKlappenMerken(r);
+}
+
+/** Klappen je Anwendung merken (`alle:<kürzel>`), gültig nur bei gleicher Dateiliste. */
+function reviewAlleKlappenMerken(r) {
+  if (!r.alle) return;
+  r.alle.abschnitte.forEach(ab => {
+    if (ab.status === 'da') r.klappenJe[`alle:${ab.kuerzel}`] = { namen: ab.namen, offen: ab.staende.map(st => st.offen) };
+  });
+}
+
+/** „Nachladen“ / „Änderungen anzeigen“ im Gesamtbild: in die Reihe vor die noch nicht begonnenen Anwendungen (N1.2). */
+function reviewAlleNachladen(r, a, i) {
+  const alle = r.alle, st = alle.abschnitte[a].staende[i];
+  if (st.laden === 'laeuft' || st.laden === 'wartet') return;
+  st.offen = true;
+  if (alle.reihe.laufend) {
+    st.laden = 'wartet';
+    const laufend = alle.reihe.laufend;
+    st.wartetAuf = null;
+    if (laufend.art === 'anwendung') st.wartetAuf = esc(alle.abschnitte[laufend.a].kuerzel);
+    alle.reihe.wartend.push({ a, i });
+    reviewGesamtDateiNeu(r, a, i);
+    return;
+  }
+  reviewAlleAnfragen(r, alle, { art: 'datei', a, i });
+}
+
+/** „Erneut versuchen“ am Abschnitt: genau eine Anfrage, vor den noch nicht begonnenen Anwendungen; Fokus auf die Überschrift. */
+function reviewAbschnittErneut(r, a) {
+  const alle = r.alle, ab = alle && alle.abschnitte[a];
+  if (!ab || ab.status !== 'fehler') return;
+  alle.abschnitte[a] = { status: 'wartet', kuerzel: ab.kuerzel };
+  alle.reihe.anwendungen.unshift(ab.kuerzel);
+  reviewAbschnittNeu(r, alle, a);
+  S.ui.fokus = `#rv-a${a}-t`;
+  reviewAlleWeiter(r, alle);
+}
+
+/** Leseposition (R00210 FA 8, S5): die Lage des ersten Abschnitts vor dem Zeichnen; danach wird die Rolle um die Verschiebung
+    nachgeführt, sodass nichts oberhalb der Leseposition springt (die Leiste kann ihre Höhe ändern). */
+function reviewLesepositionMerken() {
+  const anker = document.getElementById('rv-a0'), rolle = document.getElementById('review');
+  if (!anker || !rolle) return null;
+  return { anker, oben: anker.getBoundingClientRect().top };
+}
+
+function reviewLesepositionHalten(merk) {
+  if (!merk || !merk.anker.isConnected) return;
+  const verschiebung = merk.anker.getBoundingClientRect().top - merk.oben;
+  if (verschiebung) document.getElementById('review').scrollTop += verschiebung;
+}
+
+/** Die Seite „Alle Änderungen“ (Hauptbereich): Leiste mit Umschalter, Summe und Ansage, darunter die Insel oder ein Zustand. */
+function vReviewAlle(r, b) {
+  const alle = r.alle;
+  const ziel = reviewCommitZiel(r);
+  let commitHref = null;
+  if (ziel) commitHref = reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: ziel });
+  const umschalter = umschalterHtml({ ansicht: 'alle', alleHref: reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: null }), commitHref, commitZiel: ziel }, esc);
+  const ansage = `<p class="vh" id="rv-ansage" aria-live="polite" aria-atomic="true">${esc((alle && alle.ansage) || '')}</p>`;
+  if (b.art === 'alle_ohne_verweise') return meldungHtml({ rolle: 'status', kopf: 'Keine Änderungen zu zeigen.', text: 'An dieser Aufgabe sind keine Commit-Verweise hinterlegt.', knoepfe: knopf('Zurück zur Liste der Commits', 'review-liste') });
+  let inhalt;
+  if (b.art === 'alle_laedt') inhalt = '<p class="rv-laedt" role="status" aria-busy="true">Liest die Änderungen der Aufgabe …</p>';
+  else if (b.art === 'alle_fehler') inhalt = diffFehlerHtml(alle.erste.fehler, null, esc);
+  else if (inselGehalten) inhalt = `<div class="rv-alle" id="rv-insel" data-insel="${esc(reviewInselSchluessel())}"></div>`;
+  else inhalt = gesamtInselHtml(r.nr, alle.abschnitte, reviewGesamtKontext(r));
+  let summe = '';
+  if (b.art === 'alle') {
+    const offen = alle.abschnitte.some(ab => ab.status === 'da' && ab.staende.some(st => st.offen));
+    const mitDateien = alle.abschnitte.some(ab => ab.status === 'da' && ab.antwort.dateien.length);
+    let knopfAlle = '';
+    if (mitDateien) knopfAlle = knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle');
+    summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span>${knopfAlle}</div>`;
+  }
+  return `<div class="rv-leiste">${umschalter}${summe}${ansage}</div>${inhalt}`;
+}
+
 /** Die Seite (Hauptbereich) aus dem Zustand; der Kopf steht in `#kopf` (vReviewKopf). */
 function vReview() {
   const r = S.ui.review;
   if (!r) return '<div class="rv" id="review"></div>';
   const b = reviewBild(r);
+  const seite = inhalt => `<div class="rv" id="review">${inhalt}</div>`;
   const erneut = ziel => knopf('Erneut versuchen', 'review-erneut', ziel, 'rv-erneut');
   const zurListe = knopf('Zur Liste der Commits', 'review-liste');
-  let inhalt;
-  if (b.art === 'ungueltig') inhalt = meldungHtml({ rolle: 'status', kopf: 'Verweis ungültig.', text: 'Die Adresse nennt keinen Commit in gültiger Form.', knoepfe: zurListe });
-  else if (b.art === 'unbekannt') inhalt = meldungHtml({ rolle: 'status', kopf: `Aufgabe #${r.nr} gibt es nicht.`, knoepfe: knopf(r.basis === 'board' ? 'Zum Board' : 'Zu den Aufgaben', 'review-weg') });
-  else if (b.art === 'liste_fehler') inhalt = meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(r.commit ? listeFehlerText(r.liste.fehler) : commitsFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe });
-  else if (b.art === 'keine') inhalt = keineHtml(b.eintraege, esc);
-  else if (b.art === 'laedt') inhalt = `<p class="rv-laedt" role="status" aria-busy="true">${r.commit ? `Liest den Diff von ${esc(kurzVerweis(r.commit))} …` : 'Liest die Commits der Aufgabe …'}</p>`;
-  else if (b.art === 'diff_fehler') inhalt = diffFehlerHtml(r.diff.fehler, r.commit, esc);
-  else inhalt = reviewDiffHtml(r, b);
-  return `<div class="rv" id="review">${inhalt}</div>`;
+  if (b.art === 'ungueltig') return seite(meldungHtml({ rolle: 'status', kopf: 'Verweis ungültig.', text: 'Die Adresse nennt keinen Commit in gültiger Form.', knoepfe: zurListe }));
+  if (b.art === 'unbekannt') return seite(meldungHtml({ rolle: 'status', kopf: `Aufgabe #${r.nr} gibt es nicht.`, knoepfe: knopf(r.basis === 'board' ? 'Zum Board' : 'Zu den Aufgaben', 'review-weg') }));
+  if (r.ansicht === 'alle') return seite(vReviewAlle(r, b));
+  if (b.art === 'diff') return seite(reviewDiffHtml(r, b));
+  // der Umschalter steht auch beim Laden und bei Fehlern (R00210 FA 2, S8)
+  const leiste = `<div class="rv-leiste">${reviewUmschalterCommit(r)}</div>`;
+  if (b.art === 'liste_fehler') return seite(leiste + meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(listeFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe }));
+  if (b.art === 'diff_fehler') return seite(leiste + diffFehlerHtml(r.diff.fehler, r.commit, esc));
+  return seite(leiste + `<p class="rv-laedt" role="status" aria-busy="true">Liest den Diff von ${esc(kurzVerweis(r.commit))} …</p>`);
+}
+
+/** Der Umschalter in „Ein Commit“ (R00210 FA 2): „Ein Commit“ ist gewählt und führt auf die gezeigte Adresse. */
+function reviewUmschalterCommit(r) {
+  const alleHref = reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: null });
+  const ziel = r.commit;
+  return umschalterHtml({ ansicht: 'commit', alleHref, commitHref: reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: ziel }), commitZiel: ziel }, esc);
 }
 
 function reviewDiffHtml(r, b) {
@@ -1308,7 +1614,7 @@ function reviewDiffHtml(r, b) {
   const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc) + (leer ? '<p class="rv-leer">Dieser Commit ändert keine Dateien.</p>' : dateilisteHtml(r.dateien, esc));
   const schluessel = reviewInselSchluessel();
   const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc);
-  return `<div class="rv-leiste">${navigation}${summe}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
+  return `<div class="rv-leiste">${reviewUmschalterCommit(r)}${navigation}${summe}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
 }
 
 /** Kopf der Review-Seite (Artboard `#diff-fenster`): Rückweg „← #nr“, „Review“ als h1, Titel der Aufgabe, „liest nur“. */
@@ -1817,6 +2123,7 @@ function render() {
   const inselAlt = document.getElementById('rv-insel');
   inselGehalten = inselAlt && inselAlt.dataset.insel === reviewInselSchluessel() ? inselAlt : null;
   const reviewPosVorher = document.getElementById('rv-pos');
+  const reviewAnsageVorher = document.getElementById('rv-ansage');
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -1833,6 +2140,7 @@ function render() {
     datumsknotenBehalten(tagVorher);
     commitsStatusBehalten(commitsStatusVorher);
     ansageBehalten(reviewPosVorher, 'rv-pos');
+    ansageBehalten(reviewAnsageVorher, 'rv-ansage');
   } finally {
     inselGehalten = null;
     S.neuzeichnen = false;
@@ -2122,6 +2430,7 @@ function fenstertitel() {
 function reviewTitel() {
   const r = S.ui.review;
   if (S.ui.view !== 'review' || !r) return null;
+  if (r.ansicht === 'alle') return { nummer: r.nr, kurz: 'Alle Änderungen' };
   const c = r.diff && r.diff.status === 'da' && r.diff.antwort.commits[0];
   const kurz = c ? (r.diff.antwort.anwendung ? `${r.diff.antwort.anwendung}:` : '') + c.hash.slice(0, 7) : kurzVerweis(r.commit || '');
   return { nummer: r.nr, kurz };
@@ -2620,16 +2929,45 @@ async function aktion(a, arg, wert) {
         reviewAdresseErsetzen(r, b.folge.erster);
         break;
       }
+      case 'review-commit':
+      case 'review-umschalten':
+      case 'review-alle-zeigen': {
+        // Umschalter, Commit-Liste, Schrittköpfe, „einzeln ansehen“ (R00210 FA 2): ersetzt den Verlaufseintrag, die Marke bleibt;
+        // nach dem Umschalten steht der Fokus auf dem gewählten Teil (N1.1)
+        const r = u.review;
+        if (!r) break;
+        reviewKlappenMerken(r);
+        reviewAlleKlappenMerken(r);
+        if (a !== 'review-commit') {
+          u.fokus = a === 'review-umschalten' ? '#rv-u-commit' : '#rv-u-alle';
+          r.fokusZiel = u.fokus;
+        }
+        reviewAdresseErsetzen(r, a === 'review-alle-zeigen' ? null : arg);
+        break;
+      }
+      case 'review-abschnitt-erneut': {
+        const r = u.review;
+        if (r && r.ansicht === 'alle') reviewAbschnittErneut(r, +arg);
+        break;
+      }
       case 'review-erneut': {
         const r = u.review;
         if (!r) break;
         r.fokusOffen = true;
+        if (arg === 'diff' && r.ansicht === 'alle' && r.alle && r.alle.erste.status === 'fehler') { reviewAlleLesen(r); break; }
         if (arg === 'liste' && (!r.liste || r.liste.status !== 'laedt')) reviewListeLesen(r);
         if (arg === 'diff' && r.commit && (!r.diff || r.diff.status !== 'laedt')) reviewDiffWiederholen(r);
         break;
       }
       case 'review-klappe': {
-        const r = u.review, i = +arg;
+        const r = u.review, ort = reviewOrt(r, arg);
+        if (ort) {
+          ort.st.offen = !ort.st.offen;
+          reviewGesamtDateiNeu(r, ort.a, ort.i);
+          u.fokus = `#rv-dk${ort.a}-${ort.i}`;
+          break;
+        }
+        const i = +arg;
         if (!r || !r.staende || !r.staende[i]) break;
         r.staende[i].offen = !r.staende[i].offen;
         reviewDateiNeu(r, i);
@@ -2637,7 +2975,16 @@ async function aktion(a, arg, wert) {
         break;
       }
       case 'review-datei': {
-        const r = u.review, i = +arg;
+        const r = u.review, ort = reviewOrt(r, arg);
+        if (ort) {
+          if (!ort.st.offen) { ort.st.offen = true; reviewGesamtDateiNeu(r, ort.a, ort.i); }
+          u.fokus = `#rv-dk${ort.a}-${ort.i}`;
+          render();
+          const kopf = document.getElementById(`rv-dk${ort.a}-${ort.i}`);
+          if (kopf) kopf.scrollIntoView({ block: 'start' });
+          return;
+        }
+        const i = +arg;
         if (!r || !r.staende || !r.staende[i]) break;
         if (!r.staende[i].offen) { r.staende[i].offen = true; reviewDateiNeu(r, i); }
         u.fokus = '#rv-dk' + i;
@@ -2648,6 +2995,20 @@ async function aktion(a, arg, wert) {
       }
       case 'review-alle': {
         const r = u.review;
+        if (r && r.ansicht === 'alle' && r.alle) {
+          const geladen = r.alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da');
+          const zuklappen = geladen.some(([ab]) => ab.staende.some(st => st.offen));
+          geladen.forEach(([ab, a]) => ab.staende.forEach((st, i) => {
+            const d = ab.antwort.dateien[i];
+            let soll = false;
+            if (!zuklappen) soll = istFolge(d) ? d.schritte.some(x => dateiZustand(x, ab.antwort.hinweise) === 'patch') : dateiZustand(d, ab.antwort.hinweise) === 'patch';
+            if (st.offen === soll) return;
+            st.offen = soll;
+            reviewGesamtDateiNeu(r, a, i);
+          }));
+          u.fokus = '#rv-alle';
+          break;
+        }
         if (!r || !r.staende) break;
         const zuklappen = r.staende.some(st => st.offen);
         r.staende.forEach((st, i) => {
@@ -2660,7 +3021,13 @@ async function aktion(a, arg, wert) {
         break;
       }
       case 'review-nachladen': {
-        const r = u.review, i = +arg;
+        const r = u.review, ort = reviewOrt(r, arg);
+        if (ort) {
+          reviewAlleNachladen(r, ort.a, ort.i);
+          u.fokus = `#rv-dk${ort.a}-${ort.i}`;
+          break;
+        }
+        const i = +arg;
         if (!r || !r.staende || !r.staende[i]) break;
         reviewNachladen(r, i);
         u.fokus = '#rv-dk' + i;
@@ -3646,7 +4013,7 @@ document.addEventListener('click', e => {
     return;
   }
   // Ein Review-Verweis mit Umschalt-, Strg- oder Meta-Taste bleibt ein Link (neuer Tab, neues Fenster; ADR-0033 Punkt 2)
-  if (el.tagName === 'A' && el.dataset.act === 'review-oeffnen' && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
+  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-umschalten', 'review-alle-zeigen'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });

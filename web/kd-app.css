@@ -1519,6 +1519,57 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .rv-randb,.rv-lfehl{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3);flex:1 1 360px;min-width:0}
 .rv-randb p,.rv-lfehl p{margin:0;flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
 .rv-lfehl{color:var(--kd-wbs-error-ink)}
+/* Alle Änderungen der Aufgabe (R00210, D0009 #alle-aenderungen, #alle-raender): Umschalter, Abschnitte je Anwendung, Folge-Dateien.
+   Die Leseposition führt die Seite selbst nach (reviewLesepositionHalten), darum ohne Scroll-Anker des Browsers. */
+.rv{overflow-anchor:none}
+.seg.umsch{border-color:var(--kd-muted);flex:none}
+.seg.umsch>a,.seg.umsch>span{display:flex;align-items:center;min-block-size:max(26px,var(--kd-ziel));padding:0 var(--kd-s3);font-size:12px;white-space:nowrap;background:var(--kd-surface);color:var(--kd-text);cursor:pointer}
+.seg.umsch>*+*{border-left:1px solid var(--kd-muted)}
+/* die Komponentenregel schlägt a:hover (kd-base.css), wie .rv-rueck:hover (UX-Review #209 M2) */
+.seg.umsch>a:hover{background:var(--kd-accent-weak);color:var(--kd-text);text-decoration:underline;text-underline-offset:2px}
+.seg.umsch>a[aria-current="page"],.seg.umsch>a[aria-current="page"]:hover{background:var(--kd-text);color:var(--kd-surface);font-weight:600}
+.seg.umsch>a[aria-current="page"]:hover{text-decoration:underline}
+.seg.umsch>.umsch-aus{color:var(--kd-muted);background:var(--kd-sunken);cursor:default;font-style:italic}
+.rv-alle{display:flex;flex-direction:column;gap:var(--kd-s4);padding:var(--kd-s4) var(--kd-s5);min-width:0}
+.rv-abs{display:flex;flex-direction:column;gap:var(--kd-s3);min-width:0;padding-top:var(--kd-s4);border-top:1px solid var(--kd-line-strong)}
+.rv-abs:first-of-type{border-top:0;padding-top:0}
+.anw{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0;font-size:14px;font-weight:600}
+.anw .mono{font-weight:400;color:var(--kd-muted)}
+.anw .zw{display:inline-flex;align-items:center;gap:4px;font:500 12px var(--kd-font);color:var(--kd-muted)}
+.anw .zw svg.i,.rv-abs-zust svg.i{width:12px;height:12px;flex:none}
+.rv-abs-zust{display:flex;align-items:center;gap:var(--kd-s3);margin:0;color:var(--kd-muted)}
+.rv-abs-leer{margin:0;color:var(--kd-text)}
+.rv-hw{list-style:none;margin:0;padding:var(--kd-s3) var(--kd-s4);display:flex;flex-direction:column;gap:6px;border:1px solid var(--kd-wbs-warn-ink);background:var(--kd-wbs-warn-bg);color:var(--kd-text)}
+.rv-hw li{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.rv-hw p{margin:0;flex:1 1 150px;min-width:0;overflow-wrap:anywhere}
+.rv-einzeln{display:inline-flex;align-items:center;min-block-size:max(24px,var(--kd-ziel));min-inline-size:max(24px,var(--kd-ziel));padding:0 4px;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
+.rv-einzeln:hover{color:var(--kd-accent-ink);text-decoration:underline;text-decoration-thickness:2px}
+.rv-aus{list-style:none;margin:0;padding:var(--kd-s3) var(--kd-s4);border:1px solid var(--kd-line-strong);background:var(--kd-sunken);display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.rv-aus li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.rv-aus svg.i{width:12px;height:12px;flex:none}
+.rv-ganz{margin:0;padding:6px var(--kd-s3);border:1px solid var(--kd-line-strong);background:var(--kd-sunken);font-size:12px}
+.rv-abs-rumpf{display:grid;grid-template-columns:minmax(200px,300px) minmax(0,1fr);gap:var(--kd-s4);align-items:start;min-width:0}
+.rv-abs-rail{display:flex;flex-direction:column;gap:var(--kd-s4);min-width:0}
+.rv-abs-haupt{display:flex;flex-direction:column;gap:var(--kd-s4);min-width:0}
+.rv-cl{list-style:none;margin:0;padding:0;border:1px solid var(--kd-line);background:var(--kd-surface)}
+.rv-cl li{display:flex;flex-wrap:wrap;gap:0 8px;align-items:center;padding:0 var(--kd-s3);border-bottom:1px solid var(--kd-line);min-width:0}
+.rv-cl li:last-child{border-bottom:0}
+.rv-cl .t{flex:1 1 160px;min-width:0;font-size:12px;overflow-wrap:anywhere}
+.rv-cl .zs{font-size:11px;color:var(--kd-text);font-weight:600}
+.rv-cv{display:inline-flex;align-items:center;min-block-size:max(24px,var(--kd-ziel));min-inline-size:max(24px,var(--kd-ziel));font:12px var(--kd-mono);color:var(--kd-accent-ink);text-decoration:none}
+.rv-cv:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
+.st-folge{--zl:var(--kd-accent);--zb:var(--kd-accent-weak);--zi:var(--kd-accent-ink)}
+.df-folge{margin:0;padding:6px var(--kd-s3);font-size:12px;border-bottom:1px solid var(--kd-wbs-warn-ink);background:var(--kd-wbs-warn-bg);color:var(--kd-wbs-warn-ink)}
+.fs{border-top:1px solid var(--kd-line-strong);min-width:0}
+.fs:first-of-type{border-top:0}
+.fs-k{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;margin:0;padding:2px var(--kd-s3);background:var(--kd-accent-weak);border-bottom:1px solid var(--kd-line);font-size:12px;font-weight:400}
+.fs-l{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;flex:1 1 auto;min-width:0;min-block-size:max(24px,var(--kd-ziel));padding:0 4px;color:var(--kd-accent-ink);text-decoration:none}
+a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
+.fs-l .mono{font:12px var(--kd-mono)}
+.fs-l .fs-t{flex:1 1 120px;min-width:0;overflow-wrap:anywhere}
+.fs-l .z{font:12px var(--kd-mono);white-space:nowrap;color:var(--kd-text)}
+@media (max-width:1099px){.rv-abs-rumpf{display:block}.rv-abs-rail{margin-bottom:var(--kd-s4)}}
+@media (max-width:640px){.rv-alle{padding:var(--kd-s3)}}
 /* Zwei Spalten erst ab 1100 px: darunter bräche ein langer Pfad der Dateiliste in der schmalen Spalte zu oft um (R00207 NFA). */
 @media (max-width:1099px){
   .rv-rumpf{display:block}

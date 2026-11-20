@@ -192,7 +192,11 @@
   function ausgelassenHtml(e, esc) {
     let verweis = diff.sichtbarHtml(e.verweis, esc);
     if (e.zustand !== 'unlesbar') verweis = diff.sichtbarHtml(kurzVerweis(e.verweis), esc);
-    const marke = zustandsmarke(e) || { wort: e.zustand, hinweis: '' };
+    // der Hinweis bei `anwendung_unbekannt` nennt das Kürzel wie in der Liste; der Hinweis der Antwort trägt nur den Verweis
+    let anwendung = '';
+    const doppelpunkt = String(e.verweis).indexOf(':');
+    if (doppelpunkt > 0) anwendung = String(e.verweis).slice(0, doppelpunkt);
+    const marke = zustandsmarke({ ...e, anwendung }) || { wort: e.zustand, hinweis: '' };
     let hinweis = '';
     if (marke.hinweis) hinweis = ` <span class="rv-hin">${esc(marke.hinweis)}</span>`;
     return `<li><span class="mono">${verweis}</span> ${diff.symbol('achtung')}<b class="zs">${esc(marke.wort)}</b>${hinweis}</li>`;
