@@ -1425,7 +1425,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .rv-h1{margin:0;padding:0 0 0 var(--kd-s4);font-size:13px;font-weight:600;white-space:nowrap}
 .rv-titel{flex:1 1 auto;min-width:0;margin-left:6px;color:var(--kd-head-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rv-liest{flex:none;padding:0 var(--kd-s4);font-size:12px;color:var(--kd-head-muted);white-space:nowrap}
-.rv{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:var(--kd-bg);font-size:13px}
+.rv{flex:1;min-height:0;overflow:auto;background:var(--kd-bg);font-size:13px}
 .rv-leiste{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3) var(--kd-s4);padding:var(--kd-s3) var(--kd-s5);background:var(--kd-surface);border-bottom:1px solid var(--kd-line-strong)}
 .rv .btn{height:auto;min-block-size:max(var(--kd-row),var(--kd-ziel))}
 .bl{display:grid;grid-template-columns:96px minmax(0,1fr) 96px;align-items:center;gap:var(--kd-s3);min-width:0;flex:1 1 360px;max-width:600px}

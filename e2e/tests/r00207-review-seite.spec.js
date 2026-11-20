@@ -2,7 +2,8 @@
 // Ausgangslage: review-hilfen.js (R mit K1–K4, W1, V1, V2, R1; D, E, E0, F). Gehaltene Antworten über page.route und ein Promise,
 // Fristen mit page.clock, keine Schlafzeiten; Verneinungen erst nach einem sichtbaren Signal.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, liveBereit, bereit, reiter, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, alsPerson, liveBereit, bereit, reiter, mutanteEinsetzen, breiteSetzen, thema, kontrastMessen, kontrastFarben } = require('./hilfen');
+const { breiteMessen, zieleMessen } = require('./ziele-hilfen');
 const { reviewRepository, reviewVorbereiten, BOESE } = require('./review-hilfen');
 
 const AGENT = { 'X-KanbanD-Wer': 'cl' };
@@ -489,5 +490,196 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     expect(decodeURIComponent(tab.url())).toContain(`/review?commit=kd:${rep.k3}`);
     await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
     await tab.close();
+  });
+  /* ── AK 4 Diff und Merkmale (#7, #8) ── */
+
+  const datei = (page, pfad) => page.locator('#rv-insel section.df').filter({ has: page.locator('.df-k .p', { hasText: pfad }) });
+  async function merkmaleOeffnen(page) {
+    await page.goto(reviewAdresse(k, 7, `kd:${rep.d}`));
+    await expect(page.locator('#rv-ctitel')).toHaveText(rep.dTitel);
+  }
+
+  test('AK 4: Dateiliste mit Statuswort, Pfad und +/−; Zeilennummern nach den Hunk-Köpfen, U+2028 eine Zeile, „\\ No newline“ ohne Nummer', async ({ page }) => {
+    await merkmaleOeffnen(page);
+    const eintraege = page.locator('.dn .dn-e');
+    await expect(eintraege).toHaveCount(13);
+    for (const [pfad, wort] of [['text.txt', 'geändert'], ['neu.txt', 'neu'], ['weg.txt', 'gelöscht'], ['neu-name.txt', 'umbenannt'], ['skript.sh', 'geändert']]) {
+      const e = eintraege.filter({ hasText: pfad }).first();
+      await expect(e.locator('.s')).toHaveText(wort);
+      await expect(e.locator('.z')).toHaveText(/^\+\d+ −\d+$/);
+    }
+    const text = datei(page, 'text.txt');
+    await expect(text.locator('tr.hk')).toHaveCount(3);
+    const zeilen = await text.locator('tr').evaluateAll(z => z.map(r => [...r.children].map(c => c.textContent)));
+    const nummern = zeilen.filter(z => z.length === 4).map(z => [z[0], z[1], z[2]]);
+    expect(nummern.slice(0, 7)).toEqual([['1', '1', ''], ['2', '', '−'], ['', '2', '+'], ['3', '3', ''], ['4', '4', ''], ['5', '5', '']].concat([nummern[6]]));
+    const trenner = zeilen.find(z => z[3] && z[3].includes(' '));
+    expect(trenner.slice(0, 3)).toEqual(['', '20', '+']);
+    const ohneEnde = zeilen.find(z => z[3] === '\\ No newline at end of file');
+    expect(ohneEnde.slice(0, 3)).toEqual(['', '', '']);
+    await expect(page.locator('h3 .df-k')).toHaveCount(13);
+    await expect(text.locator('table.dz').first()).toHaveAttribute('aria-label', 'Änderungen in text.txt');
+  });
+
+  test('AK 4: Merkmale nie still — umbenannt, Modus, nicht UTF-8, binär, gelöscht zu, groß mit Knopf, Pfad über 4.096 Byte ohne Knopf, 200.000 Zeichen ganz', async ({ page }) => {
+    await merkmaleOeffnen(page);
+    await expect(datei(page, 'neu-name.txt').locator('.ren')).toHaveText('umbenannt ← alt-name.txt · 100 %');
+    await expect(datei(page, 'skript.sh')).toContainText('Dateimodus 100644 → 100755; der Inhalt ist unverändert.');
+    await expect(datei(page, 'latin.txt')).toContainText('Nicht als UTF-8 lesbar — nicht darstellbare Zeichen sind ersatzweise mit � wiedergegeben.');
+    await expect(datei(page, 'bild.bin')).toContainText('Binärdatei — der Inhalt wird nicht angezeigt.');
+    await expect(datei(page, 'weg.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
+    const gross = datei(page, 'gross.txt');
+    await expect(gross).toContainText('Der Patch ist groß (3.001 Zeilen) und wird erst auf Wunsch geladen.');
+    await expect(gross.getByRole('button', { name: 'Änderungen anzeigen' })).toBeVisible();
+    const tief = datei(page, 'x.txt');
+    await expect(tief).toContainText('Zu groß zum Anzeigen. Es stehen nur die Zahlen: +1 −0.');
+    await expect(tief.locator('.df-inhalt button')).toHaveCount(0);
+    const lang = datei(page, 'lang.txt').locator('tr.add .c');
+    expect(await lang.evaluate(c => c.textContent.length)).toBe('hinzugefügt: '.length + 200000);
+    expect(await lang.evaluate(c => getComputedStyle(c).whiteSpace)).toBe('pre');
+    expect(await lang.evaluate(c => c.getBoundingClientRect().height)).toBeLessThan(30);
+    expect(await page.locator('#app').innerText()).not.toMatch(/\bKB\b|\bMB\b/);
+  });
+
+  test('AK 4: ein Eintrag der Dateiliste klappt eine zugeklappte Datei auf und bringt ihren Kopf ins Bild; Fokus auf ihrem Kopf', async ({ page }) => {
+    await merkmaleOeffnen(page);
+    const weg = datei(page, 'weg.txt');
+    await expect(weg.locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
+    await page.locator('.dn .dn-e').filter({ hasText: 'weg.txt' }).click();
+    await expect(weg.locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
+    await expect(weg.locator('tr.del')).toHaveCount(1);
+    await expect(weg.locator('.df-k')).toBeFocused();
+    await expect(weg.locator('.df-k')).toBeInViewport();
+  });
+
+  test('AK 4: dateien_gekappt (2.000 von 2.431) steht über den Dateien mit den Zahlen der Antwort', async ({ page }) => {
+    await page.route('**/api/aufgaben/7/diff?**', async route => {
+      const antwort = await route.fetch();
+      const json = await antwort.json();
+      json.hinweise.push({ art: 'dateien_gekappt', gezeigt: 2000, gesamt: 2431 });
+      await route.fulfill({ response: antwort, json });
+    });
+    await merkmaleOeffnen(page);
+    await expect(page.locator('.rv-gekappt')).toHaveText('2.000 von 2.431 Dateien gezeigt. Die übrigen stehen nicht in dieser Liste; der Commit liegt vollständig im Repository.');
+  });
+
+  test('AK 4: Budget an #8 — vier Dateien offen, die fünfte zu mit „anzeigen“; ihr Aufklappen fragt den Server nicht; Blöcke ≤ 500 mit content-visibility', async ({ page }) => {
+    const z = zaehlen(page);
+    await page.goto(reviewAdresse(k, 8, `kd:${rep.e}`));
+    const koepfe = page.locator('#rv-insel .df-k');
+    await expect(koepfe).toHaveCount(5);
+    expect(await koepfe.evaluateAll(k => k.map(e => e.getAttribute('aria-expanded')))).toEqual(['true', 'true', 'true', 'true', 'false']);
+    await expect(koepfe.nth(4).locator('.mk')).toHaveText('anzeigen');
+    const bloecke = await page.locator('#rv-insel .dz-b').evaluateAll(b => b.map(e => [e.querySelectorAll('tr').length, getComputedStyle(e).contentVisibility]));
+    expect(bloecke.length).toBe(20);
+    for (const [zeilen, sicht] of bloecke) { expect(zeilen).toBeLessThanOrEqual(500); expect(sicht).toBe('auto'); }
+    const vorher = [z.commits.length, z.diff.length, z.datei.length];
+    await koepfe.nth(4).click();
+    await expect(koepfe.nth(4)).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#rv-d4 tr')).toHaveCount(2);
+    expect([z.commits.length, z.diff.length, z.datei.length]).toEqual(vorher);
+  });
+
+  test('AK 4: „Alle einklappen“ schließt alle Dateien, „Alle aufklappen“ öffnet die mit patch, die groß-Datei bleibt zu, keine datei=-Anfrage', async ({ page }) => {
+    const z = zaehlen(page);
+    await merkmaleOeffnen(page);
+    const alle = page.locator('#rv-alle');
+    await expect(alle).toHaveText('Alle einklappen');
+    await alle.click();
+    await expect(alle).toHaveText('Alle aufklappen');
+    await expect(page.locator('#rv-insel .df-k[aria-expanded="true"]')).toHaveCount(0);
+    await expect(alle).toBeFocused();
+    await alle.click();
+    await expect(alle).toHaveText('Alle einklappen');
+    await expect(datei(page, 'text.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
+    await expect(datei(page, 'weg.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
+    await expect(datei(page, 'gross.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
+    expect(z.datei).toEqual([]);
+  });
+
+  test('AK 4: #8 „Vor“ auf E0 → „2 von 2“, „Dieser Commit ändert keine Dateien.“, „0 Dateien · +0 −0“, keine Liste, kein „Alle …“', async ({ page }) => {
+    await page.goto(reviewAdresse(k, 8, `kd:${rep.e}`));
+    await expect(page.locator(POS)).toHaveText('1 von 2');
+    await page.locator('#rv-vor').click();
+    await expect(page.locator(POS)).toHaveText('2 von 2');
+    await expect(page.locator('.rv-leer')).toHaveText('Dieser Commit ändert keine Dateien.');
+    await expect(page.locator('.rv-leiste .sum')).toHaveText('0 Dateien · +0 −0');
+    await expect(page.locator('.dn, #rv-alle, #rv-insel')).toHaveCount(0);
+  });
+
+  test('AK 4: Fenstertitel „Review #7 · kd:<kurz> — kanbanD“, mit laufendem Timer „(1 ▶) …“; h1 Review, h2 Titel, h3 je Datei', async ({ page }) => {
+    await merkmaleOeffnen(page);
+    await expect(page).toHaveTitle(`Review #7 · ${kurz(rep.d)} — kanbanD`);
+    await expect(page.locator('h1')).toHaveText(['Review']);
+    await expect(page.locator('h2#rv-ctitel')).toHaveCount(1);
+    await expect(page.locator('#rv-insel h3')).toHaveCount(13);
+    await liveBereit(page);
+    expect((await page.request.post(k.adresse + 'api/aufgaben/7/timer/start', { headers: { 'X-KanbanD-Wer': 'st' } })).ok()).toBe(true);
+    await expect(page).toHaveTitle(`(1 ▶) Review #7 · ${kurz(rep.d)} — kanbanD`);
+  });
+
+  /* ── AK 8 Fremder Text und sichtbare Zeichen ── */
+
+  test('AK 8: <img onerror> in Pfad, Zeile und Titel steht als Text, es entsteht kein img; Bidi als Marke, ESC und \\r sichtbar, Tab bleibt', async ({ page }) => {
+    await merkmaleOeffnen(page);
+    await expect(page.locator('#rv-ctitel')).toContainText(BOESE);
+    await expect(page.locator('.dn .dn-e').filter({ hasText: BOESE })).toHaveCount(1);
+    await expect(datei(page, BOESE).locator('tr.add .c')).toHaveText(`hinzugefügt: ${BOESE}`);
+    await expect(page.locator('#app img')).toHaveCount(0);
+    expect(await page.evaluate(() => window.pwn)).toBeUndefined();
+    const bidi = datei(page, 'datei.txt');
+    const marken = page.locator('.mk-bidi');
+    await expect(marken).toHaveCount(3);
+    for (const m of await marken.all()) {
+      await expect(m).toHaveAttribute('role', 'img');
+      await expect(m).toHaveAttribute('aria-label', 'sichtbar gemachtes Bidi-Steuerzeichen U+202E');
+      await expect(m).toHaveText('⟨U+202E⟩');
+      await expect(m.locator('svg')).toHaveCount(1);
+    }
+    await expect(page.locator('.dn .mk-bidi')).toHaveCount(1);
+    await expect(bidi.locator('.df-k .mk-bidi')).toHaveCount(1);
+    await expect(bidi.locator('tr.add .mk-bidi')).toHaveCount(1);
+    await expect(bidi.locator('tr.add .mk-st')).toHaveText('␛ U+001B');
+    expect(await bidi.locator('tr.add .c').evaluate(c => c.textContent.includes('c\td'))).toBe(true);
+    await expect(datei(page, 'text.txt').locator('tr.add .mk-st').first()).toHaveText('␍');
+    expect(await page.evaluate(() => document.getElementById('review').textContent.includes('‮'))).toBe(false);
+  });
+
+  /* ── AK 10 Tastatur und Bedienhilfe ── */
+
+  test('AK 10: Tab-Folge Rückweg, Zurück, Vor, Alle einklappen, Dateiliste, Kopf und Code je Datei; Enter und Leertaste klappen, Fokus bleibt, Fokusring', async ({ page }) => {
+    await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
+    await expect(page.locator('#rv-rueckweg')).toBeFocused();
+    const reihe = [];
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press('Tab');
+      reihe.push(await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); return { id: e.id || e.className, ring: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0 }; }));
+    }
+    expect(reihe.map(r => r.id)).toEqual(['rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-dk0', 'df-sc']);
+    for (const r of reihe) expect(r.ring, `Fokusring an ${r.id}`).toBe(true);
+    await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
+    await expect(page.locator(POS)).toHaveAttribute('aria-live', 'polite');
+    const kopf = page.locator('#rv-dk0');
+    await kopf.focus();
+    await page.keyboard.press('Enter');
+    await expect(kopf).toHaveAttribute('aria-expanded', 'false');
+    await expect(kopf).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(kopf).toHaveAttribute('aria-expanded', 'true');
+    await expect(kopf).toBeFocused();
+    const zeile = page.locator('#rv-d0 tr.add').first();
+    expect(await zeile.evaluate(r => [...r.querySelectorAll('.n, .m')].every(c => c.getAttribute('aria-hidden') === 'true'))).toBe(true);
+    await expect(zeile.locator('.c .vh')).toHaveText('hinzugefügt: ');
+  });
+
+  test('AK 6/AK 10: Antwortbudget an einer nachgeladenen Datei steht an der Datei mit role=status, die Seite bleibt lesbar', async ({ page }) => {
+    await page.route(url => url.pathname === '/api/aufgaben/9/diff' && url.searchParams.has('datei'), route => route.fulfill({ status: 503, json: { fehler: 'Antwortbudget von 64 MB belegt' } }));
+    await page.goto(reviewAdresse(k, 9, `kd:${rep.f}`));
+    await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+    const meldung = page.locator('#rv-d20 .df-hin.warn');
+    await expect(meldung).toContainText('Server ausgelastet (Antwortbudget). Die Änderungen dieser Datei wurden nicht geladen. Es wird nicht von selbst wiederholt.');
+    await expect(meldung).toHaveAttribute('role', 'status');
+    await expect(page.locator('#rv-d0 table.dz').first()).toBeVisible();
+    await expect(page.locator('#rv-dk20')).toBeFocused();
   });
 });
