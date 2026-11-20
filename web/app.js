@@ -1183,10 +1183,15 @@ function reviewKlappenMerken(r) {
   if (r.diff && r.diff.status === 'da') r.klappenJe[r.diff.antwort.commits[0].hash] = r.staende.map(s => s.offen);
 }
 
-/** Zeichnet nur den Abschnitt einer Datei in der Insel neu (Aufklappen, Einklappen, Nachladen). */
+/** Zeichnet nur den Abschnitt einer Datei in der Insel neu (Aufklappen, Einklappen, Nachladen). Stand der Fokus darin, steht er
+    danach auf demselben Element, fehlt es, auf dem Kopf der Datei — nie auf body (UX-Review #209 M1, WCAG 2.4.3). */
 function reviewDateiNeu(r, i) {
   const alt = document.getElementById('rv-d' + i);
-  if (alt) alt.outerHTML = dateiHtml(r.dateien[i], i, r.staende[i], r.hinweise, esc);
+  if (alt) {
+    const fokus = alt.contains(document.activeElement) ? document.activeElement.id : null;
+    alt.outerHTML = dateiHtml(r.dateien[i], i, r.staende[i], r.hinweise, esc);
+    if (fokus !== null) (document.getElementById(fokus) || document.getElementById('rv-dk' + i)).focus({ preventScroll: true });
+  }
   reviewKlappenMerken(r);
 }
 

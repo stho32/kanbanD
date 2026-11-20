@@ -421,6 +421,32 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     });
   }
 
+  /* ── Nacharbeit 1, UX M1: der Fokus fällt nie auf body, wenn die wartende Datei zu laden beginnt (WCAG 2.4.3) ── */
+
+  for (const [fall, erste] of [['fertig', undefined], ['mit 503', ZEIT_503]]) {
+    test(`Nacharbeit 1 (UX M1): Fokus auf dem Kopf der wartenden Datei 21 bleibt dort, wenn Datei 20 ${fall} ist und 21 lädt — über den ganzen Lauf nie auf body`, async ({ page }) => {
+      const { h } = await nachladenVorbereiten(page);
+      await page.evaluate(() => {
+        window.kdAufBody = [];
+        const pruefe = () => { if (document.activeElement === document.body || !document.activeElement) window.kdAufBody.push(document.activeElement ? 'BODY' : 'null'); };
+        // nach jeder Änderung am Dokument; ein focusout zählt nicht — während jedes Fokuswechsels steht der Browser kurz auf body
+        new MutationObserver(pruefe).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+      });
+      await page.locator('#rv-d20').getByRole('button', { name: 'Nachladen' }).click();
+      await page.locator('#rv-d21').getByRole('button', { name: 'Nachladen' }).click();
+      await expect(page.locator('#rv-d21 .df-wartet')).toBeVisible();
+      await page.locator('#rv-dk21').focus();
+      h.frei(0, erste);
+      await expect(page.locator('#rv-d21 .df-laedt')).toHaveText('Lädt die Änderungen …');
+      await expect(page.locator('#rv-dk21')).toBeFocused();
+      await expect.poll(() => h.angehalten()).toBe(2);
+      h.frei(1);
+      await expect(page.locator('#rv-d21 table.dz').first()).toBeVisible();
+      await expect(page.locator('#rv-dk21')).toBeFocused();
+      expect(await page.evaluate(() => window.kdAufBody)).toEqual([]);
+    });
+  }
+
   /* ── Nacharbeit 1, Code-Review M2: eine späte datei=-Antwort nach einem Adress- oder Commitwechsel gilt nie ── */
 
   /** Wie die i-te datei=-Anfrage endet: „abgebrochen“ oder „beantwortet“; „läuft noch“, wenn sie 3 s nach dem Aufruf von `bis()`
