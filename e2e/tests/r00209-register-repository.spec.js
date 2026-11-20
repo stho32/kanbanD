@@ -188,6 +188,18 @@ test.describe('R00209 Einrichten mit Repository', () => {
     expect(k.lies('kanbanD.md')).toBe(datei);
   });
 
+  test('UX S1: „kein Repository“ trägt keine fremde Polsterung — Padding 0, die Zeile so hoch wie mit gefülltem Feld', async ({ page }) => {
+    k = await kanbanStarten(einrichten({ 'kanbanD.md': register(`  repository: ${r}\n`, [`kd: {name: kanbanD, repository: ${r}}`, 'ma: {name: Mail}']) }));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/einrichten');
+    const leer = zustandVon(page, 'ma'), voll = zustandVon(page, 'kd');
+    await expect(leer).toHaveText('kein Repository');
+    await expect(voll).toHaveText('erreichbar');
+    expect(await leer.evaluate(e => getComputedStyle(e).padding)).toBe('0px');
+    const hoehe = async kuerzel => zeileVon(page, kuerzel).locator('.felder .w').first().evaluate(e => e.getBoundingClientRect().height);
+    expect(await hoehe('ma')).toBe(await hoehe('kd'));
+  });
+
   for (const farbe of ['hell', 'dunkel']) {
     for (const breite of [375, 641, 768, 980]) {
       test(`NFA: ${breite} px ${farbe} — kein Querscrollen in Quellen und Anwendungen, Zustandswörter ab 4,5:1 auch im Hover, 120 Zeichen lesbar`, async ({ page }) => {
