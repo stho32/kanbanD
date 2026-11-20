@@ -284,9 +284,9 @@ mod tests {
         let alle = [geruest, karte(3, false), alt];
         let finde = |n: u32| alle.iter().find(|a| a.nummer == n);
         let eintrag = |nummer: u32, titel: Option<&str>, erledigt: bool| Abhaengigkeit { nummer, titel: titel.map(Into::into), erledigt };
-        assert_eq!(abhaengigkeiten(&labels(&["feature", "braucht:1"]), finde, &[e.clone()]), vec![eintrag(1, Some("Gerüst"), false)]);
+        assert_eq!(abhaengigkeiten(&labels(&["feature", "braucht:1"]), finde, std::slice::from_ref(&e)), vec![eintrag(1, Some("Gerüst"), false)]);
         assert_eq!(
-            abhaengigkeiten(&labels(&["braucht:999", "BRAUCHT:3", "braucht:4", "braucht:abc", "braucht:3"]), finde, &[e.clone()]),
+            abhaengigkeiten(&labels(&["braucht:999", "BRAUCHT:3", "braucht:4", "braucht:abc", "braucht:3"]), finde, std::slice::from_ref(&e)),
             vec![eintrag(999, None, false), eintrag(3, Some("x"), true), eintrag(4, Some("Alt"), true)]
         );
         assert_eq!(abhaengigkeiten(&labels(&["ui"]), finde, &[e]), vec![]);
