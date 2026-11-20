@@ -873,3 +873,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #213 R00206 (Diff eines Commits per API lesen) | B1011 Dateiliste lesen und zerlegen | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-20 | Karte #213 R00206 (Diff eines Commits per API lesen) | B1012 Patch holen, zuordnen und begrenzen, einzeln nachladen | Standard | 1-2h | 0,7h | 0,7h | autonom |
 | 2026-11-20 | Karte #213 R00206 (Diff eines Commits per API lesen) | B1013 Dienst diff_lesen, Route GET …/diff, Zulassung, Gesamtgrenze, ETag, Beschreibung, Akzeptanztests | Standard | 1-2h | 1,0h | 1,0h | autonom |
+| 2026-11-20 | Karte #213 R00206 (Diff eines Commits per API lesen) | B1014 Probe im echten Programm, Lastprobe, Mutanten, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,8h | 0,8h | autonom |
