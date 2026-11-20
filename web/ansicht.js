@@ -427,7 +427,6 @@ ${vFeldZeile('klasse', a)}
 ${vBeschriftung('origins')}<span class="w wrap">${a.herkunft.map((x, j) => `<span class="ochip">${vHerkunftChip(x)}<button data-act="herkunft-weg" data-arg="${j}" data-halt="herkunft-weg:${esc(x)}" data-ort="#herkunft-neu" title="entfernen" aria-label="Herkunft ${esc(herkunftAnzeige(x))} entfernen">×</button></span>`).join('') || vHerkunftChip('thin air')}<input class="mini-inp" id="herkunft-neu"${vEntwurf(a, HERKUNFT_FELD)} placeholder="I0001 / kd:I0001 / R00014" data-enter="herkunft-neu" title="${HERKUNFT_HILFE}" aria-label="Neue Herkunft"></span>
 ${vWirkungenFeld(a)}
 ${vPhasenFeld(a)}${vSignalFeld(a)}${vZaehlungFeld(a)}${vReservierungFeld(a)}
-${(w => w.length ? `<span class="k">wartet auf</span><span class="w wrap">${w.map(n => `<a href="#" class="org" data-act="oeffnen" data-arg="${n}">#${n}</a>`).join('')}</span>` : '')(wartetAuf(a))}
 ${vBeschriftung('assignees')}<span class="w wrap" role="group" aria-label="Zuständig">${ps.map(p => `<button class="as${a.zustaendige.includes(p.kuerzel) ? ' an' : ''}" data-act="zustaendig" data-arg="${esc(p.kuerzel)}"${p.aktiv ? '' : ' disabled title="stillgelegt"'} aria-pressed="${a.zustaendige.includes(p.kuerzel)}">${pk(p.kuerzel)}${esc(p.name)}</button>`).join('')}</span>
 ${vFeldZeile('labels', a)}
 ${vFeldZeile('faellig', a)}
@@ -698,24 +697,20 @@ function vEntwurf(a, feld, gezeichnet = '') {
   return ` value="${esc(wert)}"${meldungsverweis(S.ui.entwurf, { text: S.ui.fensterFehler, feld: S.ui.fensterFehlerFeld }, a.nummer, feld, FENSTER_MELDUNG)}`;
 }
 
-function quelleLink(x) {
-  const q = S.herkunft[x];
-  return q ? `vscode://file${q.datei}:${q.zeile}` : null;
-}
 /** Standardanwendung und Register zusammen — wie der Server zählt (web/register.js). */
 function anwendungenImOrdner() {
   const q = (S.zustand && S.zustand.einstellungen && S.zustand.einstellungen.quellen) || {};
   return anwendungenZahl(q);
 }
-/** Ohne Kürzel bei mehreren Anwendungen: der Server liefert sie bewusst nicht (R00053). */
-const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && !S.herkunft[x] && anwendungenImOrdner() > 1;
+/** Ohne Kürzel bei mehreren Anwendungen (R00053, R00212): gerechnet aus Text und Register, nicht aufgelöst. */
+const mehrdeutig = x => !x.includes(':') && x !== 'thin air' && anwendungenImOrdner() > 1;
+/** Die Herkunft als Text (R00212): kein Link, kein `title`, kein Zeiger — nur „ohne Herkunft“ und „mehrdeutig“ tragen ihren Hinweis. */
 function vHerkunftChip(x) {
-  const q = S.herkunft[x], h = quelleLink(x);
   // Der inhaltliche Schlüssel des Sicherers (R00138, ADR-0007 N3 Regel 2): die Stelle (Reihenfolge) überlebt eine fremde Liste nicht.
   const halt = ` data-halt="herkunft:${esc(x)}"`;
   if (x === 'thin air') return `<span class="org leer"${halt} title="${OHNE_HERKUNFT}">${OHNE_HERKUNFT}</span>`;
   if (mehrdeutig(x)) return `<span class="org mehrdeutig"${halt} title="mehrdeutig — mehrere Anwendungen registriert; mit Kürzel schreiben, z. B. kd:${esc(x)}">${esc(x)} · mehrdeutig</span>`;
-  return h ? `<a class="org" href="${esc(h)}"${halt} title="${esc(q.name)}${q.status ? ' · ' + esc(q.status) : ''} — im Editor öffnen">${esc(x)}</a>` : `<span class="org"${halt} title="Quelle nicht gefunden — Pfade unter Einrichten prüfen">${esc(x)}</span>`;
+  return `<span class="org"${halt}>${esc(x)}</span>`;
 }
 /** Wirkungen einer Aufgabe auf die WBS als Chips + / ↻ / − mit Link zur Zeile in der WBS-Sicht (R00057). */
 function vWirkungChip(w) {
@@ -784,18 +779,6 @@ function vHerkunft(a) {
   const o = a.herkunft.length ? a.herkunft : ['thin air'];
   return `<span class="orgs">${o.map(vHerkunftChip).join('')}</span>`;
 }
-/** Aufgaben auf diesem Board, auf die `a` laut WBS (Braucht) wartet: nicht archiviert, nicht in der Abschlussspalte. */
-function wartetAuf(a) {
-  if (!S.board) return [];
-  const letzte = S.board.spalten[S.board.spalten.length - 1];
-  const braucht = a.herkunft.flatMap(x => (S.herkunft[x] && S.herkunft[x].braucht) || []);
-  if (!braucht.length) return [];
-  // qualifiziert vergleichen: I0005 und kd:I0005 sind derselbe Knoten, wenn kd die einzige Anwendung ist
-  const kanon = h => (S.herkunft[h] && S.herkunft[h].schluessel) || h;
-  return S.aufgaben.filter(t => t.nummer !== a.nummer && !t.archiviert && t.herkunft.some(h => braucht.includes(kanon(h)))
-    && S.board.spalten.some(sp => sp !== letzte && sp.aufgaben.includes(t.nummer))).map(t => t.nummer);
-}
-
 /** Rotes Ausrufezeichen, solange eine Prüfung einer Spalte links der Karte nicht erfüllt ist (R00059); Tooltip: Prüfung und Knoten. */
 function vAusruf(a) {
   const offen = S.board ? kartenPruefungen(S.board, a, S.pruefWbs || {}) : [];
@@ -860,7 +843,7 @@ function vKarte(a, fertig, spalte) {
   if (alterVoll) zusaetze.push(alterVoll);
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a), angefallen = vAngefallen(a);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorratBekannt(a) ? vorrat(a) : null, gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}${(w => w.length ? `<div class="wartet" title="laut WBS (Braucht)">wartet auf ${w.map(n => '#' + n).join(', ')}</div>` : '')(fertig ? [] : wartetAuf(a))}<div class="r3">${vFremdeKlasse(a)}<span class="rechts">${angefallen || vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorratBekannt(a) ? vorrat(a) : null, gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0">${vWirkungsPunkt(a)}<span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${vAusruf(a)}${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}<div class="r3">${vFremdeKlasse(a)}<span class="rechts">${angefallen || vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */

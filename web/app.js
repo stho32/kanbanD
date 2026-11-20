@@ -1,5 +1,5 @@
 /* kanbanD — Zustand, Laden, Handlungen, Ereignisse. Der Ordner ist die Wahrheit; die Seite fragt nach. */
-const S = { zustand: null, board: null, aufgaben: [], herkunft: {}, ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set(), tooltip: null, fensterMenue: null, laufend: new Set() } };
+const S = { zustand: null, board: null, aufgaben: [], ich: null, extern: {}, live: true, ui: { slug: null, first: null, fehler: null, pop: null, filter: '', bereich: 'alle', auswahl: [], anker: null, vergessen: new Set(), vergessenOffen: false, erinnert: new Set(), tooltip: null, fensterMenue: null, laufend: new Set() } };
 const gemerkt = k => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
 const merken = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) { } };
 S.ui.filter = gemerkt('kanbanD.filter') || '';
@@ -239,7 +239,7 @@ function gewaehltesBoard(zustand) {
 let geladenerStand = null;
 /** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
 const defekterGrund = (slug, zustand) => ((zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
-const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.herkunft, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
+const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
 /** Nur die neueste Antwort wird übernommen (R00110, ADR-0014): jedes Laden zieht beim Start eine Nummer aus dem Takt; übernommen
     wird nur, was neuer ist als das zuletzt übernommene desselben Ziels — Hauptstand oder Fenster — und als die Marke der Schlange. */
@@ -299,9 +299,8 @@ async function sichtLaden(zustand) {
   // Board (423) wird gar nicht erst gefragt; in der Board-Ansicht ist ein Fehler kein Grund, die Seite nicht zu zeichnen.
   const bewegungenPfad = '/api/berichte/bewegungen?board=' + encodeURIComponent(slug || '');
   const bewegungenNoetig = Boolean(slug) && (view === 'board' ? !boardDefekt : /^berichte\/(verlauf|fluss|durchsatz|durchlauf|prognose|fieber)$/.test(view));
-  const [aufgaben, herkunft, boards, bew] = await Promise.all([
+  const [aufgaben, boards, bew] = await Promise.all([
     api('GET', '/api/aufgaben'),
-    api('GET', '/api/herkunft'),
     // die Oberfläche zeigt das Archiv selbst und braucht deshalb die archivierten Karten in den Spalten (R00092)
     api('GET', '/api/boards?archivierte=ja'),
     bewegungenNoetig ? (view === 'board' ? api('GET', bewegungenPfad).catch(() => null) : api('GET', bewegungenPfad)) : Promise.resolve(null),
@@ -318,7 +317,7 @@ async function sichtLaden(zustand) {
   const pruefWbs = {};
   // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
   if (view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
-  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, herkunft, boards, bew, fieberCache, anwendungen, quellenStand, wbs, wbsFehler, pruefWbs } };
+  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, wbs, wbsFehler, pruefWbs } };
 }
 
 /** Aus `GET /api/einstellungen`: das gespeicherte Repository der Quellen und ob sein Ordner da ist. */
