@@ -13,6 +13,7 @@ mod bindung;
 mod commits;
 mod commits_lesen;
 pub use commits_lesen::GESAMTGRENZE;
+pub mod diff;
 mod zweigcache;
 mod lesegrenze;
 mod board_anlegen;
