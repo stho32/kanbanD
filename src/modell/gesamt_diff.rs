@@ -2,7 +2,7 @@
 //! Ausgabe vieler Commits, Folge-Einträge mit Summen und der Text für `format=patch` — rein, **ohne Git**: hier wird nur
 //! gelesen, eingeteilt und zusammengesetzt, was der Startort geliefert hat.
 
-use super::commit_diff::{Diffdatei, Hinweis, roh_lesen};
+use super::commit_diff::{Diffdatei, Fassung, Hinweis, Verteilung, patches_zuordnen, roh_lesen};
 use serde::Serialize;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Range;
@@ -170,41 +170,91 @@ pub fn abschnitte_patch(aus: &[u8], koepfe: &[&str]) -> Vec<Abschnitt> {
     abschnitte
 }
 
-/// Die Pfade je Commit aus dem Namenslauf (`--raw -z --no-renames`, ein Pfad je Eintrag), zerlegt nach den Köpfen.
-/// `None`, wenn die Ausgabe nicht die Form hat.
-pub fn namen_lesen(aus: &[u8], koepfe: &[&str]) -> Option<HashMap<String, Vec<Vec<u8>>>> {
+/// Die Pfade eines Eintrags: einer, bei einer Umbenennung zwei (`alt`, `neu`).
+pub type Eintragspfade = Vec<Vec<u8>>;
+
+/// Die Einträge je Commit aus dem Namenslauf (`--raw -z -M50% -l1000`: Umbenennungen wie im Diff des Commits, mit
+/// beiden Pfaden), zerlegt nach den Köpfen. `None`, wenn die Ausgabe nicht die Form hat.
+pub fn namen_lesen(aus: &[u8], koepfe: &[&str]) -> Option<HashMap<String, Vec<Eintragspfade>>> {
     let mut je_commit = HashMap::new();
     for a in abschnitte_z(aus, koepfe, Zform::Roh)? {
-        let pfade: Vec<Vec<u8>> = roh_lesen(&aus[a.bereich])?.into_iter().flat_map(|r| r.pfade).collect();
-        je_commit.insert(koepfe[a.kopf].to_string(), pfade);
+        let eintraege: Vec<Eintragspfade> = roh_lesen(&aus[a.bereich])?.into_iter().map(|r| r.pfade).collect();
+        je_commit.insert(koepfe[a.kopf].to_string(), eintraege);
     }
     Some(je_commit)
 }
 
-/// Die Einteilung der Spanne (ADR-0032 N6.3): Pfade der Kartencommits und der übrigen Commits der Spanne.
+/// Die Einteilung der Spanne (ADR-0032 N6.3): Pfade der Kartencommits und der übrigen Commits der Spanne, dazu die
+/// **Gruppen** der Kartenpfade — Pfade, die ein Kartenschritt durch eine Umbenennung verbindet, gehören zusammen
+/// (Code-Review B1, #214): eine Gruppe ist ganz netto oder ganz Folge. Berührt ein fremder Commit einen Pfad der Gruppe,
+/// ist sie **belastet**: kein Pfad von ihr erscheint netto, denn der Netto-Diff zeigte die fremden Zeilen, die die
+/// Umbenennung mitgenommen hat, als Arbeit der Karte.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Einteilung {
     pub karte: BTreeSet<Vec<u8>>,
     pub fremd: HashSet<Vec<u8>>,
+    gruppe: HashMap<Vec<u8>, usize>,
+    belastet: HashSet<usize>,
 }
 
 impl Einteilung {
-    /// Aus den Pfaden je Commit: `karte` sind die einbezogenen Kartencommits, alle anderen Commits zählen zu `fremd`.
-    pub fn aus(je_commit: &HashMap<String, Vec<Vec<u8>>>, karte: &HashSet<&str>) -> Einteilung {
+    /// Aus den Einträgen je Commit: `karte` sind die einbezogenen Kartencommits, alle anderen Commits zählen zu `fremd`;
+    /// die Umbenennungen der Kartencommits verbinden ihre Pfade zu Gruppen.
+    pub fn aus(je_commit: &HashMap<String, Vec<Eintragspfade>>, karte: &HashSet<&str>) -> Einteilung {
         let mut e = Einteilung::default();
-        for (commit, pfade) in je_commit {
-            if karte.contains(commit.as_str()) {
-                e.karte.extend(pfade.iter().cloned());
+        let mut paare: Vec<(&[u8], &[u8])> = vec![];
+        for (commit, eintraege) in je_commit {
+            if !karte.contains(commit.as_str()) {
+                e.fremd.extend(eintraege.iter().flatten().cloned());
             } else {
-                e.fremd.extend(pfade.iter().cloned());
+                e.karte.extend(eintraege.iter().flatten().cloned());
+                paare.extend(eintraege.iter().filter_map(|p| match p.as_slice() {
+                    [alt, neu] => Some((alt.as_slice(), neu.as_slice())),
+                    _ => None,
+                }));
             }
+        }
+        let stelle: HashMap<&[u8], usize> = e.karte.iter().enumerate().map(|(i, p)| (p.as_slice(), i)).collect();
+        let mut oben: Vec<usize> = (0..stelle.len()).collect();
+        fn wurzel(oben: &mut [usize], mut i: usize) -> usize {
+            while oben[i] != i {
+                oben[i] = oben[oben[i]];
+                i = oben[i];
+            }
+            i
+        }
+        for (alt, neu) in paare {
+            let (a, n) = (wurzel(&mut oben, stelle[alt]), wurzel(&mut oben, stelle[neu]));
+            oben[a] = n;
+        }
+        for (p, i) in &stelle {
+            let g = wurzel(&mut oben, *i);
+            if e.fremd.contains(*p) {
+                e.belastet.insert(g);
+            }
+            e.gruppe.insert(p.to_vec(), g);
         }
         e
     }
 
-    /// Netto genau dann, wenn alle Pfade des Eintrags in `D_karte` und keiner in `D_fremd` liegt.
+    /// Liegt der Pfad in `D_fremd` oder in einer belasteten Gruppe?
+    fn belastet(&self, p: &[u8]) -> bool {
+        self.fremd.contains(p) || self.gruppe.get(p).is_some_and(|g| self.belastet.contains(g))
+    }
+
+    /// Netto genau dann, wenn alle Pfade des Eintrags in `D_karte` und keiner in `D_fremd` oder in einer belasteten
+    /// Gruppe liegt.
     pub fn netto(&self, d: &Diffdatei) -> bool {
-        d.pfade_roh.iter().all(|p| self.karte.contains(p) && !self.fremd.contains(p))
+        d.pfade_roh.iter().all(|p| self.karte.contains(p) && !self.belastet(p))
+    }
+
+    /// Die Folge-Pfade: alle Kartenpfade, die kein Netto-Eintrag trägt (`gedeckt`) — außer ihre Gruppe ist unbelastet und
+    /// ein Netto-Eintrag trägt einen anderen Pfad von ihr (ein Zwischenname: K1 benennt `a` nach `m`, K2 `m` nach `z`;
+    /// netto steht `a → z`, `m` erscheint nirgends).
+    pub fn folgepfade(&self, gedeckt: &HashSet<&[u8]>) -> HashSet<Vec<u8>> {
+        let gedeckte: HashSet<usize> = gedeckt.iter().filter_map(|p| self.gruppe.get(*p)).copied().collect();
+        let zwischenname = |p: &[u8]| self.gruppe.get(p).is_some_and(|g| gedeckte.contains(g) && !self.belastet.contains(g));
+        self.karte.iter().filter(|p| !gedeckt.contains(p.as_slice()) && !zwischenname(p)).cloned().collect()
     }
 
     /// Liegt jeder Pfad des Eintrags in `D_karte`? Sonst trifft ihn nur eine Pfadangabe `foo` als `foo/…` (N6.3).
@@ -216,6 +266,59 @@ impl Einteilung {
     pub fn pfadangabe_zu_lang(&self) -> bool {
         self.karte.iter().map(Vec::len).sum::<usize>() > GRENZE_PFADANGABE
     }
+}
+
+/// Schließt eine Pfadangabe gegen die Einträge eines Bezugslaufs ab (Code-Review B2, #214): jeder Eintrag, dessen Pfad
+/// die Angabe trifft — genau oder als `foo/…`, denn eine Pfadangabe `foo` trifft in Git alles darunter, auch mit
+/// `--literal-pathspecs` —, kommt mit allen seinen Pfaden hinein, bis nichts mehr dazukommt. Ein Lauf mit der Angabe sieht
+/// dann nur ganze Einträge des Bezugslaufs, und Git paart die Umbenennungen wie dort. Sortiert.
+pub fn abschliessen(pfade: impl IntoIterator<Item = Vec<u8>>, eintraege: &[&[Vec<u8>]]) -> Vec<Vec<u8>> {
+    let mut index: Vec<(&[u8], usize)> = eintraege.iter().enumerate().flat_map(|(i, e)| e.iter().map(move |p| (p.as_slice(), i))).collect();
+    index.sort();
+    let mut genommen = vec![false; eintraege.len()];
+    let mut drin: HashSet<Vec<u8>> = HashSet::new();
+    let mut offen: Vec<Vec<u8>> = vec![];
+    for p in pfade {
+        if drin.insert(p.clone()) {
+            offen.push(p);
+        }
+    }
+    while let Some(s) = offen.pop() {
+        let ab = index.partition_point(|(p, _)| *p < s.as_slice());
+        for &(p, i) in index[ab..].iter().take_while(|(p, _)| p.starts_with(&s)) {
+            let trifft = p.len() == s.len() || p[s.len()] == b'/';
+            if trifft && !std::mem::replace(&mut genommen[i], true) {
+                for q in eintraege[i] {
+                    if drin.insert(q.clone()) {
+                        offen.push(q.clone());
+                    }
+                }
+            }
+        }
+    }
+    let mut v: Vec<Vec<u8>> = drin.into_iter().collect();
+    v.sort();
+    v
+}
+
+/// Ordnet die Stücke eines Laufs mit der abgeschlossenen Pfadangabe `angabe` ([`abschliessen`], sortiert; leer = ohne
+/// Angabe) den Dateien `im_lauf` zu (Code-Review B2, #214). Der Lauf enthält jeden Eintrag des Bezugslaufs, dessen Pfade
+/// alle in der Angabe liegen, in dessen Reihenfolge — zugeordnet wird über alle diese, sonst gälte das Stück eines
+/// mitgenommenen Eintrags gleichen Inhalts als verrutscht; behalten werden nur Patch, Stücke und Marken der Dateien
+/// `im_lauf`. Sie müssen Einträge des Bezugslaufs sein.
+#[allow(clippy::too_many_arguments)]
+pub fn zuordnen_im_bezug(dateien: &mut [Diffdatei], im_lauf: &[usize], bezug: &[Diffdatei], angabe: &[Vec<u8>], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Result<(), String> {
+    let drin = |p: &Vec<u8>| angabe.is_empty() || angabe.binary_search(p).is_ok();
+    let mut lauf: Vec<Diffdatei> = bezug.iter().filter(|e| e.pfade_roh.iter().all(drin)).cloned().collect();
+    let stelle: HashMap<&Vec<Vec<u8>>, usize> = lauf.iter().enumerate().map(|(j, e)| (&e.pfade_roh, j)).collect();
+    let stellen: Vec<usize> = im_lauf.iter().map(|&i| stelle.get(&dateien[i].pfade_roh).copied().ok_or_else(|| format!("Patch-Lauf: „{}“ fehlt im Bezugslauf", dateien[i].name()))).collect::<Result<_, _>>()?;
+    let alle: Vec<usize> = (0..lauf.len()).collect();
+    patches_zuordnen(&mut lauf, &alle, aus, abgeschnitten, verteilung, fassung)?;
+    for (&i, &j) in im_lauf.iter().zip(&stellen) {
+        let (d, l) = (&mut dateien[i], &mut lauf[j]);
+        (d.patch, d.stuecke, d.gross, d.nachladen, d.nicht_utf8) = (l.patch.take(), l.stuecke.take(), l.gross, l.nachladen, d.nicht_utf8 || l.nicht_utf8);
+    }
+    Ok(())
 }
 
 /// Ein Schritt einer Folge-Datei: der Verweis wörtlich wie in der Datei der Karte und die Datei des Commits.
@@ -429,10 +532,48 @@ mod tests {
     // ADR-0032 N6.3: netto genau dann, wenn alle Pfade in D_karte und keiner in D_fremd
     #[test]
     fn einteilung_netto_oder_folge() {
-        let je: HashMap<String, Vec<Vec<u8>>> = [(A.to_string(), vec![b"a".to_vec(), b"k".to_vec()]), (B.to_string(), vec![b"a".to_vec(), b"f".to_vec()]), (C.to_string(), vec![b"a".to_vec(), b"b".to_vec()])].into();
+        let je: HashMap<String, Vec<Eintragspfade>> = [(A.to_string(), vec![vec![b"a".to_vec()], vec![b"k".to_vec()]]), (B.to_string(), vec![vec![b"a".to_vec()], vec![b"f".to_vec()]]), (C.to_string(), vec![vec![b"a".to_vec()], vec![b"b".to_vec()]])].into();
         let e = Einteilung::aus(&je, &menge(&[A, C]));
         assert!(e.netto(&datei("k", 1, false)) && e.netto(&datei("b", 1, false)));
         assert!(!e.netto(&datei("a", 1, false)), "von B berührt");
         assert!(!e.netto(&datei("f", 1, false)) && !e.aus_der_karte(&datei("f", 1, false)), "nur fremd");
+    }
+
+    fn pfade(p: &[&str]) -> Eintragspfade {
+        p.iter().map(|x| x.as_bytes().to_vec()).collect()
+    }
+
+    // Code-Review B1 (#214): eine Umbenennung im Kartenschritt verbindet ihre Pfade; berührt ein fremder Commit einen
+    // davon, ist keiner netto (auch über eine Kette); eine unbelastete Gruppe mit Netto-Eintrag hat keinen Zwischennamen
+    // in der Folge
+    #[test]
+    fn gruppen_aus_umbenennungen() {
+        // A: f → c (F legte f an), B (fremd): f; C: x → m, D: m → z, unbelastet; E: u → v, v → w über eine Kette, F2 berührt u
+        let je: HashMap<String, Vec<Eintragspfade>> = [
+            (A.to_string(), vec![pfade(&["f", "c"]), pfade(&["k"])]),
+            (B.to_string(), vec![pfade(&["f"]), pfade(&["u"])]),
+            (C.to_string(), vec![pfade(&["x", "m"]), pfade(&["u", "v"])]),
+            (D.to_string(), vec![pfade(&["m", "z"]), pfade(&["v", "w"])]),
+        ].into();
+        let e = Einteilung::aus(&je, &menge(&[A, C, D]));
+        let rohdatei = |status: char, p: &[&str]| crate::modell::diffdatei(crate::modell::Rohdatei { modus_alt: "100644".into(), modus_neu: "100644".into(), hash_alt: A.into(), hash_neu: B.into(), status, zahl: None, pfade: pfade(p) }, Some((1, 1)));
+        assert!(!e.netto(&rohdatei('A', &["c"])), "c hängt an f, das F berührt");
+        assert!(!e.netto(&rohdatei('A', &["w"])), "w hängt über v an u");
+        assert!(e.netto(&rohdatei('R', &["x", "z"])) && e.netto(&rohdatei('A', &["k"])));
+        let gedeckt: HashSet<&[u8]> = [b"x".as_slice(), b"z", b"k"].into();
+        let mut folge: Vec<Vec<u8>> = e.folgepfade(&gedeckt).into_iter().collect();
+        folge.sort();
+        assert_eq!(folge, pfade(&["c", "f", "u", "v", "w"]), "m ist ein Zwischenname der gedeckten Gruppe x → m → z");
+    }
+
+    // Code-Review B2 (#214): die Pfadangabe nimmt jeden Eintrag ganz, dessen Pfad sie trifft — `d/x` trifft `d/x/inner`,
+    // dessen Partner `b` kommt mit; `d/xy` und `d/x2` trifft sie nicht
+    #[test]
+    fn pfadangabe_abschliessen() {
+        let eintraege = [pfade(&["d/x", "b/inner"]), pfade(&["b", "d/x/inner"]), pfade(&["d/xy"]), pfade(&["d/x2"]), pfade(&["c"])];
+        let bezug: Vec<&[Vec<u8>]> = eintraege.iter().map(Vec::as_slice).collect();
+        assert_eq!(abschliessen([b"d/x".to_vec()], &bezug), pfade(&["b", "b/inner", "d/x", "d/x/inner"]));
+        assert_eq!(abschliessen([b"c".to_vec()], &bezug), pfade(&["c"]));
+        assert_eq!(abschliessen([b"b/inner".to_vec()], &bezug), pfade(&["b", "b/inner", "d/x", "d/x/inner"]), "über den Partner und dessen Verzeichnis");
     }
 }

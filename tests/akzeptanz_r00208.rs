@@ -757,7 +757,6 @@ fn schritte_von(f: &Value) -> Vec<(String, String, Value, Value, u64, u64)> {
 // dem Schritt K2 `R f1.txt → c.txt`, 0/0; kein Netto-Eintrag mit FREMD-Zeilen (heute: c.txt netto `A` mit F-Zeilen,
 // f1.txt Folge `D` mit `-FREMD`)
 #[tokio::test]
-#[ignore = "erwartet rot: B1 der Nacharbeit 1 (#214)"]
 async fn b1_umbenennung_einer_fremd_angelegten_datei() {
     let l = ausgangslage();
     l.zeile("a.txt", 3, "B1-K1");
@@ -785,7 +784,7 @@ async fn b1_umbenennung_einer_fremd_angelegten_datei() {
     l.git(&["mv", "q.txt", "w.txt"]);
     let k1c = l.commit("K1c");
     l.karte(22, &[kd(&k0c), kd(&k1c)]);
-    // (d) Kette: F legt u.txt an, K1 benennt nach u1.txt, K2 nach u2/inner, K3 ändert u2/inner
+    // (d) Kette: F legt u.txt an, K1 benennt nach u1.txt, K2 nach u2/inner, K3 hängt an u2/inner an
     l.zeile("a.txt", 7, "B1-K0d");
     let k0d = l.commit("K0d");
     l.schreiben("u.txt", &zeilen("FREMD-u", 5));
@@ -795,7 +794,8 @@ async fn b1_umbenennung_einer_fremd_angelegten_datei() {
     std::fs::create_dir_all(l.r.join("u2")).unwrap();
     l.git(&["mv", "u1.txt", "u2/inner"]);
     let k2d = l.commit("K2d");
-    l.zeile("u2/inner", 1, "K3d");
+    let u2 = std::fs::read_to_string(l.r.join("u2/inner")).unwrap();
+    l.schreiben("u2/inner", &format!("{u2}K3d\n"));
     let k3d = l.commit("K3d");
     l.karte(23, &[kd(&k0d), kd(&k1d), kd(&k2d), kd(&k3d)]);
     // (e) Zwischenname ohne fremde Zeilen (Zufallsprobe Seed 12): K1 benennt r.txt nach m.txt, K2 m.txt nach m.txt/inner,
@@ -846,7 +846,6 @@ async fn b1_umbenennung_einer_fremd_angelegten_datei() {
 // durch b/inner — ohne und mit F zwischen K2 und K3, das b ändert; Variante: fremde Löschung von d/x mit Zwilling.
 // Heute: mit F `…/diff` 500 (`--literal-pathspecs d/x` trifft `d/x/…`, Git paart neu)
 #[tokio::test]
-#[ignore = "erwartet rot: B2 der Nacharbeit 1 (#214)"]
 async fn b2_typwechsel_mit_gleichem_blob() {
     let l = ausgangslage();
     let inhalt = zeilen("zw", 10);
@@ -896,7 +895,6 @@ async fn b2_typwechsel_mit_gleichem_blob() {
 // B5 Abnahme-Probe: ein Dateiname mit Tab am Ende in K1, F und K2 → 200 mit Folge und beiden Schritten; Varianten
 // Umbenennung und binär (heute 500: `ends_with(b"\t")` hielt den Eintrag für eine Umbenennung)
 #[tokio::test]
-#[ignore = "erwartet rot: B1-Klasse (Umbenennung r.txt → r\\t → s\\t über fremde Änderung), Nacharbeit 1 (#214)"]
 async fn b5_dateiname_mit_tab_am_ende() {
     let l = ausgangslage();
     l.schreiben("x\t", &zeilen("x", 5));

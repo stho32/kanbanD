@@ -7,7 +7,7 @@ use super::Kanban;
 use super::diff::{Diffantwort, Diffanfrage, Diffcommit, Diffformat, abbruch, repo_fehler};
 use crate::fehler::Fehler;
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Metadaten, Objekt, Teil, Vergleich, Vielart};
-use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, Einteilung, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, leerer_baum, namen_lesen, ordnen, patch_text, patches_zuordnen, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen};
+use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschliessen, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, leerer_baum, namen_lesen, ordnen, patch_text, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen, zuordnen_im_bezug};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -208,6 +208,13 @@ impl Gesamtlauf<'_> {
                 k
             }
         };
+        let diffcommits = |schritte: &[Kartencommit]| -> Result<Vec<Diffcommit>, Fehler> {
+            schritte.iter().map(|c| {
+                let m = m(&c.hash)?;
+                Ok(Diffcommit { verweis: c.verweis.clone(), anwendung: anwendung.kuerzel.clone(), hash: c.hash.clone(), titel: titel_kuerzen(&m.titel), autor: m.autor.clone(), datum: m.datum.clone(), plus: m.plus, minus: m.minus, dateien: m.dateien })
+            }).collect()
+        };
+
         let einteilung = match (grund, einteilung) {
             (None, Some(e)) => e,
             _ => {
@@ -228,6 +235,7 @@ impl Gesamtlauf<'_> {
         }
         // Netto (N6.3): Liste und Zähler mit der Pfadangabe D_karte (ohne D_fremd ohne Angabe)
         let mut netto: Vec<Diffdatei> = vec![];
+        let mut netto_liste: Vec<Diffdatei> = vec![];
         let mut abgeschnitten = false;
         let mut netto_vollstaendig = true;
         let basis_vergleich = spanne.as_ref().filter(|_| grund.is_none()).map(|s| {
@@ -244,25 +252,25 @@ impl Gesamtlauf<'_> {
             let zahlen = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, pfade, GRENZE_DATEILISTE, frist))?;
             abgeschnitten |= roh.abgeschnitten || zahlen.abgeschnitten;
             netto_vollstaendig = !abgeschnitten;
-            let alle = verbinden(&roh, &zahlen)?;
-            netto = alle.into_iter().filter(|d| einteilung.netto(d)).collect();
+            netto_liste = verbinden(&roh, &zahlen)?;
+            netto = netto_liste.iter().filter(|d| einteilung.netto(d)).cloned().collect();
             diff.spanne = Some(Spanne { basis: basis.clone(), letzter: letzter.clone() });
         }
-        // Folge: alle Kartenpfade, die kein Netto-Eintrag trägt
+        // Folge: alle Kartenpfade, die kein Netto-Eintrag trägt (ganze Gruppen, Einteilung::folgepfade)
         let gedeckt: HashSet<&[u8]> = netto.iter().flat_map(|d| d.pfade_roh.iter().map(Vec::as_slice)).collect();
-        let folgepfade: HashSet<Vec<u8>> = einteilung.karte.iter().filter(|p| !gedeckt.contains(p.as_slice())).cloned().collect();
+        let folgepfade: HashSet<Vec<u8>> = einteilung.folgepfade(&gedeckt);
         let mut plan = Folgeplan { commits: vec![], pfade: vec![] };
         for c in &schritte {
-            if je_commit.get(&c.hash).is_some_and(|ps: &Vec<Vec<u8>>| ps.iter().any(|p| folgepfade.contains(p))) {
+            if je_commit.get(&c.hash).is_some_and(|es: &Vec<Eintragspfade>| es.iter().flatten().any(|p| folgepfade.contains(p))) {
                 plan.commits.push((c.verweis.clone(), c.hash.clone(), m(&c.hash)?.erster_elternteil.clone()));
             }
         }
         if grund.is_none() {
-            let mut p: Vec<Vec<u8>> = folgepfade.iter().cloned().collect();
-            p.sort();
-            plan.pfade = p;
+            // abgeschlossen gegen die Einträge der Kartenschritte: Git paart im Folge-Lauf wie im Namenslauf (B2)
+            let bezug: Vec<&[Vec<u8>]> = plan.commits.iter().flat_map(|(_, h, _)| je_commit.get(h).into_iter().flatten().map(Vec::as_slice)).collect();
+            plan.pfade = abschliessen(folgepfade.iter().cloned(), &bezug);
         }
-        let (mut folgen, unvollstaendig, folge_abgeschnitten) = self.folge_listen(&plan, &einteilung, &folgepfade, &je_commit)?;
+        let (mut folgen, unvollstaendig, folge_abgeschnitten, listen) = self.folge_listen(&plan, &folgepfade, &je_commit)?;
         abgeschnitten |= folge_abgeschnitten;
         // Hinweise vor den Arten aus A3 (N6.7)
         if let Some(g) = grund {
@@ -315,35 +323,38 @@ impl Gesamtlauf<'_> {
                     Verteilung::Einzeln => ((0..nettodateien.len()).collect(), true),
                 };
                 if !im_lauf.is_empty() {
-                    let pfade: Vec<&[u8]> = if mit_angabe { im_lauf.iter().flat_map(|i| nettodateien[*i].pfade_roh.iter().map(Vec::as_slice)).collect() } else { vec![] };
+                    // abgeschlossen gegen die Netto-Liste: der Lauf sieht ganze Einträge, Git paart wie dort (B2)
+                    let bezug: Vec<&[Vec<u8>]> = netto_liste.iter().map(|d| d.pfade_roh.as_slice()).collect();
+                    let angabe = if mit_angabe { abschliessen(im_lauf.iter().flat_map(|i| nettodateien[*i].pfade_roh.iter().cloned()), &bezug) } else { vec![] };
+                    let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
                     let patch = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist))?;
                     rest = if patch.abgeschnitten { 0 } else { budget - patch.ausgabe.len() };
-                    patches_zuordnen(&mut nettodateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+                    zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
                 }
             }
             for (i, n) in stellen.into_iter().zip(nettodateien) {
                 dateien[i] = Gesamtdatei::Netto(n);
             }
         }
-        self.folge_patches(&mut dateien, &plan, rest, verteilung, fassung)?;
+        self.folge_patches(&mut dateien, &plan, &listen, rest, verteilung, fassung)?;
         diff.hinweise.extend(dateien.iter().flat_map(|d| match d {
             Gesamtdatei::Netto(n) => vec![n],
             Gesamtdatei::Folge(f) => f.schritte.iter().map(|s| &s.datei).collect(),
         }).filter(|d| d.pfad_zu_lang() || (datei.is_some() && d.gross)).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }).collect::<Vec<_>>());
-        diff.commits = schritte.iter().map(|c| {
-            let m = m(&c.hash)?;
-            Ok(Diffcommit { verweis: c.verweis.clone(), anwendung: anwendung.kuerzel.clone(), hash: c.hash.clone(), titel: titel_kuerzen(&m.titel), autor: m.autor.clone(), datum: m.datum.clone(), plus: m.plus, minus: m.minus, dateien: m.dateien })
-        }).collect::<Result<_, Fehler>>()?;
+        diff.commits = diffcommits(&schritte)?;
         diff.dateien = dateien;
         Ok(diff)
     }
 
     /// Liste und Zähler des Folge-Laufs über `diff-tree --stdin`, zerlegt nach den Köpfen, zu Folge-Einträgen gruppiert.
     /// Ein Eintrag erscheint nur mit allen Schritten: berührt ein Commit, dessen Abschnitt am Schnitt liegt oder fehlt,
-    /// einen seiner Pfade, fällt er weg (zweiter Wert: wie viele). Dritter Wert: ein Lauf war abgeschnitten.
-    fn folge_listen(&self, plan: &Folgeplan, einteilung: &Einteilung, folgepfade: &HashSet<Vec<u8>>, je_commit: &HashMap<String, Vec<Vec<u8>>>) -> Result<(Vec<Folgedatei>, usize, bool), Fehler> {
+    /// einen seiner Pfade, fällt er weg (zweiter Wert: wie viele). Dritter Wert: ein Lauf war abgeschnitten. Vierter: je
+    /// Commit des Plans alle gelesenen Einträge in der Reihenfolge von Git (Bezug der Pfadangabe des Patch-Laufs). Ein
+    /// Schritt ist ein Eintrag, dessen Pfade alle Folge-Pfade sind (eine Gruppe ist ganz netto oder ganz Folge).
+    #[allow(clippy::type_complexity)]
+    fn folge_listen(&self, plan: &Folgeplan, folgepfade: &HashSet<Vec<u8>>, je_commit: &HashMap<String, Vec<Eintragspfade>>) -> Result<(Vec<Folgedatei>, usize, bool, Vec<Vec<Diffdatei>>), Fehler> {
         if plan.commits.is_empty() {
-            return Ok((vec![], 0, false));
+            return Ok((vec![], 0, false, vec![]));
         }
         let vergleiche: Vec<Vergleich> = plan.commits.iter().map(|(_, h, e)| Vergleich { commit: h, eltern: e.as_deref() }).collect();
         let koepfe: Vec<&str> = plan.commits.iter().map(|(_, h, _)| h.as_str()).collect();
@@ -358,6 +369,7 @@ impl Gesamtlauf<'_> {
         let grenze = |ab: &[crate::modell::Abschnitt], ab_geschnitten: bool| if ab_geschnitten { ab.last().map_or(0, |a| a.kopf) } else { koepfe.len() };
         let vollstaendig_bis = grenze(&roh_ab, roh.abgeschnitten).min(grenze(&zahlen_ab, zahlen.abgeschnitten));
         let mut schritte: Vec<(String, Diffdatei)> = vec![];
+        let mut listen: Vec<Vec<Diffdatei>> = vec![vec![]; plan.commits.len()];
         for (k, (verweis, _, _)) in plan.commits.iter().enumerate().take(vollstaendig_bis) {
             let r = roh_ab.iter().find(|a| a.kopf == k);
             let z = zahlen_ab.iter().find(|a| a.kopf == k);
@@ -369,24 +381,24 @@ impl Gesamtlauf<'_> {
             if r.len() != z.len() {
                 return Err(form());
             }
-            for d in r.into_iter().zip(z).map(|(r, z)| diffdatei(r, z)) {
-                if einteilung.aus_der_karte(&d) && d.pfade_roh.iter().any(|p| folgepfade.contains(p)) {
-                    schritte.push((verweis.clone(), d));
-                }
+            let liste: Vec<Diffdatei> = r.into_iter().zip(z).map(|(r, z)| diffdatei(r, z)).collect();
+            for d in liste.iter().filter(|d| d.pfade_roh.iter().all(|p| folgepfade.contains(p))) {
+                schritte.push((verweis.clone(), d.clone()));
             }
+            listen[k] = liste;
         }
         let unvollstaendige: HashSet<&str> = koepfe[vollstaendig_bis..].iter().copied().collect();
-        let betroffen: HashSet<&[u8]> = unvollstaendige.iter().flat_map(|h| je_commit.get(*h).into_iter().flatten().map(Vec::as_slice)).collect();
+        let betroffen: HashSet<&[u8]> = unvollstaendige.iter().flat_map(|h| je_commit.get(*h).into_iter().flatten().flatten().map(Vec::as_slice)).collect();
         let alle = folge_bilden(schritte);
         let n = alle.len();
         let folgen: Vec<Folgedatei> = alle.into_iter().filter(|f| !f.schritte.iter().any(|s| s.datei.pfade_roh.iter().any(|p| betroffen.contains(p.as_slice())))).collect();
         let weg = n - folgen.len();
-        Ok((folgen, weg, abgeschnitten))
+        Ok((folgen, weg, abgeschnitten, listen))
     }
 
     /// Der Patch-Lauf der Folge über `diff-tree --stdin` mit dem Rest des Budgets; ohne Rest sind alle Schritte
     /// `nachladen` (mit `datei=` `gross`) ohne Lauf. Zuordnung je Abschnitt über die Blob-Hashes (N5.2).
-    fn folge_patches(&self, dateien: &mut [Gesamtdatei], plan: &Folgeplan, rest: usize, verteilung: Verteilung, fassung: Fassung) -> Result<(), Fehler> {
+    fn folge_patches(&self, dateien: &mut [Gesamtdatei], plan: &Folgeplan, listen: &[Vec<Diffdatei>], rest: usize, verteilung: Verteilung, fassung: Fassung) -> Result<(), Fehler> {
         // je Commit des Plans die Schritte (Eintrag, Schritt), in der Reihenfolge der Einträge
         let mut je_commit: Vec<Vec<(usize, usize)>> = vec![vec![]; plan.commits.len()];
         for (i, d) in dateien.iter().enumerate() {
@@ -434,9 +446,10 @@ impl Gesamtlauf<'_> {
                     eigene.extend(gruppen[k][i].pfade_roh.iter().cloned());
                 }
             }
-            eigene.sort();
-            eigene.dedup();
-            let pfade: Vec<&[u8]> = eigene.iter().map(Vec::as_slice).collect();
+            // abgeschlossen gegen die Listen des Folge-Laufs: Git paart wie dort (B2)
+            let bezug: Vec<&[Vec<u8>]> = mit.iter().flat_map(|&k| listen[k].iter().map(|d| d.pfade_roh.as_slice())).collect();
+            let angabe = abschliessen(eigene, &bezug);
+            let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
             let patch: Teil = self.git(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Patch), &pfade, rest, self.frist))?;
             let abschnitte = abschnitte_patch(&patch.ausgabe, &koepfe);
             let letzter = abschnitte.last().map(|a| a.kopf);
@@ -451,7 +464,7 @@ impl Gesamtlauf<'_> {
                     continue;
                 }
                 let bytes = teil.map_or(&[][..], |a| &patch.ausgabe[a.bereich.clone()]);
-                patches_zuordnen(&mut gruppen[k], &im_lauf[k], bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+                zuordnen_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], &angabe, bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
             }
         }
         for (stellen, g) in je_commit.into_iter().zip(gruppen) {

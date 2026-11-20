@@ -354,15 +354,16 @@ pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, pfade: &[&[u
     git_teil(wurzel, Befehl::DiffTree, &args, pfade, None, bytegrenze, frist)
 }
 
-/// Ein Lauf `diff-tree --stdin` über viele Commits (ADR-0032 N6.2): Namen (`--raw -z --no-renames`, ohne
-/// Umbenennungserkennung, also mit beiden Pfaden einer Umbenennung) oder Liste, Zähler und Patch wie [`diff_tree`]. Je
+/// Ein Lauf `diff-tree --stdin` über viele Commits (ADR-0032 N6.2): Namen (`--raw -z` mit Umbenennungen wie im Diff
+/// des Commits, `-M50% -l1000`: beide Pfade und ihr Paar, Code-Review B1 #214) oder Liste, Zähler und Patch wie
+/// [`diff_tree`]. Je
 /// Vergleich eine Zeile `<commit> <erster Elternteil>` auf `stdin` — der Elternteil ausdrücklich, damit ein Merge gegen
 /// seinen ersten Elternteil gelesen wird (N6.5); ohne Elternteil `<commit>` allein gegen den leeren Baum (`--root`).
 /// Die Ausgabe trägt vor den Einträgen jedes Commits, der etwas ändert, seinen Hash als Kopf.
 pub fn diff_tree_viele(wurzel: &Path, vergleiche: &[Vergleich], art: Vielart, pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
     let mut args = vec!["--stdin", "--root", "-r", "--ignore-submodules=none"];
     args.extend_from_slice(match art {
-        Vielart::Namen => &["--no-renames", "--raw", "-z"][..],
+        Vielart::Namen => &["-M50%", "-l1000", "--raw", "-z"][..],
         Vielart::Diff(Diffart::Roh) => &["-M50%", "-l1000", "--raw", "-z"],
         Vielart::Diff(Diffart::Zahlen) => &["-M50%", "-l1000", "--numstat", "-z"],
         Vielart::Diff(Diffart::Patch) => &["-M50%", "-l1000", "-p", "--full-index", "--submodule=short"],

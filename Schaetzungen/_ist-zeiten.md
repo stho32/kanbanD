@@ -895,3 +895,4 @@ Nie vom User erfragen.
 | 2026-11-20 | Karte #214 R00208 (Gesamt-Diff der Karte per API lesen) | B1028 Dienst, Beschreibung, Akzeptanztests, R00206-Test | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-20 | Karte #214 R00208 (Gesamt-Diff der Karte per API lesen) | B1029 Lastprobe, Prozesszähler, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-20 | Karte #214 R00208 Nacharbeit 1 | B1049 Startort `--`, GIT_NO_REPLACE_OBJECTS (S1, S2) | Standard | 0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-20 | Karte #214 R00208 Nacharbeit 1 | B1050 Umbenennungspaare, Gruppen, abgeschlossene Pfadangaben (B1, B2) | Standard | 1-2h | 0,6h | 0,6h | autonom |
