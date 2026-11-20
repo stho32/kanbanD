@@ -80,7 +80,7 @@ impl Kanban {
         if anfrage.bekannt.as_deref().is_some_and(|b| b.split(',').any(|w| w.trim() == etag)) {
             return Ok(Diffantwort::Unveraendert(etag));
         }
-        let mut lauf = Gesamtlauf { k: self, wurzel: &wurzel, frist, anfrage };
+        let mut lauf = Gesamtlauf { k: self, wurzel: &wurzel, frist, anfrage, nr };
         let diff = lauf.lesen(anwendung, verweise, &spitzen, weitere, ausgelassen, nr)?;
         let bytes = match anfrage.format {
             Diffformat::Json => serde_json::to_vec(&diff).map_err(|f| Fehler::Intern(format!("JSON: {f}")))?,
@@ -97,6 +97,7 @@ struct Gesamtlauf<'a> {
     wurzel: &'a Path,
     frist: Instant,
     anfrage: &'a Diffanfrage,
+    nr: u32,
 }
 
 /// Ein Folge-Lauf: die Commits in der Reihenfolge der Schritte (Verweis, Vergleich) und die Pfadangabe (leer = alle).
@@ -202,6 +203,25 @@ impl Gesamtlauf<'_> {
                 }
             }
         }
+        // Netto (N6.3): Liste und Zähler mit der Pfadangabe D_karte (ohne D_fremd ohne Angabe); startet Git mit der
+        // Angabe nicht (Argumentgrenze), ist das wie eine zu lange Pfadangabe: ganz als Folge (N7.10 Punkt 3)
+        let mut netto_laeufe: Option<(Teil, Teil)> = None;
+        if let (Some(s), Some(e)) = (&spanne, &einteilung) {
+            let letzter = s.linie.last().map(|p| p.commit.clone()).unwrap_or_default();
+            let eltern = s.basis.clone().unwrap_or_else(|| leerer_baum(&letzter).to_string());
+            let vergleich = Vergleich { eltern: Some(&eltern), commit: &letzter };
+            let karte_pfade: Vec<&[u8]> = e.karte.iter().map(Vec::as_slice).collect();
+            let pfade: &[&[u8]] = if e.fremd.is_empty() { &[] } else { &karte_pfade };
+            let roh = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, pfade, GRENZE_DATEILISTE, frist)).map_err(repo_fehler)?;
+            let zahlen = match roh {
+                Some(_) => gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, pfade, GRENZE_DATEILISTE, frist)).map_err(repo_fehler)?,
+                None => None,
+            };
+            match (roh, zahlen) {
+                (Some(r), Some(z)) => netto_laeufe = Some((r, z)),
+                _ => (grund, einteilung) = (Some(Grund::FremdZuGross), None),
+            }
+        }
         // Reihenfolge der Schritte: auf der Linie vom ältesten zum letzten; ganz als Folge wie die Liste
         let schritte: Vec<Kartencommit> = match (&spanne, grund) {
             (Some(s), None) => s.linie.iter().filter_map(|p| karte.iter().find(|c| c.hash == p.commit).cloned()).collect(),
@@ -249,7 +269,6 @@ impl Gesamtlauf<'_> {
         if datei.is_some_and(|d| !einteilung.karte.contains(d.as_bytes())) {
             return Err(datei_fehlt(nr));
         }
-        // Netto (N6.3): Liste und Zähler mit der Pfadangabe D_karte (ohne D_fremd ohne Angabe)
         let mut netto: Vec<Diffdatei> = vec![];
         let mut netto_liste: Vec<Diffdatei> = vec![];
         let mut abgeschnitten = false;
@@ -259,13 +278,7 @@ impl Gesamtlauf<'_> {
             let basis = s.basis.clone();
             (basis, letzter)
         });
-        if let Some((basis, letzter)) = &basis_vergleich {
-            let eltern = basis.clone().unwrap_or_else(|| leerer_baum(letzter).to_string());
-            let vergleich = Vergleich { eltern: Some(&eltern), commit: letzter };
-            let karte_pfade: Vec<&[u8]> = einteilung.karte.iter().map(Vec::as_slice).collect();
-            let pfade: &[&[u8]] = if einteilung.fremd.is_empty() { &[] } else { &karte_pfade };
-            let roh = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, pfade, GRENZE_DATEILISTE, frist))?;
-            let zahlen = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, pfade, GRENZE_DATEILISTE, frist))?;
+        if let (Some((basis, letzter)), Some((roh, zahlen))) = (&basis_vergleich, netto_laeufe.take()) {
             abgeschnitten |= roh.abgeschnitten || zahlen.abgeschnitten;
             netto_vollstaendig = !abgeschnitten;
             netto_liste = verbinden(&roh, &zahlen)?;
@@ -348,33 +361,47 @@ impl Gesamtlauf<'_> {
                     let bezug: Vec<&[Vec<u8>]> = netto_liste.iter().map(|d| d.pfade_roh.as_slice()).collect();
                     let angabe = if mit_angabe { abschliessen(im_lauf.iter().flat_map(|i| nettodateien[*i].pfade_roh.iter().cloned()), &bezug) } else { vec![] };
                     let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
-                    let patch = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist))?;
-                    rest = if patch.abgeschnitten { 0 } else { budget - patch.ausgabe.len() };
                     // streng nur mit genau der Angabe der Netto-Liste (auch „keine“): dann sieht Git dieselbe Matrix und paart
                     // wie dort (N7.10); jede kleinere Angabe ist eine Abkürzung — ein Eintrag ohne Stück ist `nachladen`
                     let bezug_angabe: Vec<&Vec<u8>> = if einteilung.fremd.is_empty() { vec![] } else { einteilung.karte.iter().collect() };
                     let gleich = angabe.iter().eq(bezug_angabe.iter().copied());
-                    if gleich {
-                        // mit Angabe über alle Einträge der Netto-Liste, die sie trifft: kein Zwilling nimmt ein fremdes Stück
-                        let zuordnung = if mit_angabe {
-                            patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
-                        } else {
-                            patches_zuordnen(&mut nettodateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
-                        };
-                        zuordnung.map_err(|f| Fehler::Intern(format!("git: {f}")))?;
-                    } else {
-                        let vorher = (verteilung == Verteilung::Einzeln).then(|| nettodateien.clone());
-                        let ohne = nicht_zugeordnet_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
-                        if let Some(vorher) = vorher.filter(|_| !ohne.is_empty()) {
-                            // datei=: Rückfall mit genau der Angabe der Netto-Liste — dieselbe Matrix, streng (N7.10 Punkt 2)
-                            nettodateien = vorher;
-                            let alle: Vec<Vec<u8>> = netto_liste.iter().flat_map(|d| d.pfade_roh.iter().cloned()).collect();
-                            let pfade: Vec<&[u8]> = bezug_angabe.iter().map(|p| p.as_slice()).collect();
-                            let patch = self.git(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist))?;
-                            let zuordnung = patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &alle, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
-                            if !im_bezug_zugeordnet(zuordnung, !netto_vollstaendig).map_err(|f| Fehler::Intern(format!("git: {f}")))? {
-                                return Err(zu_gross_fuer_datei(nr));
+                    let vorher = (verteilung == Verteilung::Einzeln && !gleich).then(|| nettodateien.clone());
+                    let ohne = match gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist)).map_err(repo_fehler)? {
+                        // startet Git mit der Angabe nicht (Argumentgrenze): die Einträge des Laufs `nachladen` (N7.10 Punkt 3)
+                        None if verteilung == Verteilung::Einzeln && gleich => return Err(zu_gross_fuer_datei(nr)),
+                        None => {
+                            for &i in &im_lauf {
+                                abbrechen(&mut nettodateien[i], verteilung);
                             }
+                            im_lauf.clone()
+                        }
+                        Some(patch) if gleich => {
+                            rest = if patch.abgeschnitten { 0 } else { budget - patch.ausgabe.len() };
+                            // mit Angabe über alle Einträge der Netto-Liste, die sie trifft: kein Zwilling nimmt ein fremdes Stück
+                            let zuordnung = if mit_angabe {
+                                patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
+                            } else {
+                                patches_zuordnen(&mut nettodateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
+                            };
+                            zuordnung.map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+                            vec![]
+                        }
+                        Some(patch) => {
+                            rest = if patch.abgeschnitten { 0 } else { budget - patch.ausgabe.len() };
+                            nicht_zugeordnet_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &angabe, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung)
+                        }
+                    };
+                    if let Some(vorher) = vorher.filter(|_| !ohne.is_empty()) {
+                        // datei=: Rückfall mit genau der Angabe der Netto-Liste — dieselbe Matrix, streng (N7.10 Punkt 2)
+                        nettodateien = vorher;
+                        let alle: Vec<Vec<u8>> = netto_liste.iter().flat_map(|d| d.pfade_roh.iter().cloned()).collect();
+                        let pfade: Vec<&[u8]> = bezug_angabe.iter().map(|p| p.as_slice()).collect();
+                        let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist)).map_err(repo_fehler)? else {
+                            return Err(zu_gross_fuer_datei(nr));
+                        };
+                        let zuordnung = patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &alle, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
+                        if !im_bezug_zugeordnet(zuordnung, !netto_vollstaendig).map_err(|f| Fehler::Intern(format!("git: {f}")))? {
+                            return Err(zu_gross_fuer_datei(nr));
                         }
                     }
                 }
@@ -406,8 +433,11 @@ impl Gesamtlauf<'_> {
         let vergleiche: Vec<Vergleich> = plan.commits.iter().map(|(_, h, e)| Vergleich { commit: h, eltern: e.as_deref() }).collect();
         let koepfe: Vec<&str> = plan.commits.iter().map(|(_, h, _)| h.as_str()).collect();
         let pfade: Vec<&[u8]> = plan.pfade.iter().map(Vec::as_slice).collect();
-        let roh = self.git(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Roh), &pfade, GRENZE_DATEILISTE, self.frist))?;
-        let zahlen = self.git(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Zahlen), &pfade, GRENZE_DATEILISTE, self.frist))?;
+        // startet Git mit der Angabe nicht (Argumentgrenze), ist das wie ein abgeschnittener Lauf ohne vollständigen
+        // Abschnitt: die Folge-Einträge fallen weg, `dateien_gekappt` (N7.10 Punkt 3); mit datei= der Diff je Commit
+        let zu_lang = || if self.anfrage.datei.is_some() { Err(zu_gross_fuer_datei(self.nr)) } else { Ok((vec![], 0, true, vec![vec![]; plan.commits.len()])) };
+        let Some(roh) = gestartet(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Roh), &pfade, GRENZE_DATEILISTE, self.frist)).map_err(repo_fehler)? else { return zu_lang() };
+        let Some(zahlen) = gestartet(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Zahlen), &pfade, GRENZE_DATEILISTE, self.frist)).map_err(repo_fehler)? else { return zu_lang() };
         let form = || Fehler::Intern("git: Folge-Lauf unlesbar".into());
         let roh_ab = abschnitte_z(&roh.ausgabe, &koepfe, Zform::Roh).ok_or_else(form)?;
         let zahlen_ab = abschnitte_z(&zahlen.ausgabe, &koepfe, Zform::Zahlen).ok_or_else(form)?;
@@ -532,10 +562,23 @@ impl Gesamtlauf<'_> {
         let vergleiche: Vec<Vergleich> = mit.iter().map(|&k| Vergleich { commit: &plan.commits[k].1, eltern: plan.commits[k].2.as_deref() }).collect();
         let koepfe: Vec<&str> = mit.iter().map(|&k| plan.commits[k].1.as_str()).collect();
         let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
-        let patch: Teil = self.git(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Patch), &pfade, rest, self.frist))?;
+        let mut fehlt = vec![];
+        let Some(patch) = gestartet(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Patch), &pfade, rest, self.frist)).map_err(repo_fehler)? else {
+            // startet Git mit der Angabe nicht (Argumentgrenze): alle Schritte des Laufs fehlen (N7.10 Punkt 3); mit datei=
+            // und schon der Angabe der Folge-Liste bleibt nur der Diff je Commit
+            if streng && verteilung == Verteilung::Einzeln {
+                return Err(zu_gross_fuer_datei(self.nr));
+            }
+            for &k in mit {
+                for &i in &im_lauf[k] {
+                    abbrechen(&mut gruppen[k][i], verteilung);
+                    fehlt.push((k, i));
+                }
+            }
+            return Ok(fehlt);
+        };
         let abschnitte = abschnitte_patch(&patch.ausgabe, &koepfe);
         let letzter = abschnitte.last().map(|a| a.kopf);
-        let mut fehlt = vec![];
         for (stelle, &k) in mit.iter().enumerate() {
             let teil = abschnitte.iter().find(|a| a.kopf == stelle);
             let geschnitten = patch.abgeschnitten && letzter.is_some_and(|l| l == stelle);
@@ -548,7 +591,10 @@ impl Gesamtlauf<'_> {
             }
             let bytes = teil.map_or(&[][..], |a| &patch.ausgabe[a.bereich.clone()]);
             if streng {
-                patches_zuordnen_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], angabe, bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
+                // ohne Angabe trifft der Lauf jeden Eintrag seiner Liste
+                let alle: Vec<Vec<u8>> = if angabe.is_empty() { listen[k].iter().flat_map(|d| d.pfade_roh.iter().cloned()).collect() } else { vec![] };
+                let treffer = if angabe.is_empty() { &alle[..] } else { angabe };
+                patches_zuordnen_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], treffer, bytes, geschnitten, verteilung, fassung).map_err(|f| Fehler::Intern(format!("git: {f}")))?;
             } else {
                 let ohne = nicht_zugeordnet_im_bezug(&mut gruppen[k], &im_lauf[k], &listen[k], angabe, bytes, geschnitten, verteilung, fassung);
                 // am Schnitt fehlt ein Stück auch wegen der Grenze: dort bleibt es beim Schritt (wie bisher)
@@ -585,6 +631,15 @@ fn verbinden(roh: &Teil, zahlen: &Teil) -> Result<Vec<Diffdatei>, Fehler> {
         return Err(form());
     }
     Ok(r.into_iter().zip(z).map(|(r, z)| diffdatei(r, z)).collect())
+}
+
+/// Ein Lauf, den der Startort wegen der Argumentgrenze nicht startete (Vorabgrenze oder E2BIG, N7.9), ist `None`.
+fn gestartet<T>(lauf: Result<T, Arbeitsrepofehler>) -> Result<Option<T>, Arbeitsrepofehler> {
+    match lauf {
+        Ok(t) => Ok(Some(t)),
+        Err(Arbeitsrepofehler::ArgumenteZuLang(_)) => Ok(None),
+        Err(f) => Err(f),
+    }
 }
 
 /// 404 nach N7.3, wenn auch der Rückfall die Datei nicht liefern kann: auf den Diff je Commit verweisen.
@@ -832,5 +887,120 @@ mod tests {
         let (a, _) = lesen(&k, 2, &anfrage(&[], None));
         let (d, _) = json(&a);
         assert!(d["dateien"].as_array().unwrap().iter().any(|f| f["neu"] == "k.txt"), "{d}");
+    }
+
+    /// Ein Pfad unter sieben Ordnern zu 214 Zeichen (über 1.500 Byte): jede Pfadangabe mit ihm ist lang.
+    fn lang(name: &str) -> String {
+        vec!["n".repeat(214); 7].join("/") + "/" + name
+    }
+
+    fn lang_schreiben(s: &Stand, name: &str, inhalt: &str) {
+        let p = s.r.join(lang(name));
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, inhalt).unwrap();
+    }
+
+    /// Die Vorabgrenze dieses Threads auf „Patch-Lauf ohne Angabe + 1.000“: jeder Lauf ohne Pfadangabe startet, jede
+    /// Angabe mit einem langen Pfad nicht (R00211 AK 12, `vorabgrenze_setzen`).
+    fn kleine_vorabgrenze(r: &Path) {
+        arbeitsrepo::vorabgrenze_setzen(Some(0));
+        let f = arbeitsrepo::diff_tree(r, Vergleich { eltern: Some("HEAD~"), commit: "HEAD" }, Diffart::Patch, &[], GRENZE_EINZELN, frist()).unwrap_err();
+        let Arbeitsrepofehler::ArgumenteZuLang(m) = f else { panic!("{f:?}") };
+        let ohne: usize = m.split_whitespace().nth(2).unwrap().parse().unwrap();
+        arbeitsrepo::vorabgrenze_setzen(Some(ohne + 1000));
+    }
+
+    fn roh(k: &Kanban, nr: u32, a: &Diffanfrage) -> Result<String, Fehler> {
+        match k.diff_lesen(nr, a, frist())? {
+            Diffantwort::Rumpf { rumpf, .. } => Ok(String::from_utf8(rumpf.bytes.clone()).unwrap()),
+            Diffantwort::Unveraendert(_) => panic!("304"),
+        }
+    }
+
+    fn steht_nachladen(f: &serde_json::Value) -> bool {
+        match f["schritte"].as_array() {
+            Some(s) => s.iter().all(|s| s["nachladen"] == true && s["patch"].is_null()),
+            None => f["nachladen"] == true && f["patch"].is_null(),
+        }
+    }
+
+    // R00213 AK 4 (ADR-0032 N7.10 Punkt 3), Netto-Liste: K1 ändert a.txt und legt einen langen Pfad an, ein fremder
+    // Commit ändert f.txt, K2 ändert a.txt. Die Netto-Liste mit D_karte liegt über der (kleinen) Vorabgrenze → ganz als
+    // Folge mit fremd_zu_gross, 200; der Folge-Patch-Lauf (Angabe mit dem langen Pfad) startet ebenfalls nicht → alle
+    // Schritte `nachladen`; `datei=<langer Pfad>` fällt ohne Angabe über die Kartencommits zurück → 200 mit Patch.
+    // Vor dem Fix: 500 „git: Argumente zählen …“ über `abbruch`.
+    #[test]
+    fn netto_liste_ueber_der_vorabgrenze_ganz_als_folge() {
+        let mut s = Stand::neu();
+        lang_schreiben(&s, "p", "lang\n");
+        let k1 = s.commit(Some((2, "K1")), None, "K1");
+        s.commit(None, Some("f.txt"), "F");
+        let k2 = s.commit(Some((11, "K2")), None, "K2");
+        s.karte(2, &[k1, k2]);
+        let k = Kanban::neu(s.board.clone());
+        kleine_vorabgrenze(&s.r);
+        let t = roh(&k, 2, &anfrage(&[], None));
+        let text = roh(&k, 2, &anfrage(&[("format", "patch")], None));
+        let einzeln = roh(&k, 2, &anfrage(&[("datei", &lang("p"))], None));
+        arbeitsrepo::vorabgrenze_setzen(None);
+        let d: serde_json::Value = serde_json::from_str(&t.unwrap_or_else(|f| panic!("Liste: {f:?}"))).unwrap();
+        assert_eq!(d["hinweise"][0], serde_json::json!({"art": "ganz_als_folge", "grund": "fremd_zu_gross"}), "{d}");
+        assert!(d["dateien"].as_array().unwrap().iter().all(steht_nachladen), "{d}");
+        assert!(text.unwrap_or_else(|f| panic!("format=patch: {f:?}")).contains("ganz_als_folge"));
+        let e: serde_json::Value = serde_json::from_str(&einzeln.unwrap_or_else(|f| panic!("datei=: {f:?}"))).unwrap();
+        assert_eq!(e["dateien"][0]["schritte"][0]["patch"], serde_json::json!("@@ -0,0 +1 @@\n+lang\n"), "{e}");
+    }
+
+    // R00213 AK 4, Patch-Lauf der Netto-Liste: nur Kartencommits (Netto-Liste ohne Angabe), zwei lange Pfade und eine
+    // Datei über 3.000 Zeilen — der Patch-Lauf nennt die langen Pfade und liegt über der Vorabgrenze → 200, beide
+    // `nachladen`; `datei=` auf jeden fällt mit der Angabe der Netto-Liste (keine) zurück → 200 mit Patch.
+    #[test]
+    fn netto_patch_lauf_ueber_der_vorabgrenze_nachladen() {
+        let mut s = Stand::neu();
+        lang_schreiben(&s, "p", "p\n");
+        lang_schreiben(&s, "q", "q\n");
+        std::fs::write(s.r.join("gross"), (0..3001).map(|i| format!("g{i}\n")).collect::<String>()).unwrap();
+        let k1 = s.commit(None, None, "K1");
+        s.karte(3, &[k1]);
+        let k = Kanban::neu(s.board.clone());
+        kleine_vorabgrenze(&s.r);
+        let t = roh(&k, 3, &anfrage(&[], None));
+        let text = roh(&k, 3, &anfrage(&[("format", "patch")], None));
+        let einzeln: Vec<_> = ["p", "q"].iter().map(|n| roh(&k, 3, &anfrage(&[("datei", &lang(n))], None))).collect();
+        arbeitsrepo::vorabgrenze_setzen(None);
+        let d: serde_json::Value = serde_json::from_str(&t.unwrap_or_else(|f| panic!("Liste: {f:?}"))).unwrap();
+        for n in ["p", "q"] {
+            let f = d["dateien"].as_array().unwrap().iter().find(|f| f["neu"] == lang(n).as_str()).unwrap();
+            assert!(steht_nachladen(f), "{n}: {f}");
+        }
+        text.unwrap_or_else(|f| panic!("format=patch: {f:?}"));
+        for (n, e) in ["p", "q"].iter().zip(einzeln) {
+            let e: serde_json::Value = serde_json::from_str(&e.unwrap_or_else(|f| panic!("datei={n}: {f:?}"))).unwrap();
+            assert_eq!(e["dateien"][0]["patch"], serde_json::json!(format!("@@ -0,0 +1 @@\n+{n}\n")), "{e}");
+        }
+    }
+
+    // R00213 AK 4, Folge-Liste (am Aufrufort: über die API nicht erreichbar, weil die Netto-Liste mit D_karte vor ihr
+    // läuft und länger zählt): startet der Folge-Lauf wegen der Argumentgrenze nicht, fallen seine Einträge weg wie bei
+    // einem abgeschnittenen Lauf (→ `dateien_gekappt`); mit datei= 404 nach N7.3
+    #[test]
+    fn folge_liste_ueber_der_vorabgrenze_wie_abgeschnitten() {
+        let s = Stand::neu();
+        lang_schreiben(&s, "p", "p\n");
+        let k1 = s.commit(None, None, "K1");
+        let eltern = git(&s.r, &["rev-parse", "HEAD~"]);
+        let k = Kanban::neu(s.board.clone());
+        let plan = Folgeplan { commits: vec![(format!("kd:{k1}"), k1.clone(), Some(eltern))], pfade: vec![lang("p").into_bytes()] };
+        let folgepfade: HashSet<Vec<u8>> = plan.pfade.iter().cloned().collect();
+        let je_commit = HashMap::new();
+        kleine_vorabgrenze(&s.r);
+        let liste = anfrage(&[], None);
+        let ergebnis = Gesamtlauf { k: &k, wurzel: &s.r, frist: frist(), anfrage: &liste, nr: 4 }.folge_listen(&plan, &folgepfade, &je_commit);
+        let einzeln = anfrage(&[("datei", &lang("p"))], None);
+        let mit_datei = Gesamtlauf { k: &k, wurzel: &s.r, frist: frist(), anfrage: &einzeln, nr: 4 }.folge_listen(&plan, &folgepfade, &je_commit);
+        arbeitsrepo::vorabgrenze_setzen(None);
+        let (folgen, weg, abgeschnitten, listen) = ergebnis.unwrap_or_else(|f| panic!("{f:?}"));
+        assert_eq!((folgen.len(), weg, abgeschnitten, listen.len()), (0, 0, true, 1));
+        assert!(matches!(mit_datei, Err(Fehler::NichtGefunden(m)) if m.contains("commit= und datei=")));
     }
 }
