@@ -934,6 +934,118 @@ async fn b2_typwechsel_mit_gleichem_blob() {
     }
 }
 
+/// Probe „nie fremd“ mit der Ausnahme des Kartenschritts (R00208 AK 2): keine `+`-Zeile mit `FREMD`; `-…FREMD…` nur im
+/// Schritt `erlaubt` (der Kartenschritt löscht die fremde Zeile selbst), im JSON wie im `format=patch`-Text gleich oft.
+fn nie_fremd_ausser(d: &Value, text: &str, erlaubt: &str) {
+    let fremd = |p: &str, vorzeichen: char| p.lines().filter(|z| z.starts_with(vorzeichen) && z.contains("FREMD")).count();
+    let mut geloescht = 0;
+    for f in dateien(d) {
+        let patches: Vec<(&str, &str)> = if ist_folge(f) { f["schritte"].as_array().unwrap().iter().filter_map(|s| Some((s["commit"].as_str().unwrap(), s["patch"].as_str()?))).collect() } else { f["patch"].as_str().map(|p| ("netto", p)).into_iter().collect() };
+        for (commit, p) in patches {
+            assert_eq!(fremd(p, '+'), 0, "fremde Zeile im patch von {f}");
+            if commit != erlaubt {
+                assert_eq!(fremd(p, '-'), 0, "fremde Zeile im patch von {f}");
+            }
+            geloescht += fremd(p, '-');
+        }
+    }
+    assert_eq!((fremd(text, '+'), fremd(text, '-')), (0, geloescht), "fremde Zeile im format=patch-Text: {text}");
+}
+
+// B2-Rest Abnahme-Probe (Code-Review Wiederholung, #214): A0 `b` und `d/x` mit gleichem Inhalt, K0 ändert a.txt, F hängt
+// FREMD an d/x, K1 löscht b, K2 ersetzt das Verzeichnis d durch die Datei d → die Pfadangabe `b d` des Netto-Laufs trifft
+// über `d` auch `d/x` (Folge, Zwilling von b). Heute 500 „Stück 3 gehört zu einer Datei des Laufs, steht aber nicht an
+// ihrer Stelle“. Varianten: Zwilling vor dem Netto-Eintrag (`z` statt `b`), Zwilling als `A` mit Typwechsel Datei d →
+// Verzeichnis d, dasselbe im Patch-Lauf der Folge; `datei=` auf jeden Pfad der Karte.
+#[tokio::test]
+async fn b2_rest_zwilling_ausserhalb_der_netto_eintraege() {
+    let l = ausgangslage();
+    let inhalt = zeilen("B", 4);
+    let mut karten = vec![];
+    // Verzeichnis → Datei, gelöschter Zwilling hinter (b) bzw. vor (z) dem Netto-Eintrag
+    for (nr, zw) in [(50u32, "b50"), (51, "z51")] {
+        let (d, dx) = (format!("d{nr}"), format!("d{nr}/x"));
+        l.schreiben_in(zw, &inhalt);
+        l.schreiben_in(&dx, &inhalt);
+        l.commit("A0");
+        l.zeile("a.txt", 3, &format!("K0-{nr}"));
+        let k0 = l.commit("K0");
+        l.schreiben_in(&dx, &format!("{inhalt}FREMD\n"));
+        l.commit("F");
+        std::fs::remove_file(l.r.join(zw)).unwrap();
+        let k1 = l.commit("K1");
+        std::fs::remove_dir_all(l.r.join(&d)).unwrap();
+        l.schreiben_in(&d, "datei d\nganz anders\n");
+        let k2 = l.commit("K2");
+        l.karte(nr, &[kd(&k0), kd(&k1), kd(&k2)]);
+        karten.push((nr, kd(&k2), vec![zw.to_string(), d, dx.clone()], zw.to_string(), dx));
+    }
+    // Datei → Verzeichnis, Zwilling als `A`: K1 legt d52/x an, F hängt FREMD an, K2 nimmt FREMD zurück und legt b52 mit
+    // gleichem Inhalt an
+    l.schreiben_in("d52", "datei d\nganz anders\n");
+    l.commit("A0");
+    l.zeile("a.txt", 4, "K0-52");
+    let k0 = l.commit("K0");
+    std::fs::remove_file(l.r.join("d52")).unwrap();
+    l.schreiben_in("d52/x", &inhalt);
+    let k1 = l.commit("K1");
+    l.schreiben_in("d52/x", &format!("{inhalt}FREMD\n"));
+    l.commit("F");
+    l.schreiben_in("d52/x", &inhalt);
+    l.schreiben_in("b52", &inhalt);
+    let k2 = l.commit("K2");
+    l.karte(52, &[kd(&k0), kd(&k1), kd(&k2)]);
+    karten.push((52, kd(&k2), vec!["b52".into(), "d52".into(), "d52/x".into()], "b52".into(), "d52/x".into()));
+    // im Folge-Lauf: F ändert die Datei d53 und löscht y53; K1 ersetzt d53 durch d53/x und legt y53 wieder an, beide mit
+    // gleichem Inhalt → die Pfadangabe `d53 y53` des Patch-Laufs von K1 trifft über `d53` auch `d53/x` (netto, Zwilling
+    // des Folge-Schritts `A y53`)
+    l.schreiben_in("d53", "datei d\nganz anders\n");
+    l.schreiben_in("y53", "y\n");
+    l.commit("A0");
+    l.zeile("a.txt", 5, "K0-53");
+    let k0 = l.commit("K0");
+    l.schreiben_in("d53", "datei d\nganz anders\nFREMD\n");
+    std::fs::remove_file(l.r.join("y53")).unwrap();
+    l.commit("F");
+    std::fs::remove_file(l.r.join("d53")).unwrap();
+    l.schreiben_in("d53/x", &inhalt);
+    l.schreiben_in("y53", &inhalt);
+    let k1 = l.commit("K1");
+    l.karte(53, &[kd(&k0), kd(&k1)]);
+    karten.push((53, kd(&k1), vec!["d53".into(), "d53/x".into(), "y53".into()], "d53/x".into(), "y53".into()));
+    let lauf = l.starten(&[]);
+    for (nr, k2, pfade, zw, folge) in karten {
+        let mut abfragen = vec![String::new()];
+        abfragen.extend(pfade.iter().chain([&"a.txt".to_string()]).map(|p| format!("datei={}", kodiert(p))));
+        for q in abfragen {
+            let a = holen(&lauf.adresse, nr, &q, None).await;
+            assert_eq!(a.status, 200, "#{nr}?{q}: {}", a.text);
+            let trenner = if q.is_empty() { "" } else { "&" };
+            let t = holen(&lauf.adresse, nr, &format!("{q}{trenner}format=patch"), None).await;
+            assert_eq!(t.status, 200, "#{nr}?{q} format=patch: {}", t.text);
+            let d = a.json();
+            nie_fremd_ausser(&d, &t.text, &k2);
+            eindeutig(&d);
+            if q.is_empty() {
+                let mut n = namen(&d);
+                n.sort();
+                let mut soll: Vec<String> = pfade.iter().cloned().chain(["a.txt".into()]).collect();
+                soll.sort();
+                assert_eq!(n, soll, "#{nr}: {d}");
+                // die Netto-Einträge tragen ihren eigenen Patch, nie den des Zwillings
+                let netto = eintrag(&d, &zw);
+                assert!(!ist_folge(netto), "#{nr} {zw} netto: {d}");
+                let hunk = if netto["status"] == "D" { "@@ -1,4 +0,0 @@\n-B1\n-B2\n-B3\n-B4\n" } else { "@@ -0,0 +1,4 @@\n+B1\n+B2\n+B3\n+B4\n" };
+                assert_eq!(netto["patch"], json!(hunk), "#{nr} {zw}: {d}");
+                let stueck = t.text.split("diff --git ").find(|s| s.starts_with(&format!("a/{zw} b/{zw}\n"))).unwrap_or_else(|| panic!("#{nr}: Kopf von {zw} fehlt: {}", t.text));
+                assert!(stueck.contains(&format!("\n{hunk}")), "#{nr}: Stück von {zw}: {stueck}");
+                let schritte = schritte_von(eintrag(&d, &folge)).len();
+                assert_eq!(t.text.matches(&format!("diff --git a/{folge} b/{folge}\n")).count(), schritte, "#{nr}: nur die Schritte von {folge}: {}", t.text);
+            }
+        }
+    }
+}
+
 // B5 Abnahme-Probe: ein Dateiname mit Tab am Ende in K1, F und K2 → 200 mit Folge und beiden Schritten; Varianten
 // Umbenennung und binär (heute 500: `ends_with(b"\t")` hielt den Eintrag für eine Umbenennung)
 #[tokio::test]

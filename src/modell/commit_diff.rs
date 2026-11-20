@@ -342,6 +342,44 @@ pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8]
     Ok(())
 }
 
+/// Die Stellen der Einträge, die eine gegen sie abgeschlossene Pfadangabe (`abschliessen`) trifft. Git wählt auch `…/`
+/// (ADR-0032 N5.2), doch die abgeschlossene Angabe enthält jeden Pfad jedes so getroffenen Eintrags — der genaue
+/// Vergleich genügt.
+pub fn getroffen(angabe: &[Vec<u8>], eintraege: &[&[Vec<u8>]]) -> Vec<usize> {
+    let angabe: std::collections::HashSet<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
+    (0..eintraege.len()).filter(|&i| eintraege[i].iter().any(|p| angabe.contains(p.as_slice()))).collect()
+}
+
+/// Ordnet die Stücke eines Laufs mit der Pfadangabe `angabe` zu, die gegen `bezug` abgeschlossen ist (Code-Review
+/// B2-Rest, #214): der Lauf zeigt jeden Eintrag des Bezugslaufs, den die Angabe trifft ([`getroffen`]), in dessen
+/// Reihenfolge — auch die mitgenommenen, die keinen Patch bekommen. Die Zuordnung ([`patches_zuordnen`]) läuft über alle
+/// diese Einträge; so nimmt kein Zwilling (gleicher Blob, gleiche Art) das Stück eines anderen, und die Zählprüfung bleibt
+/// streng. Danach bekommen nur die Dateien `im_lauf` ihr Ergebnis; die Stücke der mitgenommenen sind verworfen.
+#[allow(clippy::too_many_arguments)]
+pub fn patches_zuordnen_im_bezug(dateien: &mut [Diffdatei], im_lauf: &[usize], bezug: &[Diffdatei], angabe: &[Vec<u8>], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Result<(), String> {
+    let pfade: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
+    let mut lauf: Vec<Diffdatei> = getroffen(angabe, &pfade).into_iter().map(|j| bezug[j].clone()).collect();
+    let stelle: std::collections::HashMap<(&[Vec<u8>], &str), usize> = lauf.iter().enumerate().map(|(j, d)| ((d.pfade_roh.as_slice(), d.status.as_str()), j)).collect();
+    let mut paare = vec![];
+    for &i in im_lauf {
+        let d = &dateien[i];
+        let Some(&j) = stelle.get(&(d.pfade_roh.as_slice(), d.status.as_str())) else {
+            return Err(format!("Patch-Lauf: „{}“ ({}) steht nicht im Bezugslauf", d.name(), d.status));
+        };
+        paare.push((i, j));
+    }
+    drop(stelle);
+    for &(i, j) in &paare {
+        std::mem::swap(&mut dateien[i], &mut lauf[j]);
+    }
+    let alle: Vec<usize> = (0..lauf.len()).collect();
+    let ergebnis = patches_zuordnen(&mut lauf, &alle, aus, abgeschnitten, verteilung, fassung);
+    for &(i, j) in &paare {
+        std::mem::swap(&mut dateien[i], &mut lauf[j]);
+    }
+    ergebnis
+}
+
 /// Die Teile hintereinander in einem Puffer genau ihrer Größe.
 fn zusammen<'a>(teile: impl Iterator<Item = &'a [u8]> + Clone) -> Vec<u8> {
     let mut puffer = Vec::with_capacity(teile.clone().map(<[u8]>::len).sum());
@@ -713,6 +751,36 @@ mod tests {
         assert_eq!((e[0].patch.as_deref(), e[0].stuecke.is_none()), (Some("@@ -0,0 +1 @@\n+datei\n"), true));
         patches_zuordnen(&mut d, &[0], aus.as_bytes(), false, Verteilung::Einzeln, Fassung::Stuecke).unwrap();
         assert_eq!((d[0].patch.is_none(), d[0].stuecke.as_deref()), (true, Some(&aus.as_bytes()[aus.find("diff --git a/foo b/foo\n").unwrap()..])));
+    }
+
+    // Code-Review B2-Rest (#214): die Pfadangabe `d z` trifft über `d` auch `d/x` — gelöscht mit demselben Blob wie `z`
+    // (Zwilling) und vor ihm im Lauf. Über alle getroffenen Einträge des Bezugs zugeordnet, bekommt `z` sein eigenes
+    // Stück (mit seinem Kopf), das von `d/x` ist verworfen; nur über `im_lauf` nähme `z` das Stück von `d/x` und die
+    // Zählprüfung bräche ab. `dz` trifft `d` nicht.
+    #[test]
+    fn zwilling_ausserhalb_der_dateien_des_laufs() {
+        let z = neu("z", "D");
+        let mut dx = neu("d/x", "D");
+        dx.blobs = z.blobs.clone();
+        let bezug = vec![neu("d", "A"), dx.clone(), neu("dz", "M"), z.clone()];
+        let pfade: Vec<&[Vec<u8>]> = bezug.iter().map(|d| d.pfade_roh.as_slice()).collect();
+        let angabe = crate::modell::abschliessen([b"d".to_vec(), b"z".to_vec()], &pfade);
+        assert_eq!(getroffen(&angabe, &pfade), [0, 1, 3]);
+        let aus = format!("{}{}{}", stueck(&bezug[0], 0, "@@ -0,0 +1 @@\n+neu\n"), stueck(&dx, 0, "@@ -1 +0,0 @@\n-B\n"), stueck(&z, 0, "@@ -1 +0,0 @@\n-B\n"));
+        let mut d = vec![neu("d", "A"), z.clone()];
+        assert!(patches_zuordnen(&mut d.clone(), &[0, 1], aus.as_bytes(), false, Verteilung::Liste, Fassung::Stuecke).is_err(), "Gegenprobe: ohne Bezug");
+        patches_zuordnen_im_bezug(&mut d, &[0, 1], &bezug, &angabe, aus.as_bytes(), false, Verteilung::Liste, Fassung::Stuecke).unwrap();
+        let text = |d: &Diffdatei| String::from_utf8(d.stuecke.clone().unwrap()).unwrap();
+        assert_eq!(text(&d[1]), stueck(&z, 0, "@@ -1 +0,0 @@\n-B\n"));
+        assert_eq!(text(&d[0]), stueck(&bezug[0], 0, "@@ -0,0 +1 @@\n+neu\n"));
+        // abgeschnitten im Stück des Zwillings: z ist nachzuladen, nie mit dem fremden Stück
+        let mut e = vec![neu("d", "A"), z.clone()];
+        let schnitt = aus.find("diff --git a/z").unwrap() - 3;
+        patches_zuordnen_im_bezug(&mut e, &[0, 1], &bezug, &angabe, &aus.as_bytes()[..schnitt], true, Verteilung::Liste, Fassung::Patch).unwrap();
+        assert_eq!((e[0].patch.as_deref(), e[1].patch.as_deref(), e[1].nachladen), (Some("@@ -0,0 +1 @@\n+neu\n"), None, true));
+        // eine Datei des Laufs, die der Bezug nicht kennt, ist ein Fehler
+        let mut f = vec![neu("q", "M")];
+        assert!(patches_zuordnen_im_bezug(&mut f, &[0], &bezug, &[b"q".to_vec()], b"", false, Verteilung::Liste, Fassung::Patch).is_err());
     }
 
     // ADR-0032 N5.2 Regel 1: die Hashes werden auf Gleichheit verglichen — ein gekürzter Hash (Präfix des vollen) ist

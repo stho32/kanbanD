@@ -271,8 +271,8 @@ impl Einteilung {
 /// Schließt eine Pfadangabe gegen die Einträge eines Bezugslaufs ab (Code-Review B2, #214): jeder Eintrag, dessen Pfad
 /// die Angabe trifft — genau oder als `foo/…`, denn eine Pfadangabe `foo` trifft in Git alles darunter, auch mit
 /// `--literal-pathspecs` —, kommt mit allen seinen Pfaden hinein, bis nichts mehr dazukommt. Ein Lauf mit der Angabe sieht
-/// dann nur ganze Einträge des Bezugslaufs, und Git paart die Umbenennungen wie dort; die Stücke der mitgenommenen
-/// Einträge verwirft die Zuordnung als fremd (N5.2 Regel 3). Sortiert.
+/// dann nur ganze Einträge des Bezugslaufs, und Git paart die Umbenennungen wie dort; die Zuordnung läuft über alle
+/// getroffenen Einträge und verwirft danach die Stücke der mitgenommenen (`patches_zuordnen_im_bezug`, B2-Rest). Sortiert.
 pub fn abschliessen(pfade: impl IntoIterator<Item = Vec<u8>>, eintraege: &[&[Vec<u8>]]) -> Vec<Vec<u8>> {
     let mut index: Vec<(&[u8], usize)> = eintraege.iter().enumerate().flat_map(|(i, e)| e.iter().map(move |p| (p.as_slice(), i))).collect();
     index.sort();
