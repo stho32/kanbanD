@@ -49,8 +49,8 @@ Seit #226 gibt es kein „wartet auf“ mehr; die Abhängigkeiten stehen nur noc
 - Fehler und Meldungen (je 400, kein Commit, keine Datei geändert):
   - andere Form mit dem Präfix: „braucht: erwartet eine Kartennummer (braucht:12)“;
   - Selbstbezug: „#n kann nicht auf sich selbst warten“;
-  - Nummer ohne Aufgabendatei im Ordner (archivierte zählen als vorhanden): „#n gibt es nicht (braucht:n)“ — Wortlaut Vorschlag, Frage an den PO;
-  - Kreis über die gedeuteten Labels aller Aufgaben des Ordners nach dem Schreiben: „braucht:n schlösse einen Kreis: #a → #b → #a“ — Kreis in Pfeilform nach ADR-0035, übriger Wortlaut Vorschlag, Frage an den PO.
+  - Nummer ohne Aufgabendatei im Ordner (archivierte zählen als vorhanden): „Aufgabe #n gibt es nicht (braucht:n)“ (PO Z. 452);
+  - Kreis über die gedeuteten Labels aller Aufgaben des Ordners nach dem Schreiben: „braucht:n ergäbe einen Kreis: #a → #b → #a“ — Kreis in Pfeilform nach ADR-0035, Wortlaut PO Z. 452.
 - Bei mehreren Fehlern nennt die Meldung den ersten in der Reihenfolge der Labels (bei `mehrere`: der Änderungen) mit dem Vorsatz `#<nummer>: ` wie die heutigen Meldungen von `PATCH /api/aufgaben/mehrere`.
 - In `PATCH /api/aufgaben/mehrere` gilt die Kreisprüfung gegen den Stand nach allen Änderungen des Aufrufs.
 - `POST /api/aufgaben/{nr}/duplizieren` übernimmt die Labels unverändert und prüft sie nicht (sie sind für die Kopie mitgeschickter Bestand, nicht neu eingegeben).
@@ -61,7 +61,7 @@ Seit #226 gibt es kein „wartet auf“ mehr; die Abhängigkeiten stehen nur noc
 ## Nicht-funktionale Anforderungen
 
 - Verträglichkeit: kein Formatwechsel; kein Start und kein Lesen schreibt eine Datei oder einen Commit. Die Werkzeuge der Factory bleiben unverändert (0 Änderungen in `werkzeuge/`).
-- Leistung: Die Kreisprüfung liest die Labels aller Aufgaben des ohnehin geladenen Ordners einmal je Schreibaufruf (linear, ADR-0035 Konsequenzen). Keine eigene Zeitgrenze.
+- Leistung: Die Kreisprüfung liest die Labels aller Aufgaben des ohnehin geladenen Ordners einmal je Schreibaufruf (linear, ADR-0035 Konsequenzen). Deutung, Prüfung an der Tür und Lesefeld sind linear in der Zahl der Labels einer Aufgabe; Fitness Function AK 16. Keine Obergrenze der Labels je Aufgabe (eine Grenze wäre eine neue API-Regel für alle Labels und bräuchte einen Nachtrag zu ADR-0035; Entscheidung des Directors in der Nacharbeit, Empfehlung des architektur-reviewers).
 - Sicherheit: Labels sind Eingaben von außen; die Meldungen nennen nur Nummern und den festen Text, nie den Rest eines abgewiesenen Labels.
 
 ## Akzeptanzkriterien
@@ -98,6 +98,10 @@ Seit #226 gibt es kein „wartet auf“ mehr; die Abhängigkeiten stehen nur noc
 - [ ] **AK 14** Gegeben Kopien der Ordner `~/Projekte/Kanban-Boards/kanbanD-Kanbanboard` und `JoinPuyaApp-Kanbanboard` in der eigenen Ablage (Stand 2026-11-20: 41 Aufgabendateien mit 47 Labels `braucht:<Zahl>`; beim Bau neu zählen). Wenn das Programm darauf startet und `GET /api/aufgaben?archivierte=ja` gelesen wird, dann ist die Antwort 200, jede Aufgabe mit einem solchen Label trägt dieselben Nummern in `braucht` wie in `labels` (Zahl der Einträge gleich der Zählung), die Zahl der Commits bleibt gleich, alle Dateien sind bytegleich (SHA-256 über `git ls-files`), und im Log steht keine Fehler- oder Warnzeile.
 - [ ] **AK 15** Gegeben eine Instanz mit dem Stand der Karte auf freiem Port. Wenn die Proben der Factory (`proben/alle.sh` im Factory-Repo) gegen diese Instanz laufen, dann sind sie grün, ohne Änderung an `werkzeuge/`.
 
+### Leistung unter der Schreibsperre (Fitness Function zu ADR-0035 „lineare Kosten“)
+
+- [ ] **AK 16** Gegeben ein Release-Build auf freiem Port, die Ausgangslage, Person mit bekanntem Kürzel. Wenn ein Agent an #1 per `PATCH /api/aufgaben/1` 20.000 Labels `q<i>` (`q0` … `q19999`) speichert und danach in einem zweiten PATCH die Labels durch 20.000 `braucht:<nr>` ersetzt — einmal 20.000 verschiedene Nummern ohne Aufgabendatei, einmal 20.000-mal dieselbe Nummer —, und dazu `GET /api/aufgaben` liest, dann dauert jeder dieser Aufrufe < 1 s (die Antworten sind die heutigen: 400 „Aufgabe #n gibt es nicht (braucht:n)“ bzw. 200), und ein PATCH eines anderen Agenten auf #2, abgeschickt während des zweiten PATCH an #1, ist in < 1 s beantwortet. Dazu ein Modultest auf `neue_braucht_labels` und `braucht_nummern` mit 100.000 Labels und harter Zeitgrenze, und statisch kein `.contains` auf `Vec<String>`/`Vec<u32>` außerhalb `#[cfg(test)]` in `src/modell/braucht.rs`. Rechenbeispiel: am Stand 8a3f2919 kosten 20.000 Labels 3,3–8 s und ~150.000/95.000 Labels 110,7 s, ein fremdes PATCH wartet 109 s (security-reviewer, gemessen); ohne die neue Prüfung kostet dieselbe Liste 0,2 s. Gegenprobe: Factory `gemeinsam/scratchpad/srev-228/probe_muss1.py <port>` (heute rot, erwartet < 1 s und `fremdes_patch` < 1 s).
+
 ## Betroffene Verzeichnisstruktur
 
 - Modell und Deutung: `src/modell/aufgabe.rs` (Labels → Nummern als reine Funktion; Feld `braucht` in der Antwort), die Erledigt-Entscheidung aus `src/dienst/erledigen.rs:145–152` herausgelöst und geteilt.
@@ -118,6 +122,7 @@ Seit #226 gibt es kein „wartet auf“ mehr; die Abhängigkeiten stehen nur noc
 6. **B1088 Kreisprüfung** über die gedeuteten Labels aller Aufgaben nach dem Schreiben, Meldung mit dem Kreis.
 7. **B1089 Beschreibung**: OpenAPI, `/api/endpunkte`, A00005/A00006.
 8. **B1090 Legacy-Probe, Factory-Proben, Probe im echten Programm, Gate, Anforderung abschließen** (AK 14, AK 15).
+9. **B1095 Lineare Labelprüfung** (Nacharbeit, Muss des security- und architektur-reviewers): Mengenprüfung statt `Vec::contains` in `neue_braucht_labels`, `braucht_nummern`, `an_der_tuer`, Reihenfolge der Labels in paralleler Liste (AK 16).
 
 ### Grobentwurf
 
@@ -134,7 +139,7 @@ Seit #226 gibt es kein „wartet auf“ mehr; die Abhängigkeiten stehen nur noc
 ## Tests
 
 - **Unit:** `braucht_nummern` (alle Formen aus AK 3 und AK 7), `ist_erledigt` (Tabelle archiviert × letzte Spalte × kein Board × zwei Boards), `kreis_suchen` (Selbstkante ausgeschlossen, Kreis aus 2 und 3 Knoten, Kreis erst durch zwei neue Kanten im selben Aufruf, kein Kreis bei Bestandskreis ohne neue Kante).
-- **Integration:** `tests/akzeptanz_r00214.rs`: AK 1–13 gegen das echte Programm; AK 14 `#[ignore]`, wenn die Ordner fehlen, in B1090 einmal gefahren und belegt.
+- **Integration:** `tests/akzeptanz_r00214.rs`: AK 1–13 und AK 16 gegen das echte Programm; AK 14 `#[ignore]`, wenn die Ordner fehlen, in B1090 einmal gefahren und belegt.
 - **E2E:** keine (keine Oberfläche); AK 15 läuft über die Proben der Factory.
 
 ## Abhängigkeiten
@@ -144,8 +149,8 @@ Seit #226 gibt es kein „wartet auf“ mehr; die Abhängigkeiten stehen nur noc
 
 ## Offene Fragen
 
-- **Frage an den PO 1 (nicht blockierend, bis zur Antwort gilt der Vorschlag):** Liegt eine gebrauchte Aufgabe auf zwei Boards, in einem davon in der letzten Spalte — ist sie erledigt? Vorschlag: ja, wie `erledigen`, das sie auf einem Board in die letzte Spalte legt; sonst bliebe nach einem erfolgreichen `erledigen` ein „wartet“ stehen.
-- **Frage an den PO 2 (nicht blockierend):** Wortlaut der Meldungen „#n gibt es nicht (braucht:n)“ und „braucht:n schlösse einen Kreis: #a → #b → #a“.
+- **Frage an den PO 1 — entschieden** (`AI-Team/po-entscheidungen.md` Z. 451: ja, wie vorgeschlagen; erledigt, wenn archiviert oder auf irgendeinem Board in dessen letzter Spalte): Liegt eine gebrauchte Aufgabe auf zwei Boards, in einem davon in der letzten Spalte — ist sie erledigt? Vorschlag: ja, wie `erledigen`, das sie auf einem Board in die letzte Spalte legt; sonst bliebe nach einem erfolgreichen `erledigen` ein „wartet“ stehen.
+- **Frage an den PO 2 — entschieden** (`AI-Team/po-entscheidungen.md` Z. 452, abweichend vom Vorschlag): Wortlaut „Aufgabe #n gibt es nicht (braucht:n)“ und „braucht:n ergäbe einen Kreis: #a → #b → #a“; Form und Selbstbezug bleiben.
 
 ## Manuelle Vorbereitungstätigkeiten
 
