@@ -1228,3 +1228,33 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-20 | #224 | Architektur | architekt | bestanden | 10 min | Inventur, ADR-0034 vorgeschlagen (c990f17a) · claude · opus · Lauf 224-architekt-1 · 4,50 $ · Karte gesamt 4,50 $ |
 | 2026-11-20 | #209 | Auto-Reviews | ux-reviewer | befund | 29 min | 2 Muss: Fokus auf body beim Start der wartenden Datei; Hover-Kontrast ← #n 1,65:1 · claude · sonnet · Lauf 209-ux-reviewer-3 · 1,54 $ · Karte gesamt 26,83 $ |
 | 2026-11-20 | #224 | Architektur | product-owner | bestanden | 1 min | Fragen 1–4, vier Karten (bc5f5eaf, Z. 430–433) · claude · opus · Lauf 224-product-owner-1 |
+| 2026-11-20 | #209 | Entwicklung | entwickler | bestanden | 45 min | Nacharbeit 1: 4 Muss, 6 Sollte, B1030–B1034 · claude · Lauf 209-entwickler-2 · 7,11 $ · Karte gesamt 33,94 $ |
+| 2026-11-20 | #209 | Auto-Reviews | ux-reviewer | bestanden | 3 min | Wiederholung: M1, M2, S3 geschlossen · claude · sonnet · Lauf 209-ux-reviewer-4 |
+| 2026-11-20 | #209 | Auto-Reviews | code-reviewer | bestanden | 7 min | Wiederholung: M1, M2 geschlossen · claude · sonnet · Lauf 209-code-reviewer-2 |
+| 2026-11-20 | #209 | Entwicklertest | entwicklertester | bestanden | 11 min | US-1–9 und B1 im echten Programm bestanden · claude · sonnet · Lauf 209-entwicklertester-1 · 0,94 $ · Karte gesamt 34,88 $ |
+
+**Retrospektive #209** (Scheibe B2: Review-Seite eines Commits, 2026-11-20, 34,88 $ gemessen, ausgeliefert f3ff754d)
+- **Gut:** Die Vorarbeit trug:
+  - ADR-0033 mit Messung: Blöcke mit content-visibility zeichnen 100.000 Zeilen in 389 ms statt 4,8 s.
+  - PO-Freigabe des Artboards mit zwei Änderungen.
+  - Die UX-Vorprüfung fand zwei Lücken in den Kriterien (Fehlerzustände, Fokus), bevor gebaut wurde.
+  
+  Opus baute B1017–B1024 in 52 min (14,49 $) mit 34 Mutanten. Der Entwicklertest fand nichts mehr.
+- **Teuer:** Die Detailplanung lief in vielen kleinen Runden: architekt ×3, PO ×4, planer ×4, gestalter, ux ×2. Gemessen sind 11,37 $; die fortgesetzten Läufe fehlen im Preis.
+- **Vier Muss aus den Reviews:**
+  - „Erneut versuchen“ mit nacktem Präfix.
+  - Eine späte Nachladeantwort nach Wechsel, bei gleichem Index angenommen.
+  - Der Fokus fällt auf `body`, wenn die wartende Datei startet.
+  - Hover-Kontrast 1,65:1, weil eine globale `a:hover`-Regel die Komponentenfarbe schlägt.
+
+  Die Nacharbeit lief auf Opus, 45 min, 7,11 $.
+- **Lehren:**
+  - Nebenläufige Anfragen über eine Lauf-Kennung je Anfrage verwerfen, nie über einen Index, und beim Wechsel mit `AbortController` abbrechen.
+  - Kontrastproben auch im Hover-Zustand fahren.
+  - Fokus nach jedem Neuzeichnen eines Knotens zurückgeben, auch beim Übergang „Wartet“ → „Lädt“.
+- **Bewusste Folge** (Security S1): ZWJ, BOM und weiche Trennzeichen erscheinen als Marke, auch in Emoji-Folgen.
+- **Sollte ohne Karte:**
+  - Der Wortlaut „mit ersetzen nachziehen“ ist missverständlich; er liegt beim PO.
+  - Stil J11 (Ternaries) wird nicht befolgt.
+  - `aufgabe/abc/review` zeigt das Board ohne Meldung.
+  - ADR-0033 und `DIFF_LESEN` versprechen einen Präfix ab 7 Zeichen, ohne Kürzel kommt aber 404.
