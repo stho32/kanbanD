@@ -23,6 +23,7 @@ pub fn lesen(text: &str) -> Result<Einstellungen, Formatfehler> {
         }
     }
     e.klassen = klassen_lesen(&m)?.unwrap_or_default();
+    e.transkripte_erfassen = super::board::schalter_lesen(&m)?;
     if let Some(signals) = yaml::zuordnung(&m, "signals") {
         for (k, v) in signals {
             let schluessel = yaml::wert_als_text(k).ok_or_else(|| Formatfehler("Schlüssel unter signals ist kein Text".into()))?;
@@ -131,6 +132,9 @@ pub fn schreiben(e: &Einstellungen) -> String {
     for g in &e.signale {
         s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&g.schluessel), yaml::skalar(&g.bezeichnung), yaml::skalar(&g.farbe)));
     }
+    if let Some(b) = e.transkripte_erfassen {
+        s.push_str(&format!("\n{}: {b}", super::board::SCHALTER));
+    }
     s.push_str(&format!(
         "\nsources:\n  {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
         pfade(&e.quellen.repository, &e.quellen.wbs, &e.quellen.anforderungen).join("\n  "),
@@ -153,6 +157,7 @@ mod tests {
             klassen: vec![Klasse { schluessel: "bug".into(), bezeichnung: "Fehler".into(), farbe: "#b04a8c".into() }],
             signale: vec![Signal { schluessel: "mail".into(), bezeichnung: "Neue E-Mail".into(), farbe: "blue".into() }],
             quellen: Quellen { repository: "Dokumentation/Planung".into(), wbs: "Dokumentation/Planung/kanbanD.md".into(), anforderungen: "".into(), anwendungen: vec![] },
+            transkripte_erfassen: None,
         }
     }
 

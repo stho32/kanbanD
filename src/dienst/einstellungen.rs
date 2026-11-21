@@ -194,7 +194,8 @@ impl Kanban {
 
     pub fn einstellungen_setzen(&self, wer: &Person, neu: Einstellungen) -> Result<bool, Fehler> {
         self.einstellungen_aendern(wer, Altform::Umstellen, |e| {
-            *e = neu;
+            // der Schalter steht nicht im Rumpf und bleibt, wie er in der Datei steht (R00216 AK 5, ADR-0036 Regel 4)
+            *e = Einstellungen { transkripte_erfassen: e.transkripte_erfassen, ..neu };
             Ok(("Einstellungen geändert".into(), ()))
         })
         .map(|(geaendert, ())| geaendert)

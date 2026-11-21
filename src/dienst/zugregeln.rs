@@ -223,6 +223,7 @@ mod tests {
             berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
             archiviert: None,
+            transkripte_erfassen: None,
         }
     }
 

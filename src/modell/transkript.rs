@@ -119,9 +119,62 @@ impl utoipa::PartialSchema for Transkripteintrag {
 
 impl utoipa::ToSchema for Transkripteintrag {}
 
+/// Ob für eine Aufgabe Transkripte abgelegt werden dürfen (ADR-0036 Regel 4) und welche Boards „aus“ sind.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
+pub struct Erfassung {
+    pub erfassen: bool,
+    /// Slugs der Boards der Aufgabe, die wirksam „aus“ sind, in der Reihenfolge der Boardliste
+    pub boards_aus: Vec<String>,
+}
+
+/// Der wirksame Schalter für die Aufgabe `nr`: „an“ nur, wenn **alle** Boards, auf denen sie liegt (auch archivierte),
+/// wirksam „an“ sind — je Board der eigene Wert, sonst die Vorgabe des Ordners, sonst „aus“; liegt sie auf keinem Board,
+/// gilt die Vorgabe (R00216 AK 3).
+pub fn erfassung(nr: u32, boards: &[super::Board], vorgabe: Option<bool>) -> Erfassung {
+    let ihre: Vec<&super::Board> = boards.iter().filter(|b| b.spalte_von(nr).is_some()).collect();
+    if ihre.is_empty() {
+        return Erfassung { erfassen: vorgabe.unwrap_or(false), boards_aus: vec![] };
+    }
+    let boards_aus: Vec<String> = ihre.iter().filter(|b| !b.transkripte_erfassen.or(vorgabe).unwrap_or(false)).map(|b| b.slug.clone()).collect();
+    Erfassung { erfassen: boards_aus.is_empty(), boards_aus }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// fabrik (#1, #2) und zweit (#2) mit eigenem Schalter; `zweit_archiviert` archiviert zweit.
+    fn boards(fabrik: Option<bool>, zweit: Option<bool>, zweit_archiviert: bool) -> Vec<super::super::Board> {
+        let lesen = |slug, text| crate::format::board::lesen(slug, text).unwrap();
+        let mut f = lesen("fabrik", "# Fabrik\n\n## Eingang\n\n- #2\n- #3\n\n## Entwicklung\n\n- #1\n\n## Fertig\n");
+        let mut z = lesen("zweit", "# Zweit\n\n## Eingang\n\n- #2\n\n## Fertig\n");
+        f.transkripte_erfassen = fabrik;
+        z.transkripte_erfassen = zweit;
+        z.archiviert = zweit_archiviert.then(|| "2026-11-20".to_string());
+        vec![f, z]
+    }
+
+    fn aus(slugs: &[&str]) -> Erfassung {
+        Erfassung { erfassen: false, boards_aus: slugs.iter().map(|s| s.to_string()).collect() }
+    }
+
+    const AN: Erfassung = Erfassung { erfassen: true, boards_aus: vec![] };
+
+    // R00216 AK 3: die Tabelle Zeile für Zeile
+    #[test]
+    fn wirksamer_schalter_nach_der_tabelle() {
+        assert_eq!(erfassung(1, &boards(None, None, false), None), aus(&["fabrik"]), "ohne beides aus");
+        assert_eq!(erfassung(1, &boards(None, None, false), Some(true)), AN, "Vorgabe an");
+        assert_eq!(erfassung(1, &boards(Some(false), None, false), Some(true)), aus(&["fabrik"]), "Board aus schlägt Vorgabe an");
+        assert_eq!(erfassung(1, &boards(Some(true), None, false), Some(false)), AN, "Board an schlägt Vorgabe aus");
+        assert_eq!(erfassung(2, &boards(None, Some(false), false), Some(true)), aus(&["zweit"]), "eines von zweien aus");
+        assert_eq!(erfassung(2, &boards(None, Some(false), true), Some(true)), aus(&["zweit"]), "auch ein archiviertes Board zählt");
+        assert_eq!(erfassung(2, &boards(Some(true), Some(true), false), Some(true)), AN, "alle an");
+        assert_eq!(erfassung(9, &boards(None, None, false), Some(false)), aus(&[]), "auf keinem Board: Vorgabe aus");
+        assert_eq!(erfassung(9, &boards(None, None, false), Some(true)), AN, "auf keinem Board: Vorgabe an");
+        assert_eq!(erfassung(9, &boards(None, None, false), None), aus(&[]), "auf keinem Board, keine Vorgabe: aus");
+        assert_eq!(erfassung(2, &boards(Some(false), Some(false), false), None), aus(&["fabrik", "zweit"]), "alle aus, in Reihenfolge der Boardliste");
+    }
 
     fn zeile(text: &str) -> Transkriptzeile {
         Transkriptzeile::lesen(&serde_yaml::from_str(text).unwrap())

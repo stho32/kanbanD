@@ -216,3 +216,53 @@ async fn ak13d_duplizieren_nimmt_transcripts_nicht_mit() {
     assert!(!text.contains("transcripts"), "{text}");
     assert_eq!(lies(tmp.path(), "aufgaben/0001-a1.md"), format!("---\nid: 1\ntitle: a1\n{kopf}---\n"), "die Quelle bleibt");
 }
+
+// B1099 · AK 4 (Boards): `GET /api/boards[/{slug}]` liefert den eigenen Schalter des Boards als `transkripte_erfassen` —
+// `true`, `false` oder `null` (kein Schlüssel, die Vorgabe gilt).
+#[tokio::test]
+async fn ak04_boards_liefern_ihren_eigenen_schalter() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), "", "record-transcripts: false\n", "record-transcripts: true\n");
+    std::fs::write(tmp.path().join("boards/zweit.md"), "---\nrecord-transcripts: true\n---\n\n# Zweit\n\n## Eingang\n").unwrap();
+    git(tmp.path(), &["add", "-A"]);
+    git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "zweit"]);
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+
+    for (slug, wert) in [("fabrik", json!(false)), ("zweit", json!(true)), ("entwicklung", Value::Null)] {
+        let (s, b) = holen(&lauf.adresse, &format!("api/boards/{slug}")).await;
+        assert_eq!((s, &b["transkripte_erfassen"]), (200, &wert), "{slug}: {b}");
+        assert!(b.as_object().unwrap().contains_key("transkripte_erfassen"), "{slug}");
+    }
+    let (s, liste) = holen(&lauf.adresse, "api/boards").await;
+    assert_eq!(s, 200);
+    let werte: Vec<(String, Value)> = liste.as_array().unwrap().iter().map(|b| (b["slug"].as_str().unwrap().to_string(), b["transkripte_erfassen"].clone())).collect();
+    assert_eq!(werte, [("entwicklung".to_string(), Value::Null), ("fabrik".into(), json!(false)), ("zweit".into(), json!(true))]);
+}
+
+// B1099 · AK 5 zweiter Satz (ADR-0036 Regel 4): keine Route setzt den Schalter — auch nicht mit ihm im Rumpf unter einem
+// der Namen `record-transcripts`, `recordTranscripts`, `transkripte_erfassen`, weder für den Agenten noch für den Menschen.
+#[tokio::test]
+async fn ak05_keine_route_setzt_den_schalter() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), "", "record-transcripts: false\n", "record-transcripts: false\n");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let (board_vorher, vorgabe_vorher) = (lies(tmp.path(), "boards/fabrik.md"), lies(tmp.path(), "kanbanD.md"));
+
+    for wer in ["cl", "st"] {
+        for name in ["record-transcripts", "recordTranscripts", "transkripte_erfassen"] {
+            let (_, mut e) = holen(&lauf.adresse, "api/einstellungen").await;
+            e[name] = json!(true);
+            let (s, a) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", wer, e).await;
+            assert!(s == 200 || s == 400, "{wer} {name}: {s} {a}");
+            for (pfad, rumpf) in [("api/boards/fabrik", json!({ name: true })), ("api/boards/fabrik", json!({ "titel": "Fabrik", name: true }))] {
+                let (s, a) = senden(Method::PATCH, &lauf.adresse, pfad, wer, rumpf.clone()).await;
+                assert!(s < 500, "{wer} {name} {rumpf}: {s} {a}");
+            }
+        }
+    }
+    // PUT schreibt die Datei in ihrer Form neu (Register mit repository) — es zählt der Wert des Schalters
+    let vorgabe = lies(tmp.path(), "kanbanD.md");
+    assert!(vorgabe_vorher.contains("\nrecord-transcripts: false\n") && vorgabe.contains("\nrecord-transcripts: false\n") && !vorgabe.contains("record-transcripts: true"), "{vorgabe}");
+    assert!(lies(tmp.path(), "boards/fabrik.md").starts_with("---\nrecord-transcripts: false\n---\n"), "{}", lies(tmp.path(), "boards/fabrik.md"));
+    assert_eq!(lies(tmp.path(), "boards/fabrik.md"), board_vorher);
+}

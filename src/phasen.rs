@@ -140,7 +140,7 @@ mod tests {
 
     fn board(spalten: &[(&str, Option<&str>)]) -> Board {
         let spalten = spalten.iter().map(|(n, p)| Spalte { name: n.to_string(), grenze: None, aufgaben: vec![], phase: p.map(String::from), pruefungen: vec![], ..Default::default() }).collect();
-        Board { slug: "e".into(), titel: "Entwicklung".into(), spalten, termine: vec![], anwendungen: Some(vec!["kd".into()]), klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None }
+        Board { slug: "e".into(), titel: "Entwicklung".into(), spalten, termine: vec![], anwendungen: Some(vec!["kd".into()]), klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None, transkripte_erfassen: None }
     }
 
     fn spalten(b: &Board) -> Vec<(String, Option<String>)> {

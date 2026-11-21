@@ -427,6 +427,10 @@ pub struct Board {
     /// Datum der Archivierung (`archived` im Frontmatter, R00128); `None` = offen.
     #[serde(default)]
     pub archiviert: Option<String>,
+    /// `record-transcripts` (R00216, ADR-0036 Regel 4): eigener Schalter des Boards; `None` = es gilt die Vorgabe des
+    /// Ordners. Nur von Hand in der Datei gesetzt, jedes Schreiben trägt ihn mit; keine Route nimmt ihn an.
+    #[serde(default)]
+    pub transkripte_erfassen: Option<bool>,
 }
 
 impl Board {
@@ -979,6 +983,7 @@ mod tests {
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
             archiviert: None,
+            transkripte_erfassen: None,
         }
     }
 
@@ -1334,7 +1339,7 @@ mod tests {
         assert!(b.abnehmen(7));
         assert!(!b.abnehmen(7));
         assert_eq!(b.spalten[0].aufgaben, vec![1, 2]);
-        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None };
+        let mut leer = Board { slug: "l".into(), titel: "L".into(), spalten: vec![], termine: vec![], anwendungen: None, klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None, transkripte_erfassen: None };
         assert_eq!(leer.aufnehmen(1, None, None), Err(Bewegfehler::SpalteUnbekannt));
     }
 

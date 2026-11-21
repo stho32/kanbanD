@@ -85,6 +85,10 @@ pub struct Einstellungen {
     #[serde(default)]
     pub signale: Vec<Signal>,
     pub quellen: Quellen,
+    /// `record-transcripts` als Vorgabe des Ordners (R00216, ADR-0036 Regel 4); `None` = kein Schlüssel. Nur von Hand in
+    /// der Datei gesetzt: nicht im JSON, `PUT /api/einstellungen` lässt den gespeicherten Wert stehen.
+    #[serde(skip)]
+    pub transkripte_erfassen: Option<bool>,
 }
 
 impl Einstellungen {

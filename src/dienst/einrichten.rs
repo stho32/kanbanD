@@ -53,6 +53,7 @@ impl Einrichtung {
             klassen: vec![],
             signale: vec![],
             quellen: Quellen { repository: self.quellen.repository.trim().into(), wbs: self.quellen.wbs.trim().into(), anforderungen: self.quellen.anforderungen.trim().into(), anwendungen: vec![] },
+transkripte_erfassen: None,
         };
         e.repository_ergaenzen();
         e
@@ -69,6 +70,7 @@ impl Einrichtung {
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
             archiviert: None,
+            transkripte_erfassen: None,
         }
     }
 }

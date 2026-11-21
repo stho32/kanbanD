@@ -5,6 +5,8 @@ use crate::modell::{Berichtsfilter, Bestandseinstellung, Board, ColumnOwnerEintr
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "boards";
+/// Schalter „Transkripte erfassen“ (R00216, ADR-0036 Regel 4) — in der Board-Datei und als Vorgabe in `kanbanD.md`
+pub const SCHALTER: &str = "record-transcripts";
 
 /// Liest eine Board-Datei. Aufgabenzeilen sind Listenpunkte mit `#<nr>`; alles andere wird übergangen.
 pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
@@ -41,6 +43,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let bestand = bestand_lesen(m.get("report-labels"))?;
     let anwendungen = m.get("applications").filter(|v| !v.is_null()).map(|_| yaml::textliste(&m, "applications"));
     let klassen = super::einstellungen::klassen_lesen(&m)?;
+    let transkripte_erfassen = schalter_lesen(&m)?;
     let mut titel = None;
     let mut spalten: Vec<Spalte> = vec![];
     for zeile in koerper.lines() {
@@ -82,7 +85,23 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     // Nur Einträge ohne eigene Spalte bleiben roh; die ungültigen Nicht-Text-Werte treten dazu (R00120).
     eigentuemer_roh.retain(|e| e.schluessel.as_ref().is_none_or(|k| !spalten.iter().any(|s| &s.name == k)));
     eigentuemer_roh.extend(roh_ungueltig);
-    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, klassen, start, fieber, berichtsfilter, bestand, eigentuemer_roh, archiviert })
+    Ok(Board { slug: slug.to_string(), titel: titel.unwrap_or_else(|| slug.to_string()), spalten, termine, anwendungen, klassen, start, fieber, berichtsfilter, bestand, eigentuemer_roh, archiviert, transkripte_erfassen })
+}
+
+/// `record-transcripts` (R00216, ADR-0036 Regel 4) der Board-Datei oder von `kanbanD.md`: `true`/`false`; fehlt er oder ist
+/// er `null`, `None`. Ein anderer Wert ist ein Formatfehler — still „aus“ zu lesen und beim Schreiben zu verlieren wäre
+/// ein Verlust, still „an“ ein Einschalten, das niemand gewollt hat.
+pub(crate) fn schalter_lesen(m: &serde_yaml::Mapping) -> Result<Option<bool>, Formatfehler> {
+    match m.get(SCHALTER) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Bool(b)) => Ok(Some(*b)),
+        Some(v) => Err(Formatfehler(format!("{SCHALTER} „{}“ ist weder true noch false", yaml::anzeige(v)))),
+    }
+}
+
+/// Der Schalter als Zeile mit Zeilenende, oder nichts.
+pub(crate) fn schalter_zeile(schalter: Option<bool>) -> String {
+    schalter.map(|b| format!("{SCHALTER}: {b}\n")).unwrap_or_default()
 }
 
 /// Ein Schlüssel unter `column-owner` als Text: ein Skalar roh, ein Nicht-Text-Schlüssel (`[a, b]: human`) in
@@ -326,7 +345,7 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
     let bestand = bestand_zeile(&b.bestand);
-    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !daten.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.klassen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() {
+    if !grenzen.is_empty() || !phasen.is_empty() || !pruefungen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !daten.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.klassen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() || b.transkripte_erfassen.is_some() {
         s.push_str("---\n");
         if let Some(klassen) = &b.klassen {
             s.push_str(&super::einstellungen::klassen_schreiben(klassen));
@@ -402,6 +421,7 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
         if let Some(z) = bestand {
             s.push_str(&z);
         }
+        s.push_str(&schalter_zeile(b.transkripte_erfassen));
         s.push_str("---\n\n");
     }
     s.push_str(&format!("# {}\n", b.titel));
@@ -439,6 +459,7 @@ mod tests {
             fieber: Default::default(), berichtsfilter: Default::default(), bestand: None,
             eigentuemer_roh: vec![],
             archiviert: None,
+            transkripte_erfassen: None,
         }
     }
 
