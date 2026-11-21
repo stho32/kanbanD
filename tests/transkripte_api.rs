@@ -672,3 +672,17 @@ async fn nacharbeit_hoechstzahl_und_kennung_vor_der_datei() {
     nichts_geschrieben(&o, &vorher, "Höchstzahl vor dem Körper");
     assert!(!o.pfad.join("transkripte").exists());
 }
+
+// R00221 AK 1 (erster Test des Baus, ADR-0041 Punkt 1): Kennung mit `/`, Leerzeichen, `%` und `?`, in der Adresse mit
+// `encodeURIComponent` kodiert, liefert 200 mit genau den abgelegten Bytes
+#[tokio::test]
+async fn r00221_ak01_kennung_mit_sonderzeichen() {
+    let o = ausgangslage("record-transcripts: true\n", "record-transcripts: true\n", "");
+    let (s, e) = hochladen(o.adresse(), 1, "a/b c%?", "2026-11-20 13:00+01:00", G1.to_vec()).await;
+    assert_eq!(s, 201, "{e}");
+    assert_eq!(e["kennung"], json!("a/b c%?@2026-11-20T13:00+01:00"));
+    let (s, kopf, rumpf) = herunterladen(o.adresse(), "api/aufgaben/1/transkripte/a%2Fb%20c%25%3F%402026-11-20T13%3A00%2B01%3A00").await;
+    assert_eq!(s, 200, "{}", String::from_utf8_lossy(&rumpf));
+    assert_eq!(kopf["content-type"], "application/gzip");
+    assert_eq!(rumpf, G1, "byte-gleich");
+}
