@@ -121,6 +121,84 @@
     return anzahl === 1 ? '1 Commit gelesen' : `${anzahl} Commits gelesen`;
   }
 
+  /* ── Nachfolger eines verwaisten Commits (R00218 B1118, PO Z. 461, 465): die Antwort von GET …/commits/{verweis}/nachfolger als Werte und
+     Wortlaute. Fremder Text geht ohne Bidi-Steuerzeichen durch; maskiert wird beim Zeichnen. ── */
+  const NACHFOLGER_LAEDT = 'Sucht Commits mit gleichem Patch …';
+  const KEIN_NACHFOLGER = 'Kein Commit mit gleichem Patch auf einem Zweig gefunden.';
+  const KEIN_NACHFOLGER_GRUND = `${KEIN_NACHFOLGER} Nach Squash oder einem anders gelösten Konflikt findet die Suche keinen Nachfolger.`;
+  const MERGE_SATZ = 'Für einen Merge-Commit sucht kanbanD keinen Nachfolger.';
+  const LEER_SATZ_NF = 'Der Commit ändert keine Datei, darum gibt es keinen Patch zum Vergleichen.';
+  const MARKE_AN_DER_KARTE = 'schon an der Aufgabe';
+
+  /** Kurzform eines Verweises `<kürzel>:<hash>` bzw. `<hash>`: Kürzel und die ersten 7 Zeichen. */
+  function kurzVerweis(verweis) {
+    const text = ohneSteuerzeichen(verweis) || '';
+    const stelle = text.lastIndexOf(':');
+    return stelle < 0 ? text.slice(0, 7) : `${text.slice(0, stelle)}:${text.slice(stelle + 1, stelle + 8)}`;
+  }
+
+  const gekapptSatz = n => `Die Suche hat nach ${tausender(n)} Commits aufgehört; ein Nachfolger kann fehlen.`;
+  const weitereSatz = n => (n === 1 ? '1 weiterer Commit mit gleichem Patch ist nicht gezeigt.' : `${n} weitere Commits mit gleichem Patch sind nicht gezeigt.`);
+
+  /** Der Kandidat als Zeilenwerte wie die Liste; `knopf` ist `entfernen`, wenn er an der Karte steht oder nach einem 409 dorthin gewechselt ist. */
+  function kandidatWerte(k, entfernen) {
+    const kurz = kurzVerweis(k.verweis);
+    const knopf = k.an_der_karte || entfernen ? 'entfernen' : 'ersetzen';
+    return {
+      verweis: ohneSteuerzeichen(k.verweis), kurz, hash: k.hash,
+      titel: ohneSteuerzeichen(k.titel), gekuerzt: titelGekuerzt(k), autor: ohneSteuerzeichen(k.autor),
+      datum: datumText(k.datum), datumTitel: k.datum,
+      zweige: zweigmarken(k), knopf,
+      marke: knopf === 'entfernen' ? MARKE_AN_DER_KARTE : null,
+      name: knopf === 'entfernen' ? 'Verwaisten Verweis entfernen' : `Ersetzen durch ${kurz}`,
+    };
+  }
+
+  /** Die Antwort `{status, rumpf}` bzw. `{status, fehler}` (Status 0: keine Verbindung) für den verwaisten Eintrag `verwaist`:
+      `art` (kandidaten, keiner, merge, leer, fehler), Kopf und Zusatz, Kandidaten, Sätze (nach der Liste: weitere, dann gekappt).
+      `gewechselt` nennt die Verweise der Kandidaten, die nach einem 409 in die Form „an der Aufgabe“ gewechselt sind (Z. 460). */
+  function nachfolgerDeuten(antwortDaten, verwaist, gewechselt = new Set()) {
+    const vk = kurzVerweis(verwaist);
+    const gruppe = `Nachfolger von ${vk}`;
+    if (antwortDaten.status !== 200) {
+      const grund = antwortDaten.status === 0 ? 'keine Verbindung zum Programm.' : `${ohneSteuerzeichen(antwortDaten.fehler) || 'unbekannter Fehler'} (${antwortDaten.status}).`;
+      return { art: 'fehler', gruppe, kopf: null, zusatz: null, kandidaten: [], saetze: [`Der Nachfolger ließ sich nicht suchen: ${grund}`] };
+    }
+    const r = antwortDaten.rumpf;
+    const hinweise = r.hinweise || [];
+    const kandidaten = (r.kandidaten || []).map(k => kandidatWerte(k, gewechselt.has(k.verweis)));
+    const gekappt = hinweise.find(h => h.art === 'suche_gekappt');
+    if (hinweise.some(h => h.art === 'merge')) return { art: 'merge', gruppe, kopf: null, zusatz: null, kandidaten: [], saetze: [MERGE_SATZ] };
+    if (hinweise.some(h => h.art === 'leer')) return { art: 'leer', gruppe, kopf: null, zusatz: null, kandidaten: [], saetze: [LEER_SATZ_NF] };
+    if (!kandidaten.length) {
+      return { art: 'keiner', gruppe, kopf: null, zusatz: null, kandidaten, saetze: gekappt ? [gekapptSatz(gekappt.durchsucht), KEIN_NACHFOLGER] : [KEIN_NACHFOLGER_GRUND] };
+    }
+    const zusaetze = ['neuester zuerst'];
+    if (kandidaten.some(k => k.knopf === 'ersetzen')) zusaetze.push(`„Ersetzen“ trägt ihn an der Stelle von ${vk} ein`);
+    if (kandidaten.some(k => k.knopf === 'entfernen')) zusaetze.push(`„Verwaisten Verweis entfernen“ nimmt ${vk} von der Aufgabe`);
+    const saetze = [];
+    if (r.kandidaten_weitere > 0) saetze.push(weitereSatz(r.kandidaten_weitere));
+    if (gekappt) saetze.push(gekapptSatz(gekappt.durchsucht));
+    const kopf = kandidaten.length === 1 ? '1 Commit mit gleichem Patch' : `${kandidaten.length} Commits mit gleichem Patch`;
+    return { art: 'kandidaten', gruppe, kopf, zusatz: zusaetze.join(' · '), kandidaten, saetze };
+  }
+
+  /** Fehler beim Ersetzen oder Entfernen (`aktion`: ersetzen | entfernen). Ein 409 des Ersetzens mit `verweis` gleich dem verwaisten
+      Eintrag heißt: der Kandidat steht inzwischen an der Aufgabe — `wechsel` in die Form „an der Aufgabe“, ohne den Text des Servers (Z. 460). */
+  function schreibfehlerText(aktion, { status, verweis, fehler }, verwaist, kandidat) {
+    const verb = aktion === 'ersetzen' ? 'ersetzen' : 'entfernen';
+    if (aktion === 'ersetzen' && status === 409 && verweis === verwaist) {
+      return { wechsel: true, text: `Der Verweis ließ sich nicht ersetzen: ${kurzVerweis(kandidat)} steht inzwischen schon an der Aufgabe (409).` };
+    }
+    const grund = status === 0 ? 'keine Verbindung zum Programm.' : `${ohneSteuerzeichen(fehler) || 'unbekannter Fehler'} (${status}).`;
+    return { wechsel: false, text: `Der Verweis ließ sich nicht ${verb}: ${grund}` };
+  }
+
+  /** Erfolgsmeldung im Statusbereich der Liste. */
+  function erfolgText(aktion, verwaist, kandidat) {
+    return aktion === 'ersetzen' ? `Ersetzt durch ${kurzVerweis(kandidat)}.` : `Verwaisten Verweis ${kurzVerweis(verwaist)} entfernt.`;
+  }
+
   /* ── Zeichnen: HTML-Text aus den Zeilenwerten (R00205 FA 4–7, Artboard D0009 `#commits-ansicht`). Aller fremde Text geht durch
      `esc` (ADR-0030 Grundsatz 1), die Zustandswörter stehen als sichtbarer Text in ihrer Marke, nie in `.vh`. ── */
   const SYMBOLE = {
@@ -238,5 +316,5 @@
     return `<div class="mod-main cl-panel">${commitsKopfHtml(anzahl, ziel && esc(ziel(null)))}${inhaltHtml(c, esc, ziel)}${commitsFussHtml({ stand: c.stand, laedt: c.status === 'laedt' })}</div>`;
   }
 
-  Object.assign(ziel, { ZUSTANDSWOERTER, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml });
+  Object.assign(ziel, { ZUSTANDSWOERTER, NACHFOLGER_LAEDT, nachfolgerDeuten, schreibfehlerText, erfolgText, kurzVerweis, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml });
 })(typeof module !== 'undefined' ? module.exports : window);
