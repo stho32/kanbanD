@@ -2,7 +2,6 @@
 // führen den echten DOM-Fokus — Enter öffnet auf dem ersten Eintrag, ↓ und Ende bewegen ihn, Esc gibt ihn dem Auslöser zurück.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
-const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 
 /** Fokus per Tastatur auf den Auslöser, Enter; danach Erster, ↓ Zweiter, Ende Letzter, Esc zurück auf den Auslöser. */
 async function menueFuehrtDenFokus(page, ausloeser, eintraege) {

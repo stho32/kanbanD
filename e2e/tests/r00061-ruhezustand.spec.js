@@ -3,7 +3,7 @@
 // ersetzte die Ansicht, während der Test schon klickte oder maß. Seit R00222 (ADR-0034 Regel 4) ohne die WBS-Sicht: die
 // Zusage gilt am Board, dessen erstes Lesen die Phasen-Spalten mit eigenem Commit nachträgt (S3 bleibt bis #227).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
 
 const WBS = wbsText([
