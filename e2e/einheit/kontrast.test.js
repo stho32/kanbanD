@@ -118,7 +118,7 @@ const PAARE = [
   { name: 'Kopf', flaechen: kd(['head', 'head-line']), vorne: kd(['head-text', 'head-muted', 'head-link']), mass: SCHRIFT },
   { name: 'Modusleiste', flaechen: kd(['modus']), vorne: kd(['modus-text', 'muted', 'warn']), mass: SCHRIFT },
   { name: 'Klassengründe', flaechen: kd(KLASSEN.map(farbe => `c-${farbe}`)), vorne: kd(['text', 'muted', 'warn']), mass: SCHRIFT },
-  ...AMPEL.map(status => ({ name: `WBS-Ampel ${status}`, flaechen: kd([`wbs-${status}-bg`]), vorne: kd([`wbs-${status}-ink`, 'text']), mass: SCHRIFT })),
+  ...AMPEL.map(status => ({ name: `Statusfarbe ${status}`, flaechen: kd([`status-${status}-bg`]), vorne: kd([`status-${status}-ink`, 'text']), mass: SCHRIFT })),
   { name: 'Diagrammlinien', flaechen: kd(['surface']), vorne: kd(['wl-1', 'wl-2', 'wl-3']), mass: LINIE },
   { name: 'Linie Abschluss Modusleiste', flaechen: kd(['modus', 'sunken']), vorne: kd(['modus-linie']), mass: LINIE },
   { name: 'Linie Fokusring Modusleiste', flaechen: kd(['modus']), vorne: kd(['accent']), mass: LINIE },
@@ -149,7 +149,7 @@ function verstoesse(paar, werteJeThema) {
 
 /** Regeln, deren Schrift ein Paar der Tabelle sein muss; die Fläche steht in der Regel selbst oder kommt vom Eltern-Element. */
 const PAARUNGEN = [
-  { datei: 'kd-app.css', selektor: '.ausruf', vorne: '--kd-wbs-error-ink', flaeche: '--kd-wbs-error-bg', ring: '--kd-wbs-error' },
+  { datei: 'kd-app.css', selektor: '.ausruf', vorne: '--kd-status-error-ink', flaeche: '--kd-status-error-bg', ring: '--kd-status-error' },
   { datei: 'kd-app.css', selektor: '.toast .lnk', vorne: '--kd-head-link', flaeche: '--kd-head' },
   { datei: 'kd-app.css', selektor: '.pk-still', vorne: '--kd-on-still', flaeche: '--kd-still', flaecheImRumpf: true },
   { datei: 'kd-base.css', selektor: '.lauf.vergessen', vorne: '--kd-fehler-text', flaeche: '--kd-fehler-flaeche', flaecheImRumpf: true },
@@ -322,14 +322,14 @@ function phasenVerstoesse(vorne, grund) {
   }
   return saetze;
 }
-const GRUND = ['--kd-wbs-ok-bg', '--kd-wbs-error-bg'];
+const GRUND = ['--kd-status-ok-bg', '--kd-status-error-bg'];
 
 test('Phasenblock: --kd-text und --kd-muted auf dem gemischten Grund mindestens 4,5 bei jedem Anteil', () => {
   assert.deepStrictEqual([...phasenVerstoesse('--kd-text', GRUND), ...phasenVerstoesse('--kd-muted', GRUND)], []);
 });
 
 test('Phasenblock: Abzeichen mit gemischter Ampelschrift auf dem gemischten Grund mindestens 4,5', () => {
-  assert.deepStrictEqual(phasenVerstoesse(['--kd-wbs-ok-ink', '--kd-wbs-error-ink'], GRUND), []);
+  assert.deepStrictEqual(phasenVerstoesse(['--kd-status-ok-ink', '--kd-status-error-ink'], GRUND), []);
 });
 
 test('Phasenblock: ansicht.js setzt den Anteil (--anteil), keinen Farbton (--h)', () => {

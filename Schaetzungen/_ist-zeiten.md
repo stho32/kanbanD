@@ -1018,3 +1018,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #224 R00222 | B1153 fremder Wächter und Ereignisfeld wbs entfernt | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #224 R00222 | B1154 WBS-Sicht, Endpunkte, Menüeintrag, g k, Seitenname entfernt | Standard | 1-2h | 1,3h | 1,3h | autonom |
 | 2026-11-21 | Karte #224 R00222 | B1155 Register ohne wbs/anforderungen in API, Einrichten und erstem Start | Standard | 1-2h | 1,2h | 1,2h | autonom |
+| 2026-11-21 | Karte #224 R00222 | B1156 Farbvariablen --kd-wbs-* → --kd-status-*, Aussehen gemessen gleich | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
