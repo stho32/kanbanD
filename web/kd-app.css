@@ -1482,7 +1482,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .nf-satz{margin:0;font-size:12.5px;overflow-wrap:anywhere}
 .nf-fehler .nf-satz{color:var(--kd-wbs-error-ink)}
 .nf-l{list-style:none;margin:0;padding:0;border:1px solid var(--kd-line);background:var(--kd-surface);align-self:stretch;min-width:0}
-.nf-k{display:grid;grid-template-columns:96px minmax(200px,1fr) 112px 112px minmax(0,180px) max-content;grid-template-areas:"hash titel autor datum zweige akt" ". zwo zwo zwo zwo zwo" ". fehl fehl fehl fehl fehl";column-gap:var(--kd-s3);align-items:start;padding:5px var(--kd-s3);border-bottom:1px solid var(--kd-line);font-size:12.5px;min-width:0}
+/* eine Knopfspalte für alle Kandidaten (Sollte B der UX-Review): „Verwaisten Verweis entfernen“ verschiebt sonst Autor, Datum und Zweige */
+.nf-k{display:grid;grid-template-columns:96px minmax(200px,1fr) 112px 112px 180px 190px;grid-template-areas:"hash titel autor datum zweige akt" ". zwo zwo zwo zwo zwo" ". fehl fehl fehl fehl fehl";column-gap:var(--kd-s3);align-items:start;padding:5px var(--kd-s3);border-bottom:1px solid var(--kd-line);font-size:12.5px;min-width:0}
 .nf-k:last-child{border-bottom:0}
 .nf-k>.nf-h{grid-area:hash;font:12px var(--kd-mono);padding-top:2px;overflow-wrap:anywhere}
 .nf-k>.nf-t{grid-area:titel;min-width:0;overflow-wrap:anywhere;padding-top:1px}
@@ -1490,7 +1491,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .nf-k>.nf-a{grid-area:autor;min-width:0;overflow-wrap:anywhere;padding-top:1px}
 .nf-k>.nf-d{grid-area:datum;font:12px var(--kd-mono);white-space:nowrap;padding-top:2px}
 .nf-k>.nf-z{grid-area:zweige;min-width:0}
-.nf-k>.nf-akt{grid-area:akt;justify-self:end;min-width:0}
+.nf-k>.nf-akt{grid-area:akt;justify-self:end;min-width:0;max-width:100%}
 .nf-k>.nf-meld{grid-area:fehl;margin:6px 0 0;font-size:12.5px;color:var(--kd-wbs-error-ink);overflow-wrap:anywhere}
 .nf-k>.nf-meld:empty{display:none}
 .nf-zw{grid-area:zwo;margin-top:6px;padding:6px var(--kd-s3);background:var(--kd-bg);font-size:12px;min-width:0}

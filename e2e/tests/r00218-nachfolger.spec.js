@@ -753,6 +753,17 @@ test.describe('R00218 AK 11 — Breite, Ziele, Themen, Kontrast, Tastatur', () =
     }
   }
 
+  for (const breite of [1100, 1280]) {
+    test(`Nacharbeit 1 (UX Sollte B): ${breite} px — eine Knopfspalte für alle Kandidaten: die linke Kante von „Autor“ ist bei allen gleich, die Zweigspalte 180 px breit`, async ({ page }) => {
+      await gesucht(page);
+      await breiteSetzen(page, breite);
+      const m = await page.evaluate(kandidatenMessen);
+      const kanten = [...new Set(m.map(x => Math.round(x.autor.left)))];
+      expect(kanten, 'Kandidat 4 trägt „Verwaisten Verweis entfernen“, die anderen „Ersetzen“').toHaveLength(1);
+      for (const x of m) expect(Math.round(x.zweige.width)).toBeGreaterThanOrEqual(180);
+    });
+  }
+
   test('AK 11: die mittlere Form hängt nur an der Breite — bei 768 px fein und grob dieselbe Reihenfolge und dieselben linken Kanten von Hash, Titel und Knopf', async ({ browser }) => {
     const lage = async optionen => {
       const kontext = await browser.newContext({ viewport: { width: 768, height: 900 }, locale: 'de-DE', timezoneId: 'Europe/Berlin', ...optionen });
