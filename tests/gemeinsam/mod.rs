@@ -143,6 +143,8 @@ unsafe extern "C" {
 
 /// So viele Anfragen sind höchstens zugleich unterwegs — wie die Plätze der Lesegrenze des Programms
 /// (`LESEN_HOECHSTENS`): dann wartet keine Anfrage auf einen Platz, und die Frist misst nur ihren eigenen Lauf.
+/// Bewusst doppelt: `dienst::lesegrenze` ist privat, und R00215 lässt `src/` unverändert — ändert sich
+/// `LESEN_HOECHSTENS`, hier mitziehen.
 pub const UNTERWEGS_HOECHSTENS: usize = 4;
 
 /// N Verbindungen, deren Statuszeile gelesen ist; alle noch offen, nach der Statuszeile ungelesen.
