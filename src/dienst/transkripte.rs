@@ -225,7 +225,14 @@ impl Kanban {
         a.transkripte.push(Transkriptzeile::Lesbar(neu.clone()));
         let pfad = format!("{}/{}", aufgabe::ORDNER, a.datei);
         if let Err(f) = self.aktion(wer, &nachricht, &[Schritt::schreiben(pfad, aufgabe::schreiben(&a))]) {
-            let _ = std::fs::remove_file(&ziel);
+            // Gelingt die Rücknahme, steht der Eintrag nicht mehr in der Aufgabendatei — die Datei geht mit. Misslingt sie
+            // (etwa `.git/index.lock`), bleibt die geänderte Aufgabendatei mit dem Eintrag stehen und die Datei bei ihr:
+            // im Arbeitsbaum nie ein Eintrag ohne Datei.
+            let kennung = neu.kennung();
+            let eintrag_steht = self.ordner().aufgabe(nr).is_ok_and(|a| a.transkripte.iter().any(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)));
+            if !eintrag_steht {
+                let _ = std::fs::remove_file(&ziel);
+            }
             return Err(f);
         }
         Ok(neu)
@@ -704,6 +711,39 @@ mod tests {
             } else {
                 let r = k.transkript_lesen(1, &e.kennung());
                 assert!(matches!(r, Err(Fehler::Transkriptzustand { zustand: Transkriptzustand::Unlesbar, .. })), "{weg}: {:?}", r.map(|(rumpf, _)| rumpf.bytes));
+            }
+        }
+    }
+
+    // Nacharbeit 1 #208 (code-reviewer Testlücke, observability-reviewer Sollte): scheitert der Commit, gibt es im
+    // Arbeitsbaum weder einen Eintrag ohne Datei noch eine Datei ohne Eintrag. Gelingt die Rücknahme (Haken pre-commit),
+    // ist alles wie vorher; misslingt sie (`.git/index.lock`), bleibt die Aufgabendatei geändert — dann bleibt auch die Datei.
+    #[cfg(unix)]
+    #[test]
+    fn gescheiterter_commit_laesst_eintrag_und_datei_zusammen() {
+        use std::os::unix::fs::PermissionsExt;
+        for (wie, ruecknahme_gelingt) in [("pre-commit", true), ("index.lock", false)] {
+            let (w, k, wer) = ordner();
+            let vorher = std::fs::read_to_string(w.path().join("aufgaben/0001-a.md")).unwrap();
+            if ruecknahme_gelingt {
+                let haken = w.path().join(".git/hooks/pre-commit");
+                std::fs::write(&haken, "#!/bin/sh\nexit 1\n").unwrap();
+                std::fs::set_permissions(&haken, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+            let e = empfangen(&k);
+            if !ruecknahme_gelingt {
+                std::fs::write(w.path().join(".git/index.lock"), "").unwrap();
+            }
+            let f = k.transkript_einhaengen(&wer, 1, &angaben(), e).unwrap_err();
+            assert!(matches!(f, Fehler::Intern(_)), "{wie}: {f:?}");
+            let eintrag_da = k.ordner().aufgabe(1).unwrap().transkripte.len() == 1;
+            assert_eq!(eintrag_da, !ruecknahme_gelingt, "{wie}");
+            let datei_da = dateien(w.path()) == ["entwickler@2026-11-13T1034+0100.jsonl.gz"];
+            assert_eq!(datei_da, eintrag_da, "{wie}: Eintrag und Datei zusammen — {:?}", dateien(w.path()));
+            assert_eq!(zwischendateien(w.path()), 0, "{wie}");
+            if ruecknahme_gelingt {
+                assert_eq!(std::fs::read_to_string(w.path().join("aufgaben/0001-a.md")).unwrap(), vorher);
+                assert_eq!(git_status(w.path()), "", "{wie}");
             }
         }
     }
