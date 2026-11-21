@@ -103,7 +103,8 @@ test('Seitenfehler: Antwortbudget nach Text mit Server, sonst 503 Zeitgrenze mit
   const zeit = d.diffFehlerHtml({ status: 503, fehler: 'Git <b>antwortete</b> nicht' }, 'kd:a', esc);
   assert.ok(ohneTags(zeit).startsWith('Zeitgrenze überschritten. Der Diff ließ sich nicht lesen: Git &lt;b&gt;antwortete&lt;/b&gt; nicht (503).'));
   const kein = d.diffFehlerHtml({ status: 404, fehler: 'x', daten: { zustand: 'fehlt' } }, 'kd:' + 'b'.repeat(40), esc);
-  assert.ok(kein.includes('role="status"') && ohneTags(kein).startsWith('Zu diesem Verweis gibt es keinen Diff: kd:bbbbbbb ist nicht mehr im Repository.Zur Liste der Commits'));
+  // umgestellt mit R00224 FA 6 (PO Z. 507): Überschrift „Zu <kurz> gibt es keinen Diff.“, darunter der Satz des Zustands
+  assert.ok(kein.includes('role="status"') && ohneTags(kein).startsWith('Zu kd:bbbbbbb gibt es keinen Diff.Das Repository der Anwendung kd kennt diesen Commit nicht mehr.Zur Liste der Commits'));
   const netz = d.diffFehlerHtml({ status: 0, fehler: 'egal' }, 'kd:a', esc);
   // umgestellt mit R00210 AK 13 (PO Z. 450): ohne Antwort keine Klammer „(0)“
   assert.ok(netz.includes('role="alert"') && ohneTags(netz).startsWith('Der Diff ließ sich nicht lesen: keine Verbindung zum Programm.Erneut versuchenZur Liste der Commits'));
@@ -163,4 +164,39 @@ test('Nacharbeit 1 (Rechtschreibung S1): Lesetext „auf Zweig: “ bei genau ei
   assert.strictEqual(lesetext(['main', 'karte/1']), 'auf Zweigen: ');
   assert.strictEqual(lesetext(['main'], { entfernte_zweige: ['origin/main'] }), 'auf Zweigen: ');
   assert.strictEqual(lesetext(['main'], { zweige_weitere: 1 }), 'auf Zweigen: ');
+});
+
+/* ── R00224 B1169: „Ein Commit“ bei 404 mit zustand — Überschrift, Satz, Hinweiszeile als eigene Blöcke ── */
+
+const kopfSatzHin = html => [/<h2 id="rv-meld"[^>]*>([^<]*)<\/h2>/.exec(html), /<p class="rv-satz">([^<]*)<\/p>/.exec(html), /<p class="rv-hin">([^<]*)<\/p>/.exec(html)].map(m => (m ? m[1] : null));
+
+test('R00224: kein_diff mit zustand — Überschrift mit dem angefragten Verweis, Satz, maskierte Hinweiszeile; Ton und Symbol der Liste, Rolle status', () => {
+  const { zustandsSymbol } = require('../../web/commits.js');
+  const verweis = 'wb:' + 'c'.repeat(40);
+  const html = d.diffFehlerHtml({ status: 404, fehler: 'x', daten: { zustand: 'repository_fehlt', grund: 'Ordner fehlt: /x/<img src=x onerror=1>\u202Egpj.exe' } }, verweis, esc);
+  assert.deepStrictEqual(kopfSatzHin(html), ['Zu wb:ccccccc gibt es keinen Diff.', 'Das Repository der Anwendung wb ist nicht erreichbar.', 'Ordner fehlt: /x/&lt;img src=x onerror=1&gt;gpj.exe']);
+  assert.ok(html.startsWith('<div class="rv-meld rv-zeilen fehl" role="status">' + zustandsSymbol('ordner-offen')), html.slice(0, 120));
+  assert.ok(!html.includes('<img') && !html.includes('undefined') && html.includes('data-act="review-liste"'));
+  for (const [zustand, kuerzel, satz, ton, symbol] of [['fehlt', 'kd', 'Das Repository der Anwendung kd kennt diesen Commit nicht mehr.', 'fehl', 'fehlt'], ['anwendung_unbekannt', 'xy', 'Die Anwendung xy ist unter Einrichten nicht eingetragen.', 'warn', 'frage'], ['unlesbar', 'kd', 'Der Eintrag an der Aufgabe ist nicht lesbar.', 'fehl', 'achtung']]) {
+    const h = d.diffFehlerHtml({ status: 404, fehler: 'x', daten: { zustand } }, `${kuerzel}:${'d'.repeat(40)}`, esc);
+    assert.deepStrictEqual(kopfSatzHin(h), [`Zu ${kuerzel}:ddddddd gibt es keinen Diff.`, satz, null], zustand);
+    assert.ok(h.startsWith(`<div class="rv-meld rv-zeilen ${ton}" role="status">${zustandsSymbol(symbol)}`), zustand);
+  }
+});
+
+test('R00224: Verweis ohne Kürzel nennt die Standardanwendung bzw. „keine Anwendung“; Kürzel im Satz maskiert', () => {
+  const ohne = d.diffFehlerHtml({ status: 404, fehler: 'x', daten: { zustand: 'repository_fehlt' } }, 'e'.repeat(40), esc);
+  assert.deepStrictEqual(kopfSatzHin(ohne), ['Zu eeeeeee gibt es keinen Diff.', 'Das Repository der Standardanwendung ist nicht erreichbar.', null]);
+  const unbekannt = d.diffFehlerHtml({ status: 404, fehler: 'x', daten: { zustand: 'anwendung_unbekannt' } }, 'e'.repeat(40), esc);
+  assert.strictEqual(kopfSatzHin(unbekannt)[1], 'Der Verweis nennt keine Anwendung, und es ist keine Standardanwendung eingerichtet.');
+  const boese = d.diffFehlerHtml({ status: 404, fehler: 'x', daten: { zustand: 'fehlt' } }, '<b>:' + 'e'.repeat(40), esc);
+  assert.ok(!boese.includes('<b>') && boese.includes('Anwendung &lt;b&gt; kennt'));
+});
+
+test('R00224: unbekannter Zustand und 404 ohne zustand — der alte Satz ohne Ton, ohne Symbol und ohne Zeilen-Form', () => {
+  for (const daten of [{ zustand: 'neu_art' }, { verweis: 'kd:a' }, null]) {
+    const h = d.diffFehlerHtml({ status: 404, fehler: 'x', daten }, 'kd:' + 'a'.repeat(40), esc);
+    assert.ok(h.startsWith('<div class="rv-meld" role="status"><div class="rv-meldtext">'), JSON.stringify(daten));
+    assert.ok(ohneTags(h).startsWith('Zu diesem Verweis gibt es keinen Diff: kd:aaaaaaa — x.'), JSON.stringify(daten));
+  }
 });

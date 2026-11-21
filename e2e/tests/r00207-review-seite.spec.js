@@ -207,10 +207,12 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     });
   }
 
-  test('AK 6: ?commit=kd:<V2> → „Zu diesem Verweis gibt es keinen Diff: kd:<kurz> ist nicht mehr im Repository.“', async ({ page }) => {
+  // umgestellt mit R00224 FA 6 (PO Z. 507): Überschrift und Satz des Zustands statt „… ist nicht mehr im Repository.“
+  test('AK 6: ?commit=kd:<V2> → „Zu kd:<kurz> gibt es keinen Diff.“ mit „Das Repository der Anwendung kd kennt diesen Commit nicht mehr.“', async ({ page }) => {
     await page.goto(reviewAdresse(k, 1, `kd:${rep.v2}`));
     const meldung = page.locator('.rv-meld');
-    await expect(meldung).toContainText(`Zu diesem Verweis gibt es keinen Diff: ${kurz(rep.v2)} ist nicht mehr im Repository.`);
+    await expect(meldung.locator('h2')).toHaveText(`Zu ${kurz(rep.v2)} gibt es keinen Diff.`);
+    await expect(meldung.locator('.rv-satz')).toHaveText('Das Repository der Anwendung kd kennt diesen Commit nicht mehr.');
     await expect(meldung).toHaveAttribute('role', 'status');
     await expect(meldung.getByRole('button', { name: 'Zur Liste der Commits' })).toBeVisible();
   });

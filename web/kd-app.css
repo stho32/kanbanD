@@ -1562,6 +1562,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .rv-meldtext{flex:1;min-width:0;overflow-wrap:anywhere}
 .rv-meld h2{display:inline;margin:0;font-size:13px;font-weight:600}
 .rv-meld p{display:inline;margin:0}
+.rv-meld.rv-zeilen h2,.rv-meld.rv-zeilen p{display:block}
+.rv-meld.rv-zeilen h2 + p,.rv-meld.rv-zeilen p + p{margin-top:var(--kd-s2)}
 .rv-meld .rv-knoepfe{display:flex;flex-wrap:wrap;gap:var(--kd-s3);margin-top:var(--kd-s3)}
 .rv-keine{margin:var(--kd-s3) 0 0;padding-left:18px}
 .rv-hin{color:var(--kd-muted)}

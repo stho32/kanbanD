@@ -1807,7 +1807,7 @@ function vReview() {
   // der Umschalter steht auch beim Laden und bei Fehlern (R00210 FA 2, S8)
   const leiste = `<div class="rv-leiste">${reviewUmschalterCommit(r)}</div>`;
   if (b.art === 'liste_fehler') return seite(leiste + meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(listeFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe }));
-  if (b.art === 'diff_fehler') return seite(leiste + diffFehlerHtml(r.diff.fehler, r.commit, esc));
+  if (b.art === 'diff_fehler') return seite(leiste + diffFehlerHtml(r.diff.fehler, r.diff.verweis, esc));
   return seite(leiste + `<p class="rv-laedt" role="status" aria-busy="true">Liest den Diff von ${esc(kurzVerweis(r.commit))} …</p>`);
 }
 

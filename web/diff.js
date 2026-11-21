@@ -2,7 +2,7 @@
    Fremder Text geht hier unverändert durch; maskiert wird erst beim Zeichnen (esc). */
 (function (ziel) {
   'use strict';
-  const { ZUSTANDSWOERTER, anwendungName, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
+  const { ZUSTANDSWOERTER, anwendungName, zustandSatz, zustandsSymbol, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
 
   /** Zustände der Liste, zu denen es einen Diff gibt (ADR-0033 Punkt 2). */
   const MIT_DIFF = ['auf_zweig', 'verwaist'];
@@ -426,9 +426,19 @@
     return `<nav class="bl" aria-label="Commits der Aufgabe, ältester zuerst">${seite('zurueck', f.zurueck, f.i - 1)}<span class="pos"><b id="rv-pos" aria-live="polite">${f.i} von ${f.n}</b> <span class="mono">${kurz}</span></span>${seite('vor', f.vor, f.i + 1)}</nav>`;
   }
 
-  /** Meldung einer ganzen Seite: die erste Zeile ist die Überschrift mit `tabindex="-1"` (Fokusziel, FA 13). */
-  const meldungHtml = ({ ton = '', rolle, zeichen = '', kopf, text = '', rumpf = '', knoepfe = '' }) =>
-    `<div class="rv-meld${ton ? ' ' + ton : ''}" role="${rolle}">${zeichen ? symbol(zeichen) : ''}<div class="rv-meldtext"><h2 id="rv-meld" tabindex="-1">${kopf}</h2>${text ? ` <p>${text}</p>` : ''}${rumpf}${knoepfe ? `<p class="rv-knoepfe">${knoepfe}</p>` : ''}</div></div>`;
+  /** Meldung einer ganzen Seite: die erste Zeile ist die Überschrift mit `tabindex="-1"` (Fokusziel, FA 13). `zeilen` setzt Überschrift
+      und Absätze untereinander (R00224 FA 5, 6); `bild` ist ein fertiges Symbol aus commits.js statt eines Namens aus `SYMBOLE`. */
+  const meldungHtml = ({ ton = '', rolle, zeichen = '', bild = '', zeilen = false, kopf, text = '', rumpf = '', knoepfe = '' }) =>
+    `<div class="rv-meld${zeilen ? ' rv-zeilen' : ''}${ton ? ' ' + ton : ''}" role="${rolle}">${zeichen ? symbol(zeichen) : bild}<div class="rv-meldtext"><h2 id="rv-meld" tabindex="-1">${kopf}</h2>${text ? ` <p>${text}</p>` : ''}${rumpf}${knoepfe ? `<p class="rv-knoepfe">${knoepfe}</p>` : ''}</div></div>`;
+
+  /** Satz und Hinweiszeile eines Zustands als eigene Absätze (R00224 FA 1, 6); ohne Hinweis nur der Satz. Maskiert. */
+  const zustandZeilenHtml = (s, esc) => `<p class="rv-satz">${esc(s.satz)}</p>${s.hinweis ? `<p class="rv-hin">${esc(s.hinweis)}</p>` : ''}`;
+
+  /** Kürzel eines Verweises `<kürzel>:<hash>`; ohne Doppelpunkt das leere (Standardanwendung). */
+  const kuerzelVon = verweis => {
+    const text = verweis || '';
+    return text.includes(':') ? text.slice(0, text.lastIndexOf(':')) : '';
+  };
 
   const ZUR_LISTE = knopf('Zur Liste der Commits', 'review-liste');
 
@@ -438,6 +448,8 @@
     const erneut = knopf('Erneut versuchen', 'review-erneut', 'diff', 'rv-erneut');
     if (art === 'antwortbudget') return meldungHtml({ ton: 'warn', rolle: 'alert', zeichen: 'server', kopf: 'Server ausgelastet (Antwortbudget).', text: 'Der Diff wurde nicht gelesen, weil der Server gerade zu viele große Antworten ausliefert. Es wird nicht von selbst wiederholt.', knoepfe: erneut });
     if (art === 'zeitgrenze') return meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'uhr', kopf: 'Zeitgrenze überschritten.', text: `Der Diff ließ sich nicht lesen: ${esc(f.fehler || 'keine Angabe')} (503).`, knoepfe: erneut });
+    const satz = art === 'kein_diff' && f.daten ? zustandSatz(f.daten.zustand, kuerzelVon(verweis), f.daten.grund) : null;
+    if (satz) return meldungHtml({ ton: satz.ton, rolle: 'status', bild: zustandsSymbol(satz.symbol), zeilen: true, kopf: `Zu ${esc(kurzVerweis(verweis))} gibt es keinen Diff.`, rumpf: zustandZeilenHtml(satz, esc), knoepfe: ZUR_LISTE });
     if (art === 'kein_diff') {
       const wort = f.daten && ZUSTANDSWOERTER[f.daten.zustand];
       const grund = wort ? `${esc(kurzVerweis(verweis))} ist ${wort}.` : `${esc(kurzVerweis(verweis))} — ${esc(f.fehler || 'unbekannter Fehler')}.`;
@@ -476,7 +488,7 @@
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
-  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });
 
