@@ -1489,3 +1489,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Lehre (Merge):** Beim Rebase ist B1096 doppelt in die WBS geraten, einmal grün an der Bubble und einmal rot unter „Offene Fragen“. `wbs_loesen.py` hängt eigene Knoten an, die in „ours“ fehlen. Nach jedem Rebase der WBS muss jede eigene ID genau einmal vorkommen.
 - **Neue Karten:** #240 (Wackler r00127:356, Höhe 0) und #242 (Tagprobe R00215 AK 10).
 - **Verworfen:** UX O2 (`role="status"` für „gespeichert“). Das Problem bestand schon vorher und braucht eine dauerhafte Live-Region, also eine Gestaltungsfrage.
+| 2026-11-21 | #208 | Entwicklung | entwickler | bestanden | 1 h 9 min | B1097–B1104 grün, AK 1–15, Gate grün, 9/10 Mutanten · claude · Lauf 208-entwickler-1 · 16,16 $ · Karte gesamt 22,47 $ |
+| 2026-11-21 | #208 | Auto-Reviews | code-reviewer | bestanden | 3 min | kein Muss; 4 Sollte (leere .gitignore, Löschen außerhalb der Sperre, oeffnen-Fenster, Testlücken) · claude · sonnet · Lauf 208-code-reviewer-1 · 0,76 $ · Karte gesamt 23,23 $ |
+| 2026-11-21 | #216 | Architektur | architekt | bestanden | 6 min | ADR-0037 vorgeschlagen bis Sondierung · claude · opus · Lauf 216-architekt-1 · 1,67 $ · Karte gesamt 1,67 $ |
