@@ -147,12 +147,8 @@ fn normalisieren(neu: &mut Einstellungen) {
     for g in &mut neu.signale {
         g.bezeichnung = g.bezeichnung.trim().into();
     }
-    neu.quellen.wbs = neu.quellen.wbs.trim().into();
-    neu.quellen.anforderungen = neu.quellen.anforderungen.trim().into();
     for a in &mut neu.quellen.anwendungen {
         a.name = a.name.trim().into();
-        a.wbs = a.wbs.trim().into();
-        a.anforderungen = a.anforderungen.trim().into();
     }
     neu.quellen.anwendungen.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
     neu.repository_ergaenzen();
