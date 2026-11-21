@@ -1,6 +1,6 @@
 // R00214 (I0204, Karte #228): Braucht zwischen Karten — Deutung, Prüfung an der Tür und Lesefeld in der API.
 // Schichten: Testfall (je AK) → Testsprache (`Lage`: Ausgangslage, Labels, Ziehen, Lesen) → Treiber (`gemeinsam::senden`,
-// HTTP-GET, Dateien, Git) → echtes Programm. AK 14 (Bestand) ist die Legacy-Probe `ak14_…` (`#[ignore]`, von Hand in B1090),
+// HTTP-GET, Dateien, Git) → echtes Programm. AK 14 (Bestand) liest und schreibt den Altbestand `tests/altbestaende/kanbanD-main-ddb6986c/`,
 // AK 15 laufen die Proben der Factory gegen eine Instanz mit diesem Stand (B1090).
 mod gemeinsam;
 
@@ -494,7 +494,7 @@ async fn ak16_lesen_vieler_verschiedener_braucht_labels() {
     assert_eq!(fuenf["braucht"].as_array().unwrap().len(), VIELE);
 }
 
-// ---- AK 14: Legacy-Probe gegen Kopien der Bestände (von Hand, B1090) ---------------------------------------------------
+// ---- AK 14: Altbestand (Ausschnitt im Repo, auf Wunsch Kopien ganzer Bestände) ---------------------------------------
 
 /// Das Programm mit eigenem Mitschnitt von stderr („im Log steht keine Fehler- oder Warnzeile“).
 struct Instanz {
@@ -547,41 +547,101 @@ fn bestandsnummer(label: &str) -> Option<u64> {
     form.then(|| zahl.parse().ok()).flatten()
 }
 
-/// `R00214_KOPIEN` = Kopien der Board-Ordner, durch `:` getrennt (werden gelesen, nie beschrieben).
-#[tokio::test]
-#[ignore = "Legacy-Probe von Hand: braucht Kopien der Board-Ordner (R00214_KOPIEN)"]
-async fn ak14_legacy_probe_kopien_der_bestaende() {
-    let kopien = std::env::var("R00214_KOPIEN").expect("R00214_KOPIEN fehlt");
-    let (mut dateien_mit, mut labels_gesamt) = (0, 0);
-    for kopie in kopien.split(':').map(std::path::PathBuf::from) {
-        let name = kopie.file_name().unwrap().to_string_lossy().to_string();
-        let (zahl, vorher) = (git(&kopie, &["rev-list", "--count", "HEAD"]), dateien(&kopie));
-        let lauf = Instanz::starten(&kopie, kopie.parent().unwrap().join(format!("log-{name}.txt")));
-        let (s, liste) = get(&lauf.adresse, "api/aufgaben?archivierte=ja").await;
-        assert_eq!(s, 200, "{name}");
-        let (mut mit, mut eintraege) = (0, 0);
-        for a in liste["aufgaben"].as_array().unwrap() {
-            let mut erwartet: Vec<u64> = vec![];
-            for n in a["labels"].as_array().unwrap().iter().filter_map(|l| bestandsnummer(l.as_str().unwrap())) {
-                if !erwartet.contains(&n) {
-                    erwartet.push(n);
-                }
-            }
-            let gedeutet: Vec<u64> = a["braucht"].as_array().unwrap_or_else(|| panic!("{name} #{}: braucht fehlt", a["nummer"])).iter().map(|b| b["nummer"].as_u64().unwrap()).collect();
-            assert_eq!(gedeutet, erwartet, "{name} #{}", a["nummer"]);
-            if !gedeutet.is_empty() {
-                mit += 1;
-                eintraege += gedeutet.len();
+/// Liest einen Bestand über `GET /api/aufgaben?archivierte=ja`: `braucht` je Aufgabe gleich den Labels der Form
+/// `braucht:<Zahl>` (unabhängig gezählt), `wartet=ja` antwortet, kein Commit, alle Dateien bytegleich, Log ohne Fehler
+/// oder Warnung. Liefert (Aufgaben mit `braucht`, Einträge).
+async fn bestand_lesen(ordner: &Path, log: std::path::PathBuf) -> (usize, usize) {
+    let name = ordner.file_name().unwrap().to_string_lossy().to_string();
+    let (zahl, vorher) = (git(ordner, &["rev-list", "--count", "HEAD"]), dateien(ordner));
+    let lauf = Instanz::starten(ordner, log);
+    let (s, liste) = get(&lauf.adresse, "api/aufgaben?archivierte=ja").await;
+    assert_eq!(s, 200, "{name}");
+    let (mut mit, mut eintraege) = (0, 0);
+    for a in liste["aufgaben"].as_array().unwrap() {
+        let mut erwartet: Vec<u64> = vec![];
+        for n in a["labels"].as_array().unwrap().iter().filter_map(|l| bestandsnummer(l.as_str().unwrap())) {
+            if !erwartet.contains(&n) {
+                erwartet.push(n);
             }
         }
-        let (s, wartend) = get(&lauf.adresse, "api/aufgaben?wartet=ja&archivierte=ja").await;
-        assert_eq!(s, 200, "{name}: wartet=ja");
-        assert_eq!(git(&kopie, &["rev-list", "--count", "HEAD"]), zahl, "{name}: kein Commit");
-        assert_eq!(dateien(&kopie), vorher, "{name}: alle Dateien bytegleich");
-        assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new(), "{name}");
-        println!("{name}: {mit} Aufgaben mit braucht, {eintraege} Einträge, davon wartend {} Aufgaben", wartend["aufgaben"].as_array().unwrap().len());
-        dateien_mit += mit;
-        labels_gesamt += eintraege;
+        let gedeutet: Vec<u64> = a["braucht"].as_array().unwrap_or_else(|| panic!("{name} #{}: braucht fehlt", a["nummer"])).iter().map(|b| b["nummer"].as_u64().unwrap()).collect();
+        assert_eq!(gedeutet, erwartet, "{name} #{}", a["nummer"]);
+        if !gedeutet.is_empty() {
+            mit += 1;
+            eintraege += gedeutet.len();
+        }
     }
-    println!("gesamt: {dateien_mit} Aufgaben, {labels_gesamt} Einträge in braucht");
+    let (s, wartend) = get(&lauf.adresse, "api/aufgaben?wartet=ja&archivierte=ja").await;
+    assert_eq!(s, 200, "{name}: wartet=ja");
+    assert_eq!(git(ordner, &["rev-list", "--count", "HEAD"]), zahl, "{name}: kein Commit");
+    assert_eq!(dateien(ordner), vorher, "{name}: alle Dateien bytegleich");
+    assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new(), "{name}");
+    println!("{name}: {mit} Aufgaben mit braucht, {eintraege} Einträge, davon wartend {} Aufgaben", wartend["aufgaben"].as_array().unwrap().len());
+    (mit, eintraege)
+}
+
+/// Ausschnitt eines echten Bestands (Board-Ordner von kanbanD, geschrieben vom Stand main ddb6986c vor dieser Karte):
+/// zehn Aufgabendateien mit `braucht:`-Labels — Nummern mit und ohne Datei, zwei Labels je Aufgabe, Aufgaben in der
+/// letzten Spalte — und das Board, gekürzt auf diese Aufgaben.
+const ALTBESTAND: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/altbestaende/kanbanD-main-ddb6986c");
+
+/// Der Altbestand als eigenes Git-Repository in einem Wegwerf-Ordner (der Ausschnitt im Repo bleibt unberührt).
+fn altbestand_kopieren(ziel: &Path) {
+    for eintrag in ["kanbanD.md", "boards", "aufgaben"] {
+        let quelle = Path::new(ALTBESTAND).join(eintrag);
+        if quelle.is_dir() {
+            std::fs::create_dir_all(ziel.join(eintrag)).unwrap();
+            for d in std::fs::read_dir(&quelle).unwrap() {
+                let d = d.unwrap();
+                std::fs::copy(d.path(), ziel.join(eintrag).join(d.file_name())).unwrap();
+            }
+        } else {
+            std::fs::copy(&quelle, ziel.join(eintrag)).unwrap();
+        }
+    }
+    git(ziel, &["init", "-q"]);
+    git(ziel, &["add", "-A"]);
+    git(ziel, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Altbestand"]);
+}
+
+/// AK 14 am Altbestand im Repo: lesen wie oben; danach Titel, Labels (unverändert mitgeschickt) und Kommentar je Aufgabe
+/// → 200; ein neues Label `braucht:+7` → 400 (nur wirklich neue Formen prüft die Tür). Mit `R00214_KOPIEN` (Kopien
+/// ganzer Board-Ordner, durch `:` getrennt, werden nur gelesen) liest er zusätzlich diese Bestände.
+#[tokio::test]
+async fn ak14_altbestand_lesen_und_schreiben_wie_vor_der_karte() {
+    let k = tempfile::tempdir().unwrap();
+    let ordner = k.path().join("kanbanD-main-ddb6986c");
+    std::fs::create_dir(&ordner).unwrap();
+    altbestand_kopieren(&ordner);
+    let (mit, eintraege) = bestand_lesen(&ordner, k.path().join("log-lesen.txt")).await;
+    assert_eq!((mit, eintraege), (10, 12), "zehn Aufgaben, zwölf braucht-Einträge im Ausschnitt");
+
+    let lauf = Instanz::starten(&ordner, k.path().join("log-schreiben.txt"));
+    let (_, liste) = get(&lauf.adresse, "api/aufgaben?archivierte=ja").await;
+    for a in liste["aufgaben"].as_array().unwrap() {
+        let (nr, titel, labels) = (a["nummer"].as_u64().unwrap(), a["titel"].clone(), a["labels"].clone());
+        let pfad = format!("api/aufgaben/{nr}");
+        for rumpf in [json!({ "titel": titel }), json!({ "labels": labels }), json!({ "titel": format!("{} (geprobt)", titel.as_str().unwrap()) })] {
+            let (s, b) = senden(Method::PATCH, &lauf.adresse, &pfad, "cl", rumpf.clone()).await;
+            assert_eq!(s, 200, "#{nr} {rumpf}: {b}");
+            assert_eq!(b["labels"], labels, "#{nr}: Labels unverändert");
+        }
+        let (s, b) = senden(Method::POST, &lauf.adresse, &format!("{pfad}/kommentare"), "cl", json!({"text": "Probe AK 14"})).await;
+        assert_eq!(s, 200, "#{nr} Kommentar: {b}");
+        let mit_neuem: Vec<Value> = labels.as_array().unwrap().iter().cloned().chain([json!("braucht:+7")]).collect();
+        let (s, b) = senden(Method::PATCH, &lauf.adresse, &pfad, "cl", json!({ "labels": mit_neuem })).await;
+        assert_eq!((s, b["fehler"].as_str().unwrap_or_default()), (400, FORM), "#{nr}: {b}");
+    }
+    assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new());
+
+    if let Ok(kopien) = std::env::var("R00214_KOPIEN") {
+        let (mut dateien_mit, mut labels_gesamt) = (0, 0);
+        for kopie in kopien.split(':').map(std::path::PathBuf::from) {
+            let log = kopie.parent().unwrap().join(format!("log-{}.txt", kopie.file_name().unwrap().to_string_lossy()));
+            let (mit, eintraege) = bestand_lesen(&kopie, log).await;
+            dateien_mit += mit;
+            labels_gesamt += eintraege;
+        }
+        println!("gesamt: {dateien_mit} Aufgaben, {labels_gesamt} Einträge in braucht");
+    }
 }
