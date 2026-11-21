@@ -363,10 +363,17 @@ async fn ak06_abgeschnittene_netto_liste_unbelastete_netto_und_gezaehlt() {
     assert_eq!(kappe["gezeigt"].as_u64(), Some(dateien(&d).len() as u64));
     assert!(kappe["gesamt"].as_u64().unwrap() > VIELE as u64, "gesamt zählt alle netto geänderten Dateien (a.txt und {VIELE} neue): {kappe}");
     assert!(dateien(&d).len() <= 2000);
-    // hinter dem Schnitt ist „keine Änderung“ nicht sicher: 404, aber nicht mit dem Text für netto unveränderte Pfade
-    let hinten = holen(&lauf.adresse, NR, &format!("datei={}", kodiert(&format!("v/{:05}.txt", VIELE - 1)))).await;
-    assert_eq!(hinten.status, 404, "{}", hinten.text);
-    assert!(hinten.json()["fehler"].is_string() && hinten.json()["fehler"] != json!(ohne_aenderung(NR)), "{}", hinten.text);
+    // D1 (ADR-0032 N8.6 Punkt 4 (a), Code-Review #234 Muss 2): mit datei= läuft die Netto-Liste bis 20 MB, ein Pfad hinter
+    // dem Schnitt der Liste ist damit erreichbar wie vor der Karte; vor dem Schnitt unverändert. Mutant m7 macht ihn rot.
+    for i in [VIELE - 1, 0] {
+        let pfad = format!("v/{i:05}.txt");
+        let (e, _) = gesamt(&lauf.adresse, &format!("datei={}", kodiert(&pfad))).await;
+        assert_eq!(namen(&e), [pfad.clone()], "{e}");
+        assert_eq!((&dateien(&e)[0]["status"], ist_folge(&dateien(&e)[0])), (&json!("A"), false), "{pfad} netto A: {e}");
+    }
+    // Gegenprobe (D2): ein Pfad in keinem Kartencommit behält „… in keinem Kartencommit …“
+    let fehlt = holen(&lauf.adresse, NR, "datei=nicht/da.txt").await;
+    assert_eq!((fehlt.status, fehlt.json()), (404, json!({"fehler": format!("die Datei steht in keinem Kartencommit von #{NR} — datei= nennt einen Pfad der Karte, buchstäblich")})));
 }
 
 // ---- AK 8: README „Für Agenten“ und Endpunktbeschreibung ---------------------------------------------------------------
@@ -422,4 +429,124 @@ async fn ak07_unbelasteter_pfad_aus_verworfenem_netto_eintrag_bleibt_folge() {
     assert_eq!(d["hinweise"], json!([{"art": "fremd_dazwischen", "commits": 1, "dateien": 2}]));
     let (e, _) = gesamt(&lauf.adresse, "datei=y").await;
     assert_eq!(schritte(&dateien(&e)[0]), [format!("kd:{k2}")]);
+}
+
+// ---- AK 10: Gruppen (ADR-0032 N8.6, Code-Review #234 Muss 1) ----------------------------------------------------------
+
+/// G1/G2: A0 legt `p` an (zehn Zeilen `x0`…`x9`); K1 `git mv p q`; F (fremd) legt `b` mit dem Inhalt von `p` an; K2 hängt an
+/// `b` die Zeile `zusatz` an und löscht `q` (G1) oder schreibt `q` ganz neu mit `y0`…`y9` (G2). Prüft, dass Git netto
+/// `R p → b` paart (der Eintrag ist verworfen, `b` ist belastet).
+fn fall_g(l: &Lage, neu_schreiben: bool) -> Fall {
+    l.schreiben("p", X);
+    let a0 = l.commit("A0");
+    l.git(&["mv", "p", "q"]);
+    let k1 = l.commit("K1 p wird q");
+    l.schreiben("b", X);
+    l.commit("F fremd b");
+    if neu_schreiben {
+        l.schreiben("q", &(0..10).map(|i| format!("y{i}\n")).collect::<String>());
+    } else {
+        l.loeschen("q");
+    }
+    l.schreiben("b", &format!("{X}zusatz\n"));
+    let k2 = l.commit("K2");
+    l.karte(NR, &[&k1, &k2]);
+    let netto = l.git(&["diff", "-M50%", "--name-status", &a0, &k2, "--", "p", "q", "b"]);
+    assert!(netto.lines().any(|z| z.starts_with('R') && z.ends_with("p\tb")), "Ausgangslage: Git paart p → b netto: {netto}");
+    Fall { k1, k2 }
+}
+
+/// Die Schritte eines Folge-Eintrags als (Commit, Status, alt, neu).
+fn schritte_voll(f: &Value) -> Vec<(String, String, Value, Value)> {
+    assert!(ist_folge(f), "kein Folge-Eintrag: {f}");
+    f["schritte"].as_array().unwrap().iter().map(|s| (s["commit"].as_str().unwrap().to_string(), s["status"].as_str().unwrap().to_string(), s["alt"].clone(), s["neu"].clone())).collect()
+}
+
+/// Gemeinsame Erwartung von G1 und G2: `q` ist Folge mit K1 `R p → q` und dem zweiten Schritt, `b` Folge mit K2,
+/// `fremd_dazwischen {commits 1, dateien 2}`, `datei=q` und `datei=b` liefern den Eintrag. `p` ist kein Name eines Eintrags
+/// (eine Umbenennung steht beim neuen Pfad), `datei=p` ergibt deshalb 404 mit dem Text für „in Kartencommits, ohne Eintrag“.
+async fn gruppe_ganz_folge(adresse: &str, f: &Fall, zweiter: (&str, Value)) {
+    let (d, _) = gesamt(adresse, "").await;
+    assert_eq!(namen(&d), ["b", "q"], "{d}");
+    let k = |h: &str| format!("kd:{h}");
+    assert_eq!(schritte_voll(eintrag(&d, "q")), [(k(&f.k1), "R".into(), json!("p"), json!("q")), (k(&f.k2), zweiter.0.into(), json!("q"), zweiter.1.clone())], "{d}");
+    assert_eq!(schritte(eintrag(&d, "b")), [k(&f.k2)], "{d}");
+    assert_eq!(d["hinweise"], json!([{"art": "fremd_dazwischen", "commits": 1, "dateien": 2}]));
+    for name in ["q", "b"] {
+        let (e, _) = gesamt(adresse, &format!("datei={name}")).await;
+        assert_eq!(dateien(&e).iter().map(ohne_patch).collect::<Vec<_>>(), [ohne_patch(eintrag(&d, name))], "datei={name}: {e}");
+    }
+    datei_ohne_aenderung(adresse, "p").await;
+}
+
+/// Ein Eintrag ohne die Felder, die mit `datei=` anders ausfallen dürfen (größeres Budget).
+fn ohne_patch(f: &Value) -> Value {
+    let weg = |v: &mut Value| {
+        if let Some(o) = v.as_object_mut() {
+            o.retain(|k, _| !["patch", "gross", "nachladen"].contains(&k.as_str()));
+        }
+    };
+    let mut f = f.clone();
+    weg(&mut f);
+    for s in f["schritte"].as_array_mut().into_iter().flatten() {
+        weg(s);
+    }
+    f
+}
+
+// G1 (Probe des Code-Reviews, wörtlich): K2 löscht q. Heute: nur b, dateien 1 — die Löschung von p verschwindet ohne Zählung.
+// Mutant m5 („(b) je Pfad“) macht ihn rot.
+#[tokio::test]
+async fn ak10_g1_gruppenpartner_eines_verworfenen_pfads_ist_folge() {
+    let l = Lage::neu();
+    let f = fall_g(&l, false);
+    let lauf = l.starten();
+    gruppe_ganz_folge(&lauf.adresse, &f, ("D", Value::Null)).await;
+}
+
+// G2 (gespaltene Gruppe): K2 schreibt q ganz neu. Netto paart Git `R p → b` (verworfen) und `A q` (gedeckt): die Gruppe
+// {p, q} ist verdorben, also ist auch `A q` nicht netto. Heute: q netto A, p nirgends. Mutant m6 (ohne Fixpunkt) macht ihn rot.
+#[tokio::test]
+async fn ak10_g2_gespaltene_gruppe_ganz_folge() {
+    let l = Lage::neu();
+    let f = fall_g(&l, true);
+    let lauf = l.starten();
+    gruppe_ganz_folge(&lauf.adresse, &f, ("M", json!("q"))).await;
+}
+
+// ---- ETag (Legacy-Review #234 Muss 1) -----------------------------------------------------------------------------------
+
+/// Der `ETag` des Gesamt-Diffs nach der Formel vor der Karte #234 (FNV-1a über Verweise, Zweigspitzen, Anwendung, `datei`,
+/// `format`, `GRENZEN_VERSION` 1) — nachgerechnet gegen das Programm vor der Karte (Fall N: JSON, patch, datei=d/x gleich).
+fn etag_vorgaenger(verweise: &[String], spitzen: &str, datei: Option<&str>, format: &str) -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut teile: Vec<&[u8]> = vec![b"gesamt\0"];
+    for v in verweise {
+        teile.extend([v.as_bytes(), b"\0"]);
+    }
+    let version = 1u32.to_be_bytes();
+    teile.extend([b"\x01".as_slice(), spitzen.as_bytes(), b"\0", b"kd", b"\0", datei.unwrap_or("\u{1}").as_bytes(), b"\0", format.as_bytes(), b"\0", &version]);
+    for b in teile.iter().flat_map(|t| t.iter()) {
+        h ^= u64::from(*b);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("\"gesamt-{h:016x}\"")
+}
+
+// Abnahme-Probe des Legacy-Reviews (wörtlich): Fall N mit den Varianten ohne Parameter, format=patch, datei=d/x und datei=bb —
+// keine antwortet mit 304 auf den ETag des Vorgängers. Heute: 304 in allen vier.
+#[tokio::test]
+async fn etag_des_vorgaengers_ergibt_kein_304() {
+    let l = Lage::neu();
+    let f = fall_n(&l, false);
+    let spitzen = git(&l.r, &["for-each-ref", "--format=%(objectname) %(refname)", "refs/heads", "refs/remotes"]);
+    let verweise = [format!("kd:{}", f.k1), format!("kd:{}", f.k2)];
+    let lauf = l.starten();
+    let client = reqwest::Client::new();
+    for (abfrage, datei, format, status) in [("", None, "json", 200), ("format=patch", None, "patch", 200), ("datei=d/x", Some("d/x"), "json", 404), ("datei=bb", Some("bb"), "json", 200)] {
+        let alt = etag_vorgaenger(&verweise, &format!("{spitzen}\n"), datei, format);
+        let a = client.get(format!("{}api/aufgaben/{NR}/diff?{abfrage}", lauf.adresse)).header("If-None-Match", &alt).send().await.unwrap();
+        assert_eq!(a.status().as_u16(), status, "?{abfrage} mit dem ETag des Vorgängers {alt}");
+        assert_ne!(a.headers().get("etag").and_then(|e| e.to_str().ok()), Some(alt.as_str()), "?{abfrage}");
+    }
 }

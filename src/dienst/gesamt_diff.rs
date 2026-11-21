@@ -841,6 +841,15 @@ mod tests {
         assert_eq!(zahlen[5].0, 15, "die zweite Form mit Netto und Folge erreicht die Obergrenze genau: {zahlen:?}");
     }
 
+    // Legacy-Review #234 Muss 1: die Einteilung hat sich mit ADR-0032 N8 geändert, ein ETag nach der Formel vor der Karte
+    // darf kein 304 mehr bekommen. Fester Eingang, Wert nach der alten Formel nachgerechnet und gegen das Programm vor der
+    // Karte geprüft (Fall N: JSON, patch, datei=d/x gleich)
+    #[test]
+    fn etag_nicht_wie_vor_der_einteilung_n8() {
+        let verweise = [format!("kd:{}", "a".repeat(40))];
+        assert_ne!(etag(&verweise, "s", "kd", &anfrage(&[], None)), "\"gesamt-05092438c966be2e\"");
+    }
+
     // R00208 AK 5, ADR-0032 N6.10 (E3): 304 nach genau 2 Prozessen; ein neuer Commit auf einem beliebigen Zweig, eine
     // andere Anwendung, datei oder format → 200
     #[test]
