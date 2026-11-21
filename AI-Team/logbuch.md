@@ -1686,3 +1686,35 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Vorfall:** Der Bericht der Nacharbeit erreichte den Director nicht, weil die Übergabe je Agent nur einen Bericht annimmt. Der Director las ihn mit rund 2 h Verzug aus dem Protokoll. Prüfende Läufe startet er seitdem frisch, statt sie fortzusetzen.
 - **Offen für den architekt:** A00009 (Laufansicht, `NIE_GEROLLT`).
 - **Anmerkungen, nicht gebaut:** FA 8 ist nur per Fehlerinjektion erreichbar. `[x](javascript:…)` lässt ein „)“ stehen. Der Fokusring am `h1` liegt eng am Text.
+| 2026-11-21 | #224 | Entwicklung | entwickler | blockiert | 1 h 38 min | B1150–B1157 grün, Gate grün; AK 9 Factory-Teil rot (Altform-Register) → Factory a596955 · claude · Lauf 224-entwickler-1 · 43,14 $ · Karte gesamt 54,21 $ |
+| 2026-11-21 | #224 | Entwicklung | entwickler | bestanden | 0 min | AK 9 Factory-Rundlauf 21/21 gegen Build, B1158 grün (ffdd0861) · claude · Lauf 224-entwickler-2 · 0,17 $ · Karte gesamt 54,38 $ |
+| 2026-11-21 | #224 | Auto-Reviews | architektur-reviewer | bestanden | 2 min | 0 Muss, 3 Sollte (totes Trimmen, alte Texte, Modell-Drift) · claude · sonnet · Lauf 224-architektur-reviewer-1 · 0,46 $ · Karte gesamt 54,84 $ |
+| 2026-11-21 | #224 | Auto-Reviews | security-reviewer | bestanden | 4 min | kein Befund; 2 Härtungshinweise · claude · sonnet · Lauf 224-security-reviewer-1 · 0,60 $ · Karte gesamt 55,44 $ |
+| 2026-11-21 | #224 | Auto-Reviews | ux-reviewer | bestanden | 4 min | AK 3/10/11/14 ok; 2 Sollte aus Bestand · claude · sonnet · Lauf 224-ux-reviewer-2 · 0,48 $ · Karte gesamt 55,92 $ |
+| 2026-11-21 | #224 | Auto-Reviews | code-reviewer | befund | 5 min | Muss 1: r00109 Dialog-Probe mitgelöscht · claude · sonnet · Lauf 224-code-reviewer-1 · 1,10 $ · Karte gesamt 57,02 $ |
+| 2026-11-21 | #224 | Auto-Reviews | legacy-reviewer | bestanden | 9 min | 6 Board-Kopien alt gegen neu, kein Muss, 4 Sollte · claude · sonnet · Lauf 224-legacy-reviewer-1 · 0,86 $ · Karte gesamt 57,88 $ |
+| 2026-11-21 | #224 | Nacharbeit | entwickler | bestanden | 24 min | Nacharbeit 1: Muss r00109 zurück, 3 Sollte; Gate 266ce20d grün · claude · Lauf 224-entwickler-3 · 0,65 $ · Karte gesamt 58,53 $ |
+| 2026-11-21 | #224 | Auto-Reviews | code-reviewer | bestanden | 3 min | Nachprüfung: Muss 1 behoben, Mutation rot · claude · sonnet · Lauf 224-code-reviewer-2 · 0,42 $ · Karte gesamt 58,95 $ |
+| 2026-11-21 | #227 | Architektur | architekt | bestanden | 7 min | ADR-0034 N4 (8638d891), Inventur arch-227 · claude · opus · Lauf 227-architekt-1 · 2,33 $ · Karte gesamt 2,33 $ |
+| 2026-11-21 | #227 | Detailplanung | product-owner | bestanden | 1 min | Z. 501–503 (d77e536d) · claude · opus · Lauf 227-product-owner-1 · 0,55 $ · Karte gesamt 2,88 $ |
+| 2026-11-21 | #224 | Entwicklertest | entwicklertester | bestanden | 12 min | US-1..5,7 bestanden; US-6 über Legacy-Review und AK 13 belegt · claude · sonnet · Lauf 224-entwicklertester-1 · 1,51 $ · Karte gesamt 60,46 $ |
+| 2026-11-21 | #227 | Detailplanung | planer | bestanden | 8 min | R00223, I0213, B1159–B1166 (81528260) · claude · opus · Lauf 227-planer-1 · 2,92 $ · Karte gesamt 5,80 $ |
+| 2026-11-21 | #227 | Detailplanung | product-owner | bestanden | 1 min | Z. 504 (d9513b29) · claude · opus · Lauf 227-product-owner-2 · 0,43 $ · Karte gesamt 6,23 $ |
+| 2026-11-21 | #227 | Detailplanung | ux-reviewer | bestanden | 14 min | Vorprüfung: kein Muss, 5 Sollte an AK · claude · sonnet · Lauf 227-ux-reviewer-1 · 1,08 $ · Karte gesamt 7,31 $ |
+| 2026-11-21 | #224 | Nacharbeit | entwickler | bestanden | 2 min | Nacharbeit 2: farbeVon misst stabil, 16/20 rot → 0/20 (eda346c7) · claude · Lauf 224-entwickler-4 · 0,20 $ · Karte gesamt 60,66 $ |
+| 2026-11-21 | #227 | Detailplanung | planer | bestanden | 3 min | R00223 nach PO Z. 504 und UX-Sollte (d6e3ac82) · claude · opus · Lauf 227-planer-2 · 1,03 $ · Karte gesamt 8,34 $ |
+
+**Retrospektive #224** (WBS-Funktionen aus kanbanD entfernen, Scheibe S2 von ADR-0034, R00222; 2026-11-21; Gate grün auf 941c7f03, ausgeliefert. Karte gesamt rund 61 $, davon 43 $ für den ersten Bau.)
+- **Gut:**
+  - **Vorarbeit zuerst:** Die Factory und die globalen Befehle wurden vor dem Bau ohne WBS-Bindung umgestellt, wie der Betreiber es freigegeben hatte. Danach lief das Board der Factory nach der Auslieferung ohne Unterbrechung weiter: `/api/wbs/kd` antwortet 404, `board.py` läuft.
+  - **entwickler:** Er fand einen Fehler in der Factory selbst. `board_binden` hätte nach der Auslieferung alle 4 Bestandsregister in Altform nicht wiedererkannt. Der Director behob das vor dem Merge (Factory a596955).
+  - **legacy-reviewer:** Er verglich alle 6 Board-Ordner als Kopien im alten und im neuen Programm, 695 Antworten, dazu den Rückweg.
+  - **security-reviewer:** Er belegte AK 1 mit strace: nur ein `stat` der WBS, nie ein `open`.
+- **Lehre (Löschen mit Gruppen):** Beim Entfernen der WBS-Tests in r00109 ging auch der zweite Test der Gruppe verloren, die Probe für den Dialog „Neue Aufgabe“ (Code-Review Muss 1). Wer eine Testgruppe entfernt, prüft jeden Test einzeln gegen die entfallene Funktion.
+- **Lehre (Messen nach Warten auf `attached`):** Der neue Farbtest AK 11 maß ein Element, das die Ansicht zwischenzeitlich neu zeichnete. Unter Last wurde er im Gate auf main rot (16 von 20 bei 4 Workern). Abhilfe: auf Sichtbarkeit warten und in `expect.poll` messen, bis `isConnected` gilt.
+- **Vorfall:** `wache zurueck` ging nicht, weil schon ein Commit des PO auf main lag. main blieb deshalb stehen, der Testfix kam als zweiter Merge (nichts gepusht). Außerdem legte der entwickler in Nacharbeit 1 sechs gleiche Warteschleifen auf sein eigenes Gate an.
+- **Offen für den architekt:** Nachzug des Modells A00001–A00011, X00001, X00004 und X00005 sowie ADR-0011 (Farbnamen `--kd-status-*`).
+- **Offen für den gestalter:** D0001, D0002, D0003, D0009 und `kd-tokens.css` nachziehen (PO Z. 500).
+- **Neue Karte:** #249 Einrichten: Feld „Repository“ zu schmal, erster Start scrollt quer. Das ist Bestand.
+- **Produktfrage offen:** Die Überschrift „Prüfungen“ der Hinweisleiste zeigt nur noch Hinweise zu unbekannten Eigentümern.
+- **Wackler:** `transkripte_api::ak03_wirksamer_schalter` im zweiten Gate, allein 3 von 3 grün (#246).
