@@ -17,17 +17,6 @@ fn beobachten(pfad: &std::path::Path) -> (notify::RecommendedWatcher, mpsc::Rece
     (w, rx, eigene)
 }
 
-fn fremde_beobachten(eigene: Eigene) -> (kanband::waechter::FremderWaechter, mpsc::Receiver<Ereignis>) {
-    let (tx, rx) = mpsc::channel();
-    let w = gemeinsam::bis_beobachtet(gemeinsam::WAECHTER_OBERGRENZE, || {
-        let tx = tx.clone();
-        kanband::waechter::fremde_starten(eigene.clone(), move |e| {
-            let _ = tx.send(e);
-        })
-    });
-    (w, rx)
-}
-
 // R00160: inotify-Instanzen sind je Benutzer begrenzt; ohne Instanz gibt es keinen Wächter und nie ein Ereignis.
 #[test]
 fn wartet_bis_der_waechter_beobachtet() {
@@ -126,50 +115,6 @@ async fn offener_ereignisstrom_haelt_das_beenden_nicht_auf() {
     }
     assert!(beendet.is_some_and(|s| s.success()), "nach {:?} noch nicht beendet", start.elapsed());
     drop(antwort);
-}
-
-#[test]
-fn fremde_wbs_datei_und_commit_melden_ihr_kuerzel() {
-    let arbeit = tempfile::tempdir().unwrap();
-    let wurzel = arbeit.path().canonicalize().unwrap();
-    std::fs::create_dir_all(wurzel.join("plan")).unwrap();
-    std::fs::write(wurzel.join("plan/wbs.md"), "a").unwrap();
-    gemeinsam::git(&wurzel, &["init", "-q"]);
-    let (w, rx) = fremde_beobachten(Eigene::default());
-    let datei = wurzel.join("plan/wbs.md");
-    w.setzen(vec![kanband::waechter::FremdeWbs { kuerzel: "kd".into(), datei: datei.clone(), git: Some(wurzel.join(".git")) }]);
-    std::thread::sleep(Duration::from_millis(100));
-    std::fs::write(wurzel.join("plan/anderes.md"), "x").unwrap();
-    std::fs::write(&datei, "b").unwrap();
-    let e = rx.recv_timeout(Duration::from_secs(2)).unwrap();
-    assert_eq!((e.pfade.clone(), e.wbs.clone(), e.von_aussen), (vec![datei.to_string_lossy().into_owned()], vec!["kd".to_string()], true));
-    gemeinsam::git(&wurzel, &["add", "-A"]);
-    while rx.recv_timeout(Duration::from_millis(400)).is_ok() {}
-    gemeinsam::git(&wurzel, &["-c", "user.name=x", "-c", "user.email=x@x", "commit", "-q", "-m", "c"]);
-    assert_eq!(rx.recv_timeout(Duration::from_secs(2)).unwrap().wbs, ["kd"], "Commit im Arbeits-Repository");
-    while rx.recv_timeout(Duration::from_millis(400)).is_ok() {}
-    w.setzen(vec![]);
-    std::fs::write(&datei, "c").unwrap();
-    assert!(rx.recv_timeout(Duration::from_millis(600)).is_err(), "nach dem Entfernen still");
-}
-
-#[test]
-fn eigener_schreibzugriff_auf_fremde_wbs_ist_nicht_extern() {
-    let arbeit = tempfile::tempdir().unwrap();
-    let wurzel = arbeit.path().canonicalize().unwrap();
-    let datei = wurzel.join("wbs.md");
-    std::fs::write(&datei, "a").unwrap();
-    let eigene = kanband::waechter::Eigene::default();
-    let (w, rx) = fremde_beobachten(eigene.clone());
-    w.setzen(vec![kanband::waechter::FremdeWbs { kuerzel: "kd".into(), datei: datei.clone(), git: None }]);
-    std::thread::sleep(Duration::from_millis(100));
-    std::fs::write(&datei, "b").unwrap();
-    assert!(rx.recv_timeout(Duration::from_secs(2)).unwrap().von_aussen, "ein Editor schreibt");
-    while rx.recv_timeout(Duration::from_millis(400)).is_ok() {}
-    eigene.merken(&datei.to_string_lossy());
-    std::fs::write(&datei, "c").unwrap();
-    let e = rx.recv_timeout(Duration::from_secs(2)).unwrap();
-    assert_eq!((e.wbs.clone(), e.von_aussen), (vec!["kd".to_string()], false), "kanbanD schreibt selbst");
 }
 
 // R00085: ein sichtbarer Herzschlag, damit der Client Stille erkennt; Takt über KANBAND_HERZSCHLAG_MS verkürzt

@@ -2,7 +2,6 @@ use super::Kanban;
 use super::anwendungen::absolut;
 use crate::fehler::Fehler;
 use crate::herkunft::wbs_tabelle;
-use crate::waechter::FremdeWbs;
 use crate::wbs::{Stand, WbsKnoten, WbsTabelle, stand};
 use crate::wbs_datei::{Geschrieben, NeuerKnoten, knoten_anlegen, naechste_id, neuen_knoten_pruefen, schreibbar, status_setzen, teilbaum_auf_rot, verwerfen, wiederherstellen};
 use crate::modell::Anwendung;
@@ -193,27 +192,6 @@ fn datei_ersetzen(datei: &Path, text: &str) -> Result<(), Fehler> {
     std::fs::write(&tmp, text)?;
     std::fs::rename(&tmp, datei)?;
     Ok(())
-}
-
-impl Kanban {
-    /// Die WBS-Dateien der registrierten Anwendungen außerhalb des Ordners, für den Dateiwächter —
-    /// was im Ordner liegt, sieht er ohnehin.
-    pub fn fremde_wbs(&self) -> Vec<FremdeWbs> {
-        let e = self.ordner().einstellungen().ok().flatten().unwrap_or_default();
-        let wurzel = self.ordner().wurzel();
-        let innen = wurzel.canonicalize().unwrap_or_else(|_| wurzel.to_path_buf());
-        e.quellen
-            .anwendungen
-            .iter()
-            .filter(|a| !a.wbs.is_empty())
-            .filter_map(|a| {
-                let roh = absolut(wurzel, &a.wbs);
-                let ordner = roh.parent()?.canonicalize().ok()?;
-                let datei = kanonisch(&roh);
-                Some(FremdeWbs { kuerzel: a.kuerzel.clone(), git: crate::git::git_verzeichnis(&ordner), datei }).filter(|f| !f.datei.starts_with(&innen))
-            })
-            .collect()
-    }
 }
 
 #[cfg(test)]

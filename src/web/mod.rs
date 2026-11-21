@@ -48,12 +48,8 @@ pub fn router(ordner: PathBuf) -> Router {
 pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) -> Router {
     let kanban = Arc::new(Kanban::neu(ordner.clone()));
     let (ereignisse, _) = broadcast::channel(256);
-    let fremde = fremde_beobachten(&kanban, ereignisse.clone());
     let tx = ereignisse.clone();
     let waechter = match waechter::starten(ordner, kanban.eigene(), move |e| {
-        if e.pfade.iter().any(|p| p == crate::format::einstellungen::DATEI) {
-            fremde();
-        }
         let _ = tx.send(e);
     }) {
         Ok(w) => Some(Arc::new(w)),
@@ -145,27 +141,6 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .split_for_parts();
     let _ = OPENAPI.set(api);
     router.merge(statisch::router()).with_state(app)
-}
-
-/// Beobachtet die WBS-Dateien des Registers außerhalb des Ordners; die Rückgabe setzt sie neu aus `kanbanD.md`.
-fn fremde_beobachten(kanban: &Arc<Kanban>, ereignisse: broadcast::Sender<Ereignis>) -> impl Fn() + Send + 'static {
-    let fremd = match waechter::fremde_starten(kanban.eigene(), move |e| {
-        let _ = ereignisse.send(e);
-    }) {
-        Ok(w) => Some(Arc::new(w)),
-        Err(e) => {
-            eprintln!("WBS-Dateien der Anwendungen werden nicht beobachtet ({e}) — ihre Änderungen erscheinen erst nach Neuladen.");
-            None
-        }
-    };
-    let k = kanban.clone();
-    let neu_setzen = move || {
-        if let Some(w) = &fremd {
-            w.setzen(k.fremde_wbs());
-        }
-    };
-    neu_setzen();
-    neu_setzen
 }
 
 impl IntoResponse for Fehler {
@@ -490,7 +465,7 @@ fn herzschlag_takt() -> std::time::Duration {
     path = "/api/ereignisse",
     tag = "Ordner",
     description = "Server-Sent Events {pfade, extern} je Änderung im Ordner; alle 15 s `event: herzschlag` mit `{}` — still länger als 40 s heißt: neu verbinden",
-    responses((status = 200, description = "Server-Sent Events: data {pfade, extern, wbs} je Änderung, event herzschlag mit {} alle 15 s", content_type = "text/event-stream", body = String), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    responses((status = 200, description = "Server-Sent Events: data {pfade, extern} je Änderung, event herzschlag mit {} alle 15 s", content_type = "text/event-stream", body = String), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
     let mut ende = app.ende.clone();
@@ -499,7 +474,7 @@ async fn ereignisstrom(State(app): State<App>) -> Sse<impl Stream<Item = Result<
     };
     let aenderungen = BroadcastStream::new(app.ereignisse.subscribe()).map(|e| {
         // Wer zu langsam liest, bekommt ein leeres Ereignis und lädt einfach alles neu.
-        let e = e.unwrap_or(Ereignis { pfade: vec![], von_aussen: true, wbs: vec![] });
+        let e = e.unwrap_or(Ereignis { pfade: vec![], von_aussen: true });
         Ok(Event::default().data(serde_json::to_string(&e).unwrap_or_default()))
     });
     let takt = herzschlag_takt();
