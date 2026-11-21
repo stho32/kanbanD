@@ -1,0 +1,168 @@
+---
+id: R00224
+status: Neu
+datum: 2026-11-21
+---
+
+# R00224: Review-Seite — Grund bei 404 in Worten
+
+## Beschreibung
+
+Zeigt eine Anwendung der Aufgabe auf ein Repository, das nicht erreichbar ist, sagt die Review-Seite heute nicht, warum. Auf „Alle Änderungen“ steht „Die Änderungen der Anwendung wb ließen sich nicht lesen: kein Diff zu diesem Verweis — der Zustand sagt warum (404).“ ([R00210](R00210-alle-aenderungen-der-aufgabe-in-der-review-seite.md) FA 7). Auf „Ein Commit“ steht „Zu diesem Verweis gibt es keinen Diff: wb:abc1234 ist Repository nicht erreichbar.“ ([R00207](R00207-review-seite-eines-commits.md) FA 8). Beide Male fehlt der `grund` der Antwort, und der zweite Satz ist grammatisch schief. Trifft es die **erste** Anwendung der Aufgabe, ist es schlimmer: „Alle Änderungen“ deutet jede 404 als „An dieser Aufgabe sind keine Commit-Verweise hinterlegt.“ (`web/app.js:1380`, `:1778`). Das ist unwahr, und die übrigen Anwendungen der Aufgabe verschwinden still.
+
+Danach nennt die Seite den Zustand einer 404 in einem ganzen Satz, nach dem Wortlaut des product-owner (`AI-Team/po-entscheidungen.md` Z. 506–508, Commit 4d1b9659). Darunter steht, wo die Antwort ihn trägt, der `grund`. Fehlt das Repository der ersten Anwendung, zeigt „Alle Änderungen“ den Abschnitt dieser Anwendung mit dem Satz. Die übrigen Anwendungen bleiben erreichbar.
+
+Herkunft: Anmerkung aus dem Entwicklertest von #215 (2026-11-20, Beleg `gemeinsam/scratchpad/etest-215/s-echt-fehlt.png` der Factory), Karte #232. Architektur: keine Technikfrage und kein ADR (Kommentar des architekten an #232 vom 2026-11-21). Die API liefert schon `404 {fehler, zustand, grund?}` (ADR-0032, Schema `Zustandsfehler` in `src/web/openapi.rs:92`). Die eine Stelle, die Zustände in Worte fasst, ist `web/commits.js` (`ZUSTANDSWOERTER`, `hinweisVon`, `zustandsmarke`). Neuer Umfang ist nur Oberfläche, kein Endpunkt und keine Änderung der API.
+
+Zahlt ein auf: [Vision](R00000-vision.md) — Zielbild „Die Arbeit hinter der Karte nachvollziehen“ (Vision Z. 110). Dazu kommt die Linie des PO „nie still“ (Z. 360) und „jede Änderung erreichbar“ (Z. 411).
+
+## Geschäftlicher Nutzen
+
+Wer eine Aufgabe in der Abnahme prüft, sieht sofort, *warum* ein Teil der Änderungen fehlt. Ein Beispiel ist „Ordner fehlt: /home/…/wb“. Er kann den Eintrag im Register beheben, statt zu raten. Eine Aufgabe, deren erste Anwendung nicht erreichbar ist, wirkt nicht mehr leer. Ihre übrigen Anwendungen bleiben prüfbar.
+
+## Funktionale Anforderungen
+
+Wortlaut nach PO Z. 506–508. `<k>` steht für das Kürzel. Bei leerem Kürzel heißt es „der Standardanwendung“ statt „der Anwendung <k>“ (PO Z. 448). `<grund>` steht für den `grund` der Antwort ohne Bidi-Steuerzeichen.
+
+1. **„Alle Änderungen“, Abschnitt mit 404 `repository_fehlt`** (PO Z. 506): Der Satz lautet „Das Repository der Anwendung <k> ist nicht erreichbar.“ Darunter steht `<grund>` wörtlich als Hinweiszeile. Fehlt `grund`, entfällt diese Zeile. Symbol `ordner-offen` und Ton `fehl` sind dieselben wie bei der Marke in der Liste (`ZEICHEN` in `web/commits.js`). `role="alert"` und „Erneut versuchen“ bleiben. Es gibt keinen Status „(404)“ und keinen Server-`fehler`. Das ersetzt für diesen Zustand den Satz aus R00210 FA 7, Z. 58. Für jeden anderen Fehler eines Abschnitts gilt R00210 FA 7 unverändert, auch für eine 404 mit anderem oder ohne `zustand`.
+2. **Erste Anwendung mit 404 und `zustand`** (PO Z. 506, „Dazu gehört zur Karte“): Antwortet die erste Anfrage `GET …/diff` ohne `anwendung` mit 404 **und** `zustand`, steht nie „Keine Änderungen zu zeigen.“ mit „An dieser Aufgabe sind keine Commit-Verweise hinterlegt.“. Die Seite zeigt dann Abschnitte. Die Leer-Meldung bleibt der 404 **ohne** `zustand`, also einer Aufgabe ohne Verweise.
+3. **Woher die Anwendungen kommen, wenn die erste Antwort 404 ist:** Eine solche Antwort trägt kein `weitere_anwendungen`. Die Kürzel kommen deshalb aus der Antwort von `GET …/commits`, die die Seite ohnehin parallel liest (R00210 B1045). Es zählt jedes `anwendung` (auch das leere) eines Eintrags, dessen `zustand` weder `unlesbar` noch `anwendung_unbekannt` ist. Jedes Kürzel zählt einmal, in der Reihenfolge seines ersten Auftretens. Je Kürzel entsteht ein wartender Abschnitt. Die Abschnitte werden wie weitere Anwendungen nacheinander mit `GET …/diff?anwendung=<k>` gelesen, durch dieselbe Reihe (höchstens eine Anfrage an `…/diff` zur Zeit, Lauf-Kennung, Abbruch; R00210 FA 9, 10). Auch die fehlende Anwendung bekommt ihren Abschnitt aus ihrer eigenen Antwort. Ihr Satz entsteht also auf demselben Weg wie FA 1. Ist die Liste beim Eintreffen der 404 noch nicht da, zeigt die Seite weiter „Liest die Änderungen der Aufgabe …“, bis sie da ist.
+4. **Seitenweite Hinweise ohne erreichbare Anwendung:** Gibt es im Fall von FA 3 Einträge mit `unlesbar` oder `anwendung_unbekannt`, stehen sie als seitenweite Hinweise über den Abschnitten. Das gilt wie bei einer Antwort 200 (R00210 FA 6, entdoppelt nach Verweis), auch wenn keine Anwendung mit 200 antwortet. Die Quelle sind dann die Einträge der Liste (`verweis`, `zustand`).
+5. **Liste gescheitert** (offene Frage 1 an den product-owner, bis zur Antwort gilt die Empfehlung): Scheitert `GET …/commits` im Fall von FA 3, steht eine Seitenmeldung mit `role="alert"`, Ton `fehl` und Symbol `ordner-offen`. Die Überschrift lautet „Das Repository einer Anwendung dieser Aufgabe ist nicht erreichbar.“, darunter steht `<grund>` der ersten Antwort als Hinweiszeile. Darunter folgt „Die Liste der Commits ließ sich nicht lesen; weitere Anwendungen sind nicht bekannt.“. Der Knopf „Erneut versuchen“ liest Liste und Gesamtbild neu. Es steht nie die Leer-Meldung.
+6. **„Ein Commit“, 404 mit `zustand`** (PO Z. 507, 508): Die Überschrift lautet „Zu <kurz> gibt es keinen Diff.“. `<kurz>` ist die Kurzform des **angefragten** Verweises (`kurzVerweis`). Darunter steht je Zustand ein Satz, dann gegebenenfalls `<grund>` als Hinweiszeile (`rv-hin`), dann „Zur Liste der Commits“ wie bisher:
+   - `repository_fehlt`: „Das Repository der Anwendung <k> ist nicht erreichbar.“ + `<grund>`;
+   - `fehlt`: „Das Repository der Anwendung <k> kennt diesen Commit nicht mehr.“ ohne Hinweiszeile;
+   - `anwendung_unbekannt`: „Die Anwendung <k> ist unter Einrichten nicht eingetragen.“. Ohne Kürzel lautet der Satz „Der Verweis nennt keine Anwendung, und es ist keine Standardanwendung eingerichtet.“;
+   - `unlesbar`: „Der Eintrag an der Aufgabe ist nicht lesbar.“ + `<grund>`, falls vorhanden;
+   - unbekannter Zustand und 404 ohne `zustand`: wie bisher „Zu diesem Verweis gibt es keinen Diff: <kurz> — <fehler>.“
+
+   `<k>` ist das Kürzel des angefragten Verweises. Eine Adresse mit Hash-Präfix ohne Kürzel, die über die Liste auf `wb:<hash>` aufgelöst wurde, nennt also „Anwendung wb“. Ein Verweis ohne Kürzel nennt die Standardanwendung. Rolle (`status`) und Fokus (`#rv-meld`) bleiben wie in R00207 FA 8 und FA 13. Das ersetzt R00207 FA 8 „<verweis> ist <Zustandswort>.“.
+7. **Eine Stelle für die Sätze:** Satz und Hinweiszeile je Zustand entstehen an genau einer Stelle neben `ZUSTANDSWOERTER` in `web/commits.js`. Beide Ansichten benutzen sie, es gibt kein zweites Wörterbuch. Das Kürzel im Satz kommt über `anwendungName` (`web/diff.js`), nie als „Anwendung “ ohne Namen.
+8. **Fremder Text** (ADR-0033 Punkt 8): `grund` und Kürzel gehen nur maskiert (`esc`) in die Seite. Aus `grund` werden vorher U+202A–202E und U+2066–2069 entfernt (`ohneSteuerzeichen`, wie `hinweisVon`).
+
+## Nicht-funktionale Anforderungen
+
+- Benutzerfreundlichkeit: Bei 320 und 414 px scrollt keine der beiden Ansichten quer, auch nicht mit einem `grund` von 500 Zeichen ohne Leerzeichen. Die Hinweiszeile bricht um (Breitenregel aus R00210 AK 9). Das Zustandswort hängt nie allein an der Farbe, Symbol und Satz stehen immer dabei.
+- Sicherheit: Siehe FA 8. Der Serverpfad im `grund` ist die bewusste Grenze nach ADR-0032 N2.4 und S2 (lokales Werkzeug, der Pfad hilft beim Beheben).
+- Anfragen: Die fehlende erste Anwendung kostet genau eine weitere Anfrage `…/diff?anwendung=<k>`. Der Server antwortet darauf ohne Git-Lauf über das Register hinaus (`wurzel_bis` scheitert vorher). Es gibt keine Wiederholung von selbst.
+
+## Akzeptanzkriterien
+
+**Ausgangslage** (herstellbar mit Git und der API) ist die von R00210 wie im Entwicklertest von #215 (`gemeinsam/scratchpad/etest-215/` der Factory). Sie entsteht mit `gesamtRepositorien()` und `gesamtVorbereiten(rep, zusatz)` aus `e2e/tests/gesamt-hilfen.js`, Register `kd` → R, `wb` → S, `xx` → T, Mensch `sh`, Browser headless, Zeitzone `Europe/Berlin`. **Danach wird das Repository S umbenannt** (`S` → `S-weg`). Der Registereintrag `wb` zeigt damit auf einen Ordner, den es nicht gibt. Der erwartete `grund` ist der `grund` des Eintrags `wb:<W1>` aus `GET /api/aufgaben/11/commits`. Er beginnt mit „Ordner fehlt: “ und nennt den Pfad aus dem Register. Die Probe vergleicht mit diesem Wert, nicht mit einem festen Pfad. Zusätzliche Aufgaben (`zusatz`):
+
+- **#20** `wb:<W1>`, `kd:<K1>`, `xx:<X1>`: Die erste Anwendung fehlt.
+- **#21** `wb:<W1>`, `wb:<W2>`, `xy:<K1>`: Nur die fehlende Anwendung, dazu ein Verweis auf eine nicht eingetragene Anwendung.
+- **#24** `<F>` (voller Hash, ohne Kürzel): Das Register hat keine Standardanwendung (`sources: wbs: ""`), also gilt `anwendung_unbekannt` ohne Kürzel.
+- Aus R00210 dienen #6 (`kd:<V2>` gelöscht, `xy:<K1>`), #11 und #14 (ohne Verweise).
+- **Feste Antworten per `page.route`** für Zustände, die echtes Git nicht billig herstellt: `unlesbar` mit und ohne `grund`, `repository_fehlt` ohne `grund`, ein unbekannter `zustand`, ein leeres Kürzel (Standardanwendung) und fremder Text im `grund`.
+
+### Alle Änderungen
+
+- [ ] **AK 1 Weitere Anwendung fehlt (#11, Beleg der Anmerkung):** Gegeben #11 auf `…/aufgabe/11/review`, dann steht im Abschnitt „Anwendung wb“ der Satz „Das Repository der Anwendung wb ist nicht erreichbar.“. Darunter steht als eigene Zeile der erwartete `grund`, mit dem Symbol `ordner-offen` im Ton `fehl`, `role="alert"` und „Erneut versuchen“. Der Abschnitt enthält weder „ließen sich nicht lesen“ noch „(404)“, „kein Diff zu diesem Verweis“ oder „der Zustand sagt warum“. Die Abschnitte `kd` und `xx` sind unverändert geladen. *(Heute rot: `s-echt-fehlt.png`.)*
+- [ ] **AK 2 Erste Anwendung fehlt (#20):** Gegeben #20, dann zeigt die Seite **weder** „Keine Änderungen zu zeigen.“ **noch** „An dieser Aufgabe sind keine Commit-Verweise hinterlegt.“. Sie zeigt genau drei Abschnitte, die Anwendungen `wb`, `kd` und `xx`. Der Abschnitt `wb` trägt Satz und `grund` wie in AK 1, die Abschnitte `kd` (K1) und `xx` (X1) zeigen ihre Dateien. Die Abschnitte stehen in der Reihenfolge, in der die Kürzel in der Antwort von `GET /api/aufgaben/20/commits` zuerst auftreten. Rechenbeispiel: K1 und X1 haben ein Datum, W1 im fehlenden Repository hat keins. Die Liste lautet daher K1, X1 (nach Datum) und dann W1, die Abschnitte also `kd`, `xx`, `wb`, sofern K1 älter als X1 ist, sonst `xx`, `kd`, `wb`. Der Umschalter steht da, „Ein Commit“ führt auf den ersten Commit mit Diff. *(Heute rot: `web/app.js:1380`.)*
+- [ ] **AK 3 Nur die fehlende Anwendung (#21):** Gegeben #21, dann steht genau ein Abschnitt „Anwendung wb“ mit Satz und `grund`. Über ihm steht der seitenweite Hinweis zu `xy:<K1>` im Wortlaut von R00210 FA 6. „Ein Commit“ im Umschalter ist gedämpft und ohne `href` (PO Z. 442). Die Leer-Meldung steht nicht da.
+- [ ] **AK 4 Ohne Verweise bleibt leer (#14):** Gegeben #14, dann steht „Keine Änderungen zu zeigen.“ mit „An dieser Aufgabe sind keine Commit-Verweise hinterlegt.“ und dem Rückweg wie bisher. Dasselbe gilt für eine feste 404 der ersten Anfrage ohne `zustand` bei einer Aufgabe mit Verweisen. *(Heute grün, bleibt.)*
+- [ ] **AK 5 Anfragen und Erneut versuchen (#20):** Gegeben #20, dann geht nach der ersten 404 je Kürzel genau eine `GET …/diff?anwendung=<k>` hinaus, für `kd`, `xx` und `wb`, nie zwei zugleich (Zähler gleichzeitiger `…/diff`-Anfragen höchstens 1). Ein Klick auf „Erneut versuchen“ am Abschnitt `wb` sendet genau eine `…/diff?anwendung=wb`, und die übrigen Abschnitte bleiben stehen. Steht die Antwort von `…/commits` noch aus, wenn die 404 eintrifft (gehalten per `page.route`), steht „Liest die Änderungen der Aufgabe …“. Nach ihrer Freigabe folgen die drei Abschnitte.
+- [ ] **AK 6 Liste gescheitert** (Empfehlung zu Frage 1, bis zur Antwort des PO): Gegeben #20 und `GET …/commits` endet mit 500 (`page.route`). Dann steht die Seitenmeldung aus FA 5 mit dem erwarteten `grund` und „Erneut versuchen“, nie die Leer-Meldung. Nach dem Freigeben der Route und „Erneut versuchen“ stehen die drei Abschnitte aus AK 2.
+
+### Ein Commit
+
+- [ ] **AK 7 Repository fehlt:** Gegeben #11 und die Adresse `…/aufgabe/11/review?commit=wb:<W1>`, dann lautet die Überschrift „Zu wb:<W1 7 Zeichen> gibt es keinen Diff.“. Darunter steht „Das Repository der Anwendung wb ist nicht erreichbar.“, darunter der erwartete `grund` als Hinweiszeile, dann „Zur Liste der Commits“. Nirgends steht „ist Repository nicht erreichbar“. Dasselbe gilt für die Adresse mit dem Hash-Präfix allein `?commit=<W1 7 Zeichen>`, die über die Liste aufgelöst wird. *(Heute rot.)*
+- [ ] **AK 8 Die übrigen Zustände:** Es gilt jeweils:
+  - Gegeben #6 und `?commit=kd:<V2>`, dann steht „Zu kd:<V2 7 Zeichen> gibt es keinen Diff.“ mit „Das Repository der Anwendung kd kennt diesen Commit nicht mehr.“ und ohne Hinweiszeile.
+  - Gegeben #6 und `?commit=xy:<K1>`, dann steht „Die Anwendung xy ist unter Einrichten nicht eingetragen.“.
+  - Gegeben #24 und `?commit=<F>`, dann steht „Der Verweis nennt keine Anwendung, und es ist keine Standardanwendung eingerichtet.“.
+  - Gegeben eine feste 404 `{fehler, zustand: "unlesbar", grund: "Kurz-Hash mehrdeutig"}`, dann steht „Der Eintrag an der Aufgabe ist nicht lesbar.“ mit der Hinweiszeile „Kurz-Hash mehrdeutig“. Ohne `grund` fehlt diese Zeile.
+  - *(Heute rot: „ist nicht mehr im Repository“, „ist Anwendung unbekannt“, „ist Eintrag nicht lesbar“.)*
+- [ ] **AK 9 Unbekannter Zustand bleibt:** Gegeben eine feste 404 `{fehler: "x", zustand: "neu_art"}` auf `?commit=kd:<K1>`, dann steht wie bisher „Zu diesem Verweis gibt es keinen Diff: kd:<K1 7 Zeichen> — x.“. Ebenso für die 404 `{fehler, verweis}` „Verweis nicht an der Karte“. *(Heute grün, bleibt.)*
+
+### Beide Ansichten
+
+- [ ] **AK 10 Standardanwendung und fehlender Grund** (`page.route`): Gegeben ein Verweis ohne Kürzel und eine 404 `repository_fehlt`, dann steht in beiden Ansichten „Das Repository der Standardanwendung ist nicht erreichbar.“. Bei `fehlt` steht „Das Repository der Standardanwendung kennt diesen Commit nicht mehr.“. Nirgends steht „Anwendung “ ohne Namen. Gegeben `repository_fehlt` ohne `grund`, dann steht der Satz ohne Hinweiszeile, in beiden Ansichten.
+- [ ] **AK 11 Fremder Text** (`page.route`, beide Ansichten): Gegeben `grund` = „Ordner fehlt: /x/<img src=x onerror=window.PWN=1>\u202Egpj.exe“, dann bleibt `window.PWN` undefiniert, und es gibt kein `img[src=x]` im Dokument. Die Hinweiszeile zeigt `<img src=x onerror=window.PWN=1>` als Text. Ihr `textContent` enthält kein Zeichen aus U+202A–202E und U+2066–2069, es endet auf „gpj.exe“.
+- [ ] **AK 12 Breite:** Gegeben `grund` mit 500 Zeichen (`langerOrdner` aus `e2e/tests/commits-hilfen.js`), dann scrollt bei 320 und 414 px keine der beiden Ansichten quer (gemessen gegen `clientWidth` wie R00210 AK 9). Symbol, Satz und Hinweiszeile sind sichtbar, kein Zustandswort steht als `.vh`.
+- [ ] **AK 13 Mutanten:** Jeder Mutant wird von einem benannten Test getötet:
+  - (m1) Leer-Meldung bei jeder 404 der ersten Anfrage (heutiger Stand): AK 2 rot.
+  - (m2) Kürzel nur aus `weitere_anwendungen`: AK 2 rot, Abschnitte `kd` und `xx` fehlen.
+  - (m3) `grund` ohne `ohneSteuerzeichen`: AK 11 rot.
+  - (m4) `grund` ohne `esc`: AK 11 rot.
+  - (m5) Kürzel aus der Adresse statt aus dem angefragten Verweis: AK 7, Präfix-Fall rot.
+  - (m6) „Anwendung “ + leeres Kürzel: AK 10 rot.
+  - (m7) Abschnitte auch bei 404 ohne `zustand`: AK 4 rot.
+  - (m8) zwei `…/diff`-Anfragen zugleich: AK 5 rot.
+
+  Die Tests von R00207 und R00210 laufen grün. Geändert werden nur die Erwartungen an den beiden ersetzten Sätzen (R00207 FA 8, R00210 FA 7), die Anzahl steht im Commit.
+
+## Betroffene Verzeichnisstruktur
+
+- `web/commits.js`: Satz und Hinweiszeile je Zustand (rein, Node-tauglich), neben `ZUSTANDSWOERTER`. Tests in `e2e/einheit/commits.test.js`.
+- `web/diff.js`: `diffFehlerHtml`, Zweig `kein_diff`. `web/gesamt.js`: `abschnittFehlerHtml`, dazu die reine Herleitung der Kürzel und seitenweiten Hinweise aus der Liste. Tests in `e2e/einheit/diff.test.js` und `gesamt.test.js`.
+- `web/app.js`: `reviewBild`, `reviewAlleErste`, Warten auf die Liste, `vReviewAlle`, Aktion `review-erneut` für FA 5.
+- E2E: neue Spec `e2e/tests/r00224-grund-bei-404.spec.js` mit den Hilfen aus `gesamt-hilfen.js` und `commits-hilfen.js`.
+
+## Technische Überlegungen
+
+### Ablauf (Vorplanung, die Bubbles entscheidet der Entwickler)
+
+1. **Satz je Zustand** (`web/commits.js`): `(zustand, kuerzel, grund)` ergibt `{satz, hinweis, symbol, ton}` oder `null` für einen unbekannten Zustand. Der Name kommt über `anwendungName`, der Hinweis ist `ohneSteuerzeichen(grund)` oder leer. Rein, nichts ist maskiert.
+2. **„Ein Commit“** (`diffFehlerHtml`): Bei `kein_diff` mit bekanntem `zustand` gilt Überschrift + Satz + `rv-hin`, sonst der alte Satz. Der Verweis ist der angefragte (`r.diff.verweis`), nicht `r.commit`.
+3. **Abschnitt** (`abschnittFehlerHtml`): Bei Status 404 mit `f.daten.zustand === 'repository_fehlt'` gilt Satz + Hinweiszeile + Symbol/Ton aus Schritt 1, sonst wie bisher.
+4. **Erste Anfrage mit 404 + `zustand`** (`reviewBild`, `reviewAlleErste`):
+   - 4.1 Ist die Liste da, kommen die Kürzel nach FA 3 und die seitenweiten Hinweise nach FA 4. `alle.erste` wird `da` ohne eigenen Abschnitt, je Kürzel ein `{status: 'wartet', kuerzel}` in die Reihe.
+   - 4.2 Ist die Liste noch nicht da, wartet die Seite, und die Ankunft der Liste setzt 4.1 fort.
+   - 4.3 Ist die Liste gescheitert, gilt FA 5.
+5. **Probe im echten Programm** mit umbenanntem S, die Mutanten, das Gate.
+
+**Wichtige Einstiegsstellen:** `web/app.js:1380` (`reviewBild`, Zweig `alle`), `:1588` (`reviewAlleErste`), `:1778` (Leer-Meldung). `web/gesamt.js:342` (`abschnittFehlerHtml`), `web/diff.js:442` (`diffFehlerHtml`).
+
+### Änderungen an bestehenden Klassen
+
+- `ZUSTANDSWOERTER` und `hinweisVon` bleiben für die Liste unverändert, die neue Funktion steht daneben.
+- `seitenHinweise` (`web/gesamt.js`) nimmt zusätzlich Listeneinträge `{verweis, zustand}` an.
+
+## Tests
+
+Nach Skill `test-pyramide`:
+
+- **Unit** (Node): Satz je Zustand mit leerem Kürzel, ohne `grund` und unbekanntem Zustand; Kürzel aus der Liste (Reihenfolge, entdoppelt, leeres Kürzel, `unlesbar` und `anwendung_unbekannt` ausgenommen); `diffFehlerHtml` und `abschnittFehlerHtml` mit `esc` gegen HTML im `grund`.
+- **Integration:** keine. Es gibt keinen Serverteil, die 404-Antworten sind Bestand (R00206, R00208).
+- **E2E:** AK 1–12 gegen das gestartete Programm (`target/debug`), feste Antworten nur für die genannten Zustände; Mutanten aus AK 13.
+
+## Abhängigkeiten
+
+- Abhängig von: R00207 (I0197, gruen), R00208 (I0198), R00210 (I0200), alle auf `main`.
+- Blockiert: nichts.
+
+## Offene Fragen
+
+1. **An den product-owner** (hält den Bau nicht auf, bis zur Antwort gilt die Empfehlung, FA 5 und AK 6): Wortlaut der Seite „Alle Änderungen“, wenn die erste Anwendung mit `repository_fehlt` antwortet **und** die Liste der Commits scheitert. Ohne Liste kennt die Seite weder das Kürzel noch die übrigen Anwendungen. Empfehlung: Überschrift „Das Repository einer Anwendung dieser Aufgabe ist nicht erreichbar.“, darunter `grund`, darunter „Die Liste der Commits ließ sich nicht lesen; weitere Anwendungen sind nicht bekannt.“, dazu „Erneut versuchen“. Die Gründe: Die Seite sagt nichts Unwahres, sie nennt den Grund und sagt offen, was fehlt. Die Leer-Meldung wäre falsch (Z. 360), und ein Satz mit „der Standardanwendung“ nennte womöglich die falsche Anwendung.
+
+## Manuelle Vorbereitungstätigkeiten
+
+- Keine.
+
+## Manuelle Nachbereitungstätigkeiten
+
+- Keine Nachzeichnung (PO Z. 506: keine neue Bedienfläche). Der gestalter kann die Ränder von D0009 (`#alle-raender`, `#diff-raender`) nach dem Bau um die Sätze ergänzen. Das ist kein Teil dieser Karte.
+
+## Warum löst diese Anforderung das Problem? (Pflicht)
+
+Auslöser war der Entwicklertest von #215: Eine Anwendung im Register zeigte auf einen fehlenden Ordner, und die Seite sagte nur „der Zustand sagt warum (404)“, ohne den Zustand zu nennen. Bei der ersten Anwendung behauptete sie sogar, es gebe keine Verweise. Die Antwort der API trägt Zustand und Grund schon. Der Hebel liegt deshalb allein in der Oberfläche, genauer an der einen Stelle, die Zustände in Worte fasst (FA 7). Wenn beide Fehlerwege diese Stelle benutzen, sieht der Mensch „Das Repository der Anwendung wb ist nicht erreichbar.“ mit dem Pfad, behebt das Register und lädt neu. Holt die Seite die Anwendungen bei einer 404 aus der Liste der Commits statt aus der fehlenden Antwort, bleibt jede erreichbare Anwendung prüfbar. Eine Aufgabe wirkt dann nie leer, nur weil ihre erste Anwendung nicht erreichbar ist. Eine Änderung der API (`anwendung` und `weitere_anwendungen` an der 404) wäre der vorgelagerte Hebel. Sie bräuchte aber einen Nachtrag zu ADR-0032 und eine zweite Karte, während die Liste die Kürzel schon liefert.
+
+## Notizen
+
+**Entscheidung des planers (Optionen zu FA 3, woher die Anwendungen kommen):**
+
+| Option | Kosten | Risiko | Gewählt |
+|---|---|---|---|
+| A: alle Kürzel aus der Liste, jede Anwendung einzeln durch die Reihe, auch die fehlende | eine Anfrage mehr (ohne Git) | keins, kein Schluss aus der Sortierung | **ja** |
+| B: Kürzel der fehlenden = erster Listeneintrag mit `repository_fehlt`, Satz aus der ersten 404 | keine Anfrage mehr | beruht auf der Sortierregel der Liste (ohne Datum in Dateireihenfolge, R00204) und auf zwei Anfragen mit demselben Register | nein |
+| C: API trägt `anwendung` und `weitere_anwendungen` auch an der 404 | Nachtrag ADR-0032, Rust und Dokumentation | ändert den Vertrag (OpenAPI, Clients) | nein, bräuchte den architekten |
+
+Bei A entsteht der Satz der fehlenden Anwendung auf demselben Weg wie bei einer weiteren Anwendung (FA 1). Es gibt also einen Codeweg statt zwei. Die Reihenfolge der Abschnitte weicht im 404-Fall von der Antwort 200 ab: Die fehlende Anwendung steht hinten, weil ihre Einträge kein Datum haben. Das ist sichtbar und harmlos.
+
+**Bewusst außerhalb:**
+
+- Die Ansage im Statusbereich bleibt „…, ohne Anwendung <k>: ließ sich nicht lesen.“ (R00210, B1041). Der PO hat nur den sichtbaren Satz entschieden.
+- `fehlt`, `unlesbar` und `anwendung_unbekannt` auf „Alle Änderungen“ kommen nicht als 404 (PO Z. 508), deshalb gibt es dort nichts zu tun.
+- Keine Änderung an der Liste „Commits“ (R00205).
