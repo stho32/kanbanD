@@ -1552,3 +1552,36 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #217 | Entwicklung | architekt | bestanden | 5 min | ADR-0039 N1: Tabelle als Insel, die im Dokument bleibt (41c2749c); Frage an PO zum NFR-Wortlaut · claude · opus · Lauf 217-architekt-2 · 0,90 $ · Karte gesamt 43,64 $ |
 | 2026-11-21 | #216 | Entwicklung | architekt | bestanden | 7 min | ADR-0040 Worker mit Frist löst ADR-0037 ab (a9755924); WBS und AK neu zu planen · claude · opus · Lauf 216-architekt-2 |
 | 2026-11-21 | #217 | Entwicklung | product-owner | bestanden | 4 min | PO Z. 483–484 (d1a3fac7): NFA auf Neuzeichnen, S-A/S-B/mittlere Form bestätigt · claude · opus · Lauf 217-product-owner-4 |
+| 2026-11-21 | #216 | Detailplanung | product-owner | bestanden | 1 min | PO Z. 485 (379894f8): Option 1, ohne Farbe nach Frist und verspätete Farbe ohne Hinweis · claude · opus · Lauf 216-product-owner-1 |
+| 2026-11-21 | #216 | Detailplanung | planer | bestanden | 9 min | R00217 und I0207 nach ADR-0040 (35b17acd, 8c6b9796), B1132 neu · claude · opus · Lauf 216-planer-2 |
+| 2026-11-21 | #216 | Detailplanung | product-owner | bestanden | 0 min | PO Z. 486 (1b8d9d53): acht Bubbles zugelassen · claude · opus · Lauf 216-product-owner-2 |
+| 2026-11-21 | #216 | Detailplanung | ux-reviewer | bestanden | 2 min | Vorprüfung Runde 2: kein Muss, S1–S4, K1–K3 (ux-216/bericht.md) · claude · sonnet · Lauf 216-ux-reviewer-2 |
+| 2026-11-21 | #217 | Entwicklung | entwickler | bestanden | 26 min | Insel nach ADR-0039 N1, AK 1 Zeichnen 60–80 ms, Gate im Worktree grün · claude · Lauf 217-entwickler-2 |
+| 2026-11-21 | #217 | Entwicklung | planer | bestanden | 2 min | R00219 nach PO Z. 483–484 (103aca0b), Insel hält in AK 1 · claude · opus · Lauf 217-planer-4 |
+| 2026-11-21 | #217 | Auto-Reviews | rechtschreib-reviewer | bestanden | 2 min | kein Muss, kein Sollte, zwei Kann · claude · sonnet · Lauf 217-rechtschreib-reviewer-1 |
+| 2026-11-21 | #217 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss, drei Sollte, drei Kann · claude · sonnet · Lauf 217-code-reviewer-1 |
+| 2026-11-21 | #217 | Auto-Reviews | ux-reviewer | befund | 8 min | Muss 1: bei 320 px ragt .lf-zs 5 px über, .mod-body scrollt seitwärts (AK 9) · claude · sonnet · Lauf 217-ux-reviewer-3 |
+| 2026-11-21 | #217 | Nacharbeit | entwickler | bestanden | 14 min | Nacharbeit 1: Muss 1 und alle Sollte behoben, betroffene Tests grün · claude · Lauf 217-entwickler-3 |
+| 2026-11-21 | #217 | Auto-Reviews | ux-reviewer | bestanden | 2 min | Nachprüfung 1: Muss 1 behoben, kein Befund offen · claude · sonnet · Lauf 217-ux-reviewer-4 |
+| 2026-11-21 | #220 | Entwicklung | entwickler | bestanden | 1 h 31 min | B1112–B1123 grün, Sondierung hält 1.000, Gate im Worktree grün · claude · Lauf 220-entwickler-1 |
+| 2026-11-21 | #220 | Auto-Reviews | security-reviewer | bestanden | 1 min | kein Muss, keine Härtung · claude · sonnet · Lauf 220-security-reviewer-1 |
+| 2026-11-21 | #220 | Auto-Reviews | rechtschreib-reviewer | bestanden | 4 min | kein Muss, drei Sollte, fünf Kann · claude · sonnet · Lauf 220-rechtschreib-reviewer-1 |
+| 2026-11-21 | #220 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss, ein Sollte, sechs Kann · claude · sonnet · Lauf 220-code-reviewer-1 |
+| 2026-11-21 | #220 | Auto-Reviews | ux-reviewer | befund | 5 min | Muss 1: Tab aus #nf-gruppe springt in den Fensterkopf (fallenTaste, WCAG 2.4.3) · claude · sonnet · Lauf 220-ux-reviewer-3 |
+| 2026-11-21 | #217 | Entwicklertest | entwicklertester | bestanden | 12 min | US-1 bis US-7 bestanden, keine Befunde · claude · sonnet · Lauf 217-entwicklertester-1 |
+| 2026-11-21 | #220 | Nacharbeit | product-owner | bestanden | 2 min | PO Z. 487–488 (9f072ed2): Ergebnisansage bei gewandertem Fokus, Stelle statt Platz 1 · claude · opus · Lauf 220-product-owner-4 |
+| 2026-11-21 | #217 | Entwicklertest | planer | bestanden | 2 min | R00219 abgeschlossen (ac6bda79), AK 10 auf --kd-muted · claude · opus · Lauf 217-planer-5 |
+| 2026-11-21 | #220 | Nacharbeit | planer | bestanden | 2 min | R00218 nach PO Z. 487–488 (ddfbd56a, 1d3c58a1) · claude · opus · Lauf 220-planer-4 |
+
+**Retrospektive #217** (Reiter „Läufe“ im Aufgabenfenster, Scheibe D1, R00219 und ADR-0039; 2026-11-21, gemessen 43,64 $, ohne die fortgesetzten Läufe; ausgeliefert 55108b99)
+- **Gut:**
+  - **Tag-Kriterium:** Die Messprobe hat ehrlich gehalten. Der entwickler hat bis 8 Uhr gewartet, tagsüber gemessen und ist beim roten Zeichnen (161–172 ms) mit einer Frage stehen geblieben, statt die Grenze zu verschieben.
+  - **architekt:** In 5 Minuten hat er die Varianten selbst im Browser geprobt. Die Insel, die im Dokument bleibt, braucht 2–3 ms statt 126–143 ms; ausgehängte Knoten sparen nichts. Der PO hat den Wortlaut der NFA auf das angepasst, was AK 1 misst.
+  - **Volles Gate im Worktree:** Es fand einen echten Fehler, den die Specs der Karte nicht zeigten: `window.fehlerText` wurde zwischen zwei Modulen überschrieben. Ein Node-Test über alle Module sichert das jetzt.
+  - **Prüfung:** Die Reviews fanden ein Muss, den Überstand bei 320 px. Nacharbeit 1 hat es zusammen mit sechs Sollte behoben, jeder Punkt mit einem Test, der vorher rot war. Der Entwicklertest lief ohne Befund, auch mit 999 Läufen und angehaltenem Server.
+- **Lehre (Bildlaufbehälter messen):** Die Breitenprobe maß nur `#fenster` und übersah den inneren Bildlauf von `.mod-body`. Breitenproben messen den Behälter, der scrollt. Dieselbe Lehre fand der ux-reviewer und der entwicklertester bestätigte sie.
+- **Lehre (Abweichung vom Wortlaut mit Grund):** Der entwickler nahm `--kd-muted` statt des PO-Wortlauts `--kd-faint`. Der ux-reviewer bewertete das mit Zahlen (6,44:1 statt 3,59:1), und der planer glich beim Abschluss an. Keine Schleife.
+- **Rechnerlast:** Drei parallele entwickler trieben die Last ab 8 Uhr bis 15,9. Seitdem bauen höchstens zwei gleichzeitig. Die Platte war zu 99 % voll; 46 alte Build-Ordner sind gelöscht (Vorschlag an die Factory).
+- **Neue Karten:** #246 Wackler unter Last (`ak03_wirksamer_schalter`, r00124:46, r00148:535). Alle drei waren im Gate auf main rot und einzeln je 3 von 3 grün.
+- **Verworfen (Kann ohne Nacharbeit):** Wortlaut beim Timeout (Status 0) ist eine Produktfrage. Doppelte Kennungen lehnt die API mit 409 ab.
+- **Offen:** A00009 nachführen (ADR-0039 Folgeaufgabe) und D0009 `#laeufe` `.ohnek` beim nächsten Zeichnen nachziehen (PO Z. 484). Freigeschaltet sind #210 (D2) und #218 (C2).
