@@ -1503,3 +1503,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #216 | Detailplanung | ux-reviewer | bestanden | 1 min | Vorprüfung: Kontrast ≥ 5,45 in allen 42 Paaren; 2 Sollte zu AK 7/9 · claude · sonnet · Lauf 216-ux-reviewer-1 · 0,20 $ · Karte gesamt 4,17 $ |
 | 2026-11-21 | #220 | Detailplanung | gestalter | bestanden | 10 min | D0009 #nachfolger, 12 Zustände, 3 Fragen an den PO · claude · sonnet · Lauf 220-gestalter-1 · 4,07 $ · Karte gesamt 10,62 $ |
 | 2026-11-21 | #220 | Detailplanung | product-owner | bestanden | 3 min | D0009 #nachfolger freigegeben mit Änderung, Z. 458–462 · claude · opus · Lauf 220-product-owner-2 · 1,05 $ · Karte gesamt 11,67 $ |
+| 2026-11-21 | #220 | Detailplanung | planer | bestanden | 3 min | R00218 AK 7–11 nach PO Z. 458–462 · claude · opus · Lauf 220-planer-2 · 1,02 $ · Karte gesamt 12,69 $ |
+| 2026-11-21 | #220 | Detailplanung | ux-reviewer | befund | 4 min | Muss: Zwischenbreiten 641–980 px, Titel 0–32 px · claude · sonnet · Lauf 220-ux-reviewer-1 · 0,73 $ · Karte gesamt 13,42 $ |
+| 2026-11-21 | #220 | Detailplanung | gestalter | bestanden | 7 min | Nachzeichnung: mittlere Form 641–1099 px, 409-Wechsel, Knopfrand · claude · sonnet · Lauf 220-gestalter-2 · 1,98 $ · Karte gesamt 15,40 $ |
+| 2026-11-21 | #220 | Detailplanung | product-owner | bestanden | 2 min | Nachzeichnung freigegeben mit Änderung, Z. 463–465 · claude · opus · Lauf 220-product-owner-3 · 0,91 $ · Karte gesamt 16,31 $ |
