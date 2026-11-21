@@ -470,9 +470,10 @@ pub const PATCH_ID_ZEILEN: usize = 1_100;
 /// [`PATCH_ID_ZEILEN`] Zeilen bricht der Lauf ab (`ZuvielAusgabe`), nie ein Teil.
 pub fn patch_ids(wurzel: &Path, patch: &[u8], frist: Instant) -> Result<Vec<(String, String)>, Arbeitsrepofehler> {
     let aus = git(wurzel, Befehl::PatchId, &["--stable"], Lauf { zeitgrenze: grenze_bis(frist)?, eingabe: Some(patch), hoechstzeilen: Some(PATCH_ID_ZEILEN) })?;
+    // `patch-id` liest nur `stdin` und fragt das Repository nicht: ein Fehlschlag ist ein Fehler des Programms (500), kein fehlendes Repository
     if !aus.status.success() {
         let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
-        return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Git verweigert {}: {grund}", wurzel.display())));
+        return Err(Arbeitsrepofehler::Start(format!("git patch-id: {grund}")));
     }
     String::from_utf8_lossy(&aus.stdout).lines().map(|z| match z.split_once(' ') {
         Some((id, commit)) => Ok((commit.to_string(), id.to_string())),
@@ -487,7 +488,7 @@ pub fn linie(wurzel: &Path, letzter: &str, hoechstens: usize, frist: Instant) ->
     lesen(wurzel, Befehl::RevList, &["--first-parent", "--parents", &anzahl, "--end-of-options", letzter, "--"], None, frist)
 }
 
-/// Ein Commit des Fensters: Hash, erster Elternteil (ohne beim Wurzel-Commit) und Commit-Datum in Sekunden seit 1970.
+/// Ein Commit des Fensters: Hash, erster Elternteil (fehlt beim Wurzel-Commit) und Commit-Datum in Sekunden seit 1970.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fenstercommit {
     pub commit: String,

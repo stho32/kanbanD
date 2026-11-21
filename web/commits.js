@@ -137,7 +137,7 @@
     return stelle < 0 ? text.slice(0, 7) : `${text.slice(0, stelle)}:${text.slice(stelle + 1, stelle + 8)}`;
   }
 
-  const gekapptSatz = n => `Die Suche hat nach ${tausender(n)} Commits aufgehört; ein Nachfolger kann fehlen.`;
+  const gekapptSatz = n => `Die Suche hat nach ${tausender(n)} ${n === 1 ? 'Commit' : 'Commits'} aufgehört; ein Nachfolger kann fehlen.`;
   const weitereSatz = n => (n === 1 ? '1 weiterer Commit mit gleichem Patch ist nicht gezeigt.' : `${n} weitere Commits mit gleichem Patch sind nicht gezeigt.`);
 
   /** Der Kandidat als Zeilenwerte wie die Liste; `knopf` ist `entfernen`, wenn er an der Karte steht oder nach einem 409 dorthin gewechselt ist. */

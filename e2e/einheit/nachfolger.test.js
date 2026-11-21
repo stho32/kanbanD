@@ -101,3 +101,10 @@ test('Steuerzeichen im fremden Text fallen weg', () => {
   const d = nachfolgerDeuten(antwort({ kandidaten: [kandidat({ titel: 'fix-‮gpj.exe', autor: 'A⁦B' })] }), `kd:${K}`);
   assert.deepStrictEqual([d.kandidaten[0].titel, d.kandidaten[0].autor], ['fix-gpj.exe', 'AB']);
 });
+
+test('gekappt nach genau einem Commit: Einzahl (Rechtschreib-Review Sollte), 0 und ab 2 Mehrzahl', () => {
+  const satz = n => nachfolgerDeuten(ohneKandidat([{ art: 'suche_gekappt', durchsucht: n, grund: 'patch' }]), `kd:${K}`).saetze[0];
+  assert.strictEqual(satz(1), 'Die Suche hat nach 1 Commit aufgehört; ein Nachfolger kann fehlen.');
+  assert.strictEqual(satz(0), 'Die Suche hat nach 0 Commits aufgehört; ein Nachfolger kann fehlen.');
+  assert.strictEqual(satz(2), 'Die Suche hat nach 2 Commits aufgehört; ein Nachfolger kann fehlen.');
+});

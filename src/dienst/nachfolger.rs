@@ -367,7 +367,7 @@ impl Zweigquelle<'_> {
 
 /// 404 mit dem Zustand des Verweises, wie die Liste ihn nennt: gesucht wird nur für `verwaist` (R00218 FA 2).
 fn zustand(zustand: Commitzustand, grund: Option<String>) -> Fehler {
-    Fehler::Commitzustand { meldung: "kein Nachfolger zu diesem Verweis — gesucht wird nur für einen Commit auf keinem Zweig; der Zustand sagt warum".into(), zustand, grund }
+    Fehler::Commitzustand { meldung: "kein Nachfolger zu diesem Verweis — gesucht wird nur für einen Commit auf keinem Zweig; der Zustand sagt, warum".into(), zustand, grund }
 }
 
 /// Repository fehlt oder verweigert → 404 `repository_fehlt` mit Grund; Zeitgrenze → 503; sonst 500.
