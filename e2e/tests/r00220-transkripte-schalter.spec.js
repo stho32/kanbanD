@@ -7,7 +7,7 @@ const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { kanbanStarten, alsPerson, bereit, commitSteht } = require('./hilfen');
+const { kanbanStarten, alsPerson, bereit, commitSteht, reiter, liveBereit } = require('./hilfen');
 
 const LANGER_NAME = 'zweites-board-mit-einem-sehr-langen-namen-aus-sechzig-zeiche';
 const ERKLAERTEXT = 'Ein Transkript hält den ganzen Lauf eines Agenten fest, auch die Ausgaben seiner Werkzeuge. Es liegt gezippt im Board-Ordner, bleibt auf diesem Rechner und reist nicht mit dem Repository; Löschen löscht es wirklich. Ausschalten gilt nur für neue Läufe; abgelegte Transkripte bleiben. Umschalten können nur Menschen. Jeder Klick gilt sofort, ohne „Speichern“.';
@@ -20,8 +20,9 @@ function ausgangslage(ordner) {
     'boards/fabrik.md': `---\nrecord-transcripts: true\n---\n\n# fabrik\n\n${spalten.replace('## Entwicklung\n', '## Entwicklung\n\n- [#1](../aufgaben/0001-eins.md)\n')}`,
     'boards/zweit.md': `# zweit\n\n${spalten.replace('## Entwicklung\n', '## Entwicklung\n\n- [#3](../aufgaben/0003-drei.md)\n')}`,
     'boards/lang.md': `# ${LANGER_NAME}\n\n${spalten}`,
-    'aufgaben/0001-eins.md': '---\nid: 1\ntitle: Eins\n---\n',
-    'aufgaben/0003-drei.md': '---\nid: 3\ntitle: Drei\ncost-entries:\n  - {at: 2026-11-20 10:00+01:00, role: entwickler, column: Entwicklung, amount: 0.2, currency: USD}\n---\n',
+    'aufgaben/0001-eins.md': '---\nid: 1\ntitle: Eins\ntranscripts:\n  - {at: 2026-11-19 15:00+01:00, role: entwickler, column: Entwicklung, bytes: 2048}\n---\n',
+    // wie R00219 #3: ein früherer Lauf mit Transkript (sonst gibt es die Ansicht „Läufe“ nicht) und ein Kosteneintrag ohne Transkript
+    'aufgaben/0003-drei.md': '---\nid: 3\ntitle: Drei\ntranscripts:\n  - {at: 2026-11-19 15:00+01:00, role: entwickler, column: Entwicklung, bytes: 2048}\ncost-entries:\n  - {at: 2026-11-20 10:00+01:00, role: entwickler, column: Entwicklung, amount: 0.2, currency: USD}\n---\n',
   };
   for (const [rel, inhalt] of Object.entries(dateien)) {
     fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
@@ -286,4 +287,67 @@ test('AK 8: ein Entwurf aus einem zweiten Fenster, vor dem Umschalten geöffnet,
   } finally {
     await kontext.close();
   }
+});
+
+/* ── AK 9 Verweis aus „Läufe“ ── */
+
+const HINWEIS = '#fenster [role="note"]';
+const VERWEIS_NAME = 'In „Einrichten“ umschalten';
+
+async function laeufeOeffnen(page, nr, board) {
+  await page.goto(`${k.adresse}#/board/${board}/aufgabe/${nr}`);
+  await expect(page.getByRole('dialog', { name: `Aufgabe #${nr}` })).toBeVisible();
+  await liveBereit(page);
+  await reiter(page, 'Läufe');
+  await expect(page.locator('#laeufe-status')).toHaveText(/ (Lauf|Läufe) · Stand /);
+}
+
+/** Nach dem Aktivieren: kein Dialog mehr, „Einrichten“ offen, Fokus auf TRANSKRIPTE, sichtbar im Bildlaufbehälter, auch nach 500 ms. */
+async function amAbschnittTranskripte(page) {
+  await expect(page).toHaveURL(/#\/einrichten$/);
+  const kopf = page.locator('#transkripte h2');
+  await expect(kopf).toBeFocused();
+  await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);
+  const lage = () => kopf.evaluate(h => {
+    let behaelter = h.parentElement;
+    while (behaelter && !/(auto|scroll)/.test(getComputedStyle(behaelter).overflowY)) behaelter = behaelter.parentElement;
+    const r = h.getBoundingClientRect(), b = (behaelter || document.documentElement).getBoundingClientRect();
+    // feste oder klebende Kopfzeilen, die die Überschrift überdecken (nicht ihre eigenen Vorfahren)
+    const feste = [...document.querySelectorAll('body *')].filter(e => !e.contains(h) && ['fixed', 'sticky'].includes(getComputedStyle(e).position) && e.getClientRects().length)
+      .map(e => e.getBoundingClientRect()).filter(f => f.bottom > r.top && f.top < r.bottom && f.right > r.left && f.left < r.right);
+    return { innen: r.top >= b.top - 1 && r.bottom <= b.bottom + 1, verdeckt: feste.length, tag: document.activeElement.tagName, text: document.activeElement.textContent, tabindex: document.activeElement.getAttribute('tabindex') };
+  });
+  await expect.poll(lage).toMatchObject({ innen: true, verdeckt: 0, tag: 'H2', tabindex: '-1' });
+  expect((await lage()).text.startsWith('TRANSKRIPTE')).toBe(true);
+  // Frist nur für das Ausbleiben eines Ereignisses (ADR-0026 Regel 5): der Fokus springt nicht zurück
+  await page.waitForTimeout(500);
+  await expect(kopf).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(wahl(page, null, 'aus')).toBeFocused();
+}
+
+test('AK 9 · US-7: Verweis hinter dem Hinweis an #3 auf zweit — Enter öffnet „Einrichten“ am Abschnitt TRANSKRIPTE mit Fokus und Fokusring', async ({ page }) => {
+  await laeufeOeffnen(page, 3, 'zweit');
+  await expect(page.locator(HINWEIS)).toHaveText(`Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript. ${VERWEIS_NAME}`);
+  const verweis = page.locator(HINWEIS).getByRole('link', { name: VERWEIS_NAME });
+  await verweis.focus();
+  await page.keyboard.press('Enter');
+  const kopf = page.locator('#transkripte h2');
+  await expect(kopf).toBeFocused();
+  const ring = await kopf.evaluate(h => { const st = getComputedStyle(h); return { stil: st.outlineStyle, breite: parseFloat(st.outlineWidth) }; });
+  expect(ring.stil).toBe('solid');
+  expect(ring.breite).toBeGreaterThanOrEqual(2);
+  await amAbschnittTranskripte(page);
+  // US-7: dort lässt sich zweit einschalten
+  await wahl(page, 'zweit', 'an').click();
+  await expect(satz(page, 'zweit')).toHaveText('Auf „zweit“ werden jetzt Transkripte erfasst.');
+});
+
+test('AK 9: derselbe Verweis per Mausklick; an #1 auf fabrik weder Hinweis noch Verweis', async ({ page }) => {
+  await laeufeOeffnen(page, 1, 'fabrik');
+  await expect(page.locator(HINWEIS)).toHaveCount(0);
+  await expect(page.getByRole('link', { name: VERWEIS_NAME })).toHaveCount(0);
+  await laeufeOeffnen(page, 3, 'zweit');
+  await page.locator(HINWEIS).getByRole('link', { name: VERWEIS_NAME }).click();
+  await amAbschnittTranskripte(page);
 });

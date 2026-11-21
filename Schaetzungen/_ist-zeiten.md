@@ -1001,3 +1001,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #218 R00220 | B1135 Veralteter Stand: übrige Schreibwege lassen den Schalter stehen (Probe mit Mutant) | Standard | 0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #218 R00220 | B1136 Wahl und Wirkung je Board, rein | Standard | 0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #218 R00220 | B1137 Abschnitt TRANSKRIPTE zeichnen + B1138 Umschalten (Sperre, Erfolg, Fehler, getrennt vom Entwurf) | Standard | 2-3h | 1,0h | 1,0h | autonom |
+| 2026-11-21 | Karte #218 R00220 | B1139 Verweis „In „Einrichten“ umschalten“ in „Läufe“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

@@ -141,6 +141,8 @@
     if (genannt.length <= 1) return genannt.join('');
     return `${genannt.slice(0, -1).join(', ')} und ${genannt[genannt.length - 1]}`;
   }
+  /** Der Verweis hinter dem Hinweis (R00220 Wortlaut 13). */
+  const LAEUFE_VERWEIS = 'In „Einrichten“ umschalten';
   /** Hinweis bei `erfassen: false` (Wortlaut 12), nur Text. */
   const laeufeHinweisText = boards => `Auf ${boardsText(boards)} werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript.`;
 
@@ -185,7 +187,8 @@
       const erneut = `<button type="button" class="cl-knopf" id="laeufe-erneut"${l.laedt ? ' aria-disabled="true"' : ' data-act="laeufe-lesen"'}>Erneut versuchen</button>`;
       oben = `<div class="cl-meld lf-meld">${ACHTUNG_SYMBOL}<p class="cl-meldtext">${esc(laeufeFehlerText(l.ergebnis.fehler))}</p>${erneut}</div>`;
     }
-    if (liste && l.ergebnis.antwort.erfassen === false) oben += `<p class="lf-hw" role="note">${esc(laeufeHinweisText(l.ergebnis.antwort.boards_aus || []))}</p>`;
+    // R00220 FA 10 (Wortlaut 13): hinter dem Hinweis der Verweis auf den Schalter in „Einrichten“
+    if (liste && l.ergebnis.antwort.erfassen === false) oben += `<p class="lf-hw" role="note">${esc(laeufeHinweisText(l.ergebnis.antwort.boards_aus || []))} <a href="#/einrichten" class="lf-verweis" data-act="transkripte-einrichten">${LAEUFE_VERWEIS}</a></p>`;
     let mitte = '';
     if (zeilen.length) mitte = tabelle;
     else if (liste) mitte = '<div class="cl-leer">An dieser Aufgabe stehen keine Läufe mehr.</div>';

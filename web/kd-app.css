@@ -1746,3 +1746,5 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .ts-z>.ts-seg{justify-self:start}
   .ts-z>.wk{text-align:right}
 }
+/* Verweis aus „Läufe“ auf den Schalter (R00220 FA 10): ein Link, bei grobem Zeiger ein Ziel von 48 px */
+.lf-hw .lf-verweis{display:inline-flex;align-items:center;min-block-size:var(--kd-ziel);color:var(--kd-accent-ink)}

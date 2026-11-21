@@ -336,6 +336,7 @@ async function sichtFolgen({ view, slug, hash, fbFehler }, start) {
   if (view !== vorher && S.ui.vollbild) vollbildSetzen(false);
   if (view !== 'einrichten') { S.ui.einr = null; S.ui.ts = null; }
   else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
+  if (view === 'einrichten' && S.ui.zuTranskripten) { S.ui.zuTranskripten = false; S.ui.fokus = '#transkripte-kopf'; }
   S.ui.slug = slug;
   try { if (slug) localStorage.setItem('kanbanD.board', slug); } catch (_) { }
   if (fbFehler) S.ui.fbFehler = fbFehler;
@@ -3162,6 +3163,14 @@ async function aktion(a, arg, wert) {
         if (!S.ich) { ichNoetig(); break; }
         schalterUmstellen(slug, wahl);
         break;
+      }
+      case 'transkripte-einrichten': {
+        // Verweis aus „Läufe“ (R00220 FA 10, AK 9): „Einrichten“ öffnet am Abschnitt TRANSKRIPTE, der Fokus steht auf dessen
+        // Überschrift — gesetzt erst, wenn die Ansicht steht (sichtFolgen), damit das schließende Fenster ihn nicht zurücknimmt
+        u.zuTranskripten = true;
+        if (location.hash === '#/einrichten') { u.zuTranskripten = false; u.fokus = '#transkripte-kopf'; break; }
+        location.hash = '#/einrichten';
+        return;
       }
       case 'ts-erneut': {
         // „Erneut versuchen“ nur ohne Verbindung (Wortlaut 24): dasselbe PUT noch einmal

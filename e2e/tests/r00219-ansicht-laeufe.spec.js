@@ -186,7 +186,8 @@ test.describe('R00219 Ansicht „Läufe“', () => {
 
   test('AK 5 · US-5: #3 auf „zweit“ trägt den Hinweis über der Liste und die Zeile „kein Transkript abgelegt“; #1 keinen Hinweis', async ({ page }) => {
     await laeufeOeffnen(page, 3, 'zweit');
-    await expect(page.locator(HINWEIS)).toHaveText('Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript.');
+    // seit R00220 FA 10 steht hinter dem Satz der Verweis „In „Einrichten“ umschalten“
+    await expect(page.locator(HINWEIS)).toHaveText('Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript. In „Einrichten“ umschalten');
     const reihenfolge = await page.locator(`${ANSICHT_LAEUFE} [role="note"], ${ANSICHT_LAEUFE} .lf-rahmen`).evaluateAll(e => e.map(x => x.className));
     expect(reihenfolge).toEqual(['lf-hw', 'lf-rahmen']);
     const zeilen = await alleZellen(page);
@@ -207,7 +208,7 @@ test.describe('R00219 Ansicht „Läufe“', () => {
         await route.fulfill({ response: antwort, json: { ...(await antwort.json()), boards_aus: boards } });
       });
       await laeufeOeffnen(page, 3, 'zweit');
-      await expect(page.locator(HINWEIS)).toHaveText(text);
+      await expect(page.locator(HINWEIS)).toHaveText(`${text} In „Einrichten“ umschalten`);
     });
   }
 

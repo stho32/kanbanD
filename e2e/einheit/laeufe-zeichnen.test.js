@@ -121,7 +121,8 @@ test('Hinweis bei erfassen: false — ein, zwei, drei Boards in Reihenfolge der 
 
 test('Hinweis steht als role="note" über der Liste nur bei erfassen: false', () => {
   const html = laeufeAnsichtHtml(liste({ erfassen: false, boards_aus: ['zweit'] }), KOSTEN, esc);
-  assert.match(html, /<p class="lf-hw" role="note">Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript\.<\/p><div class="lf-rahmen" id="lf-insel">/);
+  // R00220 FA 10: hinter dem Hinweis steht der Verweis auf den Schalter in „Einrichten“
+  assert.match(html, /<p class="lf-hw" role="note">Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript\. <a href="#\/einrichten" class="lf-verweis" data-act="transkripte-einrichten">In „Einrichten“ umschalten<\/a><\/p><div class="lf-rahmen" id="lf-insel">/);
   assert.doesNotMatch(laeufeAnsichtHtml(liste(), KOSTEN, esc), /role="note"/);
 });
 
