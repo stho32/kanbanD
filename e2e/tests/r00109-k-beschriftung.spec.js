@@ -1,10 +1,9 @@
 // R00109 Feldbeschriftung — Härtung #123 (Karte #123, PO-Freigabe Artboard #104): die nackte `.felder .k`-Beschriftung trägt die
 // gezeichnete Darstellung — Plex Sans 500, 12/16, --kd-text (D0003 `#beschriftung-schluessel`, `#geschaetzt-im-fenster`;
-// R00109 Z. 183). Nicht mehr Mono/--kd-muted. Geprüft im Reiter „Details“ (Zeichnung samt Schlüssel `.sl`), an der Basisregel
-// außerhalb dieses Reiters (WBS „Neuer Knoten“) und in „Neue Aufgabe“; dazu die Werte `.w`/`.w.mono` und die Feldzeilen-Abstände.
+// R00109 Z. 183). Nicht mehr Mono/--kd-muted. Geprüft im Reiter „Details“ (Zeichnung samt Schlüssel `.sl`) und in „Neue Aufgabe“;
+// dazu die Werte `.w`/`.w.mono` und die Feldzeilen-Abstände.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, reiter, thema, kontrastMessen, kontrastFarben } = require('./hilfen');
-const { zeile, arbeitsRepository: repository, mitRegister } = require('./wbs-hilfen');
 
 const THEMEN = ['light', 'dark'];
 /** Die Zeichnung (PO #104): Plex Sans, 500, 12/16, --kd-text. Der Schlüssel `.sl` bleibt Mono 10,5/14 --kd-muted. */
@@ -16,11 +15,6 @@ const GRUND = {
   'boards/fabrik.md': '# fabrik\n\n## Eingang\n\n- #1\n\n## Fertig\n',
   'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\nkey: shop/nc-304\nestimate: 150\ndue: 2026-11-20\norigins: [I0023]\nassignees: [st, cl]\nlabels: [zeit]\n---\n',
 };
-
-const WBS = '---\napplication: kanbanD\n---\n\n# WBS\n\n| ID | Ebene | Eltern | Name | Status | Fertig-Kriterium | Eingabe → Ausgabe | Aufwand | Ausbaustufe | Braucht | Requirement | Notiz | Phase |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|\n'
-  + zeile('A0001', 'Application', '—', 'kanbanD', 'gelb', { fertig: 'alle Dialogs gruen' })
-  + zeile('D0001', 'Dialog', 'A0001', 'Board', 'gelb', { req: 'R00001' })
-  + zeile('I0001', 'Interaction', 'D0001', 'Ansehen', 'gruen', { fertig: 'US-1', req: 'R00001' });
 
 /** Die Farbe eines Tokens, wie der Browser sie für `color` auflöst. */
 const tokenFarbe = (page, token) => page.evaluate(w => {
@@ -70,8 +64,7 @@ test.describe('R00109/Härtung #123 Feldbeschriftung im Reiter „Details“', (
       const textfarbe = await tokenFarbe(page, '--kd-text');
       const zeilen = await beschriftungen(page, '.felder-details > .k, .felder-details > .kb > .k');
       zeichnungPruefen(zeilen, textfarbe, t);
-      // R00155 #87: „Schlüssel“ und „Zählt in Berichten“ tragen jetzt den Schlüssel der Datei; die nackte Fassung der
-      // Zeichnung prüft der Block „außerhalb von Details“ (WBS „Neuer Knoten“)
+      // R00155 #87: „Schlüssel“ und „Zählt in Berichten“ tragen den Schlüssel der Datei
       const mitSchluessel = zeilen.filter(z => !z.nackt).map(z => z.text);
       expect(mitSchluessel, `${t}: beide Beschriftungen sind da, mit Schlüssel`).toEqual(expect.arrayContaining(['Schlüssel', 'Zählt in Berichten']));
       expect(mitSchluessel.length, `${t}: Feldzeilen mit Schlüssel`).toBeGreaterThanOrEqual(9);
@@ -137,5 +130,27 @@ test.describe('R00109/Härtung #123 Feldbeschriftung im Reiter „Details“', (
     expect(masse.w.familie, '.w bleibt Sans').toContain('IBM Plex Sans');
     expect(masse.zeile, 'Zeile mit Schlüssel mindestens 38 px').toBeGreaterThanOrEqual(MASSE.zeileMitSchluessel);
     expect(masse.polster, '.kb bleibt 4 px oben und unten').toBe('4px/4px');
+  });
+});
+
+test.describe('R00109/Härtung #123 die Feldzeilen von „Neue Aufgabe“', () => {
+  let k;
+  test.afterEach(() => k?.stoppen());
+
+  test('Härtung #123: die Feldzeilen des Dialogs „Neue Aufgabe“ behalten die Zeichnung (Schlüssel bleibt Hilfstext)', async ({ page }) => {
+    k = await kanbanStarten(einrichten(GRUND));
+    await alsPerson(page, 'st');
+    await page.goto(k.adresse + '#/board/fabrik');
+    await page.locator('.ka[data-id="1"]').waitFor();
+    await page.keyboard.press('n');
+    const dialog = page.getByRole('dialog', { name: 'Neue Aufgabe' });
+    await expect(dialog).toBeVisible();
+    for (const t of THEMEN) {
+      await thema(page, t);
+      const textfarbe = await tokenFarbe(page, '--kd-text');
+      const zeilen = await beschriftungen(page, '[role="dialog"][aria-label="Neue Aufgabe"] .felder .kb > .k');
+      expect(zeilen.length, `${t}: Feldzeilen mit Schlüssel`).toBeGreaterThanOrEqual(5);
+      zeichnungPruefen(zeilen, textfarbe, `${t} „Neue Aufgabe“`);
+    }
   });
 });
