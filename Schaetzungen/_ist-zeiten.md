@@ -993,3 +993,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #220 R00218 | B1123 Ansicht „Commits“: mittlere Form 641–1099 px | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1119 Suchen am Eintrag: Knopf, lädt, Ergebnis, Fehler, Ansichtswechsel | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1120 Ersetzen und Entfernen über den Schreibweg | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-21 | Karte #220 R00218 | B1121 Breite, Ziele, Themen, Kontrast und Tastatur messen und nachziehen | Standard | 1-2h | 0,3h | 0,3h | autonom |

@@ -2,7 +2,7 @@
 // AK 12 (mittlere Form der Liste ohne Suche) läuft auf der Ausgangslage von R00205 (commits-hilfen.js, Breitendaten an #4 und #3);
 // AK 7–11, 13 auf der Ausgangslage von R00218 (nachfolger-hilfen.js).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, liveBereit, breiteSetzen, reiter, thema, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, liveBereit, breiteSetzen, reiter, thema, mutanteEinsetzen, kontrastMessen, kontrastFarben, kontrastAm } = require('./hilfen');
 const { geteiltesRepository, ausgangslageVorbereiten } = require('./commits-hilfen');
 
 const PANEL = '#fenster .mod-body[aria-label="Ansicht: Commits"]';
@@ -647,5 +647,192 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     await expect(zeileMit(page, kurz(rep.k2))).toHaveCount(1);
     expect(verweiseDerDatei(1)[0]).toBe(`kd:${rep.k2}`);
     expect(zahl()).toBe(vorher + 1);
+  });
+});
+
+
+/* ── AK 11: Breite, Themen, Kontrast und Tastatur — 10 Kandidaten per page.route (Titel 500 Zeichen mit einem Wort aus 120, je 10 Zweige zu 60,
+   Kandidat 4 an der Karte) ── */
+test.describe('R00218 AK 11 — Breite, Ziele, Themen, Kontrast, Tastatur', () => {
+  let k, rep;
+  const WORT = 'W'.repeat(120);
+  const titel = i => (`Titel ${i} ` + WORT + ' ').padEnd(500, 'x y ');
+  const zweige = i => Array.from({ length: 10 }, (_, z) => `zweig-${i}-${z}-`.padEnd(60, 'q'));
+  test.beforeEach(async ({ page }) => {
+    await mutanteEinsetzen(page);
+    rep = geteiltesNachfolgerRepository().rep;
+    k = await kanbanStarten(nachfolgerVorbereiten(rep));
+    await alsPerson(page, 'sh');
+    await zehnKandidaten(page);
+  });
+  const zehnKandidaten = seite => seite.route(/\/api\/aufgaben\/1\/commits\/[^/]+\/nachfolger$/, async route => {
+    const echt = await (await route.fetch()).json();
+    const kandidaten = Array.from({ length: 10 }, (_, i) => ({ ...echt.kandidaten[0], verweis: `kd:${String(i).repeat(40)}`, hash: String(i).repeat(40), titel: titel(i), zweige: zweige(i), entfernte_zweige: [], an_der_karte: i === 3 }));
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...echt, kandidaten }) });
+  });
+  test.afterEach(() => k.stoppen());
+
+  async function gesucht(page) {
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await liveBereit(page);
+    await reiter(page, 'Commits');
+    await expect(page.locator(ZEILEN)).toHaveCount(2);
+    await zeileMit(page, kurz(rep.k)).getByRole('button', { name: 'Nachfolger suchen' }).click();
+    await expect(page.locator('#nf-gruppe .nf-k')).toHaveCount(10);
+  }
+  /** Läuft im Browser: je Kandidat die Rechtecke von Block, Hash, Titel, Autor, Knopf. */
+  const kandidatenMessen = () => [...document.querySelectorAll('#nf-gruppe .nf-k')].map(k => {
+    const r = sel => { const b = (sel ? k.querySelector(sel) : k).getBoundingClientRect(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, width: b.width }; };
+    return { block: r(null), hash: r('.nf-h'), titel: r('.nf-t'), autor: r('.nf-a'), datum: r('.nf-d'), zweige: r('.nf-z'), knopf: r('.nf-akt button') };
+  });
+
+  for (const farbe of ['hell', 'dunkel']) {
+    for (const breite of [320, 414, 641, 768, 980, 1100, 1280]) {
+      test(`AK 11: ${breite} px ${farbe} — nichts scrollt quer, Titel ${breite >= 641 ? '≥ 200 px' : 'über die ganze Breite'}, Knopf im Block`, async ({ page }) => {
+        await gesucht(page);
+        await thema(page, farbe === 'hell' ? 'light' : 'dark');
+        await breiteSetzen(page, breite);
+        expect(await page.evaluate(ueberlaufMessen)).toEqual({ seite: 'ok', fenster: 'ok', rahmen: 'ok', rechts: [] });
+        for (const [i, m] of (await page.evaluate(kandidatenMessen)).entries()) {
+          if (breite >= 641) expect(m.titel.width, `${breite} Kandidat ${i}: Titel`).toBeGreaterThanOrEqual(200);
+          else expect(m.titel.width, `${breite} Kandidat ${i}: Titel über den Block`).toBeGreaterThanOrEqual(m.block.width - 2 * 12 - 2);
+          expect(m.knopf.left, `${breite} Kandidat ${i}: Knopf links im Block`).toBeGreaterThanOrEqual(m.block.left - 0.5);
+          expect(m.knopf.right, `${breite} Kandidat ${i}: Knopf rechts im Block`).toBeLessThanOrEqual(m.block.right + 0.5);
+          if (breite >= 641 && breite <= 980) {
+            expect(m.titel.left, 'mittel: Titel rechts vom Hash').toBeGreaterThanOrEqual(m.hash.right - 0.5);
+            expect(Math.abs(m.titel.top - m.hash.top), 'mittel: Titel neben dem Hash').toBeLessThanOrEqual(3);
+            expect(m.autor.top, 'mittel: Autor · Datum unter dem Titel').toBeGreaterThanOrEqual(m.titel.bottom - 1);
+            expect(m.zweige.top, 'mittel: Zweige darunter').toBeGreaterThanOrEqual(m.autor.bottom - 1);
+            expect(m.knopf.top, 'mittel: Knopf darunter').toBeGreaterThanOrEqual(m.zweige.bottom - 1);
+          }
+          if (breite >= 1100) {
+            expect(Math.abs(m.autor.top - m.titel.top), 'breit: Autor in der Reihe des Titels').toBeLessThanOrEqual(3);
+            expect(m.autor.left, 'breit: Autor in seiner Spalte rechts vom Titel').toBeGreaterThanOrEqual(m.titel.right - 0.5);
+          }
+        }
+      });
+    }
+  }
+
+  test('AK 11: die mittlere Form hängt nur an der Breite — bei 768 px fein und grob dieselbe Reihenfolge und dieselben linken Kanten von Hash, Titel und Knopf', async ({ browser }) => {
+    const lage = async optionen => {
+      const kontext = await browser.newContext({ viewport: { width: 768, height: 900 }, locale: 'de-DE', timezoneId: 'Europe/Berlin', ...optionen });
+      try {
+        const seite = await kontext.newPage();
+        await alsPerson(seite, 'sh');
+        await zehnKandidaten(seite);
+        await gesucht(seite);
+        const m = (await seite.evaluate(kandidatenMessen))[0];
+        return { grob: await seite.evaluate(() => matchMedia('(pointer: coarse)').matches), reihe: m.titel.top < m.autor.top && m.autor.top < m.knopf.top, links: [m.hash.left, m.titel.left, m.knopf.left].map(Math.round) };
+      } finally { await kontext.close(); }
+    };
+    const fein = await lage({}), grob = await lage({ isMobile: true, hasTouch: true });
+    expect([fein.grob, grob.grob]).toEqual([false, true]);
+    expect(fein.reihe && grob.reihe).toBe(true);
+    expect(grob.links).toEqual(fein.links);
+  });
+
+  test.describe('grober Zeiger', () => {
+    test.use({ viewport: { width: 768, height: 900 }, isMobile: true, hasTouch: true });
+    test('AK 11: bei grobem Zeiger ist jedes Bedienziel ≥ 48 × 48 px bei 768, 414 und 320 px — „Nachfolger suchen“, „Ersetzen“, „Verwaisten Verweis entfernen“, „+n weitere“, „Erneut versuchen“', async ({ page }) => {
+      await gesucht(page);
+      expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+      for (const breite of [768, 414, 320]) {
+        await breiteSetzen(page, breite);
+        const ziele = await page.evaluate(() => [...document.querySelectorAll('#fenster .nf-such, #nf-gruppe .nf-knopf, #nf-gruppe .cl-mehr')].map(e => { const r = e.getBoundingClientRect(); return [e.textContent.trim().slice(0, 30), r.width, r.height]; }));
+        expect(ziele.length).toBeGreaterThanOrEqual(21);
+        for (const [name, b, h] of ziele) {
+          expect(b, `${breite}: ${name}`).toBeGreaterThanOrEqual(47.5);
+          expect(h, `${breite}: ${name}`).toBeGreaterThanOrEqual(47.5);
+        }
+      }
+      await page.unroute(/nachfolger$/);
+      await page.route(/nachfolger$/, route => route.fulfill({ status: 503, contentType: 'application/json', body: '{"fehler":"x"}' }));
+      await zeileMit(page, kurz(rep.k)).getByRole('button', { name: 'Nachfolger suchen' }).click();
+      const erneut = page.locator('#nf-gruppe').getByRole('button', { name: 'Erneut versuchen' });
+      const [b, h] = await erneut.evaluate(e => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
+      expect(b).toBeGreaterThanOrEqual(47.5);
+      expect(h).toBeGreaterThanOrEqual(47.5);
+    });
+  });
+
+  for (const farbe of ['hell', 'dunkel']) {
+    test(`AK 11: ${farbe} — Text ≥ 4,5:1 in Ruhe, beim Zeigen und mit Fokus; Fokusring ≥ 3:1; Knopfrand ist --kd-line-strong`, async ({ page }) => {
+      await gesucht(page);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      const zuWenig = m => m.filter(x => x.wert < 4.5).map(x => `${x.element} „${String(x.text).slice(0, 30)}“ ${x.wert.toFixed(2)}`);
+      const messungen = await kontrastMessen(page, ['#fenster .cl-panel']);
+      expect(messungen.length).toBeGreaterThanOrEqual(30);
+      expect(zuWenig(messungen), 'Ruhe').toEqual([]);
+      const knopf = page.locator('#nf-gruppe .nf-knopf').first();
+      await knopf.hover();
+      expect(await kontrastAm(knopf), 'Zeigen').toBeGreaterThanOrEqual(4.5);
+      await knopf.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      expect(await kontrastAm(knopf), 'Fokus').toBeGreaterThanOrEqual(4.5);
+      const ring = await knopf.evaluate(e => { const st = getComputedStyle(e); let g = e.parentElement; while (g && getComputedStyle(g).backgroundColor === 'rgba(0, 0, 0, 0)') g = g.parentElement; return { ring: st.outlineColor, breite: st.outlineWidth, stil: st.outlineStyle, grund: getComputedStyle(g).backgroundColor, rand: st.borderTopColor, linie: getComputedStyle(document.documentElement).getPropertyValue('--kd-line-strong').trim() }; });
+      expect(ring.stil).not.toBe('none');
+      expect(await kontrastFarben(page, ring.ring, ring.grund), 'Fokusring').toBeGreaterThanOrEqual(3);
+      expect(await kontrastFarben(page, ring.rand, ring.linie), 'Knopfrand = --kd-line-strong').toBeLessThan(1.01);
+    });
+
+    test(`AK 11: ${farbe} — gesperrte Auslöser in der Form nach Z. 216 (Schrift --kd-faint, Kontur --kd-line, Fläche bleibt) mit ungedämpftem Fokusring ≥ 3:1`, async ({ page }) => {
+      await gesucht(page);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      let frei; const tor = new Promise(r => { frei = r; });
+      await page.route('**/api/aufgaben/1/commits/ersetzen', async route => { await tor; await route.fulfill({ status: 409, contentType: 'application/json', body: '{"fehler":"x"}' }); });
+      const ruhe = await page.locator('#nf-gruppe .nf-knopf').nth(1).evaluate(e => getComputedStyle(e).backgroundColor);
+      await page.locator('#nf-gruppe .nf-knopf').first().click();
+      const gesperrt = page.locator('#nf-gruppe .nf-knopf').nth(1);
+      await expect(gesperrt).toHaveAttribute('aria-disabled', 'true');
+      const werte = await gesperrt.evaluate(e => { const st = getComputedStyle(e), wurzel = getComputedStyle(document.documentElement); const farbe = n => { const p = document.createElement('i'); p.style.color = `var(${n})`; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }; return { schrift: st.color, rand: st.borderTopColor, flaeche: st.backgroundColor, faint: farbe('--kd-faint'), line: farbe('--kd-line') }; });
+      expect(werte.schrift).toBe(werte.faint);
+      expect(werte.rand).toBe(werte.line);
+      expect(werte.flaeche).toBe(ruhe);
+      await page.locator('#nf-gruppe .nf-knopf').first().focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab');
+      const fokus = await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); let g = e.parentElement; while (g && getComputedStyle(g).backgroundColor === 'rgba(0, 0, 0, 0)') g = g.parentElement; return { ring: st.outlineColor, stil: st.outlineStyle, grund: getComputedStyle(g).backgroundColor, gesperrt: e.getAttribute('aria-disabled'), opacity: st.opacity }; });
+      expect(fokus.gesperrt).toBe('true');
+      expect(fokus.stil).not.toBe('none');
+      expect(fokus.opacity).toBe('1');
+      expect(await kontrastFarben(page, fokus.ring, fokus.grund)).toBeGreaterThanOrEqual(3);
+      frei();
+    });
+  }
+
+  test('AK 11: Tab erreicht „Nachfolger suchen“, danach je Kandidat „+n weitere“ und seinen Knopf; Enter und Leertaste lösen aus; nach der Suche Fokus auf der Gruppe', async ({ page }) => {
+    await page.unroute(/nachfolger$/);
+    await page.route(/nachfolger$/, async route => {
+      const echt = await (await route.fetch()).json();
+      const kandidaten = [0, 1].map(i => ({ ...echt.kandidaten[0], verweis: `kd:${String(i).repeat(40)}`, hash: String(i).repeat(40), zweige: zweige(i).slice(0, i ? 3 : 5) }));
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...echt, kandidaten }) });
+    });
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await liveBereit(page);
+    await reiter(page, 'Commits');
+    const such = zeileMit(page, kurz(rep.k)).getByRole('button', { name: 'Nachfolger suchen' });
+    await such.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#nf-gruppe')).toBeFocused();
+    await expect(page.locator('#nf-gruppe')).toHaveAttribute('role', 'group');
+    const reihe = [];
+    await such.focus();
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.press('Tab');
+      reihe.push(await page.evaluate(() => document.activeElement.getAttribute('aria-label') || document.activeElement.textContent.trim()));
+    }
+    expect(reihe).toEqual(['2 weitere Zweige zeigen', 'Ersetzen durch kd:0000000', 'Ersetzen durch kd:1111111', reihe[3]]);
+    await such.focus();
+    await page.keyboard.press(' ');
+    await expect(page.locator('#nf-gruppe')).toBeFocused();
+    await page.locator('#nf-gruppe').getByRole('button', { name: '2 weitere Zweige zeigen' }).focus();
+    await page.keyboard.press(' ');
+    await expect(page.locator('#nf-gruppe').getByRole('button', { name: '2 weitere Zweige verbergen' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#nf-gruppe').getByRole('button', { name: '2 weitere Zweige zeigen' })).toBeFocused();
   });
 });
