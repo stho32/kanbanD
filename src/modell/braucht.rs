@@ -267,8 +267,9 @@ mod tests {
     #[test]
     fn kreis_suche_linear_in_den_neuen_kanten() {
         const N: u32 = 20_000;
-        let kette = |rueck: bool| -> (BTreeMap<u32, Vec<u32>>, Vec<(u32, u32)>) {
-            let mut kanten: BTreeMap<u32, Vec<u32>> = (1..N).map(|i| (i, vec![i + 1])).collect();
+        type Kanten = BTreeMap<u32, Vec<u32>>;
+        let kette = |rueck: bool| -> (Kanten, Vec<(u32, u32)>) {
+            let mut kanten: Kanten = (1..N).map(|i| (i, vec![i + 1])).collect();
             let mut neue: Vec<(u32, u32)> = (1..N).map(|i| (i, i + 1)).collect();
             if rueck {
                 kanten.insert(N, vec![N - 1]);
@@ -305,7 +306,7 @@ mod tests {
             for _ in 0..naechste(3 * knoten as u64) {
                 let (a, b) = (1 + naechste(knoten as u64) as u32, 1 + naechste(knoten as u64 + 1) as u32);
                 let liste = kanten.entry(a).or_default();
-                if a != b && !liste.iter().any(|&x| x == b) {
+                if a != b && !liste.contains(&b) {
                     liste.push(b);
                     if naechste(2) == 0 {
                         neue.push((a, b));
