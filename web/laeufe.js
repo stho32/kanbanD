@@ -67,6 +67,14 @@
     return [...datiert, ...undatiert];
   }
 
+  /** Hat sich die Menge der Kennungen in `a.transkripte` gegenüber dem Stand beim letzten Lesen geändert (FA 7, ADR-0039 L2)?
+      Nur dann liest die Ansicht nach einem Live-Ereignis neu — Kommentar, Timer oder Kosten ändern sie nicht. */
+  function kennungsmengeGeaendert(transkripteDerAufgabe, kennungenBeimLesen) {
+    const jetzt = new Set(transkripteDerAufgabe.map(t => t.kennung));
+    const damals = new Set(kennungenBeimLesen);
+    return jetzt.size !== damals.size || [...jetzt].some(k => !damals.has(k));
+  }
+
   /* ── Zeichnen (R00219 FA 3–8, Zeichnung D0009 `#laeufe`): HTML-Text aus dem Zustand der Ansicht. ── */
 
   /** Bidi-Steuerzeichen (U+202A–202E, U+2066–2069) aus fremdem Text, wie in commits.js. */
@@ -178,5 +186,5 @@
     return `<div class="mod-main lf-panel">${kopf}${oben}${mitte}${fuss}</div>`;
   }
 
-  Object.assign(ziel, { laeufe, laeufeAnsichtHtml, hinweisText, fehlerText, statusText });
+  Object.assign(ziel, { laeufe, kennungsmengeGeaendert, laeufeAnsichtHtml, hinweisText, fehlerText, statusText });
 })(typeof module !== 'undefined' ? module.exports : window);

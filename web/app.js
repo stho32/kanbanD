@@ -956,22 +956,27 @@ function commitsStatusBehalten(vorher) {
   vorher.textContent = neu.textContent;
 }
 
-/* ── Ansicht „Läufe“ (R00219, ADR-0039): gelesen wird beim Öffnen der Ansicht ── */
+/* ── Ansicht „Läufe“ (R00219, ADR-0039 L2): gelesen wird beim Öffnen, über „Neu lesen“ / „Erneut versuchen“ und genau einmal,
+   wenn sich die Menge der Kennungen in `a.transkripte` nach einem Live-Ereignis ändert; Kosten zeichnen ohne Lesen ── */
+const LAEUFE_KNOTEN = ['laeufe-status', 'laeufe-neu', 'laeufe-erneut'];
 
-/** Vor jedem Zeichnen: ist „Läufe“ die gezeigte Ansicht und für diese Aufgabe noch nichts gelesen, beginnt das Lesen jetzt;
-    ist es nicht die gezeigte Ansicht, fällt der Zustand weg — das nächste Öffnen liest neu. */
+/** Vor jedem Zeichnen: ist „Läufe“ die gezeigte Ansicht, liest sie, wenn für diese Aufgabe noch nichts gelesen ist oder die
+    Kennungsmenge seit dem letzten Lesen eine andere ist; ist es nicht die gezeigte Ansicht, fällt der Zustand weg. */
 function laeufeAnstossen() {
   const nr = S.ui.offen, a = nr && aufgabe(nr);
   if (!a || ansichtDerAufgabe(a) !== 'laeufe') { S.ui.laeufe = null; return; }
-  if (S.ui.laeufe && S.ui.laeufe.nr === nr) return;
+  const l = S.ui.laeufe;
+  if (l && l.nr === nr && !kennungsmengeGeaendert(a.transkripte || [], l.kennungen)) return;
   laeufeLesen(nr);
 }
 
 /** Liest `GET /api/aufgaben/{nr}/transkripte`. Bis zur Antwort bleibt das letzte Ergebnis stehen; die Antwort gilt nur, wenn
-    die Aufgabe noch dieselbe offen, „Läufe“ noch die gezeigte Ansicht und dieses Lesen das neueste ist (ADR-0014). */
+    dieses Lesen das neueste ist, die Aufgabe noch dieselbe offen und „Läufe“ noch die gezeigte Ansicht (ADR-0014). Der Fokus
+    wandert nur von „Erneut versuchen“ nach einem Erfolg auf „Neu lesen“ — und nur, wenn er beim Eintreffen noch dort liegt. */
 async function laeufeLesen(nr) {
   const vorher = S.ui.laeufe && S.ui.laeufe.nr === nr ? S.ui.laeufe : null;
-  const lauf = S.ui.laeufe = { nr, laedt: true, ergebnis: vorher ? vorher.ergebnis : null };
+  const kennungen = (aufgabe(nr).transkripte || []).map(t => t.kennung);
+  const lauf = S.ui.laeufe = { nr, laedt: true, kennungen, ergebnis: vorher ? vorher.ergebnis : null };
   let ergebnis;
   try {
     ergebnis = { art: 'liste', antwort: await api('GET', `/api/aufgaben/${nr}/transkripte`), stand: uhr(Date.now()) };
@@ -980,8 +985,23 @@ async function laeufeLesen(nr) {
   }
   const a = S.ui.offen === nr && aufgabe(nr);
   if (S.ui.laeufe !== lauf || !a || ansichtDerAufgabe(a) !== 'laeufe') return;
-  S.ui.laeufe = { nr, laedt: false, ergebnis };
+  S.ui.laeufe = { ...lauf, laedt: false, ergebnis };
+  const aufErneut = document.activeElement && document.activeElement.id === 'laeufe-erneut';
+  if (aufErneut && ergebnis.art === 'liste') S.ui.fokus = '#laeufe-neu';
   render();
+}
+
+/** Statusbereich, „Neu lesen“ und „Erneut versuchen“ bleiben beim Neuzeichnen dieselben Knoten (R00219 AK 10): sie übernehmen
+    nur Attribute und Inhalt des neu gezeichneten Knotens. So sagt der Statusbereich nur eine Änderung an, und der Fokus bleibt. */
+function laeufeKnotenBehalten(vorher) {
+  for (const alt of vorher) {
+    const neu = document.getElementById(alt.id);
+    if (!neu || neu === alt) continue;
+    for (const name of alt.getAttributeNames()) if (!neu.hasAttribute(name)) alt.removeAttribute(name);
+    for (const name of neu.getAttributeNames()) if (alt.getAttribute(name) !== neu.getAttribute(name)) alt.setAttribute(name, neu.getAttribute(name));
+    if (alt.innerHTML !== neu.innerHTML) alt.innerHTML = neu.innerHTML;
+    neu.replaceWith(alt);
+  }
 }
 
 /** „i von n“ der Review-Seite bleibt derselbe Knoten (`aria-live`, R00207 FA 3): nur so sagt ein Bildschirmleser den Schritt an. */
@@ -2160,6 +2180,7 @@ function render() {
   const meldungVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(FENSTER_MELDUNG) : null;
   const tagVorher = document.getElementById(PERSONEN_TAG);
   const commitsStatusVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(COMMITS_STATUS) : null;
+  const laeufeKnotenVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? LAEUFE_KNOTEN.map(id => document.getElementById(id)).filter(Boolean) : [];
   const personenwahlVorher = document.getElementById(PERSONENWAHL);
   const inselAlt = document.getElementById('rv-insel');
   inselGehalten = inselAlt && inselAlt.dataset.insel === reviewInselSchluessel() ? inselAlt : null;
@@ -2180,6 +2201,7 @@ function render() {
     meldungsknotenBehalten(meldungVorher);
     datumsknotenBehalten(tagVorher);
     commitsStatusBehalten(commitsStatusVorher);
+    laeufeKnotenBehalten(laeufeKnotenVorher);
     ansageBehalten(reviewPosVorher, 'rv-pos');
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
   } finally {
@@ -2936,6 +2958,12 @@ async function aktion(a, arg, wert) {
         // `geschlossen.rueckgabe` trägt den Auslöser, der das Menü geöffnet hat (ADR-0010, R00145 FA 7).
         // Verlauf (R00123): beim Öffnen leeren und laden — nie Zeilen der vorigen Aufgabe
         if (arg === 'verlauf') { u.verlauf = null; u.verlaufFehler = null; render(); await dateiLaden(); }
+        break;
+      }
+      case 'laeufe-lesen': {
+        // „Neu lesen“ und „Erneut versuchen“ (R00219 FA 7/8): beim Lesen ohne Wirkung, sonst genau ein weiteres Lesen; der Fokus bleibt
+        if (!u.laeufe || u.laeufe.laedt) break;
+        laeufeLesen(u.offen);
         break;
       }
       case 'commits-lesen': {

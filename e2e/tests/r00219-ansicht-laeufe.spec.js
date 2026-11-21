@@ -37,6 +37,47 @@ function zaehlen(page, nr) {
   return aufrufe;
 }
 
+/** Hält jedes `GET …/transkripte` der Aufgabe `nr`, bis `freigeben(wie)` es beantwortet: `'weiter'` (Server), eine Zahl (Fehler mit
+ *  diesem Status und `{fehler}`) oder `'abbruch'` (keine Verbindung). `anzahl()` zählt die gesendeten Aufrufe. */
+async function anhalten(page, nr) {
+  const wartend = [];
+  let anzahl = 0;
+  await page.route(`**/api/aufgaben/${nr}/transkripte`, async route => {
+    if (route.request().method() !== 'GET') return route.continue();
+    anzahl++;
+    const wie = await new Promise(r => wartend.push(r));
+    if (wie === 'weiter') return route.continue();
+    if (wie === 'abbruch') return route.abort('connectionrefused');
+    return route.fulfill({ status: wie, json: { fehler: 'Dienst nicht verfügbar' } });
+  });
+  return {
+    anzahl: () => anzahl,
+    gehalten: () => wartend.length,
+    /** Beantwortet das gehaltene Lesen an Stelle `welches` (0 = das älteste). */
+    freigeben: async (wie = 'weiter', welches = 0) => {
+      await expect.poll(() => wartend.length, 'ein Lesen ist gehalten').toBeGreaterThan(welches);
+      wartend.splice(welches, 1)[0](wie);
+    },
+  };
+}
+/** Gibt eine gehaltene Antwort frei und wartet, bis die Seite sie hat und ein Bild gezeichnet ist — erst danach prüft eine Verneinung. */
+async function spaetBeantwortet(page, nr, freigeben) {
+  const angekommen = page.waitForResponse(r => new URL(r.url()).pathname === `/api/aufgaben/${nr}/transkripte`);
+  await freigeben();
+  await (await angekommen).finished();
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.waitForFunction(() => window.kdTest.gezeichnet());
+}
+const FEHLER_503 = 'Die Läufe ließen sich nicht lesen: Dienst nicht verfügbar (503).';
+const OHNE_VERBINDUNG = 'Die Läufe ließen sich nicht lesen: keine Verbindung zum Programm.';
+const STATUS_FEHLER = 'Die Läufe ließen sich nicht lesen.';
+const KOSTENZEILEN_BEI_FEHLER = [
+  ['20.11.2026 12:00', 'entwicklertester', 'Entwicklertest', '0,30 $', 'Transkript nicht gelesen'],
+  ['20.11.2026 10:00', 'entwickler', 'Reviews', '1,80 $', 'Transkript nicht gelesen'],
+  ['20.11.2026 09:00', 'planer', 'Detailplanung', '0,42 $', 'Transkript nicht gelesen'],
+  ['20.11.2026 08:00', 'architekt', 'Architektur', '0,55 $', 'Transkript nicht gelesen'],
+];
+
 test.describe('R00219 Ansicht „Läufe“', () => {
   let k;
   test.beforeEach(async ({ page }) => {
@@ -207,4 +248,296 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     await expect(page.locator(ZEILEN)).toHaveCount(1000);
     expect(gelesen).toHaveLength(1);
   });
+
+  /* ── AK 6 Live und genau ein Lesen ── */
+
+  const MELDUNG = `${ANSICHT_LAEUFE} .lf-meld`;
+  const NEU = '#laeufe-neu';
+  const ERNEUT = '#laeufe-erneut';
+  /** Öffnet „Läufe“ an `nr` mit gehaltenem Lesen und gibt das erste Lesen frei (`wie`). */
+  async function gehaltenOeffnen(page, nr = 1, wie = 'weiter', board = 'fabrik') {
+    const h = await anhalten(page, nr);
+    await oeffnen(page, nr, board);
+    await reiter(page, 'Läufe');
+    await h.freigeben(wie);
+    await expect(page.locator(STATUS)).not.toHaveText('Liest die Läufe …');
+    return h;
+  }
+  const zeileVon = (page, rolle) => page.locator(ZEILEN).filter({ has: page.locator('.lf-ro', { hasText: new RegExp(`^${rolle}$`) }) });
+
+  test('AK 6: beim Öffnen genau ein GET …/transkripte, „Neu lesen“ genau ein weiteres', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await expect(page.locator(ZEILEN)).toHaveCount(6);
+    expect(h.anzahl()).toBe(1);
+    await page.locator(NEU).click();
+    await h.freigeben();
+    await expect(page.locator(STATUS)).toHaveText(/^6 Läufe · Stand /);
+    expect(h.anzahl()).toBe(2);
+  });
+
+  for (const breite of [320, 1280]) {
+    test(`AK 6: erstes Öffnen bei ${breite} px — solange gehalten, keine Zeile und keine Meldung, „Liest die Läufe …“, „Neu lesen“ gesperrt; danach sechs Zeilen`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 900 });
+      const h = await anhalten(page, 1);
+      await oeffnen(page);
+      await reiter(page, 'Läufe');
+      await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+      await expect(page.locator(NEU)).toHaveAttribute('aria-disabled', 'true');
+      await expect(page.locator(ZEILEN)).toHaveCount(0);
+      await expect(page.locator(MELDUNG)).toHaveCount(0);
+      await expect(page.locator(`${ANSICHT_LAEUFE} .cl-leer`)).toHaveCount(0);
+      await h.freigeben();
+      await expect(page.locator(ZEILEN)).toHaveCount(6);
+      await expect(page.locator(NEU)).not.toHaveAttribute('aria-disabled', 'true');
+    });
+  }
+
+  test('AK 6 · US-3: bucht entw1 für L3 0,25 USD, zeigt L3 „0,25 $“ ohne neues GET …/transkripte', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await lauf.buchen(k.adresse, 1, lauf.L.L3, 'Reviews', 0.25);
+    await expect(zeileVon(page, 'code-reviewer').locator('.lf-be')).toHaveText('0,25 $');
+    await page.waitForFunction(() => window.kdTest.gezeichnet());
+    expect(h.anzahl()).toBe(1);
+  });
+
+  test('AK 6 · US-3: legt entw1 ein Transkript für L4 ab, folgt genau ein GET; solange gehalten bleibt L4 „kein Transkript abgelegt“', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await lauf.ablegen(k.adresse, 1, lauf.L.L4, 'Entwicklertest');
+    await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+    expect(h.anzahl()).toBe(2);
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs')).toHaveText('kein Transkript abgelegt');
+    await h.freigeben();
+    await expect(page.locator(STATUS)).toHaveText(/^6 Läufe · Stand /);
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs')).toHaveText('Transkript vorhanden');
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-ohne')).toHaveCount(0);
+    await page.waitForFunction(() => window.kdTest.gezeichnet());
+    expect(h.anzahl()).toBe(2);
+  });
+
+  test('AK 6: löscht entw1 das Transkript von L1, folgt genau ein GET, und L1 steht als „kein Transkript abgelegt“', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await lauf.entfernen(k.adresse, 1, lauf.L.L1);
+    await h.freigeben();
+    await expect(zeileVon(page, 'planer').locator('.lf-zs')).toHaveText('kein Transkript abgelegt');
+    await page.waitForFunction(() => window.kdTest.gezeichnet());
+    expect(h.anzahl()).toBe(2);
+  });
+
+  test('AK 6 · US-3: ein Kommentar von sh an #1 löst kein GET …/transkripte aus (geprüft, nachdem der Kommentar im Stand gezeichnet ist)', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await lauf.kommentieren(k.adresse, 1, 'Ein Kommentar');
+    await page.waitForFunction(() => window.kdTest.kommentare(1) === 1 && window.kdTest.gezeichnet());
+    await expect(page.locator(STATUS)).toHaveText(/^6 Läufe · Stand /);
+    expect(h.anzahl()).toBe(1);
+  });
+
+  test('AK 6: wird die Datei von L2 im Ordner gelöscht, zeigt L2 „liegt nicht auf diesem Rechner“ erst nach „Neu lesen“', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    require('fs').rmSync(require('path').join(k.ordner, 'transkripte/0001', lauf.dateiname(lauf.L.L2)));
+    await expect(zeileVon(page, 'entwickler').locator('.lf-zs')).toHaveText('Transkript vorhanden');
+    await page.locator(NEU).click();
+    await h.freigeben();
+    await expect(zeileVon(page, 'entwickler').locator('.lf-zs')).toHaveText('liegt nicht auf diesem Rechner');
+  });
+
+  /* ── AK 7 Späte Antwort und Fehler ── */
+
+  test('AK 7: die gehaltene Antwort für #1 zeichnet nach dem Wechsel auf #3 nichts — #3 zeigt nur seine Zeilen und seinen Hinweis', async ({ page }) => {
+    const h1 = await anhalten(page, 1);
+    const gelesen3 = zaehlen(page, 3);
+    await oeffnen(page, 1);
+    await reiter(page, 'Läufe');
+    await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+    await page.goto(`${k.adresse}#/board/zweit/aufgabe/3`);
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #3' })).toBeVisible();
+    await expect(page.locator(HINWEIS)).toBeVisible();
+    await page.evaluate(() => {
+      window.kdFremdeZeile = false;
+      new MutationObserver(() => { if (document.querySelector('#fenster .lf-tab .lf-ro')?.closest('tbody').textContent.includes('planer')) window.kdFremdeZeile = true; })
+        .observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+    await spaetBeantwortet(page, 1, () => h1.freigeben());
+    expect(await page.evaluate(() => window.kdFremdeZeile), 'keine Zeile von #1 ist je gezeichnet').toBe(false);
+    expect(gelesen3).toHaveLength(1);
+    await expect(page.locator(ZEILEN)).toHaveCount(2);
+    expect((await alleZellen(page)).map(z => z[1])).toEqual(['entwickler', 'entwickler']);
+    await expect(page.locator(HINWEIS)).toHaveText(/„zweit“/);
+  });
+
+  test('AK 7: die gehaltene Antwort zeichnet nach dem Wechsel auf „Inhalt“ nichts — „Inhalt“ bleibt', async ({ page }) => {
+    const h = await anhalten(page, 1);
+    await oeffnen(page, 1);
+    await reiter(page, 'Läufe');
+    await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+    await reiter(page, 'Inhalt');
+    await expect(page.locator(ANSICHT_INHALT)).toBeVisible();
+    await spaetBeantwortet(page, 1, () => h.freigeben());
+    await expect(page.locator(ANSICHT_INHALT)).toBeVisible();
+    await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Inhalt');
+  });
+
+  test('AK 7: zwei Lesungen in Folge, deren erste zuletzt antwortet — es gilt die zweite', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await lauf.ablegen(k.adresse, 1, lauf.L.L4, 'Entwicklertest');
+    await expect.poll(() => h.gehalten()).toBe(1);
+    await lauf.entfernen(k.adresse, 1, lauf.L.L1);
+    await expect.poll(() => h.gehalten()).toBe(2);
+    await h.freigeben('weiter', 1);
+    await expect(zeileVon(page, 'planer').locator('.lf-zs')).toHaveText('kein Transkript abgelegt');
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs')).toHaveText('Transkript vorhanden');
+    await spaetBeantwortet(page, 1, () => h.freigeben(503));
+    await expect(page.locator(MELDUNG)).toHaveCount(0);
+    await expect(page.locator(STATUS)).toHaveText(/^6 Läufe · Stand /);
+    expect(h.anzahl()).toBe(3);
+  });
+
+  test('AK 7 · US-6: 503 — Meldung mit „Erneut versuchen“, die Kosteneinträge mit Betrag und „Transkript nicht gelesen“; ein Klick liest genau einmal', async ({ page }) => {
+    const h = await gehaltenOeffnen(page, 1, 503);
+    await expect(page.locator(MELDUNG)).toHaveText(`${FEHLER_503}Erneut versuchen`);
+    expect(await alleZellen(page)).toEqual(KOSTENZEILEN_BEI_FEHLER);
+    await expect(page.locator(`${ANSICHT_LAEUFE}`)).not.toContainText('kein Transkript abgelegt');
+    await expect(page.locator(STATUS)).toHaveText(STATUS_FEHLER);
+    await page.locator(ERNEUT).click();
+    await h.freigeben();
+    await expect(page.locator(ZEILEN)).toHaveCount(6);
+    await expect(page.locator(MELDUNG)).toHaveCount(0);
+    expect(h.anzahl()).toBe(2);
+  });
+
+  test('AK 7: ohne Verbindung — eigener Satz mit „Erneut versuchen“, dieselben vier Kostenzeilen, Statusbereich meldet den Fehler', async ({ page }) => {
+    await gehaltenOeffnen(page, 1, 'abbruch');
+    await expect(page.locator(MELDUNG)).toHaveText(`${OHNE_VERBINDUNG}Erneut versuchen`);
+    expect(await alleZellen(page)).toEqual(KOSTENZEILEN_BEI_FEHLER);
+    await expect(page.locator(STATUS)).toHaveText(STATUS_FEHLER);
+  });
+
+  for (const wie of [503, 'abbruch']) {
+    test(`AK 7 · US-7: Fehler (${wie}) beim selbsttätigen Lesen nach früherem Erfolg — bis zur Antwort die alten Zeilen, danach das Fehlerbild; der Fokus bleibt auf „Neu lesen“`, async ({ page }) => {
+      const h = await gehaltenOeffnen(page);
+      await expect(page.locator(ZEILEN)).toHaveCount(6);
+      await page.locator(NEU).focus();
+      const knoten = await page.locator(NEU).elementHandle();
+      await lauf.ablegen(k.adresse, 1, lauf.L.L4, 'Entwicklertest');
+      await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+      expect(await alleZellen(page)).toEqual(SECHS);
+      expect(await knoten.evaluate(n => n === document.activeElement)).toBe(true);
+      await h.freigeben(wie);
+      await expect(page.locator(STATUS)).toHaveText(STATUS_FEHLER);
+      await expect(page.locator(MELDUNG)).toHaveText(`${wie === 503 ? FEHLER_503 : OHNE_VERBINDUNG}Erneut versuchen`);
+      expect(await alleZellen(page)).toEqual(KOSTENZEILEN_BEI_FEHLER);
+      expect(await knoten.evaluate(n => n === document.activeElement && n.isConnected)).toBe(true);
+    });
+  }
+
+  /* ── AK 10 Fokus bei „Erneut versuchen“ und „Neu lesen“ (UX-Vorprüfung M1, Bild 7, PO Z. 478–479) ── */
+
+  /** Merkt einen Knoten in der Seite unter `name`, damit die Probe später `===` prüfen kann. */
+  const merken = (page, selektor, name) => page.locator(selektor).evaluate((n, nm) => { window[nm] = n; }, name);
+  const istGemerkt = (page, selektor, name) => page.locator(selektor).evaluate((n, nm) => n === window[nm], name);
+  const fokusIst = (page, name) => page.evaluate(nm => document.activeElement === window[nm], name);
+  const nieBody = page => page.evaluate(() => document.activeElement !== document.body && document.activeElement !== null);
+
+  /** Tab vom Auslöser „Ansicht: Läufe“ vorwärts, bis `selektor` den Fokus hat (Tastatur, nicht `focus()`). */
+  async function perTab(page, selektor) {
+    await ausloeser(page).focus();
+    for (let i = 0; i < 40 && !(await page.locator(selektor).evaluate(n => n === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(page.locator(selektor)).toBeFocused();
+  }
+
+  for (const [wie, ende] of [['weiter', 'Erfolg'], [503, '503'], ['abbruch', 'ohne Verbindung']]) {
+    test(`AK 10 · US-6: Enter auf „Erneut versuchen“ — derselbe Knoten, gesperrt, behält den Fokus, ein zweites Enter liest nicht; danach ${ende}`, async ({ page }) => {
+      const h = await gehaltenOeffnen(page, 1, 503);
+      await perTab(page, ERNEUT);
+      await merken(page, ERNEUT, 'kdErneut');
+      await page.keyboard.press('Enter');
+      await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+      await expect(page.locator(MELDUNG)).toHaveText(`${FEHLER_503}Erneut versuchen`);
+      expect(await istGemerkt(page, ERNEUT, 'kdErneut')).toBe(true);
+      await expect(page.locator(ERNEUT)).toHaveAttribute('aria-disabled', 'true');
+      expect(await fokusIst(page, 'kdErneut')).toBe(true);
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => window.kdTest.gezeichnet());
+      expect(h.anzahl()).toBe(2);
+      await h.freigeben(wie);
+      if (wie === 'weiter') {
+        await expect(page.locator(ZEILEN)).toHaveCount(6);
+        await expect(page.locator(MELDUNG)).toHaveCount(0);
+        await expect(page.locator(NEU)).toBeFocused();
+      } else {
+        await expect(page.locator(STATUS)).toHaveText(STATUS_FEHLER);
+        await expect(page.locator(ERNEUT)).not.toHaveAttribute('aria-disabled', 'true');
+        expect(await istGemerkt(page, ERNEUT, 'kdErneut')).toBe(true);
+        expect(await fokusIst(page, 'kdErneut')).toBe(true);
+      }
+      expect(await nieBody(page)).toBe(true);
+    });
+  }
+
+  for (const wie of ['weiter', 503]) {
+    test(`AK 10: setzt sh den Fokus während des Haltens mit Umschalt+Tab auf „Ansicht: Läufe“, steht er nach der Freigabe (${wie}) dort`, async ({ page }) => {
+      const h = await gehaltenOeffnen(page, 1, 503);
+      await perTab(page, ERNEUT);
+      await page.keyboard.press('Enter');
+      await expect(page.locator(ERNEUT)).toHaveAttribute('aria-disabled', 'true');
+      for (let i = 0; i < 40 && !(await ausloeser(page).evaluate(n => n === document.activeElement)); i++) await page.keyboard.press('Shift+Tab');
+      await expect(ausloeser(page)).toBeFocused();
+      await h.freigeben(wie);
+      await expect(page.locator(STATUS)).not.toHaveText('Liest die Läufe …');
+      await expect(ausloeser(page)).toBeFocused();
+      expect(await nieBody(page)).toBe(true);
+    });
+  }
+
+  test('AK 10: „Neu lesen“ ist vor, während und nach dem Lesen derselbe Knoten, gesperrt beim Lesen, Enter liest dann nicht; der Fokus bleibt', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await perTab(page, NEU);
+    await merken(page, NEU, 'kdNeu');
+    await page.keyboard.press('Enter');
+    await expect(page.locator(NEU)).toHaveAttribute('aria-disabled', 'true');
+    expect(await istGemerkt(page, NEU, 'kdNeu')).toBe(true);
+    expect(await fokusIst(page, 'kdNeu')).toBe(true);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.kdTest.gezeichnet());
+    expect(h.anzahl()).toBe(2);
+    await h.freigeben();
+    await expect(page.locator(NEU)).not.toHaveAttribute('aria-disabled', 'true');
+    expect(await istGemerkt(page, NEU, 'kdNeu')).toBe(true);
+    expect(await fokusIst(page, 'kdNeu')).toBe(true);
+  });
+
+  test('AK 10: hat sh den Fokus nach „Neu lesen“ weitergesetzt, bleibt er dort', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await perTab(page, NEU);
+    await page.keyboard.press('Enter');
+    await expect(page.locator(NEU)).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Shift+Tab');
+    const ziel = await page.evaluate(() => { window.kdZiel = document.activeElement; return document.activeElement.id || document.activeElement.className; });
+    expect(await page.locator(NEU).evaluate(n => n === document.activeElement)).toBe(false);
+    await h.freigeben();
+    await expect(page.locator(NEU)).not.toHaveAttribute('aria-disabled', 'true');
+    expect(await page.evaluate(() => document.activeElement === window.kdZiel || document.activeElement.id === window.kdZiel.id), ziel).toBe(true);
+    expect(await nieBody(page)).toBe(true);
+  });
+
+  for (const wie of ['weiter', 503, 'abbruch']) {
+    test(`AK 10 · US-7: ein selbsttätiges Lesen (${wie}) bewegt den Fokus nie — auf „Neu lesen“ derselbe Knoten, auf dem Auslöser bleibt er dort`, async ({ page }) => {
+      const h = await gehaltenOeffnen(page);
+      await perTab(page, NEU);
+      await merken(page, NEU, 'kdNeu');
+      await lauf.ablegen(k.adresse, 1, lauf.L.L4, 'Entwicklertest');
+      await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+      expect(await fokusIst(page, 'kdNeu')).toBe(true);
+      await h.freigeben(wie);
+      await expect(page.locator(STATUS)).not.toHaveText('Liest die Läufe …');
+      expect(await fokusIst(page, 'kdNeu')).toBe(true);
+      await ausloeser(page).focus();
+      await lauf.entfernen(k.adresse, 1, lauf.L.L1);
+      await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+      await expect(ausloeser(page)).toBeFocused();
+      await h.freigeben(wie);
+      await expect(page.locator(STATUS)).not.toHaveText('Liest die Läufe …');
+      await expect(ausloeser(page)).toBeFocused();
+      expect(await nieBody(page)).toBe(true);
+    });
+  }
 });

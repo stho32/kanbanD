@@ -131,3 +131,19 @@ test('ohne Einträge: leere Liste; Eingaben bleiben unverändert', () => {
   laeufe(t, k);
   assert.strictEqual(JSON.stringify([t, k]), vorher);
 });
+
+const { kennungsmengeGeaendert } = require('../../web/laeufe.js');
+const kennungen = (...k) => k.map(kennung => ({ kennung }));
+
+test('kennungsmengeGeaendert (FA 7, ADR-0039 L2): gleiche Menge — auch in anderer Reihenfolge — ist keine Änderung', () => {
+  assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1', 'b@2'), ['a@1', 'b@2']), false);
+  assert.strictEqual(kennungsmengeGeaendert(kennungen('b@2', 'a@1'), ['a@1', 'b@2']), false);
+  assert.strictEqual(kennungsmengeGeaendert([], []), false);
+});
+
+test('kennungsmengeGeaendert: eine neue, eine entfernte oder eine ausgetauschte Kennung ist eine Änderung', () => {
+  assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1', 'b@2', 'c@3'), ['a@1', 'b@2']), true, 'abgelegt');
+  assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1'), ['a@1', 'b@2']), true, 'gelöscht');
+  assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1', 'c@3'), ['a@1', 'b@2']), true, 'gleich viele, andere');
+  assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1'), []), true);
+});
