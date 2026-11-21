@@ -178,7 +178,7 @@ impl IntoResponse for Fehler {
             Fehler::Defekt(_) => StatusCode::LOCKED,
             Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Fehler::GrenzeErreicht { .. } => StatusCode::CONFLICT,
-            Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } => StatusCode::FORBIDDEN,
+            Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } | Fehler::SchalterVerboten { .. } => StatusCode::FORBIDDEN,
             Fehler::Verweis { fehlt: true, .. } => StatusCode::NOT_FOUND,
             Fehler::Verweis { fehlt: false, .. } => StatusCode::BAD_REQUEST,
             Fehler::VerweisKonflikt { .. } => StatusCode::CONFLICT,

@@ -996,3 +996,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #220 R00218 | B1121 Breite, Ziele, Themen, Kontrast und Tastatur messen und nachziehen | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1122 Probe im echten Programm, Gate, Anforderung abschließen | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-21 | Karte #220 R00218 | Nacharbeit 1: Fokusfalle (UX Muss 1), AK 13 neu (PO Z. 487), AK 9/10 (PO Z. 488), Sollte B, Härtung | Standard | — | 0,9h | 0,9h | autonom |
+| 2026-11-21 | Karte #218 R00220 | B1133 Dienst: Schalter am Board und an der Vorgabe schreiben | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

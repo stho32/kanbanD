@@ -29,6 +29,7 @@ mod einstellungen;
 mod erledigen;
 mod fieber;
 mod klassen;
+mod schalter;
 mod kommentare;
 mod kosteneintraege;
 mod phasen;
@@ -63,6 +64,7 @@ pub use kosteneintraege::{HOECHSTZAHL_KOSTENEINTRAEGE, Kosteneintragsangaben};
 pub use board_anlegen::{NeuesBoard, STANDARDSPALTEN};
 pub use board_verwalten::BoardVerwalten;
 pub use einrichten::{Einrichtung, NeuePerson};
+pub use schalter::Schalterantwort;
 pub use erledigen::{Erledigt, Erledigung, Erledigungsergebnis};
 pub use einstellungen::{PALETTE, PersonAenderung, Personenangabe, farbe_gueltig};
 

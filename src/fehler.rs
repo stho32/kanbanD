@@ -47,6 +47,9 @@ pub enum Fehler {
     Transkriptzustand { meldung: String, zustand: crate::modell::Transkriptzustand },
     /// Der Körper ist größer als erlaubt (413, ADR-0036 Regel 5).
     ZuGross(String),
+    /// Ein Agent stellt „Transkripte erfassen“ um (403, R00220 FA 3, ADR-0036 Nachtrag „Umschalten“) — Rumpf
+    /// `{fehler, einstellung: "record-transcripts"}`; nur über `schalter_verboten` anlegen.
+    SchalterVerboten { meldung: String },
 }
 
 impl Fehler {
@@ -54,7 +57,7 @@ impl Fehler {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) | Fehler::Ausgelastet(m) | Fehler::ZuGross(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
-            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } | Fehler::Commitzustand { meldung, .. } | Fehler::ErfassungAus { meldung, .. } | Fehler::KennungBelegt { meldung, .. } | Fehler::Transkriptzustand { meldung, .. } => meldung,
+            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } | Fehler::Commitzustand { meldung, .. } | Fehler::ErfassungAus { meldung, .. } | Fehler::KennungBelegt { meldung, .. } | Fehler::Transkriptzustand { meldung, .. } | Fehler::SchalterVerboten { meldung } => meldung,
         }
     }
 
@@ -82,6 +85,14 @@ impl Fehler {
     /// für den Wortlaut; derselbe Rumpf `{fehler, kuerzel}` wie die Art.
     pub fn personenstatus_verboten(kuerzel: &str) -> Fehler {
         Fehler::PersonenartVerboten { meldung: format!("Den Zustand der Person „{kuerzel}“ ändern nur Menschen"), kuerzel: kuerzel.into() }
+    }
+}
+
+impl Fehler {
+    /// „Den Schalter „Transkripte erfassen“ stellen nur Menschen um“ (R00220 FA 3) — der eine Ort für den Wortlaut, ohne
+    /// Schlusspunkt wie die übrigen Meldungen.
+    pub fn schalter_verboten() -> Fehler {
+        Fehler::SchalterVerboten { meldung: "Den Schalter „Transkripte erfassen“ stellen nur Menschen um".into() }
     }
 }
 
