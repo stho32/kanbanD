@@ -1022,3 +1022,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #224 R00222 | B1157 README, Endpunktliste und OpenAPI ohne WBS | Standard | 0,3-0,5h | 0,4h | 0,4h | autonom |
 | 2026-11-21 | Karte #224 R00222 | B1158 Legacy-Probe JoinPuya, AK 8 gegen das Programm vor der Karte, Factory-Rundlauf (rot, Factory), volles Gate | Standard | 0,5-1h | 1,1h | 1,1h | autonom |
 | 2026-11-21 | Karte #224 R00222 | B1158 Factory-Rundlauf AK 9 gegen den Build (nach Factory a596955) und Altform-Probe | Standard | 0,1-0,2h | 0,1h | 0,1h | autonom |
+| 2026-11-21 | Karte #227 R00223 | B1159 Abnahme-Proben rot (Rust AK 1–8, Node AK 1, 9, 14, 15, e2e AK 1, 10–13), Farben vor der Karte gemessen | Standard | 1h | 0,3h | 0,3h | autonom |

@@ -1,0 +1,126 @@
+{
+  "light": {
+    "koepfe": {
+      "Offen": {
+        "color": "oklch(0.24 0.02 255)",
+        "background": "oklch(0.94 0.007 250)",
+        "borderTop": "oklch(0.24 0.02 255)",
+        "borderLeft": "oklch(0.24 0.02 255)",
+        "borderBottom": "oklch(0.76 0.014 250)"
+      },
+      "Bereit": {
+        "color": "oklch(0.24 0.02 255)",
+        "background": "oklch(0.94 0.007 250)",
+        "borderTop": "oklch(0.24 0.02 255)",
+        "borderLeft": "oklch(0.24 0.02 255)",
+        "borderBottom": "oklch(0.76 0.014 250)"
+      },
+      "Live": {
+        "color": "oklch(0.24 0.02 255)",
+        "background": "oklch(0.94 0.007 250)",
+        "borderTop": "oklch(0.24 0.02 255)",
+        "borderLeft": "oklch(0.24 0.02 255)",
+        "borderBottom": "oklch(0.76 0.014 250)"
+      }
+    },
+    "bloecke": {
+      "Entwicklung": {
+        "color": "oklch(0.24 0.02 255)",
+        "background": "oklch(0.95375 0.04 118.75)",
+        "borderTop": "oklch(0.24 0.02 255)",
+        "borderLeft": "oklch(0.595 0.145 119.25)",
+        "borderBottom": "oklch(0.24 0.02 255)"
+      },
+      "Nacharbeit": {
+        "color": "oklch(0.24 0.02 255)",
+        "background": "oklch(0.95375 0.04 118.75)",
+        "borderTop": "oklch(0.24 0.02 255)",
+        "borderLeft": "oklch(0.595 0.145 119.25)",
+        "borderBottom": "oklch(0.24 0.02 255)"
+      },
+      "Reviews": {
+        "color": "oklch(0.24 0.02 255)",
+        "background": "oklch(0.9525 0.04 87.5)",
+        "borderTop": "oklch(0.24 0.02 255)",
+        "borderLeft": "oklch(0.59 0.16 88.5)",
+        "borderBottom": "oklch(0.24 0.02 255)"
+      },
+      "Erledigt": {
+        "color": "oklch(0.24 0.02 255)",
+        "background": "oklch(0.95125 0.04 56.25)",
+        "borderTop": "oklch(0.24 0.02 255)",
+        "borderLeft": "oklch(0.585 0.175 57.75)",
+        "borderBottom": "oklch(0.24 0.02 255)"
+      }
+    },
+    "hinweis": {
+      "color": "oklch(0.24 0.02 255)",
+      "background": "oklch(0.955 0.05 80)",
+      "borderTop": "oklch(0.24 0.02 255)",
+      "borderLeft": "oklch(0.24 0.02 255)",
+      "borderBottom": "oklch(0.72 0.14 70)"
+    }
+  },
+  "dark": {
+    "koepfe": {
+      "Offen": {
+        "color": "oklch(0.92 0.008 250)",
+        "background": "oklch(0.17 0.01 255)",
+        "borderTop": "oklch(0.92 0.008 250)",
+        "borderLeft": "oklch(0.92 0.008 250)",
+        "borderBottom": "oklch(0.42 0.018 255)"
+      },
+      "Bereit": {
+        "color": "oklch(0.92 0.008 250)",
+        "background": "oklch(0.17 0.01 255)",
+        "borderTop": "oklch(0.92 0.008 250)",
+        "borderLeft": "oklch(0.92 0.008 250)",
+        "borderBottom": "oklch(0.42 0.018 255)"
+      },
+      "Live": {
+        "color": "oklch(0.92 0.008 250)",
+        "background": "oklch(0.17 0.01 255)",
+        "borderTop": "oklch(0.92 0.008 250)",
+        "borderLeft": "oklch(0.92 0.008 250)",
+        "borderBottom": "oklch(0.42 0.018 255)"
+      }
+    },
+    "bloecke": {
+      "Entwicklung": {
+        "color": "oklch(0.92 0.008 250)",
+        "background": "oklch(0.31 0.045 119.25)",
+        "borderTop": "oklch(0.92 0.008 250)",
+        "borderLeft": "oklch(0.72 0.14 119.25)",
+        "borderBottom": "oklch(0.92 0.008 250)"
+      },
+      "Nacharbeit": {
+        "color": "oklch(0.92 0.008 250)",
+        "background": "oklch(0.31 0.045 119.25)",
+        "borderTop": "oklch(0.92 0.008 250)",
+        "borderLeft": "oklch(0.72 0.14 119.25)",
+        "borderBottom": "oklch(0.92 0.008 250)"
+      },
+      "Reviews": {
+        "color": "oklch(0.92 0.008 250)",
+        "background": "oklch(0.31 0.045 88.5)",
+        "borderTop": "oklch(0.92 0.008 250)",
+        "borderLeft": "oklch(0.72 0.14 88.5)",
+        "borderBottom": "oklch(0.92 0.008 250)"
+      },
+      "Erledigt": {
+        "color": "oklch(0.92 0.008 250)",
+        "background": "oklch(0.31 0.045 57.75)",
+        "borderTop": "oklch(0.92 0.008 250)",
+        "borderLeft": "oklch(0.72 0.14 57.75)",
+        "borderBottom": "oklch(0.92 0.008 250)"
+      }
+    },
+    "hinweis": {
+      "color": "oklch(0.92 0.008 250)",
+      "background": "oklch(0.31 0.045 75)",
+      "borderTop": "oklch(0.92 0.008 250)",
+      "borderLeft": "oklch(0.92 0.008 250)",
+      "borderBottom": "oklch(0.72 0.14 75)"
+    }
+  }
+}
