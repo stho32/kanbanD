@@ -130,7 +130,7 @@ function ansagenAufzeichnen(page) {
 const ansagen = page => page.evaluate(() => [...new Map(window.ANSAGEN.map(a => [a.id + '|' + a.klasse, a])).values()]);
 
 /** Kriterien, die am heutigen Stand rot sind (ATDD): ihre Tests laufen als „erwartet rot“, bis die Bubble sie grün macht. */
-const ERWARTET_ROT = new Set(['AK 1', 'AK 2', 'AK 3', 'AK 5', 'AK 6', 'AK 10', 'AK 11', 'AK 12']);
+const ERWARTET_ROT = new Set(['AK 2', 'AK 3', 'AK 5', 'AK 6', 'AK 10']);
 const erwartetRot = ak => test.fail(ERWARTET_ROT.has(ak), `${ak} erwartet rot (R00224 B1167)`);
 
 test.describe('R00224 Grund bei 404 in Worten', () => {

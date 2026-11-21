@@ -1530,6 +1530,10 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .df-mm{margin:0;padding:6px var(--kd-s3);font-size:12px;color:var(--kd-text);border-bottom:1px solid var(--kd-line)}
 .df-hin{margin:0;padding:var(--kd-s3) var(--kd-s4);display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;color:var(--kd-text)}
 .df-hin p{margin:0;flex:1 1 220px;min-width:0}
+.df-hin .df-zeilen{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.df-zeilen p{margin:0}
+.df-zeilen p + p{margin-top:var(--kd-s1)}
+.df-zeilen .rv-hin{color:inherit}
 .df-hin svg.i{flex:none;align-self:flex-start;margin-top:2px}
 .df-hin.fehl{background:var(--kd-status-error-bg);color:var(--kd-status-error-ink);border-top:1px solid var(--kd-status-error-ink)}
 .df-hin.warn{background:var(--kd-status-warn-bg);color:var(--kd-status-warn-ink);border-top:1px solid var(--kd-status-warn-ink)}

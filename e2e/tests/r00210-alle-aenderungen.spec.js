@@ -463,7 +463,8 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     const baum = await page.locator('.umsch').ariaSnapshot();
     expect(baum).not.toMatch(/link "Ein Commit"/);
     await page.goto(reviewAdresse(k, 6, `kd:${rep.v2}`));
-    await expect(page.locator('.rv-meld')).toContainText('Zu diesem Verweis gibt es keinen Diff');
+    // umgestellt mit R00224 FA 6: die Überschrift nennt den Verweis („Zu kd:<kurz> gibt es keinen Diff.“)
+    await expect(page.locator('.rv-meld h2')).toHaveText(`Zu ${kurz(rep.v2)} gibt es keinen Diff.`);
   });
 
   test('AK 4/4a: #11 — Abschnitt wb mit Zeitgrenze rot, mit Antwortbudget amber, mit Netzabbruch „keine Verbindung“; kd und xx lesbar; „Erneut versuchen“ liest einmal, Fokus auf „Anwendung wb“', async ({ page }) => {

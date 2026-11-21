@@ -1033,3 +1033,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #232 R00224 | B1167 Abnahme-Proben rot am heutigen Stand: Spec r00224 mit AK 1–12, 17 erwartet rot, AK 4/9 grün | Standard | 0,5-1h | 0,8h | 0,8h | autonom |
 | 2026-11-22 | Karte #232 R00224 | B1168 zustandSatz und zustandsSymbol in commits.js, anwendungName aus diff.js dorthin (ein Wörterbuch) | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-22 | Karte #232 R00224 | B1169 „Ein Commit“: Überschrift, Satz und Hinweiszeile als Blöcke, Ton und Symbol aus commits.js, angefragter Verweis | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-22 | Karte #232 R00224 | B1170 Abschnitt bei 404 repository_fehlt: Satz und Hinweiszeile in df-zeilen, Symbol aus commits.js | Standard | 0,5h | 0,3h | 0,3h | autonom |

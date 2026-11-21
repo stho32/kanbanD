@@ -174,3 +174,26 @@ test('AK 14: fremder Text an den Rückfall-Senken — Grund, Status von Datei un
   const netto = b2.dateiHtml({ ...nettoK, status: BOESE, modus_alt: BOESE, modus_neu: '100755' }, 0, { offen: true, laden: null }, [], esc) + b2.dateilisteHtml([{ ...nettoK, status: BOESE }], esc);
   assert.doesNotMatch(netto, /<img/);
 });
+
+/* ── R00224 B1170: Abschnitt bei 404 repository_fehlt — Satz und Hinweiszeile untereinander in einem Block ── */
+
+test('R00224: Abschnittsfehler 404 repository_fehlt — Satz, maskierte Hinweiszeile in einem Block, ordner-offen aus commits.js, Rolle wie die übrigen, ohne (404)', () => {
+  const { zustandsSymbol } = require('../../web/commits.js');
+  const fehler = (f, kuerzel = 'wb') => g.abschnittHtml({ status: 'fehler', kuerzel, fehler: f }, 1, ctx);
+  const html = fehler({ art: 'kein_diff', status: 404, fehler: 'Repository nicht erreichbar', daten: { zustand: 'repository_fehlt', grund: 'Ordner fehlt: /x/<img src=x>‮gpj.exe' } });
+  const zeit = fehler({ art: 'zeitgrenze', status: 503, fehler: 'Git antwortete nicht' });
+  const rolle = h => /class="df-hin[^"]*rv-abs-f" (role="[^"]*")/.exec(h)[1];
+  assert.strictEqual(rolle(html), rolle(zeit));
+  assert.ok(html.includes(`<div class="df-hin fehl rv-abs-f" ${rolle(zeit)}>${zustandsSymbol('ordner-offen')}<div class="df-zeilen"><p class="rv-satz">Das Repository der Anwendung wb ist nicht erreichbar.</p><p class="rv-hin">Ordner fehlt: /x/&lt;img src=x&gt;gpj.exe</p></div>`), html);
+  assert.match(html, /data-act="review-abschnitt-erneut" data-arg="1"/);
+  assert.doesNotMatch(ohneTags(html), /\(404\)|ließen sich nicht lesen/);
+  const ohneGrund = fehler({ art: 'kein_diff', status: 404, fehler: 'x', daten: { zustand: 'repository_fehlt' } }, '');
+  assert.ok(ohneGrund.includes('<div class="df-zeilen"><p class="rv-satz">Das Repository der Standardanwendung ist nicht erreichbar.</p></div>') && !ohneGrund.includes('rv-hin'));
+});
+
+test('R00224: jeder andere Abschnittsfehler wie R00210 FA 7 — auch 404 mit anderem oder ohne zustand', () => {
+  const fehler = f => ohneTags(g.abschnittHtml({ status: 'fehler', kuerzel: 'wb', fehler: f }, 1, ctx));
+  assert.match(fehler({ art: 'kein_diff', status: 404, fehler: 'kein Diff', daten: { zustand: 'fehlt' } }), /^Anwendung wbDie Änderungen der Anwendung wb ließen sich nicht lesen: kein Diff \(404\)\./);
+  assert.match(fehler({ art: 'kein_diff', status: 404, fehler: 'kein Diff', daten: null }), /ließen sich nicht lesen: kein Diff \(404\)\./);
+  assert.match(fehler({ art: 'anderer', status: 500, fehler: 'kaputt', daten: { zustand: 'repository_fehlt' } }), /ließen sich nicht lesen: kaputt \(500\)\./);
+});
