@@ -488,6 +488,26 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     });
   }
 
+  for (const farbe of ['hell', 'dunkel']) {
+    test(`AK 10 (UX Nacharbeit Sollte 2): ${farbe} — „Erneut versuchen“ gesperrt ist gedämpft (andere Farbe, ≥ 3:1, Zeiger progress), der Ring bleibt`, async ({ page }) => {
+      const h = await gehaltenOeffnen(page, 1, 503);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      const knopf = page.locator(ERNEUT);
+      const vorher = await knopf.evaluate(e => getComputedStyle(e).color);
+      await perTab(page, ERNEUT);
+      await page.keyboard.press('Enter');
+      await expect(knopf).toHaveAttribute('aria-disabled', 'true');
+      const stil = await knopf.evaluate(e => ({ farbe: getComputedStyle(e).color, zeiger: getComputedStyle(e).cursor, ring: getComputedStyle(e).outlineStyle }));
+      expect(stil.farbe, 'gedämpft').not.toBe(vorher);
+      expect(stil.zeiger).toBe('progress');
+      expect(stil.ring).toBe('solid');
+      expect(await kontrastAm(knopf)).toBeGreaterThanOrEqual(3);
+      await h.freigeben(503);
+      await expect(knopf).not.toHaveAttribute('aria-disabled', 'true');
+      expect(await knopf.evaluate(e => getComputedStyle(e).color)).toBe(vorher);
+    });
+  }
+
   test('AK 10: „Neu lesen“ ist vor, während und nach dem Lesen derselbe Knoten, gesperrt beim Lesen, Enter liest dann nicht; der Fokus bleibt', async ({ page }) => {
     const h = await gehaltenOeffnen(page);
     await perTab(page, NEU);
@@ -610,6 +630,36 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     for (const breite of BREITEN) {
       await breiteSetzen(page, breite);
       expect(await page.evaluate(breiteImBrowser, { rolle: '—', spalte: '—', board: 'zweit' }), `${breite} px`).toEqual([]);
+    }
+  });
+
+  for (const farbe of ['hell', 'dunkel']) {
+    test(`AK 9 (UX Nacharbeit Muss 1): #1 Liste ${farbe} — bei 320, 414, 640, 641 und 768 px scrollen weder .mod-body noch .lf-panel seitwärts`, async ({ page }) => {
+      await laeufeOeffnen(page);
+      await expect(page.locator(ZEILEN)).toHaveCount(6);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      for (const breite of [320, 414, 640, 641, 768]) {
+        await breiteSetzen(page, breite);
+        const masse = await page.evaluate(() => ['#fenster .mod-body', '#fenster .lf-panel'].map(sel => {
+          const el = document.querySelector(sel);
+          return `${sel} ${el.scrollWidth} ${el.scrollWidth <= el.clientWidth ? '<=' : '>'} ${el.clientWidth}`;
+        }));
+        expect(masse.filter(m => m.includes(' > ')), `${farbe} ${breite} px: ${masse.join(', ')}`).toEqual([]);
+      }
+    });
+  }
+
+  test('AK 9 (UX Nacharbeit Sollte 3): in Raster- und Blockform bricht eine Rolle nicht mitten im Wort — „entwicklertester“ und „entwickler“ je einzeilig, die Rolle aus 40 Zeichen bleibt in ihrer Zelle', async ({ page }) => {
+    await laeufeOeffnen(page, 4);
+    for (const breite of [320, 414, 641, 768]) {
+      await breiteSetzen(page, breite);
+      const zeilen = await page.locator(`${ANSICHT_LAEUFE} .lf-ro`).evaluateAll(zellen => zellen.filter(z => ['entwicklertester', 'entwickler'].includes(z.textContent)).map(z => {
+        const r = document.createRange(); r.selectNodeContents(z);
+        return `${z.textContent}: ${new Set([...r.getClientRects()].map(t => Math.round(t.top))).size}`;
+      }));
+      expect(zeilen.length, `${breite} px: Rollen gefunden`).toBe(2);
+      expect(zeilen.filter(z => !z.endsWith(': 1')), `${breite} px: ${zeilen.join(', ')}`).toEqual([]);
+      expect(await page.evaluate(breiteImBrowser, { rolle: lauf.ROLLE_40, spalte: lauf.SPALTE_60, board: lauf.BOARD_60 }), `${breite} px`).toEqual([]);
     }
   });
 

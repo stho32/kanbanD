@@ -1435,6 +1435,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .lf-zs .cl-zs{max-width:100%;overflow-wrap:anywhere}
 .lf-neutral{--zl:var(--kd-wbs-neutral);--zb:var(--kd-wbs-neutral-bg);--zi:var(--kd-wbs-neutral-ink)}
 .lf-panel :is(.cl-textknopf,.cl-knopf):focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
+.lf-panel .cl-knopf[aria-disabled="true"]{color:var(--kd-muted);cursor:progress}
 .lf-stand{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
 .lf-hw{margin:0;overflow-wrap:anywhere;font-size:12.5px;color:var(--kd-muted)}
 .lf-tab tbody tr>.lf-zp{grid-area:zp}
@@ -1448,6 +1449,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .lf-tab tbody tr{display:grid;grid-template-columns:132px minmax(0,1fr) auto;grid-template-areas:"zp ro be" ". sp sp" ". zs zs";column-gap:var(--kd-s3);row-gap:2px;padding:6px var(--kd-s3) 7px;border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}
   .lf-tab tbody tr:last-child{border-bottom:0}
   .lf-tab tbody tr>*{display:block;width:auto;padding:0;border:0;min-width:0}
+  /* Die Breiten der Tabellenform (.lf-tab .lf-zp usw., Spezifität 0,2,0) gelten im Raster nicht: sonst ragt der Zustand bei 320 px hinaus */
+  .lf-tab :is(.lf-zp,.lf-ro,.lf-be,.lf-zs){width:auto}
   .lf-tab .lf-ro{font-weight:500}
   .lf-tab .lf-zs:empty{display:none}
 }
