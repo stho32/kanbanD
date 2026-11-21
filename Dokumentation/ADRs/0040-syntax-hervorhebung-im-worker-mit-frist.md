@@ -93,6 +93,21 @@
 - [ ] product-owner: Darf eine Datei innerhalb der Grenzen ohne Farbe bleiben, wenn das Färben länger als 1 s dauert, und darf die Farbe einen Moment nach dem Text erscheinen, beides ohne Hinweis? Empfehlung: ja. Bis zur Antwort gilt: ja, ohne Hinweis.
 - [ ] Rückfall V3, falls eine Zielumgebung keinen Worker erlaubt. Heute ist keine bekannt, kanbanD läuft im Browser des Menschen.
 
+## Nachtrag N1 — Nachfrage „bereit“ und Frist fürs Laden (2026-11-21, Lauf 216-architekt-3)
+
+**Anlass**: Frage des entwicklers zu Punkt 4. Gebaut ist auf `karte/216` (`8794594a`, `web/farbschlange.js:7–80`, `web/faerben.js:91–110`) vor dem ersten Auftrag eines neuen Workers eine Nachfrage `{art: 'bereit'}`. Der Worker beantwortet sie mit `{bereit: true}`, erst nachdem `importScripts` von Prism durchgelaufen ist, gleich ob mit Erfolg oder Fehler. Belegt im Code, nicht gemessen.
+
+**Entscheidung**: vereinbar, Punkt 4 wird so präzisiert:
+
+1. **Übergabe** heißt: Der Auftrag wird an einen Worker geschickt, der „bereit“ gemeldet hat. `FRIST_MS` (1.000 ms) zählt ab hier. Damit misst die Frist nur das Tokenisieren. Das ist der Wert, den Punkt 4 begrenzen soll. Das Laden von Prism, unter Last mehr als die gemessenen 45 ms, kostet eine gutartige Datei nicht die Farbe.
+2. **Frist fürs Laden**: Sie ist ebenfalls `FRIST_MS`, also 1.000 ms, und zählt ab dem Anlegen des Workers, genauer ab der Nachfrage. Eine eigene Konstante gibt es nicht: Beide Fristen haben denselben Zweck und Wert. Der Kommentar an `FRIST_MS` nennt beide.
+3. **Nie „bereit“** (Worker hängt beim Laden, `faerben.js` lädt nicht und kein `error` kommt): Nach der Ladefrist folgen `terminate()`, `fertig(null)` und `data-farbe="nein"`, ohne Hinweis und ohne `console.*` (R00217 AK 6). Der nächste wartende Auftrag bekommt einen neuen Worker mit neuer Ladefrist. Eine späte Meldung „bereit“ des abgebrochenen Workers wird überhört, denn es spricht nur der aktuelle Worker. Lädt Prism im Worker nicht (404), meldet der Worker trotzdem „bereit“ und antwortet dann mit `fehler`, die Datei bekommt `nein`. Das ist AK 6 (a).
+4. **Folge für die Konsequenzen**: Eine Datei, die einen neuen Worker braucht, wartet im schlechtesten Fall zwei Fristen auf ihr Ergebnis, 1 s Laden und 1 s Tokenisieren, statt einer. Folgende Dateien warten entsprechend länger. Der Hauptfaden ist davon nicht berührt, denn Laden und Tokenisieren laufen im Worker. Das Messziel aus Punkt 6 gilt unverändert.
+
+**Durchsetzung**: Unit `e2e/einheit/farbschlange.test.js` mit stummem Fake-Worker, Fälle „Laden zählt nicht zur Frist … wird er nicht bereit, nach der Frist ohne Farbe und neuer Worker“ und „die Frist beginnt mit der Übergabe an den bereiten Worker“. Mutanten dazu: Ladefrist entfernt (der erste Fall wird rot, der Auftrag endet nie) und Frist ab dem Anlegen statt ab der Übergabe (der zweite Fall wird rot).
+
+**Folge außerhalb dieser Entscheidung (Sichtzustand, ADR-0007)**: Auf `karte/216` (`10bd7ead`) liest `rollstaende` in `web/sichtzustand.js` nicht mehr `scrollTop` aller Elemente des Bereichs. Vorher waren das bei 10.000 offenen Zeilen rund 50.000 Elemente und Long Tasks von 760–830 ms je Neuzeichnen. Jetzt läuft ein `TreeWalker` und überspringt die Blöcke `.dz-b` (`NIE_GEROLLT`). Der Codebereich `.df-sc` zählt weiter. Ursache ist ADR-0033: Der stehende Diffbereich macht `#main` groß, ohne dass `render()` ihn ersetzt. Die Regel für künftige große Teilbäume lautet: Was selbst nie scrollt, gehört in `NIE_GEROLLT`. Fitness ist die Long-Task-Probe zu `lang.rs` in AK 1. Dass sie bei entferntem `NIE_GEROLLT` rot wird, ist begründet, nicht geprobt. Nach dem Merge steht dies als Ist in A00009 am Eintrag ADR-0007.
+
 ## Quellen / Bezüge
 
 - ADR-0037 (abgelöst), ADR-0033 Punkt 5 und stehender Diffbereich, ADR-0014, ADR-0026, ADR-0032 Punkt 10; po-entscheidungen Z. 387
