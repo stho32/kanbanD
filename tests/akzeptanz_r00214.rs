@@ -424,6 +424,68 @@ async fn eigen_defekte_datei_zaehlt_als_vorhanden_und_liest_sich_wie_eine_fehlen
     assert_eq!(lage.liste("wartet=ja").await, Ok(vec![5]));
 }
 
+// ---- AK 16: Leistung unter der Schreibsperre (B1095) -------------------------------------------------------------------
+
+const VIELE: usize = 20_000;
+const SEKUNDE: std::time::Duration = std::time::Duration::from_secs(1);
+
+async fn gemessen<T>(aufruf: impl std::future::Future<Output = T>) -> (T, std::time::Duration) {
+    let start = std::time::Instant::now();
+    let ergebnis = aufruf.await;
+    (ergebnis, start.elapsed())
+}
+
+/// PATCH der Labels von #1 und, abgeschickt während er läuft, ein PATCH eines anderen Schreibers auf #2; beide gemessen.
+async fn mit_fremdem_patch(lage: &Lage, labels: Vec<String>) -> (((u16, Value), std::time::Duration), ((u16, Value), std::time::Duration)) {
+    let eigen = gemessen(lage.aendern(1, json!({ "labels": labels })));
+    let fremd = async {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        gemessen(senden(Method::PATCH, &lage.lauf.adresse, "api/aufgaben/2", "st", json!({"titel": "Bau, umbenannt"}))).await
+    };
+    tokio::join!(eigen, fremd)
+}
+
+#[tokio::test]
+async fn ak16_viele_labels_halten_die_schreibsperre_nicht_auf() {
+    let lage = Lage::neu();
+    let ((s, a), dauer) = gemessen(lage.aendern(1, json!({ "labels": (0..VIELE).map(|i| format!("q{i}")).collect::<Vec<_>>() }))).await;
+    assert_eq!(s, 200, "{a}");
+    assert!(dauer < SEKUNDE, "{VIELE} Labels q<i> speichern: {dauer:?}");
+
+    let verschieden: Vec<String> = (0..VIELE).map(|i| format!("braucht:{}", i + 10)).collect();
+    let ((eigen, eigen_dauer), (fremd, fremd_dauer)) = mit_fremdem_patch(&lage, verschieden).await;
+    assert_eq!((eigen.0, fehler(&eigen)), (400, "Aufgabe #10 gibt es nicht (braucht:10)"), "{}", eigen.1);
+    assert!(eigen_dauer < SEKUNDE, "{VIELE} verschiedene braucht:<n>: {eigen_dauer:?}");
+    assert_eq!(fremd.0, 200, "{}", fremd.1);
+    assert!(fremd_dauer < SEKUNDE, "fremdes PATCH auf #2 wartet: {fremd_dauer:?}");
+
+    let gleich = vec!["braucht:3".to_string(); VIELE];
+    let ((eigen, eigen_dauer), (fremd, fremd_dauer)) = mit_fremdem_patch(&lage, gleich).await;
+    assert_eq!(eigen.0, 200, "{}", eigen.1);
+    assert!(eigen_dauer < SEKUNDE, "{VIELE}-mal braucht:3: {eigen_dauer:?}");
+    assert_eq!(fremd.0, 200, "{}", fremd.1);
+    assert!(fremd_dauer < SEKUNDE, "fremdes PATCH auf #2 wartet: {fremd_dauer:?}");
+
+    let ((s, liste), dauer) = gemessen(get(&lage.lauf.adresse, "api/aufgaben")).await;
+    assert_eq!(s, 200);
+    assert!(dauer < SEKUNDE, "GET /api/aufgaben: {dauer:?}");
+    let eins = liste["aufgaben"].as_array().unwrap().iter().find(|a| a["nummer"] == 1).unwrap();
+    assert_eq!(eintraege(&eins["braucht"]), vec![(3, json!("Doku"), false)]);
+}
+
+/// Von Hand committet (an der Tür vorbei): 20.000 verschiedene `braucht:<n>` — das Lesefeld rechnet sie linear.
+#[tokio::test]
+async fn ak16_lesen_vieler_verschiedener_braucht_labels() {
+    let verschieden: Vec<String> = (0..VIELE).map(|i| format!("braucht:{}", i + 10)).collect();
+    let als_text: Vec<&str> = verschieden.iter().map(String::as_str).collect();
+    let lage = Lage::von_hand(&[(5, als_text.as_slice())]);
+    let ((s, liste), dauer) = gemessen(get(&lage.lauf.adresse, "api/aufgaben")).await;
+    assert_eq!(s, 200);
+    assert!(dauer < SEKUNDE, "GET /api/aufgaben: {dauer:?}");
+    let fuenf = liste["aufgaben"].as_array().unwrap().iter().find(|a| a["nummer"] == 5).unwrap();
+    assert_eq!(fuenf["braucht"].as_array().unwrap().len(), VIELE);
+}
+
 // ---- AK 14: Legacy-Probe gegen Kopien der Bestände (von Hand, B1090) ---------------------------------------------------
 
 /// Das Programm mit eigenem Mitschnitt von stderr („im Log steht keine Fehler- oder Warnzeile“).

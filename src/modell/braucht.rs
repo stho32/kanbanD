@@ -3,7 +3,7 @@
 
 use super::{Aufgabe, Board};
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 /// Meldung, wenn `braucht` im Rumpf eines Schreibaufrufs steht — geschrieben wird nur über `labels` (ADR-0035 Punkt 4).
 pub const BRAUCHT_UEBER_LABELS: &str = "braucht über labels setzen (braucht:<nr>)";
@@ -46,28 +46,29 @@ pub fn deuten(label: &str) -> Deutung {
 const PRAEFIX: &str = "braucht:";
 
 /// Die gedeuteten Nummern in der Reihenfolge der Labels; dieselbe Nummer einmal (beim ersten Vorkommen).
+/// Linear in der Zahl der Labels (AK 16): die Menge prüft, die Liste hält die Reihenfolge.
 pub fn braucht_nummern(labels: &[String]) -> Vec<u32> {
-    let mut nummern: Vec<u32> = vec![];
-    for l in labels {
-        if let Deutung::Nummer(n) = deuten(l)
-            && !nummern.contains(&n)
-        {
-            nummern.push(n);
-        }
-    }
-    nummern
+    let mut gesehen: HashSet<u32> = HashSet::new();
+    labels.iter().filter_map(|l| if let Deutung::Nummer(n) = deuten(l) { Some(n) } else { None }).filter(|n| gesehen.insert(*n)).collect()
+}
+
+/// Die Nummern, die auf einem der Boards in dessen letzter Spalte liegen — einmal gerechnet, je Aufgabe nachgeschlagen.
+pub fn in_letzter_spalte<'a>(boards: impl IntoIterator<Item = &'a Board>) -> HashSet<u32> {
+    boards.into_iter().filter_map(Board::abschlussspalte).flat_map(|s| s.aufgaben.iter().copied()).collect()
 }
 
 /// Erledigt ist eine Aufgabe, wenn sie archiviert ist oder auf einem der Boards in dessen letzter Spalte liegt
-/// (ADR-0035 Punkt 3) — dieselbe Entscheidung trifft `POST /api/aufgaben/erledigen` für sein Board.
-pub fn ist_erledigt<'a>(a: &Aufgabe, boards: impl IntoIterator<Item = &'a Board>) -> bool {
-    a.archiviert.is_some() || boards.into_iter().any(|b| b.abschlussspalte().is_some_and(|s| s.aufgaben.contains(&a.nummer)))
+/// (ADR-0035 Punkt 3, `abgeschlossen` aus `in_letzter_spalte`) — dieselbe Entscheidung trifft
+/// `POST /api/aufgaben/erledigen` für sein Board.
+pub fn ist_erledigt(a: &Aufgabe, abgeschlossen: &HashSet<u32>) -> bool {
+    a.archiviert.is_some() || abgeschlossen.contains(&a.nummer)
 }
 
-/// Das Feld `braucht` zu den Labels einer Aufgabe: `finde` liefert die gebrauchte Aufgabe, wenn ihre Datei lesbar ist.
-pub fn abhaengigkeiten<'a>(labels: &[String], finde: impl Fn(u32) -> Option<&'a Aufgabe>, boards: &[Board]) -> Vec<Abhaengigkeit> {
+/// Das Feld `braucht` zu den Labels einer Aufgabe: `finde` liefert die gebrauchte Aufgabe, wenn ihre Datei lesbar ist;
+/// `abgeschlossen` aus `in_letzter_spalte`.
+pub fn abhaengigkeiten<'a>(labels: &[String], finde: impl Fn(u32) -> Option<&'a Aufgabe>, abgeschlossen: &HashSet<u32>) -> Vec<Abhaengigkeit> {
     let eintrag = |nummer: u32| match finde(nummer) {
-        Some(a) => Abhaengigkeit { nummer, erledigt: ist_erledigt(a, boards), titel: Some(a.titel.clone()) },
+        Some(a) => Abhaengigkeit { nummer, erledigt: ist_erledigt(a, abgeschlossen), titel: Some(a.titel.clone()) },
         None => Abhaengigkeit { nummer, titel: None, erledigt: false },
     };
     braucht_nummern(labels).into_iter().map(eintrag).collect()
@@ -90,16 +91,18 @@ pub fn unbekannt_meldung(nummer: u32) -> String {
 
 /// Die neu hinzukommenden Labels mit dem Präfix `braucht:` — „neu“ heißt: in der gespeicherten Liste steht es nicht,
 /// verglichen ohne Groß/Klein. Unverändert mitgeschickte Labels prüft die Tür nie (wie `klasse`, R00195).
+/// Linear in der Zahl der Labels (AK 16).
 pub fn neue_braucht_labels<'a>(vorher: &[String], nachher: &'a [String]) -> Vec<&'a str> {
-    let gespeichert: Vec<String> = vorher.iter().map(|l| l.trim().to_lowercase()).collect();
+    let gespeichert: HashSet<String> = vorher.iter().map(|l| l.trim().to_lowercase()).collect();
     nachher.iter().map(|l| l.as_str()).filter(|l| deuten(l) != Deutung::Keine && !gespeichert.contains(&l.trim().to_lowercase())).collect()
 }
 
 /// Prüft die neuen `braucht:`-Labels der Aufgabe `nummer` der Reihe nach — Form, Selbstbezug, unbekannte Nummer; der
 /// erste Fehler gewinnt. `gibt_es` sagt, ob es zur Nummer eine Aufgabendatei im Ordner gibt (archivierte zählen).
-/// Liefert die neuen Kanten `nummer → n` als Ziele in Label-Reihenfolge.
+/// Liefert die neuen Kanten `nummer → n` als Ziele in Label-Reihenfolge, jedes einmal.
 pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) -> Result<Vec<u32>, String> {
     let mut ziele = vec![];
+    let mut gesehen: HashSet<u32> = HashSet::new();
     for label in neue {
         let n = match deuten(label) {
             Deutung::Nummer(n) => n,
@@ -111,7 +114,7 @@ pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) ->
         if !gibt_es(n) {
             return Err(unbekannt_meldung(n));
         }
-        if !ziele.contains(&n) {
+        if gesehen.insert(n) {
             ziele.push(n);
         }
     }
@@ -210,6 +213,72 @@ mod tests {
         assert_eq!(an_der_tuer(5, &[], gibt_es), Ok(vec![]));
     }
 
+    // ---- AK 16 (B1095): linear in der Zahl der Labels — die Prüfung läuft unter der Schreibsperre ----------------------
+
+    /// Führt `f` in eigenem Faden aus und bricht nach `grenze` ab — ein quadratischer Lauf hält den Test nicht minutenlang auf.
+    fn binnen<T: Send + 'static>(was: &str, grenze: std::time::Duration, f: impl FnOnce() -> T + Send + 'static) -> T {
+        let (senden, empfangen) = std::sync::mpsc::channel();
+        std::thread::spawn(move || senden.send(f()));
+        empfangen.recv_timeout(grenze).unwrap_or_else(|_| panic!("{was}: länger als {grenze:?}"))
+    }
+
+    const GRENZE: std::time::Duration = std::time::Duration::from_secs(1);
+
+    fn viele(form: impl Fn(usize) -> String) -> Vec<String> {
+        (0..100_000).map(form).collect()
+    }
+
+    #[test]
+    fn ak16_neue_braucht_labels_100_000_unter_einer_sekunde() {
+        let neu = binnen("q gespeichert, braucht:<n> geschickt", GRENZE, || neue_braucht_labels(&viele(|i| format!("q{i}")), &viele(|i| format!("braucht:{}", i + 10))).len());
+        assert_eq!(neu, 100_000);
+        let neu = binnen("dieselben gespeichert und geschickt", GRENZE, || {
+            let l = viele(|i| format!("braucht:{}", i + 10));
+            neue_braucht_labels(&l, &l).len()
+        });
+        assert_eq!(neu, 0);
+        let neu = binnen("gespeichert groß, geschickt klein, umgekehrte Reihenfolge", GRENZE, || {
+            let mut geschickt = viele(|i| format!("braucht:{}", i + 10));
+            geschickt.reverse();
+            neue_braucht_labels(&viele(|i| format!("BRAUCHT:{}", i + 10)), &geschickt).len()
+        });
+        assert_eq!(neu, 0);
+    }
+
+    #[test]
+    fn ak16_braucht_nummern_100_000_unter_einer_sekunde() {
+        let nummern = binnen("verschiedene Nummern", GRENZE, || braucht_nummern(&viele(|i| format!("braucht:{}", i + 1))));
+        assert_eq!((nummern.len(), nummern.first(), nummern.last()), (100_000, Some(&1), Some(&100_000)), "Reihenfolge der Labels");
+        let nummern = binnen("dieselbe Nummer", GRENZE, || braucht_nummern(&viele(|_| "braucht:7".into())));
+        assert_eq!(nummern, vec![7]);
+    }
+
+    #[test]
+    fn ak16_tuer_100_000_neue_unter_einer_sekunde() {
+        let ziele = binnen("verschiedene Ziele", GRENZE, || {
+            let l = viele(|i| format!("braucht:{}", i + 2));
+            an_der_tuer(1, &l.iter().map(String::as_str).collect::<Vec<_>>(), |_| true)
+        });
+        assert_eq!(ziele.map(|z| (z.len(), z[0], z[99_999])), Ok((100_000, 2, 100_001)), "Reihenfolge der Labels");
+    }
+
+    /// Statisch (AK 16): außerhalb der Tests wird `.contains` nur auf Mengen gerufen — jeder Empfänger ist als
+    /// `HashSet`/`BTreeSet` deklariert, nie eine Liste.
+    #[test]
+    fn ak16_contains_nur_auf_mengen() {
+        let quelle = include_str!("braucht.rs");
+        let code = &quelle[..quelle.find("#[cfg(test)]").expect("Testmodul")];
+        let mengen = ["HashSet", "&HashSet", "BTreeSet", "&BTreeSet"];
+        for (zeile, text) in code.lines().enumerate() {
+            for (stelle, _) in text.match_indices(".contains(") {
+                let vorn = &text[..stelle];
+                let name = &vorn[vorn.rfind(|c: char| !(c.is_alphanumeric() || c == '_')).map_or(0, |i| i + 1)..];
+                let als_menge = mengen.iter().any(|m| code.contains(&format!("{name}: {m}<")));
+                assert!(!name.is_empty() && als_menge, "braucht.rs:{}: `{name}.contains` — keine Menge", zeile + 1);
+            }
+        }
+    }
+
     fn labels(l: &[&str]) -> Vec<String> {
         l.iter().map(|x| x.to_string()).collect()
     }
@@ -260,17 +329,17 @@ mod tests {
         let e = board("e", &[("Offen", &[1, 2]), ("In Arbeit", &[3]), ("Fertig", &[4])]);
         let f = board("f", &[("Eingang", &[4, 5]), ("Fertig", &[2])]);
         let leer = board("leer", &[]);
-        assert!(!ist_erledigt(&karte(1, false), [&e]), "Offen");
-        assert!(!ist_erledigt(&karte(3, false), [&e]), "In Arbeit");
-        assert!(ist_erledigt(&karte(4, false), [&e]), "letzte Spalte");
-        assert!(ist_erledigt(&karte(1, true), [&e]), "archiviert, auch auf dem Board in Offen");
-        assert!(ist_erledigt(&karte(9, true), [&e]), "archiviert, auf keinem Board");
-        assert!(!ist_erledigt(&karte(9, false), [&e, &f]), "auf keinem Board, nicht archiviert: offen");
-        assert!(!ist_erledigt(&karte(9, false), []), "ohne Boards offen");
-        assert!(ist_erledigt(&karte(2, false), [&e, &f]), "auf e offen, auf f in der letzten Spalte");
-        assert!(ist_erledigt(&karte(4, false), [&e, &f]), "auf e in der letzten Spalte, auf f offen");
-        assert!(!ist_erledigt(&karte(5, false), [&e, &f]), "nur auf f, dort offen");
-        assert!(!ist_erledigt(&karte(1, false), [&leer]), "Board ohne Spalten");
+        assert!(!ist_erledigt(&karte(1, false), &in_letzter_spalte([&e])), "Offen");
+        assert!(!ist_erledigt(&karte(3, false), &in_letzter_spalte([&e])), "In Arbeit");
+        assert!(ist_erledigt(&karte(4, false), &in_letzter_spalte([&e])), "letzte Spalte");
+        assert!(ist_erledigt(&karte(1, true), &in_letzter_spalte([&e])), "archiviert, auch auf dem Board in Offen");
+        assert!(ist_erledigt(&karte(9, true), &in_letzter_spalte([&e])), "archiviert, auf keinem Board");
+        assert!(!ist_erledigt(&karte(9, false), &in_letzter_spalte([&e, &f])), "auf keinem Board, nicht archiviert: offen");
+        assert!(!ist_erledigt(&karte(9, false), &in_letzter_spalte([])), "ohne Boards offen");
+        assert!(ist_erledigt(&karte(2, false), &in_letzter_spalte([&e, &f])), "auf e offen, auf f in der letzten Spalte");
+        assert!(ist_erledigt(&karte(4, false), &in_letzter_spalte([&e, &f])), "auf e in der letzten Spalte, auf f offen");
+        assert!(!ist_erledigt(&karte(5, false), &in_letzter_spalte([&e, &f])), "nur auf f, dort offen");
+        assert!(!ist_erledigt(&karte(1, false), &in_letzter_spalte([&leer])), "Board ohne Spalten");
     }
 
     // R00214 AK 1–3: Titel und Erledigt der gebrauchten Aufgabe, fehlende oder unlesbare Datei titel null, erledigt false
@@ -284,12 +353,12 @@ mod tests {
         let alle = [geruest, karte(3, false), alt];
         let finde = |n: u32| alle.iter().find(|a| a.nummer == n);
         let eintrag = |nummer: u32, titel: Option<&str>, erledigt: bool| Abhaengigkeit { nummer, titel: titel.map(Into::into), erledigt };
-        assert_eq!(abhaengigkeiten(&labels(&["feature", "braucht:1"]), finde, std::slice::from_ref(&e)), vec![eintrag(1, Some("Gerüst"), false)]);
+        assert_eq!(abhaengigkeiten(&labels(&["feature", "braucht:1"]), finde, &in_letzter_spalte([&e])), vec![eintrag(1, Some("Gerüst"), false)]);
         assert_eq!(
-            abhaengigkeiten(&labels(&["braucht:999", "BRAUCHT:3", "braucht:4", "braucht:abc", "braucht:3"]), finde, std::slice::from_ref(&e)),
+            abhaengigkeiten(&labels(&["braucht:999", "BRAUCHT:3", "braucht:4", "braucht:abc", "braucht:3"]), finde, &in_letzter_spalte([&e])),
             vec![eintrag(999, None, false), eintrag(3, Some("x"), true), eintrag(4, Some("Alt"), true)]
         );
-        assert_eq!(abhaengigkeiten(&labels(&["ui"]), finde, &[e]), vec![]);
+        assert_eq!(abhaengigkeiten(&labels(&["ui"]), finde, &in_letzter_spalte([&e])), vec![]);
         let json = serde_json::to_value(eintrag(999, None, false)).unwrap();
         assert_eq!(json, serde_json::json!({"nummer": 999, "titel": null, "erledigt": false}));
     }

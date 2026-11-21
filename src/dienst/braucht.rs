@@ -4,8 +4,8 @@
 use super::Kanban;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Aufgabe, Board, abhaengigkeiten, an_der_tuer, braucht_nummern, kreis_meldung, kreis_suchen, neue_braucht_labels};
-use std::collections::{BTreeMap, BTreeSet};
+use crate::modell::{Aufgabe, abhaengigkeiten, an_der_tuer, braucht_nummern, in_letzter_spalte, kreis_meldung, kreis_suchen, neue_braucht_labels};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 /// Setzt einer 400 den Vorsatz des Aufrufers voran (`#7: `, `„Titel“: `) — andere Fehler bleiben, wie sie sind.
 pub(super) fn vorsatz(f: Fehler, vor: &str) -> Fehler {
@@ -86,15 +86,15 @@ impl Kanban {
                 gebraucht.insert(n, g);
             }
         }
-        a.braucht = Some(abhaengigkeiten(&a.labels, |n| gebraucht.get(&n), &self.lesbare_boards()?));
+        a.braucht = Some(abhaengigkeiten(&a.labels, |n| gebraucht.get(&n), &self.abgeschlossen()?));
         Ok(())
     }
 
     /// `braucht` für jede Aufgabe einer Liste, die alle Aufgaben des Ordners enthält (`GET /api/aufgaben` vor dem Filter).
     pub fn braucht_eintragen_alle(&self, alle: &mut [Aufgabe]) -> Result<(), Fehler> {
-        let boards = self.lesbare_boards()?;
+        let abgeschlossen = self.abgeschlossen()?;
         let je_nummer: BTreeMap<u32, &Aufgabe> = alle.iter().map(|a| (a.nummer, a)).collect();
-        let felder: Vec<_> = alle.iter().map(|a| abhaengigkeiten(&a.labels, |n| je_nummer.get(&n).copied(), &boards)).collect();
+        let felder: Vec<_> = alle.iter().map(|a| abhaengigkeiten(&a.labels, |n| je_nummer.get(&n).copied(), &abgeschlossen)).collect();
         for (a, braucht) in alle.iter_mut().zip(felder) {
             a.braucht = Some(braucht);
         }
@@ -110,8 +110,8 @@ impl Kanban {
         }
     }
 
-    /// Die lesbaren Boards des Ordners; eine defekte Board-Datei trägt nichts zu „erledigt“ bei.
-    fn lesbare_boards(&self) -> Result<Vec<Board>, Fehler> {
-        Ok(self.ordner().boards()?.0)
+    /// Die Nummern in der letzten Spalte eines lesbaren Boards; eine defekte Board-Datei trägt nichts zu „erledigt“ bei.
+    fn abgeschlossen(&self) -> Result<HashSet<u32>, Fehler> {
+        Ok(in_letzter_spalte(&self.ordner().boards()?.0))
     }
 }

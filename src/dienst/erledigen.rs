@@ -9,7 +9,7 @@ use super::zugregeln::{archivierte, zug_pruefen};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, Person, Schluesseltreffer, ist_erledigt, signal_unbekannt};
+use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, Person, Schluesseltreffer, in_letzter_spalte, ist_erledigt, signal_unbekannt};
 use crate::pruefungen::Warnung;
 use serde::Serialize;
 
@@ -146,7 +146,7 @@ pub(super) enum Erledigungslage {
 /// Agent in einer Menschen-Spalte (melden statt bewegen), sonst erledigen.
 /// „Erledigt“ entscheidet `ist_erledigt` — dieselbe Funktion deutet `braucht:` (R00214, ADR-0035 Pre-Mortem c).
 pub(super) fn lage(a: &Aufgabe, b: &Board, art: Art, signal: &str) -> Erledigungslage {
-    if ist_erledigt(a, [b]) {
+    if ist_erledigt(a, &in_letzter_spalte([b])) {
         return Erledigungslage::SchonErledigt;
     }
     let Some(von) = b.spalte_von(a.nummer).map(|s| s.name.clone()) else {
@@ -267,7 +267,7 @@ mod tests {
                 let mut a = karte(nr);
                 a.archiviert = archiviert.then(|| "2026-11-01".into());
                 let schon = lage(&a, &b, Art::Mensch, "behoben") == Erledigungslage::SchonErledigt;
-                assert_eq!(schon, ist_erledigt(&a, [&b]), "#{nr} archiviert={archiviert}");
+                assert_eq!(schon, ist_erledigt(&a, &in_letzter_spalte([&b])), "#{nr} archiviert={archiviert}");
             }
         }
     }
