@@ -146,7 +146,7 @@ impl utoipa::PartialSchema for Transkripteintrag {
 
 impl utoipa::ToSchema for Transkripteintrag {}
 
-/// Zustand eines Transkripts in der Liste (ADR-0036 Regel 5) — aus einem `symlink_metadata` und drei Byte, ohne Entpacken.
+/// Zustand eines Transkripts in der Liste (ADR-0036 Regel 5) — aus den Metadaten der geöffneten Datei und drei Byte, ohne Entpacken.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Transkriptzustand {
