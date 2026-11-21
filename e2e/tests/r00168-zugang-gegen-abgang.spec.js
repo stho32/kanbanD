@@ -66,7 +66,7 @@ async function messbasis(page, tage) {
   await bereit(page);
 }
 const methodik = page => page.locator('.wl-liste').last();
-const block = (page, spalte) => page.locator(`.wl-phase[data-spalte="${spalte}"]`);
+const block = (page, spalte) => page.locator(`.wl-block[data-spalte="${spalte}"]`);
 const messzeilen = ort => ort.locator('p.sek');
 /** Restliche Dauer der ersten Tabelle — seit R00193 kann „Mit Zugang wie in der Messbasis“ folgen. */
 const restlicheDauer = ort => ort.locator('.wl-tab').first().locator('tbody tr td:nth-child(4)');
@@ -115,6 +115,6 @@ test('R00168 US-3 (AK 4): ohne Prognose keine der beiden Zeilen — es bleibt de
     const erledigt = block(page, 'Erledigt');
     await expect(erledigt.getByText('4 offen — keine Prognose unter 3 Läufen in der Messbasis (gemessen: 2).')).toBeVisible();
     await expect(messzeilen(erledigt)).toHaveText([/^Durchsatz Ø 0,2 je Kalendertag aus 2 Läufen/]);
-    await expect(page.locator('.wl-phase').getByText(/Zugang Ø|kein Ende absehbar/)).toHaveCount(0);
+    await expect(page.locator('.wl-block').getByText(/Zugang Ø|kein Ende absehbar/)).toHaveCount(0);
   } finally { await k.stoppen(); }
 });

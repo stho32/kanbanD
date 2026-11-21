@@ -41,7 +41,7 @@ test('US-1 bis US-3: Termin anlegen, Chance, ändern, entfernen', async ({ page 
     await expect(page.locator('#termine tbody tr')).toContainText(['Deadline']);
     // seit R00078 steht vorn die Spalte „Ziel“
     await expect(page.locator('#termine tbody td').nth(4)).toHaveText(/^100 % · 100 % in der 5-Tage-Woche$/);
-    await expect(page.locator('.wl-phase[data-spalte="Erledigt"] .wl-tchance')).toContainText('Deadline · bis So 31.10.2027: 100 %');
+    await expect(page.locator('.wl-block[data-spalte="Erledigt"] .wl-tchance')).toContainText('Deadline · bis So 31.10.2027: 100 %');
     // zweiter Termin, gestrichelt, eigene Farbe, in der Vergangenheit
     await page.getByLabel('Name des Termins').fill('Kickoff');
     await page.getByLabel('Datum des Termins').fill(vorTagen(10));

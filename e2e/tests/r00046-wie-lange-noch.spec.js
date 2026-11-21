@@ -33,7 +33,7 @@ test.describe('R00046', () => {
     await page.locator('#t-ber').click();
     await page.getByRole('menuitem', { name: /Wie lange noch/ }).click();
     await expect(page.locator('#wl-kopf')).toHaveText('3 von 6 fertig · „In Arbeit“ 4 von 6 erreicht');
-    const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
+    const erledigt = page.locator('.wl-block[data-spalte="Erledigt"]');
     // die erste Tabelle des Blocks — seit R00193 kann „Mit Zugang wie in der Messbasis“ folgen
     await expect(erledigt.locator('.wl-tab').first().locator('tbody tr td:first-child')).toHaveText(['50 %', '70 %', '85 %', '95 %']);
     await expect(erledigt).toContainText('3 VON 6 ERREICHT');
@@ -41,7 +41,7 @@ test.describe('R00046', () => {
     await filterOeffnen(page);
     const filter = page.getByRole('group', { name: 'Berichtsfilter' });
     await filterSchalten(page, filter.getByRole('button', { name: 'In Arbeit' }));
-    await expect(page.locator('.wl-phase')).toHaveCount(1);
+    await expect(page.locator('.wl-block')).toHaveCount(1);
     await expect(page.locator('#wl-kopf')).toHaveText('3 von 5 fertig');
     await filterSchalten(page, filter.getByRole('button', { name: 'In Arbeit' }));
     await filterSchalten(page, filter.getByRole('button', { name: 'Fehler' }));
@@ -67,7 +67,7 @@ test.describe('R00046', () => {
     await expect(page.locator('#wl-kopf')).toContainText('3 von 7 fertig');
     await expect(feld).toHaveValue('1');
     await feld.press('Enter');
-    await expect(page.locator('.wl-phase[data-spalte="Erledigt"]')).toContainText('keine Prognose unter 3 Läufen');
+    await expect(page.locator('.wl-block[data-spalte="Erledigt"]')).toContainText('keine Prognose unter 3 Läufen');
     expect(k.lies('boards/entwicklung.md')).toContain('window-days: 1');
   });
 

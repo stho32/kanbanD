@@ -554,7 +554,7 @@ mod tests {
     /// R00195 AK 1, 2 (ADR-0031 Regel 1, 4): `classes` der Board-Datei — ohne, mit mehreren, mit `{}` zeichengleich.
     #[test]
     fn klassen_des_boards_rundlauf_zeichengleich() {
-        let mehrere = "---\nclasses:\n  phase1: {label: Phase 1, color: green}\n  eol: {label: Altlast, color: \"#885500\"}\nlimits:\n  In Arbeit: 3\n---\n\n# Umzug\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n";
+        let mehrere = "---\nclasses:\n  etappe1: {label: Etappe 1, color: green}\n  eol: {label: Altlast, color: \"#885500\"}\nlimits:\n  In Arbeit: 3\n---\n\n# Umzug\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n";
         let leer = "---\nclasses: {}\n---\n\n# Umzug\n\n## Zu erledigen\n";
         let ohne = "---\nlimits:\n  In Arbeit: 3\n---\n\n# Umzug\n\n## Zu erledigen\n\n## In Arbeit\n";
         let ganz_ohne = "# Umzug\n\n## Zu erledigen\n";
@@ -562,7 +562,7 @@ mod tests {
             assert_eq!(schreiben(&lesen("umzug", text).unwrap(), |_| None), text);
         }
         let satz = lesen("umzug", mehrere).unwrap().klassen.expect("eigener Satz");
-        assert_eq!(satz.iter().map(|k| (k.schluessel.as_str(), k.bezeichnung.as_str(), k.farbe.as_str())).collect::<Vec<_>>(), vec![("phase1", "Phase 1", "green"), ("eol", "Altlast", "#885500")], "Dateireihenfolge");
+        assert_eq!(satz.iter().map(|k| (k.schluessel.as_str(), k.bezeichnung.as_str(), k.farbe.as_str())).collect::<Vec<_>>(), vec![("etappe1", "Etappe 1", "green"), ("eol", "Altlast", "#885500")], "Dateireihenfolge");
         assert_eq!(lesen("umzug", leer).unwrap().klassen, Some(vec![]), "classes: {{}} = ausdrücklich keine");
         assert_eq!(lesen("umzug", ohne).unwrap().klassen, None, "fehlender Schlüssel = Vorgabe des Ordners");
         assert_eq!(lesen("umzug", ganz_ohne).unwrap().klassen, None);
@@ -584,14 +584,16 @@ mod tests {
     // ADR-0034 Regel 2, N4 Regel 3 (R00223): `column-phases` ist ein unbekannter Schlüssel des Boards — überlesen, und beim
     // nächsten Schreiben fehlt er; auch eine Form, die keine Zuordnung ist, ist kein Fehler.
     #[test]
-    fn column_phases_wird_ueberlesen_und_fehlt_beim_schreiben() {
-        let mit = "---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Abnahme: Mia\n";
-        let ohne = mit.replace("column-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n", "");
-        let g = lesen("entwicklung", mit).unwrap();
+    fn alter_spaltenschluessel_wird_ueberlesen_und_fehlt_beim_schreiben() {
+        const ALT: &str = "column-phases"; // der Schlüssel aus R00058, seit ADR-0034 N4 unbekannt
+        let eintraege = "  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n";
+        let mit = format!("---\nlimits:\n  In Arbeit: 3\n{ALT}:\n{eintraege}---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Abnahme: Mia\n");
+        let ohne = mit.replace(&format!("{ALT}:\n{eintraege}"), "");
+        let g = lesen("entwicklung", &mit).unwrap();
         assert_eq!(g, lesen("entwicklung", &ohne).unwrap(), "gelesen wie ohne den Schlüssel");
         let t = schreiben(&g, datei);
-        assert!(!t.contains("column-phases") && t.starts_with("---\nlimits:\n  In Arbeit: 3\n---\n"), "{t}");
-        assert!(lesen("b", "---\ncolumn-phases: [Abnahme]\n---\n## A\n").is_ok());
+        assert!(!t.contains(ALT) && t.starts_with("---\nlimits:\n  In Arbeit: 3\n---\n"), "{t}");
+        assert!(lesen("b", &format!("---\n{ALT}: [Abnahme]\n---\n## A\n")).is_ok());
     }
 
     // R00222 (ADR-0034 Regel 2): `column-checks` wird überlesen und fällt beim nächsten Schreiben des Boards weg.

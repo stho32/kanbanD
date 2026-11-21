@@ -1024,7 +1024,7 @@ function vBoard() {
 /** Was an den Eigentümern der Spalten (R00097, R00120) nicht stimmt: unbekannte Eigentümer. */
 function vBoardHinweise(b) {
   const p = b.hinweise || [];
-  return (p.length ? `<div class="archbar phasenbar" role="status" id="pruefungen-hinweis"><b>Prüfungen</b>${p.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '');
+  return (p.length ? `<div class="archbar hinweisleiste" role="status" id="pruefungen-hinweis"><b>Prüfungen</b>${p.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : '');
 }
 const imArchiv = () => archivGefiltert(S.ui.filter);
 const umfeld = () => ({ ich: S.ich, bereich: S.ui.bereich, personen: personen(), heute: isoD(Date.now()), abgeschlossen: abgeschlossene() });
@@ -2018,7 +2018,7 @@ ${fadenkreuz(O, H - U)}
   const tabelle = `<details class="tabellenansicht"><summary data-halt="klappe:tabelle-prognose">Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">Umfang</th>${p.bloecke.map(ph => `<th class="r">${esc(blockOffen(ph))}</th>`).join('')}</tr></thead><tbody>${p.tage.map(d => `<tr><td class="mono">${datumAusMs(d.t)}</td><td class="r num">${d.umfang}</td>${p.bloecke.map(ph => `<td class="r num">${d.offen[ph.schluessel]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
   const bloecke = p.bloecke.map(ph => {
     const anteil = ph.nenner ? ph.erreicht / ph.nenner : 1, wort = 'ERREICHT';
-    const kopfzeile = `<div class="wl-phase-kopf"><h3>${esc(ph.titel)} <span class="wl-badge">${ph.erreicht} VON ${ph.nenner} ${wort}</span></h3><div class="wl-fortschritt" role="img" aria-label="${Math.round(100 * anteil)} Prozent ${wort.toLowerCase()}"><i style="width:${Math.round(100 * anteil)}%"></i></div></div>`;
+    const kopfzeile = `<div class="wl-block-kopf"><h3>${esc(ph.titel)} <span class="wl-badge">${ph.erreicht} VON ${ph.nenner} ${wort}</span></h3><div class="wl-fortschritt" role="img" aria-label="${Math.round(100 * anteil)} Prozent ${wort.toLowerCase()}"><i style="width:${Math.round(100 * anteil)}%"></i></div></div>`;
     const reihe = ph.reihe7.length > 60 ? '… ' + ph.reihe7.slice(-60).join(' ') : ph.reihe7.join(' ');
     const messung = ph.laeufe ? `<p class="sek">Durchsatz Ø ${zahl1(ph.durchsatz)} je Kalendertag aus ${ph.laeufe} ${ph.laeufe === 1 ? 'Lauf' : 'Läufen'} · Tagesreihe: <span class="mono">${reihe}</span></p>` : '';
     let inhalt;
@@ -2032,7 +2032,7 @@ ${fadenkreuz(O, H - U)}
     if (hinweis && hinweis.keinEndeAbsehbar) keinEnde = '<p>Bei diesem Zugang kein Ende absehbar: Die Prognose rechnet nur mit den heute offenen Aufgaben.</p>';
     const mitZugang = vMitZugang(ph);
     const termin = termine.length ? `<ul class="wl-tchance">${termine.map(t => `<li><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg>${esc(t.name)} · bis ${datumMitWochentag(isoTag(t.datum))}: <b>${esc(chanceText(terminChance(ph, t.datum, jetzt)))}</b></li>`).join('')}</ul>` : '';
-    return `<section class="wl-phase" style="--anteil:${anteil}" data-spalte="${esc(ph.spalte)}">${kopfzeile}${inhalt}${keinEnde}${mitZugang}${termin}${messung}${mittel}</section>`;
+    return `<section class="wl-block" style="--anteil:${anteil}" data-spalte="${esc(ph.spalte)}">${kopfzeile}${inhalt}${keinEnde}${mitZugang}${termin}${messung}${mittel}</section>`;
   }).join('');
   const ohneBoard = S.aufgaben.filter(a => !a.archiviert && !(S.boards || []).some(b => b.spalten.some(sp => sp.aufgaben.includes(a.nummer)))).length;
   const aufBoard = S.board ? S.board.spalten.reduce((s, sp) => s + sp.aufgaben.length, 0) : 0;

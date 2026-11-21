@@ -752,20 +752,21 @@ mod tests {
     }
 
     // R00223 (ADR-0034 Regel 2, N4 Regel 2, ADR-0028 Option B): `phases` ist ein unbekannter Schlüssel — die Aufgabe öffnet in
-    // jeder Form, auch `phases: [Abnahme]` (früher ein Formatfehler), und der Inhalt bleibt beim Schreiben gleich (Blockform).
+    // jeder Form, auch als Liste (früher ein Formatfehler), und der Inhalt bleibt beim Schreiben gleich (Blockform).
     #[test]
-    fn phases_ist_unbekannt_und_bleibt_inhaltlich_gleich() {
-        let wert = |text: &str| -> Value { serde_yaml::from_str::<Value>(text.trim_start_matches("---\n").split("\n---").next().unwrap()).unwrap()["phases"].clone() };
+    fn alter_aufgabenschluessel_ist_unbekannt_und_bleibt_inhaltlich_gleich() {
+        const ALT: &str = "phases"; // der Schlüssel aus R00058, seit ADR-0034 N4 unbekannt
+        let wert = |text: &str| -> Value { serde_yaml::from_str::<Value>(text.trim_start_matches("---\n").split("\n---").next().unwrap()).unwrap()[ALT].clone() };
         for form in ["{skipped: [Reviews]}", "[Abnahme]", "{skipped: Abnahme, reason: kein Kunde, owners: [mi]}", ""] {
-            let t = format!("---\nid: 3\ntitle: X\nphases: {form}\n---\n");
+            let t = format!("---\nid: 3\ntitle: X\n{ALT}: {form}\n---\n");
             let a = lesen("0003-x.md", &t).unwrap_or_else(|f| panic!("{form}: {}", f.0));
-            assert_eq!(a.weitere.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), ["phases"], "{form}");
+            assert_eq!(a.weitere.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), [ALT], "{form}");
             let neu = schreiben(&a);
             assert_eq!(wert(&neu), wert(&t), "{form}: inhaltlich gleich:\n{neu}");
             assert_eq!(schreiben(&lesen("0003-x.md", &neu).unwrap()), neu, "{form}: ein zweites Schreiben ändert kein Byte");
         }
-        let block = schreiben(&lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases: {skipped: [Reviews]}\n---\n").unwrap());
-        assert!(block.contains("phases:\n  skipped:\n  - Reviews\n"), "Blockform beim ersten Schreiben:\n{block}");
+        let block = schreiben(&lesen("0003-x.md", &format!("---\nid: 3\ntitle: X\n{ALT}: {{skipped: [Reviews]}}\n---\n")).unwrap());
+        assert!(block.contains(&format!("{ALT}:\n  skipped:\n  - Reviews\n")), "Blockform beim ersten Schreiben:\n{block}");
     }
 
     #[test]

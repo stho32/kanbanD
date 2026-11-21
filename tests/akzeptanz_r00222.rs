@@ -707,16 +707,16 @@ fn erste_antwort_abwarten(adresse: &str) -> std::io::Result<()> {
 
 // ---- AK 12: README ohne WBS-Sicht, Wirkungen und Plausibilität -------------------------------------------------------
 
-/// Das Wort `wbs` (ohne Groß-/Kleinschreibung) steht nur noch im Satz zum Lese-Rückfall der Wurzel und in der Zeile zu den
-/// Phasen (bis S3, #227); „Bedienen in Kürze“ nennt weder WBS-Sicht noch Wirkungen noch Plausibilität, „Für Agenten“ weder
-/// `/api/wbs` noch `wbs-effects` noch ein Ereignisfeld `wbs`.
+/// Das Wort `wbs` (ohne Groß-/Kleinschreibung) steht nur noch im Satz zum Lese-Rückfall der Wurzel — die Zeile zu den
+/// Phasen ist mit S3 entfallen (R00223 AK 15); „Bedienen in Kürze“ nennt weder WBS-Sicht noch Wirkungen noch Plausibilität,
+/// „Für Agenten“ weder `/api/wbs` noch `wbs-effects` noch ein Ereignisfeld `wbs`.
 #[test]
-fn ak12_readme_nennt_die_wbs_nur_im_rueckfall_und_bei_den_phasen() {
+fn ak12_readme_nennt_die_wbs_nur_im_rueckfall() {
     let readme = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
     let mit_wbs: Vec<&str> = readme.lines().filter(|z| z.to_lowercase().contains("wbs")).collect();
-    let erlaubt = |z: &&str| z.starts_with("- **Phasen als Spalten**") || z.contains("Lese-Rückfall");
-    assert!(mit_wbs.iter().all(erlaubt), "Zeilen mit „wbs“ außerhalb von Rückfall und Phasen:\n{}", mit_wbs.iter().filter(|z| !erlaubt(z)).map(|z| z.chars().take(120).collect::<String>()).collect::<Vec<_>>().join("\n"));
-    assert_eq!(mit_wbs.len(), 2, "genau der Rückfall-Satz und die Phasen-Zeile");
+    let erlaubt = |z: &&str| z.contains("Lese-Rückfall");
+    assert!(mit_wbs.iter().all(erlaubt), "Zeilen mit „wbs“ außerhalb des Rückfalls:\n{}", mit_wbs.iter().filter(|z| !erlaubt(z)).map(|z| z.chars().take(120).collect::<String>()).collect::<Vec<_>>().join("\n"));
+    assert_eq!(mit_wbs.len(), 1, "genau der Rückfall-Satz");
     for verboten in ["/api/wbs", "wbs-effects", "Wirkungen auf die WBS", "Plausibilitätsprüfung", "column-checks", "`g k`"] {
         assert!(!readme.contains(verboten), "README nennt noch „{verboten}“");
     }

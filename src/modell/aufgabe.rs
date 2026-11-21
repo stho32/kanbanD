@@ -741,15 +741,19 @@ mod tests {
         assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);
     }
 
-    // R00223 (ADR-0034 N4 Regel 2): `phasen` im PATCH ist ein unbekanntes Feld und wird überlesen — keine Änderung, und ein
-    // `phases`, das die Datei trägt, bleibt unter den unbekannten Schlüsseln stehen.
+    // R00223 (ADR-0034 N4 Regel 2): `phasen` im PATCH ist ein unbekanntes Feld und wird überlesen — keine Änderung, und
+    // ein Schlüssel `phases`, den die Datei trägt (ADR-0034), bleibt unter den unbekannten Schlüsseln stehen.
     #[test]
-    fn phasen_im_patch_wird_ueberlesen() {
+    fn altes_feld_im_patch_wird_ueberlesen() {
+        const FELD: &str = "phasen"; // PATCH-Feld aus R00058, seit ADR-0034 N4 unbekannt
+        const LISTE: &str = "uebersprungen"; // sein Unterfeld, seit ADR-0034 N4 unbekannt
+        const SCHLUESSEL: &str = "phases"; // Dateischlüssel aus R00058, seit ADR-0034 N4 unbekannt
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        a.weitere.push(("phases".into(), serde_yaml::from_str("{skipped: [Reviews]}").unwrap()));
+        a.weitere.push((SCHLUESSEL.into(), serde_yaml::from_str("{skipped: [Reviews]}").unwrap()));
         let vorher = a.clone();
-        for rumpf in [r#"{"phasen":{"uebersprungen":["Abnahme"]}}"#, r#"{"phasen":{"uebersprungen":[]}}"#, r#"{"phasen":{"skipped":["Abnahme"]}}"#] {
-            assert!(a.aendern(&aend(rumpf), &e(), &geltung()).unwrap().is_empty(), "{rumpf}");
+        for wert in [format!(r#"{{"{LISTE}":["Abnahme"]}}"#), format!(r#"{{"{LISTE}":[]}}"#), r#"{"skipped":["Abnahme"]}"#.to_string()] {
+            let rumpf = format!(r#"{{"{FELD}":{wert}}}"#);
+            assert!(a.aendern(&aend(&rumpf), &e(), &geltung()).unwrap().is_empty(), "{rumpf}");
             assert_eq!(a, vorher, "{rumpf}");
         }
     }

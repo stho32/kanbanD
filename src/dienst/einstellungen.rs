@@ -280,12 +280,12 @@ mod tests {
     fn klassen_pruefen_nennt_schluessel_bezeichnung_farbe_und_dopplung() {
         let k = |s: &str, b: &str, f: &str| Klasse { schluessel: s.into(), bezeichnung: b.into(), farbe: f.into() };
         assert_eq!(klassen_pruefen(&[]), Ok(()), "der leere Satz ist gültig");
-        assert_eq!(klassen_pruefen(&[k("phase1", "Phase 1", "green"), k("eol", "Altlast", "#885500")]), Ok(()));
+        assert_eq!(klassen_pruefen(&[k("etappe1", "Etappe 1", "green"), k("eol", "Altlast", "#885500")]), Ok(()));
         let meldung = |klassen: &[Klasse]| klassen_pruefen(klassen).unwrap_err().meldung().to_string();
         assert!(meldung(&[k("eol", "EOL", "amber"), k("eol", "Altlast", "red")]).contains("„eol“ ist doppelt"));
         assert!(meldung(&[k("eol", " ", "amber")]).contains("braucht eine Bezeichnung"));
         assert!(meldung(&[k("eol", "EOL", "lila")]).contains("Farbe „lila“"));
-        assert!(meldung(&[k("Phase 1", "Phase 1", "green")]).contains("Klassenschlüssel „Phase 1“"));
+        assert!(meldung(&[k("Etappe 1", "Etappe 1", "green")]).contains("Klassenschlüssel „Etappe 1“"));
         assert!(meldung(&[k("", "leer", "green")]).contains("Klassenschlüssel"));
     }
 

@@ -298,7 +298,7 @@ test('Selbstprobe gedämpftes Paar: ein hellerer Ton der stillgelegten Initiale 
   assert.match(satz, /^Gedämpfte Initiale stillgelegt: --kd-on-still auf --kd-still, hell \d,\d{3} < 4,5$/);
 });
 
-/* ── Phasenblock „Wie lange noch“ (FA 13): Grund mischt die Ampel nach dem Anteil ── */
+/* ── Block „Wie lange noch“ (FA 13): Grund mischt die Ampel nach dem Anteil ── */
 
 /** color-mix(in oklch, a anteil, b) mit kürzerem Farbtonweg, wie der Browser mischt. */
 function mische(a, b, anteil) {
@@ -311,7 +311,7 @@ function mische(a, b, anteil) {
 }
 const ANTEILE = [0, 1 / 3, 0.5, 2 / 3, 1];
 /** Verstöße von Schrift (vorne) auf Grund, beide als Mischung ok/error, je Thema und Anteil. */
-function phasenVerstoesse(vorne, grund) {
+function blockVerstoesse(vorne, grund) {
   const saetze = [];
   for (const [thema, werte] of Object.entries(themen(TOKENS))) {
     const farbe = (paar, anteil) => typeof paar === 'string' ? aufgeloest(paar, werte) : mische(aufgeloest(paar[0], werte), aufgeloest(paar[1], werte), anteil);
@@ -324,17 +324,17 @@ function phasenVerstoesse(vorne, grund) {
 }
 const GRUND = ['--kd-status-ok-bg', '--kd-status-error-bg'];
 
-test('Phasenblock: --kd-text und --kd-muted auf dem gemischten Grund mindestens 4,5 bei jedem Anteil', () => {
-  assert.deepStrictEqual([...phasenVerstoesse('--kd-text', GRUND), ...phasenVerstoesse('--kd-muted', GRUND)], []);
+test('Block von Wie lange noch: --kd-text und --kd-muted auf dem gemischten Grund mindestens 4,5 bei jedem Anteil', () => {
+  assert.deepStrictEqual([...blockVerstoesse('--kd-text', GRUND), ...blockVerstoesse('--kd-muted', GRUND)], []);
 });
 
-test('Phasenblock: Abzeichen mit gemischter Ampelschrift auf dem gemischten Grund mindestens 4,5', () => {
-  assert.deepStrictEqual(phasenVerstoesse(['--kd-status-ok-ink', '--kd-status-error-ink'], GRUND), []);
+test('Block von Wie lange noch: Abzeichen mit gemischter Ampelschrift auf dem gemischten Grund mindestens 4,5', () => {
+  assert.deepStrictEqual(blockVerstoesse(['--kd-status-ok-ink', '--kd-status-error-ink'], GRUND), []);
 });
 
-test('Phasenblock: ansicht.js setzt den Anteil (--anteil), keinen Farbton (--h)', () => {
+test('Block von Wie lange noch: ansicht.js setzt den Anteil (--anteil), keinen Farbton (--h)', () => {
   const ansicht = lies('ansicht.js');
-  assert.match(ansicht, /<section class="wl-phase" style="--anteil:\$\{anteil\}"/);
+  assert.match(ansicht, /<section class="wl-block" style="--anteil:\$\{anteil\}"/);
   assert.doesNotMatch(ansicht, /--h:/);
   assert.doesNotMatch(lies('kd-app.css'), /var\(--h\)/);
 });

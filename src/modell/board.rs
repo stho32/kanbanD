@@ -177,10 +177,10 @@ pub struct Fieber {
     pub gelb: [u32; 2],
     #[serde(default = "Fieber::rot_standard")]
     pub rot: [u32; 2],
-    /// Spalte bzw. Phase, deren Block als „erledigt“ zählt (R00079); `None` = der letzte Block.
+    /// Spalte, deren Block als „erledigt“ zählt (R00079); `None` = der letzte Block.
     #[serde(default)]
     pub zielspalte: Option<String>,
-    /// Spalte bzw. Phase, ab der eine Aufgabe im Durchsatz als Zugang zählt (R00167); `None` = die erste Spalte.
+    /// Spalte, ab der eine Aufgabe im Durchsatz als Zugang zählt (R00167); `None` = die erste Spalte.
     #[serde(default)]
     pub vonspalte: Option<String>,
     /// Labels, die im Burndown „selbsterzeugt“ heißen (R00194, ADR-0027 N6); leer = keine Wahl, die Zahl fehlt.
@@ -888,8 +888,8 @@ mod tests {
         let schluessel = |b: &Board| b.klassenvorrat(&e).iter().map(|k| format!("{}={}", k.schluessel, k.bezeichnung)).collect::<Vec<_>>();
         let mut umzug = b();
         assert_eq!(schluessel(&umzug), vec!["sicherheit=Sicherheit", "eol=EOL"], "kein Satz: die Vorgabe des Ordners");
-        umzug.klassen = Some(vec![k("phase1", "Phase 1", "green"), k("eol", "Altlast", "#885500")]);
-        assert_eq!(schluessel(&umzug), vec!["phase1=Phase 1", "eol=Altlast"], "eigener Satz, nicht gemischt, in seiner Reihenfolge");
+        umzug.klassen = Some(vec![k("etappe1", "Etappe 1", "green"), k("eol", "Altlast", "#885500")]);
+        assert_eq!(schluessel(&umzug), vec!["etappe1=Etappe 1", "eol=Altlast"], "eigener Satz, nicht gemischt, in seiner Reihenfolge");
         umzug.klassen = Some(vec![]);
         assert!(schluessel(&umzug).is_empty(), "der leere Satz bleibt leer");
     }
@@ -900,25 +900,25 @@ mod tests {
         let k = |s: &str| crate::modell::Klasse { schluessel: s.into(), bezeichnung: s.to_uppercase(), farbe: "red".into() };
         let e = crate::modell::Einstellungen { klassen: vec![k("sicherheit"), k("eol")], ..Default::default() };
         let wartung = Board { slug: "wartung".into(), ..b() };
-        let umzug = Board { slug: "umzug".into(), klassen: Some(vec![k("phase1"), k("eol")]), ..b() };
+        let umzug = Board { slug: "umzug".into(), klassen: Some(vec![k("etappe1"), k("eol")]), ..b() };
         let leer = Board { slug: "leer".into(), klassen: Some(vec![]), ..b() };
 
         let keins = Klassengeltung::neu([], &e);
         assert_eq!((keins.pruefen("sicherheit"), keins.pruefen("eol")), (Ok(()), Ok(())), "auf keinem Board: die Vorgabe");
-        assert_eq!(keins.pruefen("phase1").unwrap_err(), "Klasse „phase1“ steht nicht in kanbanD.md");
+        assert_eq!(keins.pruefen("etappe1").unwrap_err(), "Klasse „etappe1“ steht nicht in kanbanD.md");
 
         let nur_umzug = Klassengeltung::neu([&umzug], &e);
-        assert_eq!((nur_umzug.pruefen("phase1"), nur_umzug.pruefen("eol")), (Ok(()), Ok(())));
+        assert_eq!((nur_umzug.pruefen("etappe1"), nur_umzug.pruefen("eol")), (Ok(()), Ok(())));
         let f = nur_umzug.pruefen("sicherheit").unwrap_err();
         assert!(f.contains("„sicherheit“") && f.contains("„umzug“"), "nennt Schlüssel und Board: {f}");
 
         let nur_wartung = Klassengeltung::neu([&wartung], &e);
         assert_eq!(nur_wartung.pruefen("sicherheit"), Ok(()), "Board ohne eigenen Satz: die Vorgabe");
-        let f = nur_wartung.pruefen("phase1").unwrap_err();
-        assert!(f.contains("„phase1“") && f.contains("„wartung“"), "{f}");
+        let f = nur_wartung.pruefen("etappe1").unwrap_err();
+        assert!(f.contains("„etappe1“") && f.contains("„wartung“"), "{f}");
 
         let beide = Klassengeltung::neu([&wartung, &umzug], &e);
-        assert_eq!((beide.pruefen("sicherheit"), beide.pruefen("phase1"), beide.pruefen("eol")), (Ok(()), Ok(()), Ok(())), "Vereinigung");
+        assert_eq!((beide.pruefen("sicherheit"), beide.pruefen("etappe1"), beide.pruefen("eol")), (Ok(()), Ok(()), Ok(())), "Vereinigung");
         let f = beide.pruefen("lila").unwrap_err();
         assert!(f.contains("„lila“") && f.contains("„wartung“") && f.contains("„umzug“"), "{f}");
 
@@ -935,8 +935,8 @@ mod tests {
         let e = crate::modell::Einstellungen { klassen: vec![k("sicherheit"), k("eol")], ..Default::default() };
         let vorgabe = Board { slug: "b".into(), ..b() };
         let vorgabe_2 = Board { slug: "b2".into(), ..b() };
-        let eigen = Board { slug: "c".into(), klassen: Some(vec![k("phase1")]), ..b() };
-        let eigen_2 = Board { slug: "d".into(), klassen: Some(vec![k("phase2")]), ..b() };
+        let eigen = Board { slug: "c".into(), klassen: Some(vec![k("etappe1")]), ..b() };
+        let eigen_2 = Board { slug: "d".into(), klassen: Some(vec![k("etappe2")]), ..b() };
         let leer = Board { slug: "leer".into(), klassen: Some(vec![]), ..b() };
         let faelle: [(&str, Vec<&Board>, bool); 9] = [
             ("kein Board", vec![], true),

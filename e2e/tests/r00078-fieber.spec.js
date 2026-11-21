@@ -99,7 +99,7 @@ test.describe('R00078', () => {
     await page.request.put(k.adresse + 'api/boards/entwicklung/termine', { headers: { 'X-KanbanD-Wer': 'st' }, data: [{ name: 'Deadline', datum: tag(20), farbe: 'red' }] });
     await page.goto(k.adresse + '#/berichte/prognose');
     await liveBereit(page);
-    const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
+    const erledigt = page.locator('.wl-block[data-spalte="Erledigt"]');
     // die erste Tabelle des Blocks — seit R00193 kann „Mit Zugang wie in der Messbasis“ folgen
     await expect(erledigt.locator('.wl-tab').first().locator('tbody tr')).toHaveCount(4);
     // seit R00081 steht der Projektstart als „Rechnen ab“ in der Filterbox

@@ -60,7 +60,7 @@ async function messbasis(page, tage) {
   await bereit(page);
 }
 const methodik = page => page.locator('.wl-liste').last();
-const block = (page, spalte) => page.locator(`.wl-phase[data-spalte="${spalte}"]`);
+const block = (page, spalte) => page.locator(`.wl-block[data-spalte="${spalte}"]`);
 const ersteTabelle = ort => ort.locator('.wl-tab').first();
 const ueberschrift = ort => ort.getByText(UEBERSCHRIFT, { exact: true });
 const spalteDerTabelle = (tabelle, n) => tabelle.locator(`tbody tr td:nth-child(${n})`);
@@ -92,7 +92,7 @@ test('R00193 US-1 (AK 3, AK 5, AK 6; Abnahme der Karte): Beispiel A — unter de
     // ohne neues CSS: die zweite Tabelle ist in beiden Themen so lesbar wie die erste
     for (const t of ['light', 'dark']) {
       await thema(page, t);
-      expect(await kontrastVerstoesse(page, ['.wl-phase[data-spalte="Erledigt"] .wl-mit-zugang']), t).toEqual([]);
+      expect(await kontrastVerstoesse(page, ['.wl-block[data-spalte="Erledigt"] .wl-mit-zugang']), t).toEqual([]);
     }
 
     // AK 6: Messbasis 20 Tage — beide Reihen über dieselben Tage; die erste Tabelle wie in R00168, die zweite weiter ohne Ende
@@ -111,7 +111,7 @@ test('R00193 US-2 (AK 1): Zugang 0 — keine zweite Tabelle, der Block wie heute
     const erledigt = block(page, 'Erledigt');
     await expect(spalteDerTabelle(ersteTabelle(erledigt), 1)).toHaveText(['50 %', '70 %', '85 %', '95 %']);
     await expect(erledigt.locator('p.sek').last()).toHaveText('Zugang Ø 0,0, Abgang Ø 0,4 je Kalendertag in der Messbasis.');
-    await expect(page.locator('.wl-phase .wl-tab')).toHaveCount(2, { message: 'je Block nur die erste Tabelle' });
-    await expect(page.locator('.wl-phase').getByText(UEBERSCHRIFT)).toHaveCount(0);
+    await expect(page.locator('.wl-block .wl-tab')).toHaveCount(2, { message: 'je Block nur die erste Tabelle' });
+    await expect(page.locator('.wl-block').getByText(UEBERSCHRIFT)).toHaveCount(0);
   } finally { await k.stoppen(); }
 });

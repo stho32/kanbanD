@@ -749,7 +749,7 @@ test.describe('R00107 Wie lange noch', () => {
     });
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/berichte/prognose');
-    const block = spalte => page.locator(`.wl-phase[data-spalte="${spalte}"]`);
+    const block = spalte => page.locator(`.wl-block[data-spalte="${spalte}"]`);
     await expect(block('In Arbeit')).toContainText('3 VON 3 ERREICHT');
     await expect(block('Prüfen')).toContainText('1 VON 3 ERREICHT');
     await expect(block('Erledigt')).toContainText('0 VON 3 ERREICHT');
@@ -758,7 +758,7 @@ test.describe('R00107 Wie lange noch', () => {
       const stil = await block(spalte).getAttribute('style');
       expect(stil, spalte).toContain('--anteil');
       expect(stil, spalte).not.toContain('--h');
-      const sel = `.wl-phase[data-spalte="${spalte}"]`;
+      const sel = `.wl-block[data-spalte="${spalte}"]`;
       const zuWenig = (await kontrastVerstoesse(page, [sel])).map(m => `${spalte} ${m.element} „${m.text}“ ${komma(m.wert)}`);
       expect(zuWenig).toEqual([]);
     }

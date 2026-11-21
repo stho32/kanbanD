@@ -89,7 +89,7 @@ test.describe('R00081', () => {
     await filterOeffnen(page);
     await expect(page.locator('.bfilter .bf-k')).toHaveText(['Rechnen ab', 'Messbasis', 'Farben', 'Spalten', 'Zuständig']);
     await expect(page.getByLabel('Zeitraum', { exact: true })).toHaveCount(0);
-    const erledigt = page.locator('.wl-phase[data-spalte="Erledigt"]');
+    const erledigt = page.locator('.wl-block[data-spalte="Erledigt"]');
     await expect(erledigt).toContainText('Durchsatz Ø 0,4 je Kalendertag aus 2 Läufen');
     await page.getByLabel('Messbasis in Tagen').fill('2');
     await page.getByLabel('Messbasis in Tagen').press('Enter');
