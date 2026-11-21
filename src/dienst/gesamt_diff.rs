@@ -310,8 +310,9 @@ impl Gesamtlauf<'_> {
         // Hinweise vor den Arten aus A3 (N6.7)
         if let Some(g) = grund {
             diff.hinweise.push(Hinweis::GanzAlsFolge { grund: g });
-        } else if !folgen.is_empty() || unvollstaendig > 0 {
-            // auch wenn alle Folge-Einträge am Schnitt verworfen sind (Code-Review Sollte 3)
+        } else if fremde >= 1 && (!folgen.is_empty() || unvollstaendig > 0) {
+            // auch wenn alle Folge-Einträge am Schnitt verworfen sind (Code-Review Sollte 3); ohne fremden Commit nie — belastet
+            // dann nur ein Merge der Karte, und den nennt `merge_ausgelassen` (N8.3 Punkt 3)
             diff.hinweise.push(Hinweis::FremdDazwischen { commits: fremde, dateien: folgen.len() + unvollstaendig });
         }
         diff.hinweise.extend(nachher);
