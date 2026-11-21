@@ -1623,3 +1623,17 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Offen für den architekt:** A00009 bekommt die Ist-Notiz zu `NIE_GEROLLT`, dazu den Mutanten „`NIE_GEROLLT` entfernt“ (ADR-0040 N1).
 - **Härtung, nicht gebaut:** eine CSP mit `worker-src 'self'; script-src 'self'` (Security).
 - **Wackler:** `ak03_wirksamer_schalter` war im Gate auf main wieder rot und allein 3 von 3 grün, siehe #246.
+
+**Retrospektive #220** (Nachfolger eines verwaisten Commits vorschlagen, patch-id; R00218 und ADR-0038; 2026-11-21; ausgeliefert 5d432142; gemessene Kosten unvollständig, die fortgesetzten Läufe fehlen)
+- **Gut:**
+  - **Sondierung B1112 am Tag:** 20.485 Commits, das Ergebnis war in allen sechs Fällen gleich dem Orakel, p95 höchstens 351 ms. Die Grenze von 1.000 hielt.
+  - **Prüfung:** Code, Security und Rechtschreib ohne Muss. Security probte einen Dateinamen mit Zeilenumbruch und Binär-Blobs mit Git 2.48. Das UX-Review fand ein echtes Muss: Tab aus der Gruppe sprang in den Fensterkopf. Die Ursache lag in der gemeinsamen Fokusfalle aller Fenster.
+  - **Entwicklertest:** Alle zehn Szenarien ohne Befund, auch mit echtem Rebase, zwei Fenstern und hängendem Git. Das Gate auf main war beim ersten Lauf vollständig grün.
+- **Lehre (Rebase-Konflikt im CSS):** Beim Lösen eines Konflikts ging die schließende Klammer eines `@media`-Blocks verloren. Damit galt die Review-Seite nur noch bis 640 px Breite. Gefunden hat es der entwickler über rote Specs. Nach jeder CSS-Konfliktlösung wird geprüft, dass vor jedem `@media` keine Klammer offen ist. Der Director prüft das jetzt auch vor jeder Merge-Wache.
+- **Lehre (Kriterium „an Platz n“):** AK 9 und AK 10 verlangten „Platz 1“ in einer Liste, deren Reihenfolge die Antwort bestimmt. Der PO hat die Formulierung in Z. 488 auf die Stelle in der Datei geändert. Bei Listen ohne eigene Sortierung schreibt der planer keine Platzangaben.
+- **Lehre (Ansage bei gewandertem Fokus):** Wandert der Fokus während eines Ladens weg, braucht das Ergebnis eine Ansage, sonst bleibt der Nutzer im Unklaren. Der PO hat in Z. 487 höchstens zwei Ansagen festgelegt, den Start und das Ergebnis.
+- **Offen:** Das Begriffsverzeichnis braucht „Nachfolger“, „Kandidat“, „Commit-Verweis“ und „verwaist“. Das ist die Frage an den fachspezialist aus R00218.
+- **Härtung, nicht gebaut:**
+  - `Zweiggraph` wird zweimal geparst.
+  - `GRENZEN_VERSION` deckt die neuen Grenzen nicht ab.
+  - Ein Satz im README zu Unterschieden, die nur aus Leerraum bestehen.
