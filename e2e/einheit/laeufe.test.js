@@ -148,12 +148,12 @@ test('kennungsmengeGeaendert: eine neue, eine entfernte oder eine ausgetauschte 
   assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1'), []), true);
 });
 
-test('web/laeufe.js überschreibt im Browser keinen Namen, den ein anderes Modul auf window legt (diff.js liest fehlerText aus commits.js)', () => {
+test('web/laeufe.js überschreibt im Browser keinen Namen, den ein anderes Modul auf window legt — über alle Zuweisungen je Modul (diff.js liest fehlerText aus commits.js, diff.js hat zwei)', () => {
   const fs = require('node:fs'), path = require('node:path');
   const ordner = path.join(__dirname, '../../web');
   const namen = datei => {
-    const m = /Object\.assign\(ziel, \{([^}]*)\}\);/.exec(fs.readFileSync(path.join(ordner, datei), 'utf8'));
-    return m ? m[1].split(',').map(n => n.trim().split(':')[0].trim()).filter(Boolean) : [];
+    const text = fs.readFileSync(path.join(ordner, datei), 'utf8');
+    return [...text.matchAll(/Object\.assign\(ziel, \{([^}]*)\}\);/g)].flatMap(m => m[1].split(',').map(n => n.trim().split(':')[0].trim()).filter(Boolean));
   };
   const eigene = namen('laeufe.js');
   assert.ok(eigene.includes('laeufe'));
