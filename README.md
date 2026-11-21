@@ -85,6 +85,22 @@ Der Link auf eine Aufgabe ist `http://<host>:7420/#/board/<slug>/aufgabe/<nr>` �
 
 `GET /api/ereignisse` meldet jede Änderung im Ordner als Server-Sent Event, dazu Änderungen und Commits an den WBS-Dateien der registrierten Anwendungen (`wbs: [kürzel]`). `GET /api/wbs/<kürzel>` liefert die WBS mit gerechnetem Status, erreichter Ebene, Stand und `nicht_committet`; `PATCH /api/wbs/<kürzel>/knoten/<id> {status}` setzt den Status eines Blatts (409 bei Knoten mit Kindern oder defekter Datei). `POST /api/wbs/<kürzel>/knoten {ebene, eltern, name, fertig_kriterium, …}` legt einen Knoten an und antwortet mit `{id}`; `POST /api/wbs/<kürzel>/knoten/<id>/verwerfen {grund?}` verwirft ihn. `PATCH /api/aufgaben/<nr>/wbs-effects {application, action: create|rework|remove, node?, parent?, level?, name?, done_criterion?}` hängt eine Wirkung an und führt sie aus (409, wenn die WBS scheitert); `DELETE /api/aufgaben/<nr>/wbs-effects/<i>` nimmt sie aus der Aufgabe. `GET /api/berichte/bewegungen?board=<slug>` liefert je Aufgabe die Spaltenwechsel aus Git — die Grundlage der Board-Berichte; bei einem gebundenen Board dazu `phasen {anwendung, folge, spaltenphasen}` und je Aufgabe `labels` und `uebersprungen`. `PATCH /api/aufgaben/<nr> {phasen: {uebersprungen: [...]}}` setzt die entfallenden Phasen.
 
+### Transkripte ablegen
+
+Ein Agent legt das Transkript seines Laufs als schon gezippte JSON-Lines-Datei (`.jsonl.gz`, höchstens 10 MB) an der Karte ab — mit derselben Kennung `role@at` wie der Kosteneintrag desselben Laufs (ADR-0036):
+
+```bash
+curl -H 'X-KanbanD-Wer: entwickler' \
+     -F at='2026-11-13 10:34+01:00' -F role=entwickler -F column=Entwicklung \
+     -F datei=@lauf.jsonl.gz  http://127.0.0.1:<port>/api/aufgaben/1/transkripte
+→ 201 {kennung: "entwickler@2026-11-13T10:34+01:00", at, role, column, bytes: 281234}
+```
+
+- Die Datei liegt danach **unversioniert** unter `transkripte/<nr>/` (der Ordner ignoriert sich selbst über `transkripte/.gitignore`); versioniert wird nur der Eintrag `transcripts` an der Karte, in einem Commit nur mit der Aufgabendatei. Der Dateiname entsteht aus der Kennung, die Rolle auf `a-z0-9-` gefaltet.
+- Abgelegt wird nur, wenn ein Mensch `record-transcripts: true` in die Board-Datei oder als Vorgabe in `kanbanD.md` geschrieben hat (keine Route setzt ihn). Liegt die Karte auf mehreren Boards, müssen alle „an“ sein. Sonst antwortet die API **409** `{fehler, erfassung: "aus", boards}`, bevor sie die Datei liest; `GET /api/aufgaben/{nr}/transkripte` zeigt das vorher (`erfassen`, `boards_aus`), `GET /api/boards/{slug}` den Wert des Boards als `transkripte_erfassen`.
+- Weitere Antworten: 413 über 10.485.760 Byte, 400 ohne gzip-Kennbytes (`1f 8b 08`) oder bei fehlenden bzw. ungültigen Feldern (`column` ist eine Spalte eines Boards der Karte, `at` nicht in der Zukunft), 409 `{fehler, kennung}` bei derselben Kennung oder demselben gefalteten Dateinamen (eine Minute später ablegen), 409 ab 1000 Transkripten je Karte.
+- `GET /api/aufgaben/{nr}/transkripte` listet `{erfassen, boards_aus, transkripte: [{kennung, at, role, column, bytes, zustand}]}` mit `zustand` `vorhanden`, `fehlt`, `abweichend` oder `unlesbar`; `GET …/transkripte/{kennung}` (Kennung URL-kodiert, `+` als `%2B`) liefert die Datei als `application/gzip` (bei vollem Antwortbudget 503), `DELETE …/transkripte/{kennung}` entfernt Eintrag und Datei. Endgültiges Löschen der Karte räumt `transkripte/<nr>/`.
+
 ### Alte Kostenposten nachtragen
 
 Seit den Kosteneinträgen (`cost-entries`, ADR-0028) trägt eine Aufgabe ihre angefallenen Kosten je Rollenlauf mit Zeitpunkt, Rolle und Spalte. Ältere Aufgaben tragen stattdessen Posten ohne diese Angaben (`cost.items`); der Bericht „Kosten“ führt sie in der Zeile „ohne Datum / ohne Rolle / ohne Spalte“. kanbanD überführt sie nicht selbst — Zeitpunkt, Rolle und Spalte wären erfunden. Wer sie nachtragen will (Mensch oder Agent), geht je Aufgabe so vor:

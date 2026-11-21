@@ -573,3 +573,29 @@ async fn ak09c_loeschen_ueber_einen_symlink() {
     assert_eq!(s, 200, "{e}");
     assert_eq!(umgebung(&o).into_iter().filter(|(p, _)| p.starts_with("aussen")).collect::<Vec<_>>(), vorher, "außen unverändert");
 }
+
+// AK 15 · FA 10: Endpunktliste, OpenAPI und README beschreiben die vier Routen und die neuen Felder
+#[tokio::test]
+async fn ak15_beschreibung() {
+    let o = an();
+    let (_, eps) = holen(o.adresse(), "api/endpunkte").await;
+    let routen: Vec<(String, String)> = eps.as_array().unwrap().iter().map(|e| (e["methode"].as_str().unwrap().to_string(), e["pfad"].as_str().unwrap().to_string())).collect();
+    for (m, p) in [("POST", "/api/aufgaben/{nr}/transkripte"), ("GET", "/api/aufgaben/{nr}/transkripte"), ("GET", "/api/aufgaben/{nr}/transkripte/{kennung}"), ("DELETE", "/api/aufgaben/{nr}/transkripte/{kennung}")] {
+        assert!(routen.contains(&(m.to_string(), p.to_string())), "Endpunktliste: {m} {p}");
+    }
+    let (_, api) = holen(o.adresse(), "api/openapi.json").await;
+    let liste = &api["paths"]["/api/aufgaben/{nr}/transkripte"];
+    let eins = &api["paths"]["/api/aufgaben/{nr}/transkripte/{kennung}"];
+    let mut codes: Vec<String> = [&liste["post"], &liste["get"], &eins["get"], &eins["delete"]].iter().flat_map(|op| op["responses"].as_object().unwrap_or_else(|| panic!("{op}")).keys().cloned().collect::<Vec<_>>()).collect();
+    codes.sort();
+    codes.dedup();
+    for c in ["200", "201", "400", "404", "409", "413", "423", "500", "503"] {
+        assert!(codes.contains(&c.to_string()), "Statuscode {c} fehlt: {codes:?}");
+    }
+    let schemas = &api["components"]["schemas"];
+    assert!(schemas["Aufgabe"]["properties"]["transkripte"].is_object(), "Aufgabe.transkripte");
+    assert!(schemas["Board"]["properties"]["transkripte_erfassen"].is_object(), "Board.transkripte_erfassen");
+    let readme = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
+    let ab = readme.split("### Transkripte ablegen").nth(1).expect("Abschnitt Transkripte ablegen");
+    assert!(ab.contains("-F datei=@lauf.jsonl.gz") && ab.contains("/api/aufgaben/1/transkripte"), "Beispiel-Aufruf");
+}
