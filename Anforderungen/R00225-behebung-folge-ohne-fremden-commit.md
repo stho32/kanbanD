@@ -1,6 +1,6 @@
 ---
 id: R00225
-status: Neu
+status: Erledigt
 datum: 2026-11-21
 ursprung: Bug-Report
 ursprungslauf: R00208
@@ -89,24 +89,24 @@ Ohne geänderte Erwartung grün:
 
 ### Bug behoben
 
-- [ ] **AK 1 Fall N, API (Abnahme-Probe N8.4, wörtlich):** `GET /api/aufgaben/<nr>/diff` hat keinen Eintrag `d/x` (auch nicht `d/x/inner`), genau die Einträge `bb` und `g`, beide netto, und keinen Hinweis `fremd_dazwischen`. `format=patch` enthält keine Zeile mit `d/x` und keine Zeile `# kanbanD: fremd_dazwischen`. `…&datei=d/x` ergibt 404 mit `{fehler}`. Heute: Folge-Eintrag `d/x` mit `fremd_dazwischen {commits 0, dateien 1}`.
-- [ ] **AK 2 Fall N+F, API (N8.4):** `g` ist Folge mit dem Schritt K1, `bb` ist netto, `d/x` steht nirgends (auch nicht in `format=patch`), und `hinweise` enthält `{art "fremd_dazwischen", commits 1, dateien 1}`. `…&datei=d/x` ergibt 404, `…&datei=g` ergibt 200 mit dem Folge-Eintrag. Die Probe „nie fremd“ aus R00208 ist erfüllt: keine `+`/`-`-Zeile mit `FREMD`.
-- [ ] **AK 3 Fall M, API (N8.4):** `n.txt` ist Folge mit den Schritten N1 und N2. `hinweise` enthält `{art "merge_ausgelassen", verweis "kd:<MK>"}` und **keinen** Hinweis `fremd_dazwischen`. Keine Antwort enthält `fremd_dazwischen` mit `commits` 0. Heute: `fremd_dazwischen {commits 0, dateien 1}`.
-- [ ] **AK 4 Fall F, Gegenprobe:** R00208 #2 antwortet unverändert: `a.txt` Folge, `fremd_dazwischen {commits 1, dateien 1}`, `k.txt` netto.
-- [ ] **AK 5 Seite „Alle Änderungen“ (Abnahme-Probe der Karte #234, wörtlich: „Aufgabe mit zwei eigenen Commits an `d/x` ohne fremden Commit dazwischen. Auf „Alle Änderungen“ kommt der Satz nicht vor. Mit einem fremden Commit dazwischen steht er da.“):** Die Aufgaben der Fälle N, N+F und F werden je über `#/aufgaben/aufgabe/<nr>/review` geöffnet.
+- [x] **AK 1 Fall N, API (Abnahme-Probe N8.4, wörtlich):** `GET /api/aufgaben/<nr>/diff` hat keinen Eintrag `d/x` (auch nicht `d/x/inner`), genau die Einträge `bb` und `g`, beide netto, und keinen Hinweis `fremd_dazwischen`. `format=patch` enthält keine Zeile mit `d/x` und keine Zeile `# kanbanD: fremd_dazwischen`. `…&datei=d/x` ergibt 404 mit `{fehler}`. Heute: Folge-Eintrag `d/x` mit `fremd_dazwischen {commits 0, dateien 1}`.
+- [x] **AK 2 Fall N+F, API (N8.4):** `g` ist Folge mit dem Schritt K1, `bb` ist netto, `d/x` steht nirgends (auch nicht in `format=patch`), und `hinweise` enthält `{art "fremd_dazwischen", commits 1, dateien 1}`. `…&datei=d/x` ergibt 404, `…&datei=g` ergibt 200 mit dem Folge-Eintrag. Die Probe „nie fremd“ aus R00208 ist erfüllt: keine `+`/`-`-Zeile mit `FREMD`.
+- [x] **AK 3 Fall M, API (N8.4):** `n.txt` ist Folge mit den Schritten N1 und N2. `hinweise` enthält `{art "merge_ausgelassen", verweis "kd:<MK>"}` und **keinen** Hinweis `fremd_dazwischen`. Keine Antwort enthält `fremd_dazwischen` mit `commits` 0. Heute: `fremd_dazwischen {commits 0, dateien 1}`.
+- [x] **AK 4 Fall F, Gegenprobe:** R00208 #2 antwortet unverändert: `a.txt` Folge, `fremd_dazwischen {commits 1, dateien 1}`, `k.txt` netto.
+- [x] **AK 5 Seite „Alle Änderungen“ (Abnahme-Probe der Karte #234, wörtlich: „Aufgabe mit zwei eigenen Commits an `d/x` ohne fremden Commit dazwischen. Auf „Alle Änderungen“ kommt der Satz nicht vor. Mit einem fremden Commit dazwischen steht er da.“):** Die Aufgaben der Fälle N, N+F und F werden je über `#/aufgaben/aufgabe/<nr>/review` geöffnet.
   - Fall N: Der Abschnitt zeigt „2 Commits · 2 Dateien“, keine Datei `d/x`, keinen Satz, der mit „Zwischen den Commits der Aufgabe“ beginnt, und nirgends „Fremde Commits haben diese Datei“. Heute: `d/x` mit „Folge · 2 Commits“ und beiden Sätzen, einer davon mit „0 fremde Commits“.
   - Fall N+F: Wörtlich steht „Zwischen den Commits der Aufgabe liegt 1 fremder Commit. Er berührt Dateien der Aufgabe; 1 Datei steht deshalb als Folge der Schritte der Aufgabe. Die Änderungen des fremden Commits sind nicht zu sehen.“ Aufgeklappt steht „Fremde Commits haben diese Datei …“ genau einmal, und zwar an `g`. `d/x` steht nicht da.
   - Fall F: Die Sätze stehen wie in R00210 AK 2 und AK 3.
-- [ ] **AK 6 Abgeschnittene Netto-Liste (N8.3 Punkt 2, Pre-Mortem j):** Ist die Netto-Liste abgeschnitten (`netto_vollstaendig` falsch), werden unbelastete Kartenpfade nicht zu Folge. Sie verschwinden auch nicht ohne Zählung: Sie zählen über `gesamt` in `dateien_gekappt`. Der Test läuft mit einer Karte über der Kappe von 2.000 Einträgen und einem fremden Commit an einer anderen Datei der Karte, oder mit verkleinerter Grenze wie R00213 AK 4. `gesamt` ist größer oder gleich der Zahl der netto geänderten Dateien der Karte.
-- [ ] **AK 7 Mutanten (N8.4):** Jeder Mutant wird von einem benannten Test getötet.
+- [x] **AK 6 Abgeschnittene Netto-Liste (N8.3 Punkt 2, Pre-Mortem j):** Ist die Netto-Liste abgeschnitten (`netto_vollstaendig` falsch), werden unbelastete Kartenpfade nicht zu Folge. Sie verschwinden auch nicht ohne Zählung: Sie zählen über `gesamt` in `dateien_gekappt`. Der Test läuft mit einer Karte über der Kappe von 2.000 Einträgen und einem fremden Commit an einer anderen Datei der Karte, oder mit verkleinerter Grenze wie R00213 AK 4. `gesamt` ist größer oder gleich der Zahl der netto geänderten Dateien der Karte.
+- [x] **AK 7 Mutanten (N8.4):** Jeder Mutant wird von einem benannten Test getötet.
   - (m1) Unbelastete Pfade ohne Netto-Eintrag bleiben Folge → AK 1 rot.
   - (m2) Alle unbelasteten Pfade fallen heraus, auch die aus verworfenen Netto-Einträgen → `b2_rest_zwilling_ausserhalb_der_netto_eintraege` rot.
   - (m3) `fremd_dazwischen` ohne die Bedingung `commits ≥ 1` → AK 3 rot.
   - (m4) Bei abgeschnittener Netto-Liste fallen unbelastete Pfade ohne Zählung weg → AK 6 rot.
 
   Lässt sich ein Mutant nicht töten, meldet der entwickler das mit Begründung.
-- [ ] **AK 8 README „Für Agenten“:** Der Abschnitt Gesamt-Diff sagt in einem Satz, dass eine Datei, die die Karte ändert und selbst zurücknimmt, nicht erscheint und dass `datei=` auf sie 404 ergibt. Außerdem sagt er, dass `fremd_dazwischen` nur mit mindestens einem fremden Commit steht.
-- [ ] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1–3) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung, die Lastprobe von R00208 (p95 unter 500 ms) und die Prozessgrenze (höchstens 15 Git-Prozesse).
+- [x] **AK 8 README „Für Agenten“:** Der Abschnitt Gesamt-Diff sagt in einem Satz, dass eine Datei, die die Karte ändert und selbst zurücknimmt, nicht erscheint und dass `datei=` auf sie 404 ergibt. Außerdem sagt er, dass `fremd_dazwischen` nur mit mindestens einem fremden Commit steht.
+- [x] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1–3) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung, die Lastprobe von R00208 (p95 unter 500 ms) und die Prozessgrenze (höchstens 15 Git-Prozesse).
 
 ## Implementierungshinweise
 
