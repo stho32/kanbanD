@@ -39,7 +39,7 @@ test('Zeitstempel in ms: lang, mit Wochentag Mo–So wie deDatum (R00073), Achse
 test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel', () => {
   assert.deepStrictEqual(FELDER, {
     board: 'Board', column: 'Spalte', class: 'Klasse', origins: 'Herkunft', assignees: 'Zuständig', labels: 'Labels', due: 'Fällig', estimate: 'Geschätzt',
-    phases: 'Phasen', reservation: 'Reservierung', repository: 'Repository', wbs: 'WBS', requirements: 'Anforderungen',
+    phases: 'Phasen', reservation: 'Reservierung', repository: 'Repository',
     ich: 'Ich', agents: 'Agenten', spalten: 'Spalten',
     reporting: 'Zählt in Berichten', signals: 'Signale', key: 'Schlüssel',
   });
@@ -48,10 +48,9 @@ test('FELDER: je Schlüssel eine deutsche Beschriftung, keine ist ein Schlüssel
   assert.strictEqual(OHNE_HERKUNFT, 'ohne Herkunft');
 });
 
-test('FELDER: „Anforderungen“ steht nur unter requirements — auch der erste Start nennt den Schlüssel der Datei (PO Z. 159)', () => {
-  assert.strictEqual(FELDER.requirements, 'Anforderungen');
-  assert.strictEqual(Object.hasOwn(FELDER, 'anforderungen'), false);
-  assert.deepStrictEqual(Object.keys(FELDER).filter(s => FELDER[s] === 'Anforderungen'), ['requirements']);
+// R00222 (ändert PO Z. 159): das Feld „Anforderungen“ entfiel mit dem Register in Altform — keine Beschriftung nennt es mehr
+test('FELDER: keine Beschriftung „WBS“ oder „Anforderungen“ mehr (R00222)', () => {
+  assert.deepStrictEqual(Object.keys(FELDER).filter(s => ['WBS', 'Anforderungen'].includes(FELDER[s])), []);
 });
 
 test('istOhneHerkunft: „ohne Herkunft“ und thin air, getrimmt, Groß-/Kleinschreibung egal (FA 16) — Ähnliches nicht', () => {

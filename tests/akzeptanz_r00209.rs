@@ -231,40 +231,41 @@ async fn ak04_put_in_neuer_form_schreibt_nur_repository() {
     assert_eq!(kern(&verweis(lauf.adresse(), &format!("kd:{}", l.c)).await), vorher);
     let e = lesen(lauf.adresse(), "api/einstellungen").await;
     let kd = anwendung(&e, "kd");
-    assert_eq!((&kd["repository"], &kd["wbs"], &kd["anforderungen"]), (&json!(l.r_text()), &json!(""), &json!("")), "Schlüssel vorhanden, nicht weggelassen: {kd}");
+    // R00222 (ADR-0034 N2 Regel 4) ändert N2 Regel 2: die Schlüssel wbs/anforderungen fehlen in jeder Antwort
+    assert_eq!((&kd["repository"], kd.get("wbs"), kd.get("anforderungen")), (&json!(l.r_text()), None, None), "{kd}");
     let a = lesen(lauf.adresse(), "api/anwendungen").await;
-    assert_eq!((&a["kd"]["repository"], &a["kd"]["wbs"], &a["kd"]["anforderungen"]), (&json!(l.r_text()), &json!(""), &json!("")), "{a}");
+    assert_eq!((&a["kd"]["repository"], a["kd"].get("wbs"), a["kd"].get("anforderungen")), (&json!(l.r_text()), None, None), "{a}");
     assert_eq!(a["kd"]["erreichbar"]["repository"], true);
 }
 
+/// R00222 (ADR-0034 N2 Regel 4) beendet die Übergangsform: mitgeschickte `wbs`/`anforderungen` werden überlesen (200, nie
+/// 400) und nie mehr geschrieben; ohne `repository` bleibt es leer („ignoriert heißt ignoriert“, R00222 Notizen des planers).
 #[tokio::test]
-async fn ak05_put_wie_die_heutige_factory_reicht_wbs_durch() {
+async fn ak05_put_wie_die_alte_factory_wird_ueberlesen() {
     let l = Lage::neu();
     let lauf = l.starten();
-    let planung = format!("{}/Dokumentation/Planung", l.r.display());
-    let pa_wbs = format!("{planung}/pa.md");
+    let pa_wbs = format!("{}/Dokumentation/Planung/pa.md", l.r.display());
     let mut e = lesen(lauf.adresse(), "api/einstellungen").await;
     e["quellen"]["anwendungen"] = json!([{"kuerzel": "pa", "name": "Probe", "wbs": pa_wbs, "anforderungen": l.anf()}]);
     let (status, antwort) = einstellungen_setzen(lauf.adresse(), &e).await;
     assert_eq!(status, 200, "{antwort}");
-    assert_eq!(zeile_von(&l.datei(), "pa").trim(), format!("pa: {{name: Probe, repository: {planung}, wbs: {pa_wbs}, requirements: {}}}", l.anf()));
-    let a = lesen(lauf.adresse(), "api/anwendungen").await;
-    assert_eq!((&a["pa"]["repository"], &a["pa"]["wbs"], &a["pa"]["erreichbar"]["repository"]), (&json!(planung), &json!(pa_wbs), &json!(true)), "{a}");
-    assert_eq!(verweis(lauf.adresse(), &format!("pa:{}", l.c)).await["zustand"], "auf_zweig");
+    assert_eq!(zeile_von(&l.datei(), "pa").trim(), "pa: {name: Probe, repository: \"\"}");
     let mut e = lesen(lauf.adresse(), "api/einstellungen").await;
     e["quellen"]["anwendungen"] = json!([{"kuerzel": "pa", "name": "Probe", "repository": l.r_text(), "wbs": pa_wbs, "anforderungen": l.anf()}]);
     assert_eq!(einstellungen_setzen(lauf.adresse(), &e).await.0, 200);
-    assert_eq!(zeile_von(&l.datei(), "pa").trim(), format!("pa: {{name: Probe, repository: {}, wbs: {pa_wbs}, requirements: {}}}", l.r_text(), l.anf()));
+    assert_eq!(zeile_von(&l.datei(), "pa").trim(), format!("pa: {{name: Probe, repository: {}}}", l.r_text()));
+    assert_eq!(verweis(lauf.adresse(), &format!("pa:{}", l.c)).await["zustand"], "auf_zweig");
 }
 
-// ---- AK 6: Rundlauf der heutigen Factory als API-Folge (board_binden.py, board.py `_einrichten`) ---------------------
+// ---- AK 6: Rundlauf der Factory als API-Folge (board_binden.py, board.py `_einrichten`) -----------------------------
 
-/// Wie `board_binden._sorge_fuer_register`: Anwendung über den realpath von `wbs` wiedererkennen, sonst anhängen und PUT.
+/// Wie `board_binden._sorge_fuer_register` ab Factory 1dd703c (R00222 AK 9): Anwendung über den realpath von `repository`
+/// wiedererkennen, sonst anhängen und PUT. Die Factory vor 1dd703c (Wiedererkennung über `a["wbs"]`) läuft nach R00222 nicht mehr.
 async fn binden_wie_die_factory(adresse: &str, eintrag: &Value) -> Result<String, String> {
     let mut e = lesen(adresse, "api/einstellungen").await;
-    let wbs = |a: &Value| std::fs::canonicalize(a["wbs"].as_str().expect("wbs immer vorhanden (board_binden.py:54)")).ok();
+    let ort = |a: &Value| a["repository"].as_str().and_then(|p| std::fs::canonicalize(p).ok());
     let anwendungen = e["quellen"]["anwendungen"].as_array().unwrap().clone();
-    if let Some(gleich) = anwendungen.iter().find(|a| wbs(a).is_some() && wbs(a) == wbs(eintrag)) {
+    if let Some(gleich) = anwendungen.iter().find(|a| ort(a).is_some() && ort(a) == ort(eintrag)) {
         return Ok(gleich["kuerzel"].as_str().unwrap().into());
     }
     if anwendungen.iter().any(|a| a["kuerzel"] == eintrag["kuerzel"]) {
@@ -280,7 +281,7 @@ async fn binden_wie_die_factory(adresse: &str, eintrag: &Value) -> Result<String
 async fn ak06_factory_bindet_traegt_signal_ein_und_erkennt_wieder() {
     let l = Lage::neu();
     let lauf = l.starten();
-    let eintrag = json!({"kuerzel": "pa", "name": "Probe", "wbs": l.wbs(), "anforderungen": l.anf()});
+    let eintrag = json!({"kuerzel": "pa", "name": "Probe", "repository": l.r_text(), "wbs": l.wbs(), "anforderungen": l.anf()});
     assert_eq!(binden_wie_die_factory(lauf.adresse(), &eintrag).await, Ok("pa".into()));
     let mut e = lesen(lauf.adresse(), "api/einstellungen").await;
     e["signale"] = json!([{"schluessel": "wartet", "bezeichnung": "Wartet", "farbe": "amber"}]);
@@ -289,7 +290,7 @@ async fn ak06_factory_bindet_traegt_signal_ein_und_erkennt_wieder() {
     let e = lesen(lauf.adresse(), "api/einstellungen").await;
     assert_eq!(e["quellen"]["anwendungen"].as_array().unwrap().len(), 1, "{e}");
     let pa = anwendung(&e, "pa");
-    assert_eq!((&pa["repository"], &pa["wbs"]), (&json!(format!("{}/Dokumentation/Planung", l.r.display())), &json!(l.wbs())));
+    assert_eq!((&pa["repository"], pa.get("wbs")), (&json!(l.r_text()), None));
 }
 
 // ---- AK 7: Altbestand öffnet, wie er ist ------------------------------------------------------------------------------
@@ -328,7 +329,7 @@ async fn altregister_von_202c743b_oeffnet_ohne_commit_und_bytegleich() {
     assert_eq!(e["quellen"]["repository"], "plan");
     assert_eq!((&anwendung(&e, "kd")["repository"], &anwendung(&e, "nr")["repository"]), (&json!("/srv/app/Dokumentation/Planung"), &json!("../app/Requirements")));
     let a = lesen(lauf.adresse(), "api/anwendungen").await;
-    assert_eq!((&a["nr"]["wbs"], &a["kd"]["erreichbar"]["repository"]), (&json!(""), &json!(false)));
+    assert_eq!((a["nr"].get("wbs"), &a["kd"]["erreichbar"]["repository"]), (None, &json!(false)), "R00222: kein Schlüssel wbs");
     lesen(lauf.adresse(), "api/aufgaben/1/commits").await;
     assert_eq!(l.commits_zahl(), zahl, "kein Commit");
     assert_eq!(std::fs::read(l.k.join("kanbanD.md")).unwrap(), alt, "bytegleich");
@@ -336,7 +337,7 @@ async fn altregister_von_202c743b_oeffnet_ohne_commit_und_bytegleich() {
 }
 
 /// Code S1 (Review #225): eine Personenaktion mit Änderung an einem Altregister schreibt das Register in neuer Form mit
-/// (`repository` ergänzt, `wbs` bleibt) — in genau einem Commit; ohne Änderung entsteht keiner.
+/// (`repository` ergänzt; seit R00222 ohne `wbs`/`requirements`) — in genau einem Commit; ohne Änderung entsteht keiner.
 #[tokio::test]
 async fn personenaktion_mit_aenderung_schreibt_repository_mit_ein_commit() {
     let l = Lage::neu();
@@ -351,7 +352,7 @@ async fn personenaktion_mit_aenderung_schreibt_repository_mit_ein_commit() {
     let (s, _) = gemeinsam::senden(reqwest::Method::PATCH, lauf.adresse(), "api/personen/entw1", "sh", json!({"name": "Entwicklerin"})).await;
     assert_eq!(s, 200);
     assert_eq!(l.commits_zahl(), (zahl + 1).to_string(), "genau ein Commit");
-    assert_eq!(zeile_von(&l.datei(), "kd").trim(), format!("kd: {{name: kanbanD, repository: {}/Dokumentation/Planung, wbs: {}, requirements: {}}}", l.r.display(), l.wbs(), l.anf()));
+    assert_eq!(zeile_von(&l.datei(), "kd").trim(), format!("kd: {{name: kanbanD, repository: {}/Dokumentation/Planung}}", l.r.display()));
     assert!(l.datei().contains("entw1: {name: Entwicklerin, kind: agent}"));
 }
 
@@ -371,7 +372,7 @@ async fn ak10_quellen_und_neue_anwendung_nur_mit_repository() {
     assert_eq!(l.commits_zahl(), (zahl + 1).to_string());
     assert_eq!(verweis(lauf.adresse(), &format!("lc:{}", l.c)).await["zustand"], "auf_zweig");
     let e = lesen(lauf.adresse(), "api/einstellungen").await;
-    assert_eq!((&e["quellen"]["repository"], &e["quellen"]["wbs"], &e["quellen"]["anforderungen"]), (&json!(l.r_text()), &json!(""), &json!("")));
+    assert_eq!((&e["quellen"]["repository"], e["quellen"].get("wbs"), e["quellen"].get("anforderungen")), (&json!(l.r_text()), None, None));
     assert_eq!(e["quellen"]["erreichbar"]["repository"], true, "{e}");
     let mut e2 = e.clone();
     e2["quellen"]["repository"] = json!(format!("{}/gibt-es-nicht", l.r.display()));

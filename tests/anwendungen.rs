@@ -23,8 +23,9 @@ async fn register_mit_zwei_anwendungen_stabil_sortiert_in_einem_commit() {
     let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", e.clone()).await;
     assert_eq!((s, r["geaendert"].as_bool()), (200, Some(true)));
     let datei = lies(tmp.path(), "kanbanD.md");
-    // R00209 (ADR-0034 N2 Regel 1): `repository` immer, als Startordner ergänzt; leere Pfade entfallen
-    assert!(datei.contains("sources:\n  repository: plan\n  wbs: plan/wbs.md\n  requirements: anf/\n  applications:\n    kc: {name: Kasse, repository: /a/kc, wbs: /a/kc/plan.md}\n    kd: {name: kanbanD, repository: /a/kd, wbs: /a/kd/plan.md, requirements: /a/kd/anf}\n---"), "{datei}");
+    // R00222 (ADR-0034 N2 Regel 4): nur `repository` wird geschrieben; mitgeschickte wbs/anforderungen werden überlesen —
+    // die Standardanwendung behält ihr Repository aus dem Lese-Rückfall (GET liefert es ergänzt), die neuen bleiben ohne
+    assert!(datei.contains("sources:\n  repository: plan\n  applications:\n    kc: {name: Kasse, repository: \"\"}\n    kd: {name: kanbanD, repository: \"\"}\n---"), "{datei}");
     assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap(), vorher + 1);
     let (_, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", einstellungen(&lauf.adresse).await).await;
     assert_eq!(r["geaendert"], false, "Rundlauf ändert nichts");
@@ -82,12 +83,14 @@ async fn register_mit_erreichbarkeit_ein_fehlender_pfad_macht_nichts_defekt() {
     let (s, r) = senden(Method::GET, &lauf.adresse, "api/anwendungen", "st", json!(null)).await;
     assert_eq!(s, 200);
     assert_eq!(r["kd"]["name"], "kanbanD");
-    assert_eq!(r["kd"]["erreichbar"], json!({"repository": true, "wbs": true, "anforderungen": true}));
-    assert_eq!(r["rel"]["erreichbar"], json!({"repository": true, "wbs": true, "anforderungen": false}), "relativ zum kanbanD-Ordner, leer ist nicht erreichbar");
+    // R00222: erreichbar nennt nur noch das Repository (Startordner aus dem Lese-Rückfall)
+    assert_eq!(r["kd"]["erreichbar"], json!({"repository": true}));
+    assert_eq!(r["rel"]["erreichbar"], json!({"repository": true}), "relativ zum kanbanD-Ordner");
+    assert!(r["kd"].get("wbs").is_none() && r["kd"].get("anforderungen").is_none(), "{r}");
     assert_eq!(r["rel"]["repository"], ".", "R00209: Startordner einer WBS ohne Ordneranteil");
     std::fs::remove_file(x.path().join("plan.md")).unwrap();
     let (_, r) = senden(Method::GET, &lauf.adresse, "api/anwendungen", "st", json!(null)).await;
-    assert_eq!(r["kd"]["erreichbar"], json!({"repository": true, "wbs": false, "anforderungen": true}), "R00209: der Ordner bleibt erreichbar");
+    assert_eq!(r["kd"]["erreichbar"], json!({"repository": true}), "R00209: der Ordner bleibt erreichbar, auch ohne die Datei");
     let (_, z) = senden(Method::GET, &lauf.adresse, "api/zustand", "st", json!(null)).await;
     assert_eq!(z["defekte"], json!([]), "kanbanD.md ist nicht defekt");
     assert_eq!(z["einstellungen"]["quellen"]["anwendungen"][0]["kuerzel"], "kd");

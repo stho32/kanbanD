@@ -15,18 +15,14 @@ pub(super) fn absolut(wurzel: &Path, pfad: &str) -> PathBuf {
 pub struct Erreichbar {
     /// der Ordner ist vorhanden (ohne Git-Aufruf, R00209)
     pub repository: bool,
-    pub wbs: bool,
-    pub anforderungen: bool,
 }
 
-/// Eine registrierte Anwendung, wie `GET /api/anwendungen` sie zeigt: `repository` gespeichert oder als Startordner, `wbs`
-/// und `anforderungen` wie gespeichert — alle drei immer vorhanden, leer als `""` (ADR-0034 N2 Regel 2).
+/// Eine registrierte Anwendung, wie `GET /api/anwendungen` sie zeigt: `repository` gespeichert oder als Startordner aus dem
+/// Lese-Rückfall, immer vorhanden, leer als `""` (ADR-0034 Regel 1, N2 Regel 4).
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct Registereintrag {
     pub name: String,
     pub repository: String,
-    pub wbs: String,
-    pub anforderungen: String,
     pub erreichbar: Erreichbar,
 }
 
@@ -57,11 +53,7 @@ pub struct Einstellungsantwort {
     pub transkripte_erfassen: Option<bool>,
 }
 
-/// Ein gesetzter Pfad, der als Ordner bzw. Datei vorhanden ist; relativ gilt zum kanbanD-Ordner.
-fn da(wurzel: &Path, pfad: &str) -> bool {
-    !pfad.is_empty() && absolut(wurzel, pfad).exists()
-}
-
+/// Ein gesetzter Pfad, der als Ordner vorhanden ist; relativ gilt zum kanbanD-Ordner.
 fn ordner_da(wurzel: &Path, pfad: &str) -> bool {
     !pfad.is_empty() && absolut(wurzel, pfad).is_dir()
 }
@@ -76,8 +68,8 @@ impl Kanban {
             .anwendungen
             .into_iter()
             .map(|a| {
-                let erreichbar = Erreichbar { repository: ordner_da(wurzel, &a.repository), wbs: da(wurzel, &a.wbs), anforderungen: da(wurzel, &a.anforderungen) };
-                (a.kuerzel, Registereintrag { name: a.name, repository: a.repository, wbs: a.wbs, anforderungen: a.anforderungen, erreichbar })
+                let erreichbar = Erreichbar { repository: ordner_da(wurzel, &a.repository) };
+                (a.kuerzel, Registereintrag { name: a.name, repository: a.repository, erreichbar })
             })
             .collect())
     }

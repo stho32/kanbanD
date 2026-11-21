@@ -1,7 +1,8 @@
-/* kanbanD — Register der Anwendungen in der Einstellungsseite (R00209, ADR-0034 N2): Startordner, Schreibregel und
-   Zustandswort des Repositorys. Reine Funktionen, im Browser und in Node (Unit-Tests) nutzbar wie kultur.js. Dieselbe Regel
-   rechnet der Server (src/modell/einstellungen.rs `startordner`, src/format/einstellungen.rs `pfade`) — die Vorschau zeigt
-   so genau, was nach dem Speichern in kanbanD.md steht. */
+/* kanbanD — Register der Anwendungen in der Einstellungsseite (R00209, R00222, ADR-0034 N2 Regel 4): Schreibregel und
+   Zustandswort des Repositorys, Bindung eines Boards, Einstellungen des ersten Starts. Reine Funktionen, im Browser und in
+   Node (Unit-Tests) nutzbar wie kultur.js. Dieselbe Schreibregel hat der Server (src/format/einstellungen.rs `pfad`): je
+   Anwendung und in den Quellen nur `repository` — die Vorschau zeigt so genau, was nach dem Speichern in kanbanD.md steht.
+   Den Lese-Rückfall auf ein Register in Altform rechnet nur der Server; die API liefert `repository` schon ergänzt. */
 (function (ziel) {
   'use strict';
 
@@ -15,30 +16,10 @@
 
   const text = wert => String(wert || '').trim();
 
-  /** Der Ordneranteil eines Dateipfads, für beide Trennzeichen: `a/b/c.md` → `a/b`, `/c.md` → `/`, `c.md` → `.`. */
-  function ordnerVon(datei) {
-    const ohneSchluss = datei.replace(/[/\\]+$/, '');
-    const trenner = Math.max(ohneSchluss.lastIndexOf('/'), ohneSchluss.lastIndexOf('\\'));
-    if (trenner < 0) return '.';
-    const ordner = datei.slice(0, trenner).replace(/[/\\]+$/, '');
-    if (ordner === '') return datei.slice(0, 1);
-    return ordner;
-  }
-
-  /** Startordner einer Anwendung (ADR-0034 Regel 1): `repository`, sonst Ordner von `wbs`, sonst `requirements`, sonst leer. */
-  function startordner(repository, wbs, anforderungen) {
-    if (text(repository)) return text(repository);
-    if (text(wbs)) return ordnerVon(text(wbs));
-    return text(anforderungen);
-  }
-
-  /** Die Pfade einer Anwendung oder der Quellen, wie sie in der Datei stehen (N2 Regel 1): `repository` immer (als
-      Startordner), `wbs` und `requirements` nur, wenn sie nicht leer sind — als Paare [Schlüssel, Wert]. */
+  /** Die Pfade einer Anwendung oder der Quellen, wie sie in der Datei stehen (ADR-0034 N2 Regel 4): nur `repository`,
+      getrimmt — als Paare [Schlüssel, Wert]. */
   function pfadeZurDatei(a) {
-    const paare = [['repository', startordner(a.repository, a.wbs, a.anforderungen)]];
-    if (text(a.wbs)) paare.push(['wbs', text(a.wbs)]);
-    if (text(a.anforderungen)) paare.push(['requirements', text(a.anforderungen)]);
-    return paare;
+    return [['repository', text(a.repository)]];
   }
 
   /** Zustand des Repository-Felds: leer → „kein Repository“; anders als zuletzt gespeichert → „noch nicht geprüft“;
@@ -50,10 +31,10 @@
     return REPOSITORY_ZUSTAENDE.fehlt;
   }
 
-  /** Zahl der Anwendungen, wie der Server zählt (`Anwendungen::aus`): die Standardanwendung, wenn sie einen Startordner
-      hat, dazu jede Anwendung des Registers. */
+  /** Zahl der Anwendungen, wie der Server zählt (`Anwendungen::aus`): die Standardanwendung, wenn sie ein Repository hat
+      (die API liefert es aus dem Lese-Rückfall schon ergänzt), dazu jede Anwendung des Registers. */
   function anwendungenZahl(quellen) {
-    const standard = startordner(quellen.repository, quellen.wbs, quellen.anforderungen) ? 1 : 0;
+    const standard = text(quellen.repository) ? 1 : 0;
     return standard + (quellen.anwendungen || []).length;
   }
 
@@ -74,5 +55,15 @@
     return jetzt.includes(kuerzel) ? jetzt.filter(k => k !== kuerzel) : [...jetzt, kuerzel];
   }
 
-  Object.assign(ziel, { REPOSITORY_ZUSTAENDE, startordner, pfadeZurDatei, repositoryZustand, anwendungenZahl, gebundeneAnwendungen, bindungUmschalten });
+  /** Die Einstellungen, die der erste Start anlegt (R00002): Ich, die gewählten Agenten, keine Klassen. */
+  function ersteEinstellungen(f) {
+    const ag = [['cl', 'Claude'], ['cx', 'Codex']].filter(([k]) => f.agenten[k]);
+    return {
+      personen: [{ kuerzel: f.kuerzel.trim(), name: f.name.trim(), art: 'human' }, ...ag.map(([k, n]) => ({ kuerzel: k, name: n, art: 'agent' }))],
+      klassen: [],
+      quellen: { repository: '' },
+    };
+  }
+
+  Object.assign(ziel, { ersteEinstellungen, REPOSITORY_ZUSTAENDE, pfadeZurDatei, repositoryZustand, anwendungenZahl, gebundeneAnwendungen, bindungUmschalten });
 })(typeof module !== 'undefined' ? module.exports : window);

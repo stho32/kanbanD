@@ -1,36 +1,14 @@
-// R00209 B1039: Register der Anwendungen in der Einstellungsseite — reine Rechnung aus web/register.js, ohne Browser.
-// Dieselbe Schreibregel wie der Server (src/modell/einstellungen.rs `startordner`, src/format/einstellungen.rs `pfade`),
-// damit die Vorschau zeigt, was nach dem Speichern in kanbanD.md steht (AK 11).
+// R00209 B1039, R00222: Register der Anwendungen in der Einstellungsseite — reine Rechnung aus web/register.js, ohne Browser.
+// Dieselbe Schreibregel wie der Server (src/format/einstellungen.rs `pfad`): nur `repository` (ADR-0034 N2 Regel 4), damit
+// die Vorschau zeigt, was nach dem Speichern in kanbanD.md steht. Den Lese-Rückfall rechnet nur der Server.
 const test = require('node:test');
 const assert = require('node:assert');
-const { startordner, pfadeZurDatei, repositoryZustand, anwendungenZahl, REPOSITORY_ZUSTAENDE, gebundeneAnwendungen, bindungUmschalten } = require('../../web/register.js');
+const { ersteEinstellungen, pfadeZurDatei, repositoryZustand, anwendungenZahl, REPOSITORY_ZUSTAENDE, gebundeneAnwendungen, bindungUmschalten } = require('../../web/register.js');
 
-test('startordner: die Tabelle aus AK 1 — repository, sonst Ordner von wbs, sonst requirements, sonst leer', () => {
-  const wbs = '/p/app/Dokumentation/Planung/app.md';
-  const zeilen = [
-    ['/p/app', wbs, '/p/app/Anforderungen', '/p/app'],
-    ['', wbs, '/p/app/Anforderungen', '/p/app/Dokumentation/Planung'],
-    ['', '', '/p/app/Anforderungen', '/p/app/Anforderungen'],
-    ['  ', 'Dokumentation/Planung/app.md', '', 'Dokumentation/Planung'],
-    ['', 'app.md', '', '.'],
-    ['/p/fehlt', wbs, '', '/p/fehlt'],
-    ['', '', '', ''],
-    [' /p/rand ', '', '', '/p/rand'],
-    ['', '/app.md', '', '/'],
-    ['', 'a//b/c.md', '', 'a//b'],
-    ['', 'C:\\p\\plan.md', '', 'C:\\p'],
-    [undefined, undefined, ' /p/anf ', '/p/anf'],
-  ];
-  for (const [repository, w, anforderungen, erwartet] of zeilen) {
-    assert.strictEqual(startordner(repository, w, anforderungen), erwartet, JSON.stringify([repository, w, anforderungen]));
-  }
-});
-
-test('pfadeZurDatei: repository immer, wbs und requirements nur, wenn nicht leer — getrimmt, in dieser Reihenfolge', () => {
-  assert.deepStrictEqual(pfadeZurDatei({ repository: ' /r ', wbs: '', anforderungen: '' }), [['repository', '/r']]);
-  assert.deepStrictEqual(pfadeZurDatei({ repository: '', wbs: ' /r/D/P/kd.md ', anforderungen: '/r/A' }), [['repository', '/r/D/P'], ['wbs', '/r/D/P/kd.md'], ['requirements', '/r/A']]);
-  assert.deepStrictEqual(pfadeZurDatei({ repository: '', wbs: '  ', anforderungen: '' }), [['repository', '']]);
-  assert.deepStrictEqual(pfadeZurDatei({ wbs: 'plan/wbs.md' }), [['repository', 'plan'], ['wbs', 'plan/wbs.md']]);
+test('pfadeZurDatei: nur repository, getrimmt — wbs und anforderungen werden nie geschrieben (R00222)', () => {
+  assert.deepStrictEqual(pfadeZurDatei({ repository: ' /r ' }), [['repository', '/r']]);
+  assert.deepStrictEqual(pfadeZurDatei({ repository: '', wbs: ' /r/D/P/kd.md ', anforderungen: '/r/A' }), [['repository', '']], 'mitgeschickt: ignoriert');
+  assert.deepStrictEqual(pfadeZurDatei({}), [['repository', '']]);
 });
 
 test('repositoryZustand: kein Repository, noch nicht geprüft, erreichbar, nicht erreichbar (PO Z. 434)', () => {
@@ -43,12 +21,11 @@ test('repositoryZustand: kein Repository, noch nicht geprüft, erreichbar, nicht
   assert.strictEqual(repositoryZustand('/r', { repository: '/r', erreichbar: false }), REPOSITORY_ZUSTAENDE.fehlt);
 });
 
-test('anwendungenZahl: Standardanwendung über den Startordner wie der Server (Anwendungen::aus), dazu das Register (Architektur S2)', () => {
-  const kd = { kuerzel: 'kd', name: 'K', repository: '/k', wbs: '', anforderungen: '' };
-  assert.strictEqual(anwendungenZahl({ repository: '/r', wbs: '', anforderungen: '', anwendungen: [kd] }), 2, 'Probe aus dem Review');
-  assert.strictEqual(anwendungenZahl({ repository: '', wbs: 'plan/wbs.md', anforderungen: '', anwendungen: [kd] }), 2);
-  assert.strictEqual(anwendungenZahl({ repository: '', wbs: '', anforderungen: 'anf', anwendungen: [] }), 1);
-  assert.strictEqual(anwendungenZahl({ repository: '  ', wbs: ' ', anforderungen: '', anwendungen: [kd] }), 1, 'nur Leerzeichen zählt nicht');
+test('anwendungenZahl: Standardanwendung über ihr Repository (die API liefert es aus dem Lese-Rückfall ergänzt), dazu das Register', () => {
+  const kd = { kuerzel: 'kd', name: 'K', repository: '/k' };
+  assert.strictEqual(anwendungenZahl({ repository: '/r', anwendungen: [kd] }), 2, 'Probe aus dem Review');
+  assert.strictEqual(anwendungenZahl({ repository: '', anwendungen: [kd] }), 1);
+  assert.strictEqual(anwendungenZahl({ repository: '  ', anwendungen: [kd] }), 1, 'nur Leerzeichen zählt nicht');
   assert.strictEqual(anwendungenZahl({}), 0);
 });
 
@@ -72,4 +49,12 @@ test('Bindung im Spalten-Dialog umschalten: vom gerechneten Stand aus, „keine�
   assert.deepStrictEqual(bindungUmschalten(['kc', 'kd'], 'kc', [kd, kc]), ['kd']);
   assert.deepStrictEqual(bindungUmschalten(['kd', 'xx'], 'kd', [kd]), ['xx'], 'nicht registrierte bleiben erhalten');
   assert.deepStrictEqual(bindungUmschalten(['kd'], '', [kd]), [], 'leeres Kürzel = keine');
+});
+
+// R00222 AK 14 (PO Z. 497): der erste Start fragt weder WBS noch Anforderungen; die Einstellungen tragen keine Quellen dazu
+test('ersteEinstellungen: Ich, Agenten, keine Klassen und kein quellen.wbs/quellen.anforderungen', () => {
+  const e = ersteEinstellungen({ kuerzel: ' sh ', name: ' Stefan ', agenten: { cl: true, cx: false }, board: 'Entwicklung', spalten: 'Offen, In Arbeit, Erledigt' });
+  assert.deepStrictEqual(e.personen, [{ kuerzel: 'sh', name: 'Stefan', art: 'human' }, { kuerzel: 'cl', name: 'Claude', art: 'agent' }]);
+  assert.deepStrictEqual(e.klassen, []);
+  assert.ok(!('wbs' in (e.quellen || {})) && !('anforderungen' in (e.quellen || {})), JSON.stringify(e.quellen));
 });

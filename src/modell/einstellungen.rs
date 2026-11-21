@@ -35,18 +35,21 @@ pub struct Signal {
 /// Der Schlüssel des gerechneten Standardsignals „fällig“ — nicht einrichtbar, nicht setzbar.
 pub const SIGNAL_FAELLIG: &str = "due";
 
-/// Eine registrierte Anwendung, angesprochen über das Kürzel: ihr Repository (ADR-0034 Regel 1), dazu bis S2 die Pfade zu
-/// WBS und Anforderungen, die die Factory und die WBS-Funktionen noch lesen (N2). Jeder Pfad darf fehlen (leer).
+/// Eine registrierte Anwendung, angesprochen über das Kürzel: ihr Repository (ADR-0034 Regel 1). Die Pfade eines Registers in
+/// Altform (`wbs`, `requirements` in `kanbanD.md`) liest kanbanD nur als Lese-Rückfall für den Startordner (ADR-0034 Regel 1,
+/// N2 Regel 4); sie stehen in keiner Antwort, ein mitgeschicktes Feld wird überlesen, geschrieben wird nur `repository`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Anwendung {
     pub kuerzel: String,
     pub name: String,
-    /// Ordner im Arbeits-Repository, absolut oder relativ zum kanbanD-Ordner; leer = Rückfall auf `wbs`/`anforderungen`
+    /// Ordner im Arbeits-Repository, absolut oder relativ zum kanbanD-Ordner; leer = Lese-Rückfall aus der Altform
     #[serde(default)]
     pub repository: String,
-    #[serde(default)]
+    /// Lese-Rückfall (ADR-0034 Regel 1): `wbs` eines Registers in Altform, nur aus der Datei, nie aus der API
+    #[serde(skip)]
     pub wbs: String,
-    #[serde(default)]
+    /// Lese-Rückfall (ADR-0034 Regel 1): `requirements` eines Registers in Altform, nur aus der Datei, nie aus der API
+    #[serde(skip)]
     pub anforderungen: String,
 }
 
@@ -57,14 +60,17 @@ impl Anwendung {
     }
 }
 
-/// `sources`: `repository` (bzw. bis S2 `wbs`/`requirements`) ist die Standardanwendung ohne Kürzel, `applications` das Register.
+/// `sources`: `repository` ist die Standardanwendung ohne Kürzel, `applications` das Register; Lese-Rückfall wie bei
+/// [`Anwendung`] (ADR-0034 Regel 1).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Quellen {
     #[serde(default)]
     pub repository: String,
-    #[serde(default)]
+    /// Lese-Rückfall (ADR-0034 Regel 1), nur aus der Datei
+    #[serde(skip)]
     pub wbs: String,
-    #[serde(default)]
+    /// Lese-Rückfall (ADR-0034 Regel 1), nur aus der Datei
+    #[serde(skip)]
     pub anforderungen: String,
     #[serde(default)]
     pub anwendungen: Vec<Anwendung>,
@@ -169,7 +175,7 @@ mod tests {
         }
     }
 
-    /// N2 Regel 1: `repository` wird ergänzt, `wbs`/`anforderungen` bleiben, wie sie sind; ohne Pfad bleibt es leer.
+    /// `repository` wird aus dem Lese-Rückfall ergänzt, die Rückfallpfade bleiben intern stehen; ohne Pfad bleibt es leer.
     #[test]
     fn repository_ergaenzen_je_anwendung_und_in_den_quellen() {
         let a = |k: &str, repository: &str, wbs: &str| Anwendung { kuerzel: k.into(), name: k.into(), repository: repository.into(), wbs: wbs.into(), anforderungen: String::new() };
@@ -181,13 +187,16 @@ mod tests {
         assert_eq!(r, [("/r/D/P", "/r/D/P/kd.md"), ("/r", "/r/D/P/lc.md"), ("", "")]);
     }
 
-    /// Die heutige Factory schickt `{kuerzel, name, wbs, anforderungen}` ohne `repository`, ein neuer Schreiber nur
-    /// `{kuerzel, name, repository}` — beide Formen kommen an (N2 Regel 2).
+    /// R00222 (ADR-0034 N2 Regel 4): mitgeschickte `wbs`/`anforderungen` kommen an (kein Fehler) und werden überlesen —
+    /// sie füllen den Lese-Rückfall nicht; in JSON steht nur `repository`.
     #[test]
-    fn beide_formen_kommen_an() {
-        let alt: Quellen = serde_json::from_str(r#"{"wbs": "w", "anforderungen": "a", "anwendungen": [{"kuerzel": "pa", "name": "P", "wbs": "/r/p.md", "anforderungen": "/r/a"}]}"#).unwrap();
-        assert_eq!((alt.repository.as_str(), alt.anwendungen[0].repository.as_str(), alt.anwendungen[0].wbs.as_str()), ("", "", "/r/p.md"));
-        let neu: Quellen = serde_json::from_str(r#"{"repository": "/r", "anwendungen": [{"kuerzel": "kd", "name": "K", "repository": "/r"}]}"#).unwrap();
-        assert_eq!((neu.wbs.as_str(), neu.anwendungen[0].wbs.as_str(), neu.anwendungen[0].anforderungen.as_str()), ("", "", ""));
+    fn mitgeschickte_wbs_und_anforderungen_werden_ueberlesen() {
+        let q: Quellen = serde_json::from_str(r#"{"repository": "", "wbs": "w", "anforderungen": "a", "anwendungen": [{"kuerzel": "pa", "name": "P", "repository": "/r", "wbs": "/r/p.md", "anforderungen": "/r/a"}]}"#).unwrap();
+        assert_eq!((q.wbs.as_str(), q.anforderungen.as_str(), q.anwendungen[0].wbs.as_str(), q.anwendungen[0].anforderungen.as_str()), ("", "", "", ""));
+        assert_eq!(q.anwendungen[0].repository, "/r");
+        let mut mit_rueckfall = q.clone();
+        mit_rueckfall.anwendungen[0].wbs = "/r/p.md".into();
+        let json = serde_json::to_string(&mit_rueckfall).unwrap();
+        assert!(!json.contains("wbs") && !json.contains("anforderungen\":\"/"), "{json}");
     }
 }

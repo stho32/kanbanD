@@ -101,17 +101,15 @@ fn anwendungen_schreiben(anwendungen: &[Anwendung]) -> String {
     sortiert.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
     let mut s = String::from("\n  applications:");
     for a in sortiert {
-        s.push_str(&format!("\n    {}: {{name: {}, {}}}", yaml::skalar(&a.kuerzel), yaml::skalar(&a.name), pfade(&a.repository, &a.wbs, &a.anforderungen).join(", ")));
+        s.push_str(&format!("\n    {}: {{name: {}, {}}}", yaml::skalar(&a.kuerzel), yaml::skalar(&a.name), pfad(&a.repository)));
     }
     s
 }
 
-/// Die Pfade einer Anwendung, wie sie in der Datei stehen (ADR-0034 N2 Regel 1): `repository` immer, `wbs` und
-/// `requirements` nur, wenn sie nicht leer sind.
-fn pfade(repository: &str, wbs: &str, anforderungen: &str) -> Vec<String> {
-    let mut p = vec![format!("repository: {}", yaml::skalar(repository))];
-    p.extend([("wbs", wbs), ("requirements", anforderungen)].into_iter().filter(|(_, w)| !w.is_empty()).map(|(k, w)| format!("{k}: {}", yaml::skalar(w))));
-    p
+/// Der Pfad einer Anwendung, wie er in der Datei steht (ADR-0034 N2 Regel 4): nur `repository` — der Lese-Rückfall wird
+/// nie geschrieben.
+fn pfad(repository: &str) -> String {
+    format!("repository: {}", yaml::skalar(repository))
 }
 
 pub fn schreiben(e: &Einstellungen) -> String {
@@ -137,7 +135,7 @@ pub fn schreiben(e: &Einstellungen) -> String {
     }
     s.push_str(&format!(
         "\nsources:\n  {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
-        pfade(&e.quellen.repository, &e.quellen.wbs, &e.quellen.anforderungen).join("\n  "),
+        pfad(&e.quellen.repository),
         anwendungen_schreiben(&e.quellen.anwendungen)
     ));
     s
@@ -156,7 +154,7 @@ mod tests {
             ],
             klassen: vec![Klasse { schluessel: "bug".into(), bezeichnung: "Fehler".into(), farbe: "#b04a8c".into() }],
             signale: vec![Signal { schluessel: "mail".into(), bezeichnung: "Neue E-Mail".into(), farbe: "blue".into() }],
-            quellen: Quellen { repository: "Dokumentation/Planung".into(), wbs: "Dokumentation/Planung/kanbanD.md".into(), anforderungen: "".into(), anwendungen: vec![] },
+            quellen: Quellen { repository: "Dokumentation/Planung".into(), ..Default::default() },
             transkripte_erfassen: None,
         }
     }
@@ -184,10 +182,10 @@ mod tests {
         let mut e = beispiel();
         e.quellen.anwendungen = vec![anwendung("kd", "/home/x/kanbanD/plan.md"), anwendung("kc", "C:/y: z.md")];
         let t = schreiben(&e);
-        assert!(t.contains("\n  applications:\n    kc: {name: App kc, repository: /r/kc/repo, wbs: \"C:/y: z.md\", requirements: /r/kc}\n    kd: {name: App kd, repository: /r/kd/repo, wbs: /home/x/kanbanD/plan.md, requirements: /r/kd}\n---"), "{t}");
+        assert!(t.contains("\n  applications:\n    kc: {name: App kc, repository: /r/kc/repo}\n    kd: {name: App kd, repository: /r/kd/repo}\n---"), "R00222: der Lese-Rückfall wird nie geschrieben:\n{t}");
         let gelesen = lesen(&t).unwrap();
         assert_eq!(gelesen.quellen.anwendungen.iter().map(|a| a.kuerzel.as_str()).collect::<Vec<_>>(), vec!["kc", "kd"]);
-        assert_eq!(gelesen.quellen.wbs, "Dokumentation/Planung/kanbanD.md", "Standardanwendung bleibt, wie sie war");
+        assert_eq!(gelesen.quellen.repository, "Dokumentation/Planung", "Standardanwendung bleibt mit ihrem Repository");
         assert_eq!(schreiben(&gelesen), t);
         let knapp = lesen("---\nsources:\n  applications:\n    kd: {}\n---\n").unwrap();
         assert_eq!(knapp.quellen.anwendungen, vec![Anwendung { kuerzel: "kd".into(), name: "kd".into(), repository: "".into(), wbs: "".into(), anforderungen: "".into() }]);
@@ -195,27 +193,27 @@ mod tests {
         assert!(!schreiben(&beispiel()).contains("applications"), "ohne Register keine leere Zeile");
     }
 
-    /// R00209 FA „Schreiben“ (ADR-0034 N2 Regel 1): `repository` immer, `wbs`/`requirements` nur, wenn nicht leer —
-    /// je Anwendung und in `sources`; die neue Form liest sich zurück, wie sie geschrieben wurde.
+    /// R00222 (ADR-0034 N2 Regel 4): geschrieben wird je Anwendung und in `sources` nur `repository` — auch wenn der
+    /// Lese-Rückfall einen Pfad trägt; die neue Form liest sich zurück, wie sie geschrieben wurde.
     #[test]
-    fn repository_immer_wbs_und_requirements_nur_wenn_nicht_leer() {
+    fn nur_repository_wird_geschrieben_auch_mit_lese_rueckfall() {
         let mut e = beispiel();
         e.quellen = Quellen {
             repository: "/r".into(),
-            wbs: "".into(),
-            anforderungen: "".into(),
+            wbs: "plan/wbs.md".into(),
+            anforderungen: "anf".into(),
             anwendungen: vec![
                 Anwendung { kuerzel: "kd".into(), name: "kanbanD".into(), repository: "/r".into(), wbs: "".into(), anforderungen: "".into() },
                 Anwendung { kuerzel: "lc".into(), name: "Lokal".into(), repository: "".into(), wbs: "".into(), anforderungen: "".into() },
-                Anwendung { kuerzel: "pa".into(), name: "Probe".into(), repository: "/r/D/P".into(), wbs: "/r/D/P/pa.md".into(), anforderungen: "".into() },
+                Anwendung { kuerzel: "pa".into(), name: "Probe".into(), repository: "/r/D/P".into(), wbs: "/r/D/P/pa.md".into(), anforderungen: "/r/A".into() },
             ],
         };
         let t = schreiben(&e);
-        assert!(t.contains("\nsources:\n  repository: /r\n  applications:\n    kd: {name: kanbanD, repository: /r}\n    lc: {name: Lokal, repository: \"\"}\n    pa: {name: Probe, repository: /r/D/P, wbs: /r/D/P/pa.md}\n---"), "{t}");
-        assert_eq!(lesen(&t).unwrap(), e);
-        e.quellen.anwendungen.clear();
-        e.quellen.anforderungen = "anf".into();
-        assert!(schreiben(&e).contains("\nsources:\n  repository: /r\n  requirements: anf\n---"), "{}", schreiben(&e));
+        assert!(t.contains("\nsources:\n  repository: /r\n  applications:\n    kd: {name: kanbanD, repository: /r}\n    lc: {name: Lokal, repository: \"\"}\n    pa: {name: Probe, repository: /r/D/P}\n---"), "{t}");
+        assert!(!t.contains("wbs") && !t.contains("requirements"), "{t}");
+        let gelesen = lesen(&t).unwrap();
+        assert_eq!(schreiben(&gelesen), t, "Rundlauf stabil");
+        assert_eq!((gelesen.quellen.wbs.as_str(), gelesen.quellen.anwendungen[2].wbs.as_str()), ("", ""));
     }
 
     /// Ein Altbestand (nur `wbs`/`requirements`) liest sich ohne `repository` — den Rückfall rechnet das Modell, nicht der Leser.

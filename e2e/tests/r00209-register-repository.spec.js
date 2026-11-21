@@ -7,8 +7,7 @@ const os = require('os');
 const path = require('path');
 const { kanbanStarten, einrichten, alsPerson, bereit, breiteSetzen, thema, kontrastAm, commitSteht } = require('./hilfen');
 
-const HINWEIS_WBS = 'Die Factory erkennt die Anwendung an diesem Pfad. Leeren erst, wenn die Factory umgestellt ist.';
-const HINWEIS_ANWENDUNGEN = 'Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie kd:<hash>. WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist. Aufgaben nennen ihre Herkunft als kd:I0007; Boards binden mit applications: [kd].';
+const HINWEIS_ANWENDUNGEN = 'Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie kd:<hash>. Aufgaben nennen ihre Herkunft als kd:I0007; Boards binden mit applications: [kd].';
 
 // ---- Testsprache --------------------------------------------------------------------------------------------------------
 
@@ -73,7 +72,8 @@ test.describe('R00209 Einrichten mit Repository', () => {
   test.beforeEach(() => { r = arbeitsRepository(); });
   test.afterEach(async () => { if (k) await k.stoppen(); fs.rmSync(r, { recursive: true, force: true }); });
 
-  test('AK 9: Altbestand zeigt das Repository als Startordner, erreichbar; Reihenfolge, Name und Hinweis am WBS-Feld; speichern mit und ohne Änderung', async ({ page }) => {
+  // R00222 (ADR-0034 N2 Regel 4) beendet die Übergangsform: nur noch das Feld „Repository“, geschrieben wird nur `repository`
+  test('AK 9: Altbestand zeigt das Repository als Startordner, erreichbar; nur das Feld Repository; speichern mit und ohne Änderung (R00222)', async ({ page }) => {
     const wbs = `${r}/Documentation/Planning/app.md`, anf = `${r}/Requirements`, planung = `${r}/Documentation/Planning`;
     k = await kanbanStarten(einrichten({ 'kanbanD.md': register('  wbs: ""\n  requirements: ""\n', [`jopu: {name: JoinPuya, wbs: ${wbs}, requirements: ${anf}}`]) }));
     await alsPerson(page, 'st');
@@ -82,26 +82,22 @@ test.describe('R00209 Einrichten mit Repository', () => {
     const repository = page.getByLabel('Repository jopu', { exact: true });
     await expect(repository).toHaveValue(planung);
     await expect(zustandVon(page, 'jopu')).toHaveText('erreichbar');
-    expect(await zeile.locator('.felder input').evaluateAll(f => f.map(e => e.dataset.ef))).toEqual(['arepo', 'awbs', 'aanf']);
-    expect(await zeile.locator('.felder .kb .k').allTextContents()).toEqual(['Repository', 'WBS', 'Anforderungen']);
+    expect(await zeile.locator('.felder input').evaluateAll(f => f.map(e => e.dataset.ef))).toEqual(['arepo']);
+    expect(await zeile.locator('.felder .kb .k').allTextContents()).toEqual(['Repository']);
     await expect(repository).toHaveAccessibleDescription('erreichbar');
-    const hinweis = zeile.locator('.feld-hinweis');
-    await expect(hinweis).toBeVisible();
-    await expect(hinweis).toHaveText(HINWEIS_WBS);
-    await expect(page.getByLabel('WBS-Pfad jopu')).toHaveAccessibleDescription(HINWEIS_WBS);
-    await expect(hinweis).not.toHaveAttribute('role', /alert|status/);
+    await expect(zeile.locator('.feld-hinweis')).toHaveCount(0);
 
-    // speichern ohne Änderung: repository kommt dazu, wbs/requirements bleiben (die Seite sendet sie mit)
+    // speichern ohne Änderung: die Altform wird auf repository umgestellt, wbs/requirements fallen weg
     await speichernUndVorschauPruefen(page, k);
-    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${planung}, wbs: ${wbs}, requirements: ${anf}}`);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${planung}}`);
 
     // Repository ändern: bis zum Speichern „noch nicht geprüft“, danach erreichbar
     await repository.fill(r);
     await expect(zustandVon(page, 'jopu')).toHaveText('noch nicht geprüft');
     await expect(repository).toHaveAccessibleDescription('noch nicht geprüft');
-    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}, wbs: ${wbs}, requirements: ${anf}}`);
+    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}}`);
     await speichernUndVorschauPruefen(page, k);
-    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}, wbs: ${wbs}, requirements: ${anf}}`);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}}`);
     await expect(zustandVon(page, 'jopu')).toHaveText('erreichbar');
 
     // ein Ordner, den es nicht gibt, und ein leeres Feld: speichern geht ohne Meldung
@@ -114,13 +110,7 @@ test.describe('R00209 Einrichten mit Repository', () => {
     await page.getByLabel('Repository jopu', { exact: true }).fill('relativ/ordner');
     await speichernUndVorschauPruefen(page, k);
     await expect(page.locator('#einr-fehler')).toHaveCount(0);
-
-    // WBS leeren: der Hinweis fällt weg, die Vorschau zeigt kein wbs mehr
-    await page.getByLabel('WBS-Pfad jopu').fill('');
-    await expect(zeile.locator('.feld-hinweis')).toBeHidden();
-    await expect(page.getByLabel('WBS-Pfad jopu')).not.toHaveAttribute('aria-describedby', /./);
-    await speichernUndVorschauPruefen(page, k);
-    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: relativ/ordner, requirements: ${anf}}`);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe('jopu: {name: JoinPuya, repository: relativ/ordner}');
   });
 
   test('AK 10: Hinweistext, neue Anwendung nur mit Repository, Quellen mit Zustandswort, Fokus nach dem Entfernen', async ({ page }) => {
@@ -141,7 +131,6 @@ test.describe('R00209 Einrichten mit Repository', () => {
     await expect(zustandVon(page, 'lc')).toHaveText('noch nicht geprüft');
     await page.getByLabel('Repository', { exact: true }).fill(r);
     await expect(page.locator('#quellen-repo')).toHaveText('noch nicht geprüft');
-    await expect(zeileVon(page, 'lc').locator('.feld-hinweis')).toBeHidden();
     await speichernUndVorschauPruefen(page, k);
     const datei = k.lies('kanbanD.md');
     expect(datei).toContain(`sources:\n  repository: ${r}\n  applications:\n    lc: {name: Lokal, repository: ${r}}\n---`);
@@ -162,15 +151,15 @@ test.describe('R00209 Einrichten mit Repository', () => {
     await expect(page.getByLabel('Neues Anwendungskürzel')).toBeFocused();
   });
 
-  test('AK 11: die Vorschau zeigt vor dem Speichern genau die Zeilen der Datei — Repository ändern, WBS leeren', async ({ page }) => {
+  test('AK 11: die Vorschau zeigt vor dem Speichern genau die Zeilen der Datei — Repository ändern, leeren (R00222: ohne wbs)', async ({ page }) => {
     const wbs = `${r}/Documentation/Planning/app.md`;
     k = await kanbanStarten(einrichten({ 'kanbanD.md': register(`  repository: ${r}\n`, [`kd: {name: kanbanD, repository: ${r}, wbs: ${wbs}}`]) }));
     await alsPerson(page, 'st');
     await page.goto(k.adresse + '#/einrichten');
     await page.getByLabel('Repository kd', { exact: true }).fill(`  ${r}/Documentation  `);
-    await expect(page.locator('#einr-vorschau')).toContainText(`kd: {name: kanbanD, repository: ${r}/Documentation, wbs: ${wbs}}`);
+    await expect(page.locator('#einr-vorschau')).toContainText(`kd: {name: kanbanD, repository: ${r}/Documentation}`);
+    await expect(page.locator('#einr-vorschau')).not.toContainText('wbs');
     await speichernUndVorschauPruefen(page, k);
-    await page.getByLabel('WBS-Pfad kd').fill('');
     await page.getByLabel('Repository kd', { exact: true }).fill('');
     await expect(page.locator('#einr-vorschau')).toContainText('kd: {name: kanbanD, repository: ""}');
     await speichernUndVorschauPruefen(page, k);
@@ -197,10 +186,10 @@ test.describe('R00209 Einrichten mit Repository', () => {
     await api.ruhig();
     await expect(repository).toHaveValue(`${r}/neu`);
     await expect(zustandVon(page, 'jopu')).toHaveText('noch nicht geprüft');
-    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
+    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}/neu}`);
     await expect(page.getByText('gespeichert', { exact: true })).toHaveCount(0);
     await speichernUndVorschauPruefen(page, k);
-    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}/neu}`);
   });
 
   test('R00215 AK 8: Eingabe, während das Speichern noch nachlädt, bleibt stehen und ist nicht „gespeichert“', async ({ page }) => {
@@ -221,11 +210,11 @@ test.describe('R00209 Einrichten mit Repository', () => {
     await repository.fill(`${r}/neu`);
     await api.ruhig();
     await expect(repository).toHaveValue(`${r}/neu`);
-    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
+    await expect(page.locator('#einr-vorschau')).toContainText(`jopu: {name: JoinPuya, repository: ${r}/neu}`);
     await expect(page.getByText('gespeichert', { exact: true })).toHaveCount(0);
-    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}, requirements: ${anf}}`);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}}`);
     await speichernUndVorschauPruefen(page, k);
-    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}/neu}`);
   });
 
   // R00215 AK 11 (Entwicklertest #231 Muss S1): wer speichert und gleich die Ansicht wechselt, sieht keine technische Meldung
@@ -252,7 +241,7 @@ test.describe('R00209 Einrichten mit Repository', () => {
       await expect(page.locator('#stat .fehl')).toHaveCount(0);
       expect(meldungen).toEqual([]);
       await commitSteht(k, vorher + 1);
-      expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}, requirements: ${anf}}`);
+      expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}}`);
       expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher + 1);
     });
   }
@@ -343,8 +332,6 @@ test.describe('R00209 Einrichten mit Repository', () => {
           await wort.hover();
           expect(await kontrastAm(wort), `${await wort.textContent()} ${farbe} Hover`).toBeGreaterThanOrEqual(4.5);
         }
-        const hinweis = zeileVon(page, 'kd').locator('.feld-hinweis');
-        expect(await kontrastAm(hinweis), `Hinweis ${farbe}`).toBeGreaterThanOrEqual(4.5);
         const ziele = await page.locator('.einrichten .anw input, .einrichten .anw button').evaluateAll(e => e.map(x => x.getBoundingClientRect().height));
         expect(Math.min(...ziele)).toBeGreaterThanOrEqual(24);
       });

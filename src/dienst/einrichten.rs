@@ -52,7 +52,7 @@ impl Einrichtung {
             personen: std::iter::once(self.ich()).chain(agenten).collect(),
             klassen: vec![],
             signale: vec![],
-            quellen: Quellen { repository: self.quellen.repository.trim().into(), wbs: self.quellen.wbs.trim().into(), anforderungen: self.quellen.anforderungen.trim().into(), anwendungen: vec![] },
+            quellen: Quellen { repository: self.quellen.repository.trim().into(), ..Default::default() },
             transkripte_erfassen: None,
         };
         e.repository_ergaenzen();
@@ -146,14 +146,16 @@ mod tests {
         assert_eq!(e.board().spalten.len(), 3);
     }
 
-    /// R00209 Hinweis „Der erste Start“: die Quellen laufen durch dieselbe Schreibregel — mit WBS steht `repository` daneben.
+    /// R00222 AK 14 (PO Z. 497): der erste Start kennt nur `repository`; eine mitgeschickte WBS wird überlesen, die
+    /// angelegte `kanbanD.md` trägt weder `wbs` noch `requirements`.
     #[test]
-    fn erste_einrichtung_schreibt_repository_der_quellen() {
-        let mut e = gut();
-        e.quellen = Quellen { wbs: " Dokumentation/Planung/app.md ".into(), ..Default::default() };
+    fn erste_einrichtung_ueberliest_wbs_und_schreibt_nur_repository() {
+        let e: Einrichtung = serde_json::from_str(r#"{"ich": {"kuerzel": "sh", "name": "Stefan"}, "board": "Entwicklung", "spalten": ["Offen", "Erledigt"], "quellen": {"wbs": "Dokumentation/Planung/app.md", "anforderungen": "Anforderungen"}}"#).unwrap();
         let q = e.einstellungen().quellen;
-        assert_eq!((q.repository.as_str(), q.wbs.as_str()), ("Dokumentation/Planung", "Dokumentation/Planung/app.md"));
-        assert_eq!(gut().einstellungen().quellen.repository, "", "ohne Pfad bleibt es leer");
+        assert_eq!((q.repository.as_str(), q.wbs.as_str(), q.anforderungen.as_str()), ("", "", ""));
+        let text = einstellungen::schreiben(&e.einstellungen());
+        assert!(text.contains("sources:\n  repository: \"\"\n---"), "{text}");
+        assert!(!text.contains("wbs") && !text.contains("requirements"), "{text}");
     }
 
     #[test]

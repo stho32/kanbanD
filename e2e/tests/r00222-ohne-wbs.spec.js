@@ -218,7 +218,7 @@ test.describe('R00222 ohne WBS', () => {
     await expect(page.getByLabel(/WBS/)).toHaveCount(0);
     await expect(page.getByLabel(/Anforderung/)).toHaveCount(0);
     await expect(page.getByText('Die Factory erkennt die Anwendung an diesem Pfad', { exact: false })).toHaveCount(0);
-    await expect(page.locator('.einr-kopf + .hin').first()).toHaveText(HINWEIS_ANWENDUNGEN);
+    await expect(page.locator('.einr-kopf:has-text("ANWENDUNGEN") + .hin')).toHaveText(HINWEIS_ANWENDUNGEN);
     const vorschau = page.locator('#einr-vorschau');
     await expect(vorschau).toContainText(`kd: {name: KD, repository: ${planung}}`);
     await expect(vorschau).not.toContainText('wbs');

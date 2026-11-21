@@ -2156,14 +2156,6 @@ function vFieberMethodik() {
   return `<h2 class="dtitel">Lesehinweise und Methodik</h2><ul class="wl-liste"><li>Fortschritt: Anteil der Aufgaben, die die Zielspalte erreicht bzw. ihre Phase durchlaufen haben — ohne Wahl die Abschlussspalte bzw. die letzte Phase („Erledigt heißt“) —, am Umfang des Tages. Prognose und Durchsatz gehören zu demselben Block wie in „Wie lange noch“. Neue Aufgaben senken ihn — der Punkt springt nach links.</li><li>Gesamtdauer = Projektstart bis Zieltermin in der Einheit; davon ist der Puffer abgezogen, der Rest ist der Arbeitsbereich mit seinem Planende.</li><li>Für jeden Tag rechnet der Bericht die Prognose aus „Wie lange noch“ mit dem Wissen dieses Tages (Messbasis: die ${S.ui.bf.messbasisTage} Tage vor diesem Tag, nie vor „Rechnen ab“ und nie vor der ersten Aufgabe; nur der gewählte Block) und nimmt das gewählte Perzentil als prognostiziertes Ende. Pufferverbrauch = (Ende − Planende) / Puffer; negativ heißt: die Prognose war vor dem Planende fertig, Puffer gewonnen — der Tooltip nennt die Tage. Tief im Grünen liegen oft frühe Tage mit kleinem Umfang: die Prognose kannte nur die Aufgaben, die damals auf dem Board standen; ist der Umfang seitdem stark gewachsen, sagt das der Tooltip. Steht die Arbeit still, steigt der Verbrauch allein, weil Zeit vergeht.</li><li>Zonen: die Grenzen steigen von links nach rechts — früher Verbrauch ist gefährlicher, weil noch die ganze Arbeit folgt. Genau auf einer Grenze gilt die höhere Zone.</li><li>Auflösung: gerechnet wird je Tag; „Woche“ und „Monat“ zeigen vom letzten Stand rückwärts jeden 7. bzw. 30. Tag (fehlt dort ein Punkt, der davor) — Umschalten rechnet nichts neu.</li><li>Ohne ${MIN_LAEUFE} Läufe in der Messbasis kein Punkt. In Arbeitstagen nur Werktage. Die Bahn endet am ersten Tag mit 100 %.</li><li>Cache: je Projektstart und Berichtsfilter ein Abschnitt; Zieltermin, Puffer, Perzentil, Einheit und Zonen rechnen nichts neu. Der heutige Tag wird nie gespeichert, fehlende Tage ergänzt der Bericht beim Öffnen (Commit von „kanbanD“).</li></ul>`;
 }
 
-/** Erreichbarkeit eines Pfads zu WBS oder Anforderungen, wie der Server sie zuletzt gemeldet hat — nur solange der Pfad
-    gespeichert ist; ein leeres Feld trägt kein Wort (R00209: beide Felder sind nicht mehr nötig). */
-function vErreichbar(a, feld) {
-  const g = (S.anwendungen || {})[a.kuerzel];
-  if (!a[feld]) return '';
-  if (!g || g[feld] !== a[feld]) return `<span class="erreich ${REPOSITORY_ZUSTAENDE.ungeprueft.klasse}">${REPOSITORY_ZUSTAENDE.ungeprueft.wort}</span>`;
-  return g.erreichbar[feld] ? `<span class="erreich ja" title="Pfad gefunden">erreichbar</span>` : `<span class="erreich nein" title="Pfad nicht gefunden — die Anwendung ist nicht erreichbar, alle Boards bleiben benutzbar">nicht erreichbar</span>`;
-}
 /** Was der Server zum Repository einer Anwendung zuletzt gemeldet hat: {repository, erreichbar} oder nichts. */
 function gespeichertesRepository(kuerzel) {
   const g = (S.anwendungen || {})[kuerzel];
@@ -2176,24 +2168,18 @@ function vRepositoryFeld({ ef, i, wert, beschriftung, zustandId, gespeichert }) 
   const index = i === undefined ? '' : ` data-i="${i}"`;
   return `${vBeschriftung('repository')}<span class="w"><input class="mini-inp full" data-ef="${ef}"${index} value="${esc(wert)}" title="${esc(wert)}" placeholder="/voller/pfad/zum/Repository" aria-label="${esc(beschriftung)}" aria-describedby="${zustandId}"><span class="erreich ${z.klasse}" id="${zustandId}">${z.wort}</span></span>`;
 }
-/** Hinweis unter dem gefüllten Feld „WBS“ einer Anwendung (PO Z. 435) — ruhig, ohne Sperre; bei leerem Feld verborgen. */
-const WBS_HINWEIS = 'Die Factory erkennt die Anwendung an diesem Pfad. Leeren erst, wenn die Factory umgestellt ist.';
 function vRegister(d) {
   const register = d.quellen.anwendungen || [];
   const zeilen = register.map((a, i) => {
     const repository = vRepositoryFeld({ ef: 'arepo', i, wert: a.repository || '', beschriftung: `Repository ${a.kuerzel}`, zustandId: `anw-repo-${i}`, gespeichert: gespeichertesRepository(a.kuerzel) });
-    const hinweisId = `anw-wbs-hinweis-${i}`, mitWbs = Boolean(a.wbs);
-    const beschrieben = mitWbs ? ` aria-describedby="${hinweisId}"` : '';
-    const wbs = `${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-ef="awbs" data-i="${i}" value="${esc(a.wbs)}" title="${esc(a.wbs)}" placeholder="/voller/pfad/Dokumentation/Planung/app.md" aria-label="WBS-Pfad ${esc(a.kuerzel)}"${beschrieben}>${vErreichbar(a, 'wbs')}</span><div class="feld-hinweis" id="${hinweisId}"${mitWbs ? '' : ' hidden'}>${WBS_HINWEIS}</div>`;
-    const anforderungen = `${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-ef="aanf" data-i="${i}" value="${esc(a.anforderungen)}" title="${esc(a.anforderungen)}" placeholder="/voller/pfad/Anforderungen" aria-label="Anforderungspfad ${esc(a.kuerzel)}">${vErreichbar(a, 'anforderungen')}</span>`;
-    return `<div class="anw" data-anwendung="${esc(a.kuerzel)}"><div class="klz az"><span class="pk pk-0">${esc(a.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(a.kuerzel)}</span><input class="inp" data-ef="aname" data-i="${i}" value="${esc(a.name)}" aria-label="Name der Anwendung ${esc(a.kuerzel)}"><span></span><button class="btn btn-sym" data-act="a-del" data-arg="${i}" title="aus dem Register entfernen – Aufgaben behalten ihre Herkunft" aria-label="Anwendung ${esc(a.kuerzel)} entfernen">✕</button></div><div class="felder">${repository}${wbs}${anforderungen}</div></div>`;
+    return `<div class="anw" data-anwendung="${esc(a.kuerzel)}"><div class="klz az"><span class="pk pk-0">${esc(a.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(a.kuerzel)}</span><input class="inp" data-ef="aname" data-i="${i}" value="${esc(a.name)}" aria-label="Name der Anwendung ${esc(a.kuerzel)}"><span></span><button class="btn btn-sym" data-act="a-del" data-arg="${i}" title="aus dem Register entfernen – Aufgaben behalten ihre Herkunft" aria-label="Anwendung ${esc(a.kuerzel)} entfernen">✕</button></div><div class="felder">${repository}</div></div>`;
   }).join('');
   return `${zeilen}<div class="klz az"><span class="pk pk-0">+</span><input class="inp mono" id="nak" placeholder="kürzel" aria-label="Neues Anwendungskürzel"><input class="inp" id="nan" placeholder="Name · Enter" data-enter="a-add" aria-label="Neuer Anwendungsname"><span></span><span></span></div>`;
 }
-/** Die Quellen (Standardanwendung ohne Kürzel): Repository mit Zustandswort wie eine Anwendung, dazu WBS und Anforderungen. */
+/** Die Quellen (Standardanwendung ohne Kürzel): Repository mit Zustandswort wie eine Anwendung (R00222: nur noch das Repository). */
 function vQuellen(d) {
   const repository = vRepositoryFeld({ ef: 'repo', wert: d.quellen.repository || '', beschriftung: 'Repository', zustandId: 'quellen-repo', gespeichert: S.quellenStand || undefined });
-  return `<div class="felder">${repository}${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-ef="wbs" value="${esc(d.quellen.wbs)}" title="${esc(d.quellen.wbs)}" aria-label="WBS-Pfad"></span>${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-ef="anf" value="${esc(d.quellen.anforderungen)}" title="${esc(d.quellen.anforderungen)}" aria-label="Anforderungspfad"></span></div>`;
+  return `<div class="felder">${repository}</div>`;
 }
 
 /** Die Klassen eines Entwurfs, wie sie gespeichert werden: ohne die gestrichenen Zeilen und ohne deren Marke. */
@@ -2228,7 +2214,7 @@ function vEinrichten() {
 <h2 class="einr-kopf">KLASSEN <span class="mono">classes:</span></h2><div class="hin">Eine Aufgabe trägt höchstens eine Klasse; sie färbt die Karte und ist filterbar mit <span class="mono">class:schlüssel</span>.</div>${klassen}
 ${vSignaleEinrichten(d)}
 <h2 class="einr-kopf">QUELLEN <span class="mono">sources:</span></h2>${vQuellen(d)}
-<h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie <span class="mono">kd:&lt;hash&gt;</span>. WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist. Aufgaben nennen ihre Herkunft als <span class="mono">kd:I0007</span>; Boards binden mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
+<h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie <span class="mono">kd:&lt;hash&gt;</span>. Aufgaben nennen ihre Herkunft als <span class="mono">kd:I0007</span>; Boards binden mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
 ${d.fehler ? `<div class="warnh" id="einr-fehler" role="alert" tabindex="-1">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted" id="einr-gespeichert">gespeichert</span>' : ''}</div>${vTranskripte()}</div>
 <aside class="einr"><h2 class="einr-kopf">KANBAND.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d, S.transkripteVorgabe))}</pre></aside></div>`;
 }
@@ -2299,7 +2285,7 @@ function vBindungFeld(d) {
   if (!register.length) return '';
   const an = gebundeneAnwendungen({ anwendungen: d.anwendungen }, register).map(a => a.kuerzel), standard = d.anwendungen == null;
   const schalter = (k, text, ein, titel) => `<button class="as${ein ? ' an' : ''}" data-act="bind" data-arg="${esc(k)}" aria-pressed="${ein}" aria-label="Bindung ${esc(text)}" title="${esc(titel)}">${esc(text)}</button>`;
-  return `<h2 class="einr-kopf">GEBUNDEN AN${standard ? ' <span class="mono">(Standard)</span>' : ''}</h2><div class="r2 wrap">${register.map(a => schalter(a.kuerzel, a.name, an.includes(a.kuerzel), `WBS-Sicht, Phasen-Spalten und Prüfungen aus „${a.name}“ (${a.kuerzel})`)).join('')}${schalter('', 'keine', !an.length, 'reines Kanban: applications: [] — keine Phasen, keine WBS-Sicht; vorhandene Spalten bleiben')}</div>`;
+  return `<h2 class="einr-kopf">GEBUNDEN AN${standard ? ' <span class="mono">(Standard)</span>' : ''}</h2><div class="r2 wrap">${register.map(a => schalter(a.kuerzel, a.name, an.includes(a.kuerzel), `Phasen-Spalten aus „${a.name}“ (${a.kuerzel})`)).join('')}${schalter('', 'keine', !an.length, 'reines Kanban: applications: [] — keine Phasen; vorhandene Spalten bleiben')}</div>`;
 }
 /** Die eigenen Klassen im Entwurf von „Spalten einrichten“, wie sie gespeichert würden: `null` heißt Vorgabe des Ordners. */
 const setupKlassen = d => d.klassenWahl === 'eigen' ? ungestrichen(d.klassen) : null;
@@ -2334,14 +2320,6 @@ function vSetup() {
 }
 
 /* ── Erster Start ── */
-function ersteEinstellungen(f) {
-  const ag = [['cl', 'Claude'], ['cx', 'Codex']].filter(([k]) => f.agenten[k]);
-  return {
-    personen: [{ kuerzel: f.kuerzel.trim(), name: f.name.trim(), art: 'human' }, ...ag.map(([k, n]) => ({ kuerzel: k, name: n, art: 'agent' }))],
-    klassen: [],
-    quellen: { wbs: f.wbs.trim(), anforderungen: f.anf.trim() },
-  };
-}
 const spaltenListe = f => f.spalten.split(',').map(s => s.trim()).filter(Boolean);
 function vFirst() {
   const f = S.ui.first, z = S.zustand, ag = [['cl', 'Claude'], ['cx', 'Codex']];
@@ -2351,8 +2329,7 @@ function vFirst() {
 ${vBeschriftung('agents')}<span class="w wrap">${ag.map(([k, n]) => `<button class="as${f.agenten[k] ? ' an' : ''}" data-act="fr-agent" data-arg="${k}" aria-pressed="${!!f.agenten[k]}"><span class="pk pk-a">${k.toUpperCase()}</span>${n}</button>`).join('')}</span>
 ${vBeschriftung('board')}<span class="w"><input class="mini-inp full" data-fr="board" value="${esc(f.board)}" aria-label="Board"></span>
 ${vBeschriftung('spalten')}<span class="w"><input class="mini-inp full" data-fr="spalten" value="${esc(f.spalten)}" title="durch Komma getrennt; die letzte ist die Abschlussspalte" aria-label="Spalten"></span>
-${vBeschriftung('wbs')}<span class="w"><input class="mini-inp full" data-fr="wbs" value="${esc(f.wbs)}" placeholder="Dokumentation/Planung/projekt.md" aria-label="WBS"></span>
-${vBeschriftung('requirements')}<span class="w"><input class="mini-inp full" data-fr="anf" value="${esc(f.anf)}" placeholder="Anforderungen/" aria-label="Anforderungen"></span></div>
+</div>
 ${f.fehler ? `<div class="fehl" role="alert">${esc(f.fehler)}</div>` : ''}
 <div class="zeile"><button class="btn btn-haupt" data-act="first-ok">Einrichten und committen</button></div></div>
 <aside class="first-r"><h3>KANBAND.MD <span class="mono">wird angelegt</span></h3><pre class="yaml" id="vorschau-einstellungen">${esc(einstellungenText(ersteEinstellungen(f)))}</pre><h3>BOARDS/${esc(slug(f.board) || '…').toUpperCase()}.MD</h3><pre class="yaml" id="vorschau-board">${esc(boardText(f.board.trim(), spaltenListe(f)))}</pre></aside></div>`;

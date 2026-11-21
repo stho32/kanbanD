@@ -239,7 +239,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   const start = naechsterTakt();
   const zustand = await api('GET', '/api/zustand');
   const einstellungenDefekt = zustand.eingerichtet && !zustand.einstellungen;
-  if (einstellungenDefekt) zustand.einstellungen = { personen: [], klassen: [], quellen: { wbs: '', anforderungen: '', anwendungen: [] } };
+  if (einstellungenDefekt) zustand.einstellungen = { personen: [], klassen: [], quellen: { repository: '', anwendungen: [] } };
   const sicht = zustand.eingerichtet ? await sichtLaden(zustand) : null;
   if (!uebernehmen({ start, zuletzt: zuletztStand, marke, schlangeOffen: schlangeOffen() })) {
     wennVerworfen(zuletztStand > start);
@@ -252,7 +252,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   if (sicht) Object.assign(neu, sicht.haupt);
   Object.assign(S, neu);
   if (sicht) await sichtFolgen(sicht, start);
-  else S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt', wbs: '', anf: '' };
+  else S.ui.first = S.ui.first || { kuerzel: '', name: '', agenten: { cl: true }, board: 'Entwicklung', spalten: 'Zu erledigen, In Arbeit, Erledigt' };
   const nachgetragen = externNachtragen();
   const stand = serverStand();
   if (nurBeiAenderung && stand === geladenerStand && !nachgetragen) return false;
@@ -630,15 +630,6 @@ function repositoryZustandZeigen(marke, wert, gespeichert) {
   const z = repositoryZustand(wert, gespeichert);
   marke.textContent = z.wort;
   marke.className = `erreich ${z.klasse}`;
-}
-
-/** Hinweis am Feld „WBS“ einer Anwendung zeigen, solange es gefüllt ist (PO Z. 435), und mit dem Feld vorlesen. */
-function wbsHinweisZeigen(feld, hinweis, wert) {
-  if (!hinweis) return;
-  const gefuellt = Boolean(wert);
-  hinweis.hidden = !gefuellt;
-  if (gefuellt) feld.setAttribute('aria-describedby', hinweis.id);
-  else feld.removeAttribute('aria-describedby');
 }
 
 /** Gibt die Sperre eines Auslösers frei, sobald seine Anfrage beantwortet ist — auch bei einem Fehlschlag (ADR-0025 Regel 2). */
@@ -4059,7 +4050,7 @@ async function aktion(a, arg, wert) {
       case 'a-add': {
         const kuerzel = ($('#nak').value || '').trim().toLowerCase(), name = (wert || '').trim();
         if (!kuerzel || !name) { u.einr.fehler = 'Kürzel und Name nötig'; break; }
-        u.einr.quellen.anwendungen = [...(u.einr.quellen.anwendungen || []), { kuerzel, name, repository: '', wbs: '', anforderungen: '' }];
+        u.einr.quellen.anwendungen = [...(u.einr.quellen.anwendungen || []), { kuerzel, name, repository: '' }];
         u.fokus = `[data-ef="arepo"][data-i="${u.einr.quellen.anwendungen.length - 1}"]`;
         break;
       }
@@ -4494,19 +4485,14 @@ document.addEventListener('input', e => {
     if (ef === 'shex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.signale[i].farbe = v.trim().toLowerCase();
     if (ef === 'khex' && /^#[0-9a-f]{6}$/i.test(v.trim())) d.klassen[i].farbe = v.trim().toLowerCase();
     if (ef === 'repo') d.quellen.repository = v;
-    if (ef === 'wbs') d.quellen.wbs = v;
-    if (ef === 'anf') d.quellen.anforderungen = v;
     if (ef === 'aname') d.quellen.anwendungen[i].name = v;
     if (ef === 'arepo') d.quellen.anwendungen[i].repository = v;
-    if (ef === 'awbs') d.quellen.anwendungen[i].wbs = v;
-    if (ef === 'aanf') d.quellen.anwendungen[i].anforderungen = v;
     d.fehler = null;
     // „gespeichert“ gilt nur bis zur nächsten Eingabe (R00215 AK 8) — ohne Neuzeichnen, der Fokus bleibt im Feld
     if (d.gespeichert) { d.gespeichert = false; const marke = $('#einr-gespeichert'); if (marke) marke.remove(); }
-    if (['repo', 'wbs', 'anf', 'arepo', 'awbs', 'aanf'].includes(ef)) e.target.title = v;
+    if (['repo', 'arepo'].includes(ef)) e.target.title = v;
     if (ef === 'repo') repositoryZustandZeigen($('#quellen-repo'), v, S.quellenStand || undefined);
     if (ef === 'arepo') repositoryZustandZeigen($(`#anw-repo-${i}`), v, gespeichertesRepository(d.quellen.anwendungen[i].kuerzel));
-    if (ef === 'awbs') wbsHinweisZeigen(e.target, $(`#anw-wbs-hinweis-${i}`), v);
     $('#einr-vorschau').textContent = einstellungenText(d);
     return;
   }

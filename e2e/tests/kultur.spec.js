@@ -429,7 +429,7 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
     await expect(neu.getByLabel('Herkunft der neuen Aufgabe', { exact: true })).toHaveValue('');
   });
 
-  test('US-8: Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel als eigenes Element (Wirkungen entfallen mit R00222)', async ({ page }) => {
+  test('US-8: Phasen, Reservierung und Repository deutsch beschriftet, Schlüssel als eigenes Element (Wirkungen, WBS und Anforderungen entfallen mit R00222)', async ({ page }) => {
     await starten(page);
     const eins = await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
@@ -451,20 +451,22 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
     await einrichten.locator('.felder .k').first().waitFor();
     const inEinrichten = await beschriftungenPruefen(einrichten, FELDER, { namen: false });
     expect(verstoesse(inEinrichten)).toEqual([]);
-    expect(beschriftungen(inEinrichten)).toEqual(expect.arrayContaining(['WBS', 'Anforderungen']));
+    expect(beschriftungen(inEinrichten)).toEqual(expect.arrayContaining(['Repository']));
+    expect(beschriftungen(inEinrichten)).not.toEqual(expect.arrayContaining(['WBS']));
+    expect(beschriftungen(inEinrichten)).not.toEqual(expect.arrayContaining(['Anforderungen']));
     // die Abschnittsköpfe bleiben beim Hausmuster (ADR-0013 N1 Punkt 3)
     await expect(einrichten.getByRole('heading', { name: 'QUELLEN sources:' })).toBeVisible();
   });
 
-  test('US-8: erster Start in leerer Instanz — Ich, Agenten, Board, Spalten, WBS, Anforderungen mit dem Schlüssel der Datei', async ({ page }) => {
+  test('US-8: erster Start in leerer Instanz — Ich, Agenten, Board, Spalten mit dem Schlüssel der Datei (WBS und Anforderungen entfallen mit R00222)', async ({ page }) => {
     k = await kanbanStarten();
     await page.goto(k.adresse);
     await page.getByRole('button', { name: 'Einrichten und committen' }).waitFor();
     const start = page.locator('.first-l');
     const felder = await beschriftungenPruefen(start, FELDER, { namen: false });
     expect(verstoesse(felder)).toEqual([]);
-    expect(beschriftungen(felder)).toEqual(['Ich', 'Agenten', 'Board', 'Spalten', 'WBS', 'Anforderungen']);
-    expect(await start.locator('.felder .sl').allTextContents()).toEqual(['ich', 'agents', 'board', 'spalten', 'wbs', 'requirements']);
+    expect(beschriftungen(felder)).toEqual(['Ich', 'Agenten', 'Board', 'Spalten']);
+    expect(await start.locator('.felder .sl').allTextContents()).toEqual(['ich', 'agents', 'board', 'spalten']);
     // die Vorschau zeigt weiter die Datei; leere Pfade schreibt sie nicht mehr, repository immer (R00209)
     await expect(page.locator('#vorschau-einstellungen')).toContainText('sources:\n  repository: ""');
   });

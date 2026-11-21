@@ -72,7 +72,8 @@ async fn einstellungen_lesen_und_unveraendert_zurueck() {
     assert!(e["personen"].is_array() && e["klassen"].is_array() && e["signale"].is_array() && e["quellen"].is_object());
     let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", e).await;
     assert_eq!((s, r["geaendert"].as_bool()), (200, Some(true)), "alte Form: repository ergänzt");
-    assert!(lies(tmp.path(), "kanbanD.md").contains("sources:\n  repository: plan\n  wbs: plan/wbs.md\n  requirements: anf/\n"));
+    // R00222 (ADR-0034 N2 Regel 4): die Altform wird beim Speichern auf `repository` umgestellt, ohne wbs/requirements
+    assert!(lies(tmp.path(), "kanbanD.md").contains("sources:\n  repository: plan\n---"), "{}", lies(tmp.path(), "kanbanD.md"));
     let vorher = git(tmp.path(), &["rev-parse", "HEAD"]);
     let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", einstellungen(&lauf.adresse).await).await;
     assert_eq!((s, r["geaendert"].as_bool()), (200, Some(false)));

@@ -1,6 +1,6 @@
 mod gemeinsam;
 
-use gemeinsam::git;
+use gemeinsam::{git, lies};
 use serde_json::{Value, json};
 
 fn einrichtung() -> Value {
@@ -30,7 +30,10 @@ async fn einrichten_legt_beide_dateien_in_einem_commit_von_ich_an() {
     assert_eq!(z["eingerichtet"], true);
     assert_eq!(z["boards"][0]["titel"], "Entwicklung");
     assert_eq!(z["einstellungen"]["personen"][1]["art"], "agent");
-    assert_eq!(z["einstellungen"]["quellen"]["wbs"], "Dokumentation/Planung/kanbanD.md");
+    // R00222 AK 14: eine mitgeschickte WBS wird überlesen — die Datei trägt weder wbs noch requirements
+    assert!(z["einstellungen"]["quellen"].get("wbs").is_none(), "{}", z["einstellungen"]["quellen"]);
+    let datei = lies(tmp.path(), "kanbanD.md");
+    assert!(!datei.contains("wbs") && !datei.contains("requirements") && datei.contains("sources:\n  repository: \"\"\n---"), "{datei}");
 }
 
 #[tokio::test]

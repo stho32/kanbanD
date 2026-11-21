@@ -83,12 +83,13 @@ test.describe('Selbstproben der Beschriftungsprobe', () => {
     expect(verstoesse(await pruefen(page, zeile('Spalte', `<span class="mono">column</span>${SPALTE}`)))).toEqual(FEHLT);
   });
 
-  test('(d) ein falscher Schlüssel unter der Beschriftung fällt; „Anforderungen“ verlangt requirements', async ({ page }) => {
+  // R00222: das Feld „Anforderungen“ entfiel — die Probe des Dateischlüssels läuft am Feld „Repository“
+  test('(d) ein falscher Schlüssel unter der Beschriftung fällt; „Repository“ verlangt repository', async ({ page }) => {
     expect(verstoesse(await pruefen(page, mitSchluessel('Spalte', 'class', SPALTE))))
       .toEqual(['Spalte: Schlüssel column fehlt unter der Beschriftung']);
-    expect(verstoesse(await pruefen(page, mitSchluessel('Anforderungen', 'anforderungen', '<input aria-label="Anforderungen">'))))
-      .toEqual(['Anforderungen: Schlüssel requirements fehlt unter der Beschriftung']);
-    expect(verstoesse(await pruefen(page, mitSchluessel('Anforderungen', 'requirements', '<input aria-label="Anforderungen">')))).toEqual([]);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Repository', 'repo', '<input aria-label="Repository">'))))
+      .toEqual(['Repository: Schlüssel repository fehlt unter der Beschriftung']);
+    expect(verstoesse(await pruefen(page, mitSchluessel('Repository', 'repository', '<input aria-label="Repository">')))).toEqual([]);
   });
 
   test('(e) ein Fenster ohne Feldzeile fällt — eine leere Liste wäre kein Beleg', async ({ page }) => {
