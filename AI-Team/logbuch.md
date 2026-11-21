@@ -1742,3 +1742,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - „Spalten einrichten“ behält beim Wechsel des Boards den Entwurf.
 | 2026-11-21 | #232 | Architektur | architekt | bestanden | 2 min | keine Technikfrage, kein ADR · claude · opus · Lauf 232-architekt-1 · 0,94 $ · Karte gesamt 0,94 $ |
 | 2026-11-21 | #232 | Detailplanung | product-owner | bestanden | 2 min | PO Z. 506-508 · claude · opus · Lauf 232-product-owner-1 · 1,01 $ · Karte gesamt 1,95 $ |
+| 2026-11-21 | #234 | Architektur | architekt | bestanden | 5 min | ADR-0032 N8 · claude · opus · Lauf 234-architekt-1 · 1,69 $ · Karte gesamt 1,69 $ |
+| 2026-11-21 | #232 | Detailplanung | planer | bestanden | 8 min | R00224, I0214, 6 Bubbles · claude · opus · Lauf 232-planer-1 · 3,32 $ · Karte gesamt 5,27 $ |
+| 2026-11-21 | #232 | Detailplanung | ux-reviewer | befund | 3 min | Vorprüfung: M1 Lage darunter, M2 Symbol Ein Commit · claude · sonnet · Lauf 232-ux-reviewer-1 · 1,13 $ · Karte gesamt 6,40 $ |
+| 2026-11-21 | #234 | Detailplanung | planer | bestanden | 6 min | R00225, I0215, 5 Bubbles · claude · opus · Lauf 234-planer-1 · 2,61 $ · Karte gesamt 4,30 $ |
