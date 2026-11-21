@@ -862,6 +862,55 @@ Pre-Mortem: (j) Jemand nimmt die Netto-Liste als Beleg für „unverändert“, 
 - R00208 FA 7 (Antwortform), anhängen: „Eine Datei, die netto unverändert ist und die kein fremder Commit berührt (die Aufgabe ändert sie und nimmt es zurück), erscheint nicht, wie ein Zwischenname; `datei=` auf sie ergibt 404. `fremd_dazwischen` steht nur mit `commits` ≥ 1 (ADR-0032 N8).“
 - R00210 FA 6: keine Änderung des Wortlauts; Abnahme ergänzt um N und N+F oben.
 
+## Nachtrag 2026-11-21 N9: Eigene Meldung „Lesegrenze belegt“ statt Zeitgrenze von Git (Karte #238, Vorschlag aus #231)
+
+Entscheider: Claude (autonom, architekt, Lauf 238-architekt-1). Status: **Akzeptiert** (folgt aus dem Bestand: `Fehler::Ausgelastet` und die Präfix-Unterscheidung „Antwortbudget“ aus N5.1 und ADR-0033 Punkt 7 gibt es schon; keine Probe nötig).
+
+### N9.1 Befund
+
+Die Lesegrenze (Nacharbeit #211, `src/dienst/lesegrenze.rs:14` `LESEN_HOECHSTENS = 4`) lässt einen Lesevorgang bis zur Frist der Anfrage auf einen Platz warten (N3.1, N4.1). Findet er keinen, bilden alle vier Aufrufer `None` auf `Arbeitsrepofehler::Zeitgrenze` ab und melden „Git … antwortete nicht innerhalb von 10 s“, obwohl Git nie gestartet ist:
+- `src/dienst/diff.rs:314` → `abbruch` `:368` („— kein Diff“)
+- `src/dienst/gesamt_diff.rs:76` → dasselbe `abbruch` (Import `:7`)
+- `src/dienst/commits_lesen.rs:45` → eigenes `abbruch` `:126` („— keine Liste“)
+- `src/dienst/nachfolger.rs:280` → eigenes `abbruch` `:384` („— keine Suche nach dem Nachfolger“); die Karte nennt diesen vierten Aufrufer nicht, er hat denselben Fehler.
+
+Unter Last ist das der häufigere der beiden 503 (R00215, Herleitung: 30 Anfragen vor 4 Plätzen). Die Meldung schickt Betreiber und Agenten zum Repository, wo nichts zu finden ist.
+
+### N9.2 Optionen
+
+| Option | Stärke | Schwäche |
+|---|---|---|
+| **L1 — eigener Text, `Fehler::Ausgelastet`, ein Konstruktor in `lesegrenze.rs`** (gewählt) | trennt Kapazität (Lesegrenze, Antwortbudget) von Git-Zeit (Zeitgrenze) schon im Typ; ein Ort für den Wortlaut, alle vier Aufrufer gleich; kein neues Feld, Status und Schema bleiben | der Text ist der einzige maschinenlesbare Unterschied (Präfix), wie beim Antwortbudget |
+| L2 — neues Zustandswort im Rumpf (`{fehler, zustand: "lesegrenze_belegt"}`) | Agenten unterscheiden ohne Textvergleich | `zustand` gehört dem Verweis (404 `Zustandsfehler`, `Commitzustand`, N1.2), nicht dem Server; ein 503 mit `zustand` würde `ZUSTANDSWOERTER` (`web/commits.js:11`) und jedem Leser ein Wort unterschieben, das kein Verweis je hat; neues Schema, Label `datenformat` |
+| L3 — neues `Arbeitsrepofehler::Lesegrenze`, je Aufrufer im eigenen `abbruch` | Endung je Endpunkt bleibt bei ihrem `abbruch` | vier Stellen für denselben Satz (heute schon zwei Fassungen „in einem“ / „im“ Arbeits-Repository); die Lesegrenze ist kein Fehler des Arbeits-Repositorys |
+| L4 — nur den Zeitgrenzen-Text neutral fassen („Gesamtgrenze von 10 s überschritten“) | eine Zeile | unterscheidet die Fälle nicht, die Abnahme-Idee der Karte bleibt unerfüllt; bricht die Erkennung `ZEITGRENZE_TEXT` (`web/commits.js:107`) |
+
+### N9.3 Entscheidung
+
+1. **Fehlerart**: Findet ein Lesevorgang bis zur Frist keinen Platz, antwortet der Dienst **503 mit `Fehler::Ausgelastet`**, nicht `Fehler::Zeitgrenze`. `Fehler::Zeitgrenze` bleibt dem Fall vorbehalten, dass Git lief und die Frist überschritt (oder zu viel ausgab).
+2. **Ein Ort**: Der Text entsteht in `src/dienst/lesegrenze.rs` (eine Funktion, die die Endung des Aufrufers nimmt, z. B. `belegt("kein Diff")`); `betreten` bleibt `Option`. Alle **vier** Aufrufer (N9.1, auch `nachfolger.rs:280`) nutzen sie.
+3. **Vertrag des Textes** (Durchsetzung über Tests, der Wortlaut selbst ist PO-Sache):
+   - beginnt mit `Lesegrenze` — Agenten und Oberfläche unterscheiden 503 am Präfix wie bei `Antwortbudget` (N5.1, ADR-0033 Punkt 7);
+   - passt **nicht** auf `/antwortete nicht (?:innerhalb von|in) \d+ s/` (`web/commits.js:107`), beginnt nicht mit `Antwortbudget`;
+   - nennt die Endung des Endpunkts wie heute („— kein Diff“, „— keine Liste“, „— keine Suche nach dem Nachfolger“), keinen Pfad, keinen Verweis.
+4. **Kein Zustandswort, kein neues Feld**: der Rumpf bleibt `{fehler}` (`openapi::Fehlerantwort`). `ZUSTANDSWOERTER` ändert sich nicht.
+5. **Status und Kopfzeilen**: 503 bleibt (`src/web/mod.rs:155` bildet `Ausgelastet` schon auf 503 ab). **Kein `Retry-After`** — es gibt ihn im Programm nirgends, auch nicht beim Antwortbudget, und ADR-0033 Punkt 7 verbietet die automatische Wiederholung in der Oberfläche; ein Kopf würde Agenten genau dazu einladen, wenn die Plätze voll sind.
+6. **API-Beschreibung**: die 503-Teile in `src/web/endpunkte.rs:55` (`COMMITS_LESEN`), `:57` (`DIFF_LESEN`), `:59` (`NACHFOLGER_SUCHEN`) und die 503-Antwort in `src/web/mod.rs:1206` (und die entsprechenden der Liste und der Nachfolgersuche) nennen den zweiten Fall: alle 4 Plätze der Lesegrenze bis zur Frist belegt → 503 `{fehler}`, beginnt mit „Lesegrenze“.
+7. **Oberfläche ohne Codeänderung**: die Diff-Seite ordnet den neuen 503 weiter als `zeitgrenze` ein (`web/diff.js:177`) — „Zeitgrenze überschritten.“ bleibt wahr, denn die 10-s-Frist ist abgelaufen; der Text darunter ist der neue. Die Commit-Liste ersetzt ihn nicht mehr durch „Das Repository antwortete nicht innerhalb von 10 Sekunden“ (`web/commits.js:113`), sondern zeigt ihn wörtlich — das ist die gewollte Berichtigung. Eine eigene Kopfzeile („Server ausgelastet“) wäre eine Änderung an ADR-0033 Punkt 7 und eine Frage an den product-owner, nicht Teil dieses Nachtrags.
+
+Akzeptierte Schwäche: Agenten unterscheiden die beiden 503 nur am Präfix des Textes; ändert jemand das Präfix, merkt es nur der Test aus N9.4. Wessen Frist während des Wartens abläuft, bekommt „Lesegrenze“, auch wenn ein Platz kurz danach frei geworden wäre — richtig, denn Git ist nicht gestartet.
+
+### N9.4 Durchsetzung und Pre-Mortem
+
+Abnahme-Probe (Modultest, Aufbau wie `commits_lesen.rs:345` `belegte_lesegrenze_ist_503_nach_der_frist`):
+- **B (belegt)**: alle `LESEN_HOECHSTENS` Plätze mit ferner Frist halten; je Aufrufer (`diff_lesen` mit und ohne `commit`, `commits_lesen`, `nachfolger_suchen`) mit Frist jetzt + 300 ms → `Err(Fehler::Ausgelastet(m))`, `m` beginnt mit `Lesegrenze`, passt nicht auf das Muster aus N9.3 (3), endet auf die Endung des Endpunkts; über HTTP 503. Heute: `Fehler::Zeitgrenze` mit „Git … antwortete nicht innerhalb von 10 s“ (rot).
+- **Z (Gegenprobe)**: Lesegrenze frei, Git über der Frist (abgelaufene Frist wie `commits_lesen.rs:335` oder langsames Git im `PATH` wie R00215) → weiter `Fehler::Zeitgrenze` mit „antwortete nicht innerhalb von 10 s“.
+- **O (Oberfläche, Einheit)**: `fehlerText({status: 503, fehler: "Lesegrenze …"})` in `web/commits.js` gibt den Text wörtlich wieder, nicht den PO-Wortlaut der Zeitgrenze.
+
+Mutanten: „jede Zeitgrenze heißt Lesegrenze“ (Z rot); „nur drei Aufrufer umgestellt“ (B für den vierten rot); „Text ohne Präfix `Lesegrenze`“ (B rot).
+
+Pre-Mortem: (l) Eine spätere Karte ergänzt einen fünften Aufrufer von `betreten` und schreibt wieder `abbruch(Arbeitsrepofehler::Zeitgrenze)` — Vorbeugung: Review-Punkt „`betreten` nur zusammen mit der Funktion aus Punkt 2“. (m) `web/commits.js` wird später so geändert, dass jeder 503 den PO-Wortlaut der Zeitgrenze bekommt — dann lügt die Liste wieder; Probe O fängt das.
+
 ## Quellen / Bezuege
 
 - Karten #207–#210; po-entscheidungen Z. 358–383 und Betreiber-Entscheidung 2026-11-19 (letzte Zeile, Nachtrag N1); `werkzeuge/board.py` der Factory (`_rebase`, `dokumente`, `wache_vorbereiten`); Vision Z. 110–113, 145–200; `AI-Team/factory.md` „Lastprofil“
