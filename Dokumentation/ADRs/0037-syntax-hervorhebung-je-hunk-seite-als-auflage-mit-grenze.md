@@ -1,6 +1,6 @@
 # ADR-0037: Syntax-Hervorhebung in der Review-Ansicht — Prism je Hunk-Seite, Farbe als Auflage auf die unveränderte Zeile, Grenze je Datei, eingebettet unter `web/vendor/`
 
-**Status**: Vorgeschlagen — wird „Akzeptiert“, sobald die Sondierung der Karte (Punkt 9) die Messziele M1 und M2 trifft. Die Wahl von Prism selbst ist schon akzeptiert (ADR-0032 Punkt 10, po-entscheidungen Z. 387).
+**Status**: Abgelöst durch [ADR-0040](0040-syntax-hervorhebung-im-worker-mit-frist.md) (Sondierung B1105: M1 verfehlt, feindlicher Inhalt innerhalb der Grenzen blockiert 5,4 s; Punkte 1–6 und 8 gelten über ADR-0040 weiter)
 **Datum**: 2026-11-21
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #216, Lauf 216-architekt-1)
 **Kontext-Anforderung**: — (Karte #216, Scheibe B4 „Syntax-Hervorhebung“; die Anforderung schreibt der planer). Bezug: po-entscheidungen Z. 365, 367, 386–388; ADR-0030, ADR-0032 Punkt 10, ADR-0033 (Punkte 5 und 8, N1.8, Folgeaufgabe B4); Artboard D0009 (Syntaxfarben, Kontrastangaben); Feinschnitt `gemeinsam/scratchpad/arch-207/feinschnitt.md` der Factory (Zeile B4)
