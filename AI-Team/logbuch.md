@@ -1668,3 +1668,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Offen für den architekt:** X00001 kennt `schalter.rs` als neuen Board-Datei-Schreiber noch nicht, außerdem A00003 und A00004.
 - **Härtung, nicht gebaut:** Ein Schlüssel in Anführungszeichen führt beim Umschalten zu 500 (Sollte, Code-Review). Rand `--kd-line-strong` projektweit 2,12:1 (UX).
 - **Wackler:** r00127:332 war im Gate rot und lief allein 3 von 3 grün. Steht in #240.
+| 2026-11-21 | #210 | Nacharbeit | entwickler | bestanden | 2 h 18 min | Nacharbeit 1: Budget, FA 8, Links-Probe, 4 Sollte; e78e303c · claude · Lauf 210-entwickler-2 |
+| 2026-11-21 | #210 | Auto-Reviews | security-reviewer | bestanden | 3 min | Nachprüfung Muss 1: Budget hält · claude · sonnet · Lauf 210-security-reviewer-2 · 0,31 $ · Karte gesamt 0,31 $ |

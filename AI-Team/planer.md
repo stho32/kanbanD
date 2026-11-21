@@ -4,7 +4,7 @@ Ergänzt die Rolle `planer` der Factory für dieses Projekt. Gilt für Projektge
 
 ## Projektregeln
 
-- WBS `Dokumentation/Planung/kanbanD.md` (Application `kd`), Phasen-Datei `kanbanD-phasen.md`; R00095–R00100 haben noch keinen Knoten — beim ersten Zug anlegen (`/planung` über die API `POST /api/wbs/kd/knoten` oder die Datei).
+- WBS `Dokumentation/Planung/kanbanD.md` (Application `kd`), Phasen-Datei `kanbanD-phasen.md`; R00095–R00100 haben noch keinen Knoten — beim ersten Zug anlegen (`/planung`, nur in der WBS-Datei).
 - Anmerkungen: `kanbanD-anmerkungen.md` (147 offen), einplanen nur auf Auftrag.
 - Sparbetrieb (`AI-Team/prozess.md`): knapp arbeiten, nur lesen, was der Auftrag nennt.
 
