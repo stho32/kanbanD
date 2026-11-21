@@ -21,7 +21,9 @@ const bereich = (page, pfad) => datei(page, pfad).locator('.df-sc');
     Worker in Chromium spürbar später (geprobt: über 1,5 s statt 0,1 s), und eine gutartige Datei liefe in die Frist. */
 async function farbeAbwarten(page, pfad, timeout = 10000) {
   const el = await bereich(page, pfad).elementHandle();
-  await page.waitForFunction(e => e.dataset.farbe === 'ja' || e.dataset.farbe === 'nein', el, { timeout });
+  // ein abgehängter Bereich (ersetzt beim Warten) beendet das Warten und lässt den Test laut scheitern (Code-Review #216 Sollte 3)
+  await page.waitForFunction(e => !e.isConnected || e.dataset.farbe === 'ja' || e.dataset.farbe === 'nein', el, { timeout });
+  if (!(await el.evaluate(e => e.isConnected))) throw new Error(`${pfad}: der Diffbereich wurde beim Warten auf die Farbe ersetzt`);
   return el.evaluate(e => e.dataset.farbe);
 }
 
@@ -222,16 +224,17 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     expect(await page.evaluate(() => document.getSelection().toString())).toBe('fn main');
   });
 
-  test('UX S1: erst feindlich.md, dann gut.rs aufgeklappt — gut.rs steht sofort mit Text da und wird gefärbt, feindlich.md bleibt ohne Farbe', async ({ page }) => {
+  test('UX S1: erst feindlich.md, dann gut.rs aufgeklappt — gut.rs steht sofort mit Text da und wird gefärbt, sobald feindlich.md nach der Frist endet', async ({ page }) => {
     await page.goto(reviewAdresse(k, 3));
     await alleZu(page);
     await datei(page, 'feindlich.md').locator('.df-k').click();
     await expect(bereich(page, 'feindlich.md')).toHaveAttribute('data-farbe', 'laeuft');
     await datei(page, 'gut.rs').locator('.df-k').click();
     await expect(bereich(page, 'gut.rs').locator('td.c')).toHaveText(['hinzugefügt: fn gut() {}']);
-    // läuft feindlich.md schon, wartet gut.rs bis zu dessen Frist; wartet es noch, zieht gut.rs als zuletzt geöffnete vor (S1)
+    // feindlich.md läuft schon (Zuklappen hat die alten Aufträge beendet), gut.rs wartet dessen Frist ab; das Vorziehen der
+    // zuletzt geöffneten Datei vor wartende belegt der Unit-Test der Schlange
     expect(await farbeAbwarten(page, 'gut.rs')).toBe('ja');
-    expect(await farbeAbwarten(page, 'feindlich.md')).toBe('nein');
+    expect(await bereich(page, 'feindlich.md').getAttribute('data-farbe'), 'feindlich.md war vor gut.rs fertig').toBe('nein');
     await expect(bereich(page, 'gut.rs').locator('.tk-keyword', { hasText: 'fn' })).toHaveCount(1);
   });
 
@@ -310,6 +313,12 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
   async function langeAufgabenBeobachten(page) {
     await page.addInitScript(() => {
       window.kdLang = [];
+      // Zeitpunkt, an dem ein Diffbereich mit `data-farbe="laeuft"` eingesetzt ist (alle Zeilen stehen ungefärbt, PO Z. 489)
+      window.kdLaeuft = {};
+      new MutationObserver(eintraege => eintraege.forEach(e => e.addedNodes.forEach(k => {
+        if (k.nodeType !== 1) return;
+        for (const b of [k, ...k.querySelectorAll('.df-sc')]) if (b.matches('.df-sc[data-farbe="laeuft"]') && !(b.getAttribute('aria-label') in window.kdLaeuft)) window.kdLaeuft[b.getAttribute('aria-label')] = performance.now();
+      }))).observe(document, { childList: true, subtree: true });
       new PerformanceObserver(l => l.getEntries().forEach(e => window.kdLang.push({ start: e.startTime, dauer: Math.round(e.duration) }))).observe({ type: 'longtask', buffered: true });
     });
   }
@@ -361,6 +370,10 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     const t0 = await jetzt(page);
     await anzeigen.click();
     expect(await farbeAbwarten(page, 'lang.rs', 15000)).toBe('ja');
+    const tLaeuft = await page.evaluate(() => window.kdLaeuft['Änderungen in lang.rs']);
+    expect(tLaeuft).toBeGreaterThan(t0);
+    // Long Tasks vor „laeuft“ gehören zum ungefärbten Zeichnen (R00207): gemessen, ohne Grenze (PO Z. 489)
+    await langeSeit(page, t0, 'lang.rs ungefärbt, ab Klick');
     const ersteUndLetzte = await bereich(page, 'lang.rs').evaluate(el => {
       const zeilen = Array.from(el.querySelectorAll('tr:not(.hk)'));
       const kw = tr => Array.from(tr.querySelectorAll('.tk-keyword'), e => e.textContent);
@@ -368,7 +381,7 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     });
     // 10.000 Zeilen und der Hunk-Kopf sind 10.001 Patch-Zeilen, also 21 Blöcke zu höchstens 500
     expect(ersteUndLetzte).toEqual([10000, ['let'], ['let'], 21]);
-    expect(await langeSeit(page, t0, 'lang.rs'), 'Long Tasks über 150 ms').toEqual([]);
+    expect(await langeSeit(page, tLaeuft, 'lang.rs ab laeuft'), 'Long Tasks über 150 ms ab data-farbe="laeuft"').toEqual([]);
   });
 
   /** Eine Rust-Datei mit genau `laenge` Zeichen Patch, Zeilen höchstens 1.000 Zeichen, jede beginnt mit `fn`. */
@@ -429,6 +442,39 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     await expect(datei(page, 'feindlich.md').locator('.df-inhalt')).not.toContainText(/Farbe|Hervorhebung/);
     expect(b.konsole).toEqual([]);
     expect(b.fehler).toEqual([]);
+  });
+
+  test('ADR-0040 N1: bleibt die Antwort auf prism.js aus, wird der Worker nie bereit — nach der Frist ohne Farbe, danach färbt ein neuer Worker', async ({ page }) => {
+    const b = beobachten(page);
+    let haengt = true;
+    await page.route(u => u.pathname === '/web/vendor/prism.js', async route => {
+      if (haengt) return; // nie beantwortet: importScripts blockiert, der Worker meldet nie „bereit“
+      await route.continue();
+    });
+    await page.goto(reviewAdresse(k, 2));
+    await alleZu(page);
+    const t0 = await jetzt(page);
+    await datei(page, 'src/main.rs').locator('.df-k').click();
+    expect(await farbeAbwarten(page, 'src/main.rs')).toBe('nein');
+    expect(await jetzt(page) - t0, 'erst nach der Frist von 1.000 ms').toBeGreaterThanOrEqual(1000);
+    expect(await bereich(page, 'src/main.rs').locator('[class^="tk-"]').count()).toBe(0);
+    haengt = false;
+    expect(await aufklappenUndWarten(page, 'src/seiten.rs'), 'ein neuer Worker färbt').toBe('ja');
+    expect(b.konsole).toEqual([]);
+    expect(b.fehler).toEqual([]);
+  });
+
+  test('Sichtzustand: der Querscrollstand eines Codebereichs übersteht das Neuzeichnen (Codeblöcke beim Sichern übersprungen)', async ({ page }) => {
+    await page.setViewportSize({ width: 600, height: 700 });
+    await page.goto(reviewAdresse(k, 2));
+    expect(await aufklappenUndWarten(page, 'grenze.rs')).toBe('ja');
+    const b = bereich(page, 'grenze.rs');
+    await b.evaluate(el => { el.dataset.m = '1'; el.scrollLeft = 300; document.scrollingElement.scrollTop = 200; });
+    const vorher = await b.evaluate(el => [el.scrollLeft, document.scrollingElement.scrollTop]);
+    expect(vorher[0]).toBe(300);
+    // Neuzeichnen wie nach jedem Live-Ereignis: `render()` sichert und setzt die Scrollstände (sichtzustand.js `rollstaende`)
+    await page.evaluate(() => render());
+    expect(await b.evaluate(el => [el.dataset.m, el.scrollLeft, document.scrollingElement.scrollTop])).toEqual(['1', ...vorher]);
   });
 
   test('AK 6: ohne Farbe und still — prism.js 404, faerben.js 404, kein Worker, tokenize wirft', async ({ page }) => {
