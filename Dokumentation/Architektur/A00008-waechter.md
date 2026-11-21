@@ -33,6 +33,7 @@ Der Wächter beobachtet den Ordner, bündelt Änderungen zu Ereignissen mit Kenn
 ## Entscheidungen
 
 - [ADR-0034: kanbanD ohne WBS — Register mit Repository, Phasen werden Spalten](../ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) (Akzeptiert, #224–#228) — Soll: der Wächter für fremde WBS-Dateien (`FremdeWbs`) entfällt; beobachtet wird nur der Ordner
+- [ADR-0036: Transkripte der Agentenläufe — gzip unversioniert unter `transkripte/<nr>/`, Eintrag an der Karte, Schalter `record-transcripts`](../ADRs/0036-transkripte-unversioniert-im-ordner-eintrag-an-der-karte.md) (Akzeptiert, Karte #208) — Soll: Pfade unter `transkripte/` sind nicht relevant (`waechter::relevant`); neu geladen wird über den Commit der Aufgabendatei
 
 ## Offene Fragen
 
