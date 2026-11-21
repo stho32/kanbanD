@@ -1,6 +1,6 @@
 ---
 id: R00217
-status: In Arbeit
+status: Erledigt
 datum: 2026-11-21
 ---
 
@@ -65,7 +65,7 @@ Dazu ein Kommentar an Aufgabe #2 mit einem Markdown-Codeblock ` ```rust ` / `fn 
 
 ### Messziel
 
-- [ ] **1.** Gegeben Aufgabe #3, wenn `sh` `feindlich.md` aufklappt, dann stehen alle 64 Zeilen mit ihrem Text da, solange die Datei `data-farbe="laeuft"` trägt, die Datei endet mit `data-farbe="nein"`, und vom Aufklappen bis dahin meldet die Seite keinen Long Task über 150 ms (`PerformanceObserver` mit `longtask`); ebenso für `feindlich.html` und `feindlich.js`. Klappt `sh` danach `gut.rs` auf, trägt `fn` die Rolle Schlüsselwort (`data-farbe="ja"`, ein neuer Worker hat den abgebrochenen ersetzt). Gegeben Aufgabe #4, wenn `sh` an `lang.rs` „Änderungen anzeigen“ wählt, dann endet die Datei mit `data-farbe="ja"`, `let` trägt in der ersten und in der 10.000. Zeile die Rolle Schlüsselwort, und von dem Zeitpunkt, an dem die Datei `data-farbe="laeuft"` erhält (alle 10.000 Zeilen stehen ungefärbt), bis `data-farbe="ja"` meldet die Seite keinen Long Task über 150 ms (20 Blöcke zu 500 Zeilen, je ein Block je Aufgabe). Ein Long Task, dessen `startTime` vor diesem Zeitpunkt liegt, gehört zum ungefärbten Zeichnen (R00207). Er wird gemessen und im Bericht genannt, ohne Grenze.
+- [x] **1.** Gegeben Aufgabe #3, wenn `sh` `feindlich.md` aufklappt, dann stehen alle 64 Zeilen mit ihrem Text da, solange die Datei `data-farbe="laeuft"` trägt, die Datei endet mit `data-farbe="nein"`, und vom Aufklappen bis dahin meldet die Seite keinen Long Task über 150 ms (`PerformanceObserver` mit `longtask`); ebenso für `feindlich.html` und `feindlich.js`. Klappt `sh` danach `gut.rs` auf, trägt `fn` die Rolle Schlüsselwort (`data-farbe="ja"`, ein neuer Worker hat den abgebrochenen ersetzt). Gegeben Aufgabe #4, wenn `sh` an `lang.rs` „Änderungen anzeigen“ wählt, dann endet die Datei mit `data-farbe="ja"`, `let` trägt in der ersten und in der 10.000. Zeile die Rolle Schlüsselwort, und von dem Zeitpunkt, an dem die Datei `data-farbe="laeuft"` erhält (alle 10.000 Zeilen stehen ungefärbt), bis `data-farbe="ja"` meldet die Seite keinen Long Task über 150 ms (20 Blöcke zu 500 Zeilen, je ein Block je Aufgabe). Ein Long Task, dessen `startTime` vor diesem Zeitpunkt liegt, gehört zum ungefärbten Zeichnen (R00207). Er wird gemessen und im Bericht genannt, ohne Grenze.
 
 ### Farbe
 
