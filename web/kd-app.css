@@ -1462,6 +1462,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .lf-tab tbody tr:last-child{border-bottom:1px solid var(--kd-line)}
   .lf-tab .lf-zp{font-size:11.5px;color:var(--kd-muted)}
   .lf-tab .lf-zs{padding-top:3px}
+}
+
 /* ── Nachfolger eines verwaisten Commits (R00218, D0009 `#nachfolger`, PO Z. 455–465): Knopf am Eintrag „auf keinem Zweig“, Ergebnis als eigene
    Zeile darunter, Kandidaten als Liste; Knöpfe auf `.btn` (Rand `--kd-line-strong`, Z. 418), gesperrt nach Z. 216 über `data-sperrform`. ── */
 .cl-tab .nf-such{position:relative;z-index:1;margin-top:6px;height:auto;min-block-size:max(26px,var(--kd-ziel));font-size:12px;padding:0 var(--kd-s3)}
