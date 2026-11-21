@@ -967,3 +967,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #208 R00216 | B1104 Beschreibung, Probe im echten Programm, Vorversion, Mutanten, Gate | Standard | 1-2h | 0,8h | 0,8h | autonom |
 | 2026-11-21 | Karte #208 R00216 | B1124 Nacharbeit 1: Importzyklus Wächter, Härtung aus den Reviews (a–h) | Standard | 1-2h | 1,0h | 1,0h | autonom |
 | 2026-11-21 | Karte #216 R00217 | B1105 Sondierung M1–M3 (Prism je Hunk und Seite) | Standard | 0,5h | 0,4h | 0,4h | autonom |
+| 2026-11-21 | Karte #217 R00219 | B1126 Läufe zusammenführen und ordnen, rein | Standard | 1-2h | 0,3h | 0,3h | autonom |
