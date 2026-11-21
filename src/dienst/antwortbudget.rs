@@ -37,10 +37,18 @@ impl Antwortbudget {
 
     /// Belegt den Platz für `bytes` — `None`, wenn er nicht mehr ins Budget passt (nie warten).
     pub fn belegen(&self, bytes: Vec<u8>) -> Option<Rumpf> {
-        let kb = bytes.len().div_ceil(1024);
+        let beleg = self.platz(bytes.len())?;
+        Some(Rumpf { bytes, _beleg: beleg })
+    }
+
+    /// Belegt den Platz für eine Antwort von `bytes` Byte, **bevor** sie gelesen wird (R00216, ADR-0036 Regel 6) — `None`,
+    /// wenn er nicht mehr ins Budget passt (nie warten). Der Leser liest danach höchstens so viel und macht mit
+    /// [`Beleg::rumpf`] den Rumpf daraus.
+    pub fn platz(&self, bytes: usize) -> Option<Beleg> {
+        let kb = bytes.div_ceil(1024);
         let mut frei = self.frei_kb.lock().unwrap_or_else(|p| p.into_inner());
         *frei = frei.checked_sub(kb)?;
-        Some(Rumpf { bytes, _beleg: Beleg { frei_kb: self.frei_kb.clone(), kb } })
+        Some(Beleg { frei_kb: self.frei_kb.clone(), kb })
     }
 
     /// Wie viele Byte frei sind (in ganzen KB).
@@ -53,6 +61,14 @@ impl Rumpf {
     /// Die Bytes und ihr Platz im Budget, getrennt — wer den Platz hält, hält das Budget.
     pub fn teilen(self) -> (Vec<u8>, Beleg) {
         (self.bytes, self._beleg)
+    }
+}
+
+impl Beleg {
+    /// Der gelesene Rumpf auf seinem vorab belegten Platz; höchstens so groß wie belegt.
+    pub fn rumpf(self, bytes: Vec<u8>) -> Rumpf {
+        debug_assert!(bytes.len().div_ceil(1024) <= self.kb, "mehr gelesen als belegt");
+        Rumpf { bytes, _beleg: self }
     }
 }
 
@@ -86,5 +102,20 @@ mod tests {
         drop(zweiter);
         assert_eq!(b.frei(), 4096);
         assert_eq!(Antwortbudget::default().frei(), 64 << 20);
+    }
+
+    // R00216 ADR-0036 Regel 6: Platz nach Größe vor dem Lesen; ein fallender Beleg oder Rumpf gibt ihn zurück
+    #[test]
+    fn platz_vor_dem_lesen() {
+        let b = Antwortbudget::mit(4096);
+        let platz = b.platz(3000).unwrap();
+        assert_eq!(b.frei(), 1024);
+        assert!(b.platz(1025).is_none());
+        let rumpf = platz.rumpf(vec![1; 3000]);
+        assert_eq!(b.frei(), 1024, "der Rumpf hält den Platz");
+        drop(rumpf);
+        assert_eq!(b.frei(), 4096);
+        drop(b.platz(4096).unwrap());
+        assert_eq!(b.frei(), 4096);
     }
 }

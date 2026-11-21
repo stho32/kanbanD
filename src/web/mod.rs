@@ -130,9 +130,10 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(anhang_lesen, anhang_entfernen))
         .routes(routes!(zeit_korrigieren, zeit_loeschen))
         .routes({
-            let (schemas, pfade, methoden) = routes!(transkript_ablegen);
+            let (schemas, pfade, methoden) = routes!(transkripte_liste, transkript_ablegen);
             (schemas, pfade, methoden.layer(axum::extract::DefaultBodyLimit::max(crate::dienst::transkripte::KOERPERGRENZE)))
         })
+        .routes(routes!(transkript_herunterladen))
         .routes(routes!(kosteneintrag_anlegen))
         .routes(routes!(kosteneintrag_aendern, kosteneintrag_loeschen))
         .routes(routes!(commits_lesen, commits_hinterlegen))
@@ -1368,6 +1369,40 @@ async fn transkript_ablegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfa
     })
     .await?;
     Ok((StatusCode::CREATED, Json(eintrag)).into_response())
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/aufgaben/{nr}/transkripte",
+    tag = "Aufgaben",
+    description = "Transkripte der Aufgabe (R00216): {erfassen, boards_aus, transkripte: [{kennung, at, role, column, bytes, zustand}]} — erfassen: ob record-transcripts für die Aufgabe wirksam an ist (alle Boards der Aufgabe an, je Board eigener Wert, sonst Vorgabe aus kanbanD.md, sonst aus), boards_aus: die Boards, die aus sind; zustand vorhanden | fehlt (liegt nicht auf diesem Rechner) | abweichend (Größe ≠ bytes) | unlesbar (Eintrag formwidrig — dann kennung: null —, keine reguläre Datei, Symlink, über 10 MB, keine gzip-Kennbytes); in der Reihenfolge des Ablegens, ohne Entpacken",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe")),
+    responses((status = 200, description = "Erfolg", body = crate::dienst::transkripte::Transkriptliste), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn transkripte_liste(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Response, Fehler> {
+    let liste = blockierend(&app, move |k| k.transkripte_liste(nr)).await?;
+    Ok(Json(liste).into_response())
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/aufgaben/{nr}/transkripte/{kennung}",
+    tag = "Aufgaben",
+    description = "Transkript herunterladen (R00216): die Datei unverändert als application/gzip ohne Content-Encoding, Content-Disposition: attachment, X-Content-Type-Options: nosniff; kennung role@JJJJ-MM-TTTHH:MM±HH:MM (Feld kennung der Liste, URL-kodiert) — unbekannt → 404, Zustand nicht vorhanden → 404 {fehler, zustand}; Antwortbudget belegt → 503 {fehler: \"Antwortbudget …\"} (der Platz wird vor dem Lesen nach der Größe belegt)",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("kennung" = String, Path, description = "Kennung des Transkripts")),
+    responses((status = 200, description = "die gz-Datei", content_type = "application/gzip", body = Vec<u8>), (status = 404, description = "unbekannte Kennung, oder {fehler, zustand}", body = crate::web::openapi::Transkriptzustandsfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Antwortbudget belegt", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn transkript_herunterladen(State(app): State<App>, Pfad((nr, kennung)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
+    let (rumpf, name) = blockierend(&app, move |k| k.transkript_lesen(nr, &kennung)).await?;
+    let mut antwort = Response::new(strom::ausliefern(rumpf, strom::SCHREIBFRIST));
+    let kopf = antwort.headers_mut();
+    kopf.insert(axum::http::header::CONTENT_TYPE, axum::http::HeaderValue::from_static("application/gzip"));
+    kopf.insert(axum::http::header::X_CONTENT_TYPE_OPTIONS, axum::http::HeaderValue::from_static("nosniff"));
+    // der Name besteht nur aus [a-z0-9@T+.-] (ADR-0036 Regel 7) — sicher in Anführungszeichen
+    if let Ok(wert) = axum::http::HeaderValue::from_str(&format!("attachment; filename=\"{name}\"")) {
+        kopf.insert(axum::http::header::CONTENT_DISPOSITION, wert);
+    }
+    Ok(antwort)
 }
 
 /// Liest die Felder und schreibt die Datei Stück für Stück in den Empfang — nie den ganzen Körper in den Speicher.

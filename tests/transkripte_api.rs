@@ -378,3 +378,123 @@ async fn ak15_kein_live_ereignis_unter_transkripte() {
     let text = lauf.await.unwrap();
     assert!(!text.contains("transkripte/"), "{text}");
 }
+
+async fn herunterladen(adresse: &str, pfad: &str) -> (u16, reqwest::header::HeaderMap, Vec<u8>) {
+    let r = reqwest::get(format!("{adresse}{pfad}")).await.unwrap();
+    (r.status().as_u16(), r.headers().clone(), r.bytes().await.unwrap().to_vec())
+}
+
+fn zustaende(liste: &Value) -> Vec<(Value, Value)> {
+    liste["transkripte"].as_array().unwrap().iter().map(|t| (t["kennung"].clone(), t["zustand"].clone())).collect()
+}
+
+// AK 4 · US-2 (Liste): der Zustand des Schalters ist vorab lesbar
+#[tokio::test]
+async fn ak04_zustand_vorher_lesbar() {
+    let o = ausgangslage("record-transcripts: true\n", "", "record-transcripts: false\n");
+    let (s, l) = holen(o.adresse(), "api/aufgaben/2/transkripte").await;
+    assert_eq!((s, l), (200, json!({ "erfassen": false, "boards_aus": ["zweit"], "transkripte": [] })));
+    assert_eq!(holen(o.adresse(), "api/boards/zweit").await.1["transkripte_erfassen"], json!(false));
+    assert_eq!(holen(o.adresse(), "api/boards/fabrik").await.1["transkripte_erfassen"], Value::Null);
+    let (_, l) = holen(o.adresse(), "api/aufgaben/1/transkripte").await;
+    assert_eq!((&l["erfassen"], &l["boards_aus"]), (&json!(true), &json!([])));
+    let o = ausgangslage("record-transcripts: true\n", "record-transcripts: true\n", "");
+    assert_eq!(holen(o.adresse(), "api/boards/fabrik").await.1["transkripte_erfassen"], json!(true));
+}
+
+// AK 10 · AK 11 · US-5: Liste mit Zuständen in Reihenfolge des Hochladens, Herunterladen nur bei `vorhanden`
+#[tokio::test]
+async fn ak10_ak11_liste_und_herunterladen() {
+    let o = an();
+    let zeiten = ["2026-11-13 10:34+01:00", "2026-11-13 10:35+01:00", "2026-11-13 10:36+01:00", "2026-11-13 10:37+01:00"];
+    for at in zeiten {
+        assert_eq!(hochladen(o.adresse(), 1, "entwickler", at, G1.to_vec()).await.0, 201);
+    }
+    let datei = |at: &str| o.pfad.join(format!("transkripte/0001/entwickler@2026-11-13T{}+0100.jsonl.gz", &at[11..16].replace(':', "")));
+    std::fs::remove_file(datei(zeiten[1])).unwrap();
+    std::fs::write(datei(zeiten[2]), [G1.as_slice(), &[0]].concat()).unwrap();
+    std::fs::write(datei(zeiten[3]), [&[0u8][..], &G1[1..]].concat()).unwrap();
+    let text = o.aufgabe(1).replacen("---\n", "", 1).replacen("---\n", "  - {at: gestern, role: x}\n---\n", 1);
+    o.schreiben_und_committen("aufgaben/0001-transkript-ablegen.md", &format!("---\n{text}"));
+
+    let (s, l) = holen(o.adresse(), "api/aufgaben/1/transkripte").await;
+    assert_eq!(s, 200, "{l}");
+    let k = |at: &str| json!(format!("entwickler@{}", at.replacen(' ', "T", 1)));
+    assert_eq!(zustaende(&l), [(k(zeiten[0]), json!("vorhanden")), (k(zeiten[1]), json!("fehlt")), (k(zeiten[2]), json!("abweichend")), (k(zeiten[3]), json!("unlesbar")), (Value::Null, json!("unlesbar"))]);
+    assert_eq!(l["transkripte"][4]["role"], json!("x"));
+    assert_eq!(holen(o.adresse(), "api/aufgaben/1").await.0, 200, "nicht defekt");
+
+    let (s, kopf, rumpf) = herunterladen(o.adresse(), &format!("api/aufgaben/1/transkripte/{}", K.replace('+', "%2B"))).await;
+    assert_eq!(s, 200);
+    assert_eq!(kopf["content-type"], "application/gzip");
+    assert!(kopf.get("content-encoding").is_none());
+    assert!(kopf["content-disposition"].to_str().unwrap().starts_with("attachment"));
+    assert_eq!(kopf["x-content-type-options"], "nosniff");
+    assert_eq!(rumpf, G1, "byte-gleich");
+    for (at, zustand) in [(zeiten[1], "fehlt"), (zeiten[2], "abweichend"), (zeiten[3], "unlesbar")] {
+        let (s, e) = holen(o.adresse(), &format!("api/aufgaben/1/transkripte/{}", k(at).as_str().unwrap().replace('+', "%2B"))).await;
+        assert_eq!((s, &e["zustand"]), (404, &json!(zustand)), "{at}: {e}");
+        assert!(e["fehler"].is_string());
+    }
+    let (s, e) = holen(o.adresse(), "api/aufgaben/1/transkripte/niemand@2026-11-13T10:34%2B01:00").await;
+    assert_eq!(s, 404, "{e}");
+    assert!(e.get("zustand").is_none(), "unbekannte Kennung ohne Zustand: {e}");
+    // Ausschalten ändert nichts am Lesen
+    std::fs::write(o.pfad.join("kanbanD.md"), lies(&o.pfad, "kanbanD.md").replace("record-transcripts: true", "record-transcripts: false")).unwrap();
+    assert_eq!(herunterladen(o.adresse(), &format!("api/aufgaben/1/transkripte/{}", K.replace('+', "%2B"))).await.2, G1);
+}
+
+// AK 9b: Pfade oder Dateinamen in der Adresse treffen nie eine Datei
+#[tokio::test]
+async fn ak09b_pfade_in_der_adresse() {
+    let o = an();
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+    for weg in ["..%2F..%2Fkanban.md", "%2Fetc%2Fpasswd", "entwickler@2026-11-13T1034+0100.jsonl.gz", "..%2F0001-transkript-ablegen.md"] {
+        let (s, _, rumpf) = herunterladen(o.adresse(), &format!("api/aufgaben/1/transkripte/{weg}")).await;
+        assert_eq!(s, 404, "{weg}: {}", String::from_utf8_lossy(&rumpf));
+    }
+}
+
+// AK 9c, 9d (Lesen): ein Symlink auf jeder Ebene ergibt `unlesbar`, 404 mit Zustand, außen unverändert
+#[cfg(unix)]
+#[tokio::test]
+async fn ak09cd_lesen_ueber_einen_symlink() {
+    for ebene in ["transkripte/0001", "transkripte", N] {
+        let o = an();
+        assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+        let aussen = o.pfad.parent().unwrap().join("aussen");
+        std::fs::create_dir(&aussen).unwrap();
+        std::fs::write(aussen.join("entwickler@2026-11-13T1034+0100.jsonl.gz"), G1).unwrap();
+        // die echte Ebene beiseite, an ihre Stelle der Symlink
+        std::fs::rename(o.pfad.join(ebene), o.pfad.parent().unwrap().join("beiseite")).unwrap();
+        let ziel = if ebene == N { aussen.join("entwickler@2026-11-13T1034+0100.jsonl.gz") } else { aussen.clone() };
+        if ebene == "transkripte" {
+            std::fs::create_dir(aussen.join("0001")).unwrap();
+            std::fs::write(aussen.join("0001/entwickler@2026-11-13T1034+0100.jsonl.gz"), G1).unwrap();
+        }
+        std::os::unix::fs::symlink(&ziel, o.pfad.join(ebene)).unwrap();
+        let vorher = umgebung(&o).into_iter().filter(|(p, _)| p.starts_with("aussen")).collect::<Vec<_>>();
+        let (_, l) = holen(o.adresse(), "api/aufgaben/1/transkripte").await;
+        assert_eq!(zustaende(&l), [(json!(K), json!("unlesbar"))], "{ebene}");
+        let (s, e) = holen(o.adresse(), &format!("api/aufgaben/1/transkripte/{}", K.replace('+', "%2B"))).await;
+        assert_eq!((s, &e["zustand"]), (404, &json!("unlesbar")), "{ebene}: {e}");
+        assert_eq!(umgebung(&o).into_iter().filter(|(p, _)| p.starts_with("aussen")).collect::<Vec<_>>(), vorher, "{ebene}: außen unverändert");
+    }
+}
+
+// AK 15: `transkripte/0001` ist für kanbanD nicht lesbar — GET der Aufgabe und /api/zustand greifen nicht darauf zu
+#[cfg(unix)]
+#[tokio::test]
+async fn ak15_lesen_ohne_dateisystem() {
+    use std::os::unix::fs::PermissionsExt;
+    let o = an();
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+    std::fs::set_permissions(o.pfad.join("transkripte/0001"), std::fs::Permissions::from_mode(0o000)).unwrap();
+    let (s, a) = holen(o.adresse(), "api/aufgaben/1").await;
+    let (sz, z) = holen(o.adresse(), "api/zustand").await;
+    let (_, l) = holen(o.adresse(), "api/aufgaben/1/transkripte").await;
+    std::fs::set_permissions(o.pfad.join("transkripte/0001"), std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!((s, a["transkripte"][0]["kennung"].clone()), (200, json!(K)));
+    assert_eq!(sz, 200, "{z}");
+    assert_eq!(zustaende(&l), [(json!(K), json!("unlesbar"))]);
+}

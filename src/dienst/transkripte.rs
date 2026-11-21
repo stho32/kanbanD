@@ -8,7 +8,9 @@
 use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Erfassung, GZIP_KENNBYTES, HOECHSTZAHL_TRANSKRIPTE, Person, TRANSKRIPT_HOECHSTENS, Transkripteintrag, Transkriptzeile};
+use crate::modell::{Erfassung, GZIP_KENNBYTES, HOECHSTZAHL_TRANSKRIPTE, Person, TRANSKRIPT_HOECHSTENS, Transkripteintrag, Transkriptzeile, Transkriptzustand};
+use super::antwortbudget::Rumpf;
+use std::io::Read;
 use chrono::Utc;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -197,6 +199,109 @@ impl Kanban {
         }
         Ok(neu)
     }
+}
+
+/// Antwort von `GET …/transkripte` (ADR-0036 Regel 5): der Schalter vorab und je Eintrag sein Zustand.
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct Transkriptliste {
+    pub erfassen: bool,
+    pub boards_aus: Vec<String>,
+    pub transkripte: Vec<Transkriptstand>,
+}
+
+/// Ein Eintrag der Liste; ein formwidriger trägt nur, was als Text lesbar ist, und den Zustand `unlesbar`.
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct Transkriptstand {
+    pub kennung: Option<String>,
+    pub at: Option<String>,
+    pub role: Option<String>,
+    pub column: Option<String>,
+    pub bytes: Option<u64>,
+    pub zustand: Transkriptzustand,
+}
+
+impl Transkriptstand {
+    fn aus(z: &Transkriptzeile, zustand: Transkriptzustand) -> Transkriptstand {
+        match z {
+            Transkriptzeile::Lesbar(e) => Transkriptstand { kennung: Some(e.kennung()), at: Some(e.zeitpunkt.clone()), role: Some(e.rolle.clone()), column: Some(e.spalte.clone()), bytes: Some(e.bytes), zustand },
+            Transkriptzeile::Unlesbar(v) => {
+                let text = |k: &str| v.get(k).and_then(crate::format::yaml::wert_als_text);
+                Transkriptstand { kennung: None, at: text("at"), role: text("role"), column: text("column"), bytes: v.get("bytes").and_then(serde_yaml::Value::as_u64), zustand }
+            }
+        }
+    }
+}
+
+/// Der Zustand eines Eintrags aus einem `symlink_metadata` und drei Byte — ohne Entpacken (ADR-0036 Regel 5).
+fn zustand(wurzel: &Path, nr: u32, z: &Transkriptzeile) -> Transkriptzustand {
+    let Some(e) = z.lesbar() else { return Transkriptzustand::Unlesbar };
+    let Ok(pfad) = datei(wurzel, nr, e) else { return Transkriptzustand::Unlesbar };
+    let m = match std::fs::symlink_metadata(&pfad) {
+        Ok(m) => m,
+        Err(f) if f.kind() == std::io::ErrorKind::NotFound => return Transkriptzustand::Fehlt,
+        Err(_) => return Transkriptzustand::Unlesbar,
+    };
+    if !m.is_file() || m.len() > TRANSKRIPT_HOECHSTENS {
+        return Transkriptzustand::Unlesbar;
+    }
+    if m.len() != e.bytes {
+        return Transkriptzustand::Abweichend;
+    }
+    let mut kopf = [0u8; 3];
+    match std::fs::File::open(&pfad).and_then(|mut f| f.read_exact(&mut kopf)) {
+        Ok(()) if kopf == GZIP_KENNBYTES => Transkriptzustand::Vorhanden,
+        _ => Transkriptzustand::Unlesbar,
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Zähler am einzigen Leseort (Lehre „Grenzen, die Arbeit begrenzen“): Byte, die [`Kanban::transkript_lesen`] las.
+    static GELESEN: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+impl Kanban {
+    /// `GET …/transkripte`: Schalter und Einträge in der Reihenfolge der Datei mit ihrem Zustand.
+    pub fn transkripte_liste(&self, nr: u32) -> Result<Transkriptliste, Fehler> {
+        let a = self.ordner().aufgabe(nr)?;
+        let Erfassung { erfassen, boards_aus } = self.transkripte_erfassung(nr)?;
+        let wurzel = self.ordner().wurzel();
+        let transkripte = a.transkripte.iter().map(|z| Transkriptstand::aus(z, zustand(wurzel, nr, z))).collect();
+        Ok(Transkriptliste { erfassen, boards_aus, transkripte })
+    }
+
+    /// `GET …/transkripte/{kennung}`: die Datei unverändert im Antwortbudget (ADR-0036 Regel 6) — der Platz wird nach der
+    /// Größe des Eintrags belegt, **bevor** gelesen wird; passt sie nicht, sofort 503. Liefert Rumpf und Dateinamen.
+    /// Die Kennung der Adresse wird nur mit Einträgen verglichen, nie zu einem Pfad (Regel 7).
+    pub fn transkript_lesen(&self, nr: u32, kennung: &str) -> Result<(Rumpf, String), Fehler> {
+        let a = self.ordner().aufgabe(nr)?;
+        let zeile = a.transkripte.iter().find(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung))))?;
+        let e = zeile.lesbar().expect("gefunden als lesbar");
+        let wurzel = self.ordner().wurzel();
+        let stand = zustand(wurzel, nr, zeile);
+        if stand != Transkriptzustand::Vorhanden {
+            return Err(nicht_lieferbar(nr, kennung, stand));
+        }
+        let platz = self.antwortbudget.platz(e.bytes as usize).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Transkript in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
+        let pfad = datei(wurzel, nr, e).map_err(|_| nicht_lieferbar(nr, kennung, Transkriptzustand::Unlesbar))?;
+        let mut bytes = Vec::with_capacity(e.bytes as usize);
+        std::fs::File::open(&pfad)?.take(e.bytes).read_to_end(&mut bytes)?;
+        #[cfg(test)]
+        GELESEN.with(|g| g.set(g.get() + bytes.len() as u64));
+        if bytes.len() as u64 != e.bytes {
+            return Err(nicht_lieferbar(nr, kennung, Transkriptzustand::Abweichend));
+        }
+        Ok((platz.rumpf(bytes), e.dateiname()))
+    }
+}
+
+fn nicht_lieferbar(nr: u32, kennung: &str, zustand: Transkriptzustand) -> Fehler {
+    let wie = match zustand {
+        Transkriptzustand::Fehlt => "liegt nicht auf diesem Rechner",
+        Transkriptzustand::Abweichend => "hat nicht die eingetragene Größe",
+        _ => "ist nicht lesbar",
+    };
+    Fehler::Transkriptzustand { meldung: format!("Das Transkript {} von #{nr} {wie}", crate::nachricht::wert(kennung)), zustand }
 }
 
 fn erfassung_verlangen(nr: u32, e: Erfassung) -> Result<(), Fehler> {
@@ -401,6 +506,29 @@ mod tests {
         assert!(matches!(&f, Fehler::ErfassungAus { boards, .. } if boards == &["fabrik".to_string()]), "{f:?}");
         assert!(!w.path().join("transkripte").exists(), "zurückgebaut");
         assert!(k.ordner().aufgabe(1).unwrap().transkripte.is_empty());
+    }
+
+    // R00216 AK 12 · US-6 (ADR-0032 N5.1, ADR-0036 Regel 6): mit 12 MB Budget passt eine Lesung von 10 MB, die zweite
+    // ergibt sofort 503, ohne ein Byte gelesen zu haben; nach dem Ende der ersten geht sie
+    #[test]
+    fn volles_antwortbudget_vor_dem_lesen() {
+        let (w, mut k, wer) = ordner();
+        k.antwortbudget = super::super::antwortbudget::Antwortbudget::mit(12 << 20);
+        let mut e = Empfang::neu(w.path(), 1);
+        let mut zehn = vec![0x5a; TRANSKRIPT_HOECHSTENS as usize];
+        zehn[..3].copy_from_slice(&GZIP_KENNBYTES);
+        e.stueck(&zehn).unwrap();
+        let eintrag = k.transkript_einhaengen(&wer, 1, &angaben(), e).unwrap();
+        GELESEN.with(|g| g.set(0));
+        let (erste, _) = k.transkript_lesen(1, &eintrag.kennung()).unwrap();
+        assert_eq!(GELESEN.with(|g| g.get()), TRANSKRIPT_HOECHSTENS, "die erste Lesung liest die Datei");
+        GELESEN.with(|g| g.set(0));
+        let f = k.transkript_lesen(1, &eintrag.kennung()).unwrap_err();
+        assert!(matches!(&f, Fehler::Ausgelastet(m) if m.starts_with("Antwortbudget")), "{f:?}");
+        assert_eq!(GELESEN.with(|g| g.get()), 0, "bei 503 kein Byte gelesen");
+        assert_eq!(erste.bytes, zehn);
+        drop(erste);
+        assert!(k.transkript_lesen(1, &eintrag.kennung()).is_ok(), "nach der ersten Lesung wieder frei");
     }
 
     #[test]
