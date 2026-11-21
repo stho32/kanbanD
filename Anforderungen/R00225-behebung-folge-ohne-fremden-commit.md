@@ -1,6 +1,6 @@
 ---
 id: R00225
-status: Erledigt
+status: In Arbeit
 datum: 2026-11-21
 ursprung: Bug-Report
 ursprungslauf: R00208
@@ -47,10 +47,10 @@ Der Defekt ist eingetreten, nicht latent: Der Entwicklertest #229 hat ihn im ech
 
 Nach ADR-0032 N8.3, Option V2 „netto unverändert erscheint nirgends“:
 
-1. **Folge-Pfade** sind die Kartenpfade ohne Netto-Eintrag, die eine von zwei Bedingungen erfüllen. (a) Sie sind **belastet**, liegen also in `D_fremd` oder in einer belasteten Gruppe (N7.1). (b) Oder sie stehen in einem Eintrag der Netto-Liste, den `Einteilung::netto` verworfen hat: abweichende Paarung mit einem belasteten Pfad (N7.10) oder ein Pfad außerhalb von `D_karte`. Jeder andere Kartenpfad ohne Netto-Eintrag ist netto unverändert oder ein Zwischenname. Er **erscheint nirgends**: nicht in `dateien`, nicht in `format=patch`, nicht in `fremd_dazwischen.dateien`. Die Zwischennamen-Regel aus N7.1 geht darin auf.
+1. **Folge-Pfade** (Wortlaut präzisiert durch ADR-0032 N8.6 Punkt 1–3, gilt vor dem Rest dieses Punkts): Eine Gruppe (N7.1) ist **verdorben**, wenn sie belastet ist oder ein Pfad von ihr in einem Eintrag der Netto-Liste steht, der nicht netto ist. Ein Eintrag der Netto-Liste ist **netto** genau dann, wenn alle seine Pfade in `D_karte` liegen und keiner in `D_fremd` oder in einer verdorbenen Gruppe. Beide Mengen werden **bis zum Fixpunkt** gerechnet. Folge-Pfade sind die Kartenpfade ohne Netto-Eintrag, die in `D_fremd` liegen oder zu einer verdorbenen Gruppe gehören. Damit ist jede Gruppe ganz netto oder ganz Folge. Bisheriger Wortlaut, je Pfad statt je Gruppe und damit zu eng (Code-Review #234 Muss 1): Folge-Pfade sind die Kartenpfade ohne Netto-Eintrag, die eine von zwei Bedingungen erfüllen. (a) Sie sind **belastet**, liegen also in `D_fremd` oder in einer belasteten Gruppe (N7.1). (b) Oder sie stehen in einem Eintrag der Netto-Liste, den `Einteilung::netto` verworfen hat: abweichende Paarung mit einem belasteten Pfad (N7.10) oder ein Pfad außerhalb von `D_karte`. Jeder andere Kartenpfad ohne Netto-Eintrag ist netto unverändert oder ein Zwischenname. Er **erscheint nirgends**: nicht in `dateien`, nicht in `format=patch`, nicht in `fremd_dazwischen.dateien`. Die Zwischennamen-Regel aus N7.1 geht darin auf.
 2. **Abgeschnittene Netto-Liste** (`netto_vollstaendig` falsch): Unbelastete Pfade sind netto, nicht Folge, wie heute ohne fremde Pfade (B3). Sie zählen über `gesamt` in `dateien_gekappt`. Kein Pfad verschwindet ohne Zählung.
 3. **`fremd_dazwischen`** steht nur, wenn zwei Bedingungen gelten: `commits ≥ 1` und mindestens ein Folge-Eintrag (oder einer, der am Schnitt verworfen wurde). `dateien` zählt genau diese Einträge. Belastet nur ein Merge der Karte einen Pfad, und liegt kein fremder Commit in der Spanne, bleibt der Pfad Folge, aber ohne `fremd_dazwischen`. Den Grund nennt der vorhandene Hinweis `merge_ausgelassen`.
-4. **`datei=<netto unveränderter Pfad>`** ergibt 404 `{fehler}`, wie heute für einen Zwischennamen.
+4. **`datei=`** ohne `commit` (ADR-0032 N8.6 Punkt 4): Netto-Liste und Netto-Zähler laufen mit `GRENZE_DATEILISTE_EINZELN` (20 MB) statt 1 MB, mit derselben Pfadangabe wie ohne `datei=` und ohne zusätzlichen Git-Prozess. Pfad nicht in `D_karte`: 404 „… in keinem Kartencommit …“ (`datei_fehlt`). Pfad in `D_karte` ohne Eintrag, kein Lauf abgeschnitten (netto unverändert, Zwischenname): 404 mit dem Text aus PO Z. 509. Pfad in `D_karte` ohne Eintrag, ein Lauf abgeschnitten: 404 mit dem Text aus PO Z. 514.
 5. Die Oberfläche bleibt unverändert. Mit 1–3 ist jede Folge-Datei ohne `ganz_als_folge` belastet, und `fremdSatz` bekommt nie `commits: 0`.
 
 Akzeptierte Schwäche (N8.3): Arbeit, die die Aufgabe selbst zurücknimmt, sieht man im Gesamtbild nicht. Sie bleibt in der Commit-Liste und über „Ein Commit“ lesbar.
@@ -97,29 +97,43 @@ Ohne geänderte Erwartung grün:
   - Fall N: Der Abschnitt zeigt „2 Commits · 2 Dateien“, keine Datei `d/x`, keinen Satz, der mit „Zwischen den Commits der Aufgabe“ beginnt, und nirgends „Fremde Commits haben diese Datei“. Heute: `d/x` mit „Folge · 2 Commits“ und beiden Sätzen, einer davon mit „0 fremde Commits“.
   - Fall N+F: Wörtlich steht „Zwischen den Commits der Aufgabe liegt 1 fremder Commit. Er berührt Dateien der Aufgabe; 1 Datei steht deshalb als Folge der Schritte der Aufgabe. Die Änderungen des fremden Commits sind nicht zu sehen.“ Aufgeklappt steht „Fremde Commits haben diese Datei …“ genau einmal, und zwar an `g`. `d/x` steht nicht da.
   - Fall F: Die Sätze stehen wie in R00210 AK 2 und AK 3.
-- [x] **AK 6 Abgeschnittene Netto-Liste (N8.3 Punkt 2, Pre-Mortem j):** Ist die Netto-Liste abgeschnitten (`netto_vollstaendig` falsch), werden unbelastete Kartenpfade nicht zu Folge. Sie verschwinden auch nicht ohne Zählung: Sie zählen über `gesamt` in `dateien_gekappt`. Der Test läuft mit einer Karte über der Kappe von 2.000 Einträgen und einem fremden Commit an einer anderen Datei der Karte, oder mit verkleinerter Grenze wie R00213 AK 4. `gesamt` ist größer oder gleich der Zahl der netto geänderten Dateien der Karte.
-- [x] **AK 7 Mutanten (N8.4):** Jeder Mutant wird von einem benannten Test getötet.
+- [ ] **AK 6 Abgeschnittene Netto-Liste (N8.3 Punkt 2, Pre-Mortem j):** Ist die Netto-Liste abgeschnitten (`netto_vollstaendig` falsch), werden unbelastete Kartenpfade nicht zu Folge. Sie verschwinden auch nicht ohne Zählung: Sie zählen über `gesamt` in `dateien_gekappt`. Der Test läuft mit einer Karte über der Kappe von 2.000 Einträgen und einem fremden Commit an einer anderen Datei der Karte, oder mit verkleinerter Grenze wie R00213 AK 4. `gesamt` ist größer oder gleich der Zahl der netto geänderten Dateien der Karte.
+  - **D1 (hinter dem Schnitt, ADR-0032 N8.6 „Durchsetzung“, wörtlich):** Ausgangslage von AK 6 (K1 legt `v/00000.txt`…`v/11999.txt` an und ändert `a.txt` Zeile 2; F fremd Zeile 6; K2 Zeile 11). `datei=v/11999.txt` ergibt 200 mit dem Netto-Eintrag (`A`), `datei=v/00000.txt` weiter 200, die Liste ohne `datei=` unverändert (`dateien_gekappt`). Heute: 404 „… in keinem Kartencommit …“.
+  - **D2 (auch über 20 MB, N8.6, wörtlich):** D1 mit verkleinerter Grenze für `datei=` (wie R00213 AK 4) → 404, `fehler` enthält nicht „in keinem Kartencommit“ und nennt `commit=`. Gegenprobe: `datei=nicht/da.txt` → 404 mit „in keinem Kartencommit“. Dazu ist `fehler` der 404 von `datei=v/11999.txt` Zeichen für Zeichen gleich dem Text aus PO Z. 514, mit der Nummer der Aufgabe für `<nr>`: „die Datei steht in Kartencommits von #<nr>, die Liste der Änderungen ist aber zu groß, um zu sagen, ob sie im Gesamtbild eine Änderung hat — die Schritte mit commit= und datei= laden“. Der Text enthält keine Zahl.
+- [ ] **AK 7 Mutanten (N8.4):** Jeder Mutant wird von einem benannten Test getötet.
   - (m1) Unbelastete Pfade ohne Netto-Eintrag bleiben Folge → AK 1 rot.
-  - (m2) Alle unbelasteten Pfade fallen heraus, auch die aus verworfenen Netto-Einträgen → `b2_rest_zwilling_ausserhalb_der_netto_eintraege` rot.
+  - (m2) Alle unbelasteten Pfade fallen heraus, auch die aus verworfenen Netto-Einträgen → `ak07_unbelasteter_pfad_aus_verworfenem_netto_eintrag_bleibt_folge` rot (berichtigt 2026-11-22: `b2_rest_zwilling_ausserhalb_der_netto_eintraege` tötet ihn nicht, seine verworfenen Einträge tragen nur belastete Pfade).
   - (m3) `fremd_dazwischen` ohne die Bedingung `commits ≥ 1` → AK 3 rot.
   - (m4) Bei abgeschnittener Netto-Liste fallen unbelastete Pfade ohne Zählung weg → AK 6 rot.
+  - (m5) „(b) je Pfad“ → G1 (AK 10) rot.
+  - (m6) „verdorben in einem Durchgang ohne Fixpunkt“ → G2 (AK 10) rot.
+  - (m7) „`datei=` mit 1 MB“ → D1 (AK 6) rot.
+  - (m8) „`datei_fehlt` auch hinter dem Schnitt“ → D2 (AK 6) rot.
+
+  Prozessgrenze (höchstens 15 ohne `datei=`) und Lastprobe von R00208 bleiben grün; m2 (ak07) und AK 1–4 bleiben grün (ADR-0032 N8.6). Mutanten laufen in einer eigenen Kopie, nicht im Worktree der Karte.
 
   Lässt sich ein Mutant nicht töten, meldet der entwickler das mit Begründung.
-- [x] **AK 8 README „Für Agenten“:** Der Abschnitt Gesamt-Diff sagt in einem Satz, dass eine Datei, die die Karte ändert und selbst zurücknimmt, nicht erscheint und dass `datei=` auf sie 404 ergibt. Außerdem sagt er, dass `fremd_dazwischen` nur mit mindestens einem fremden Commit steht.
-- [x] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1–3) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung, die Lastprobe von R00208 (p95 unter 500 ms) und die Prozessgrenze (höchstens 15 Git-Prozesse).
+- [ ] **AK 8 README „Für Agenten“:** Der Abschnitt Gesamt-Diff sagt in einem Satz, dass eine Datei, die die Karte ändert und selbst zurücknimmt, nicht erscheint und dass `datei=` auf sie 404 ergibt. Außerdem sagt er, dass `fremd_dazwischen` nur mit mindestens einem fremden Commit steht. Der Satz zu `datei=` sagt in einem Halbsatz, dass ein Pfad in Kartencommits ohne Eintrag 404 mit eigenem Text ergibt, wenn die Liste der Änderungen auch mit `datei=` zu groß ist, um zu sagen, ob er im Gesamtbild eine Änderung hat, und dass der Text auf `commit=` und `datei=` verweist (ADR-0032 N8.6 Punkt 4 (d), PO Z. 514).
+- [ ] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1–3) sind ohne Fix rot und mit Fix grün, ebenso G1, G2, D1 und D2 (AK 6, AK 10) am Stand 7e3d9f47. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung, die Lastprobe von R00208 (p95 unter 500 ms) und die Prozessgrenze (höchstens 15 Git-Prozesse).
+
+### Gruppen (Code-Review #234 Muss 1, ADR-0032 N8.6)
+
+- [ ] **AK 10 Gruppen (N8.6 „Durchsetzung“, wörtlich):** Jede Gruppe ist ganz netto oder ganz Folge, auch wenn ein Gruppenpartner herausfällt oder ein Pfad der Gruppe in einem verworfenen Netto-Eintrag steht.
+  - **G1 (Gruppenpartner, Probe des Code-Reviews):** A0 legt `p` an (zehn Zeilen `x0`…`x9`); K1 `git mv p q`; F (fremd) legt `b` mit dem Inhalt von `p` an; K2 löscht `q` und hängt an `b` die Zeile `zusatz` an; Karte `kd:<K1>`, `kd:<K2>`. Erwartet: ein Folge-Eintrag mit den Schritten K1 `R p → q` und K2 `D q`, dazu `b` Folge mit K2; `fremd_dazwischen {commits 1, dateien 2}`; `datei=p` und `datei=q` ergeben 200. Heute: nur `b`, `dateien 1`, `datei=p` 404.
+  - **G2 (gespaltene Gruppe):** wie G1, aber K2 schreibt `q` ganz neu (zehn Zeilen `y0`…`y9`, unter 50 % ähnlich) statt es zu löschen. Erwartet: ein Folge-Eintrag mit K1 `R p → q` und K2 `M q`, kein Netto-Eintrag `q`, `b` Folge; `fremd_dazwischen {commits 1, dateien 2}`; `datei=p` 200. Heute: `q` netto `A`, `p` nirgends.
 
 ## Implementierungshinweise
 
-- Die Bedingung (b) aus Lösung Punkt 1 stammt aus dem Netto-Lauf: Die Pfade der Einträge, die `Einteilung::netto` verwirft, bleiben Folge-Kandidaten, auch wenn sie unbelastet sind. Ohne diese Menge kippt m2.
+- Die Bedingung (b) aus Lösung Punkt 1 stammt aus dem Netto-Lauf: Die Pfade der Einträge, die `Einteilung::netto` verwirft, bleiben Folge-Kandidaten, auch wenn sie unbelastet sind. Ohne diese Menge kippt m2. Nach N8.6 Punkt 3: `netto` und `folgepfade` lesen dieselbe Menge der verdorbenen Gruppen; `verworfen` entsteht in einem `partition` der Netto-Liste, nicht aus einer zweiten, negierten Bedingung. Der Doc-Kommentar von `folgepfade` nennt beide Wege zu „verdorben“; die Tabelle des Modultests nennt je Pfad die Gruppe.
 - `fremde` (`:179`) bleibt unverändert, Merges der Karte zählen weiter nicht. Geändert wird nur die Bedingung, unter der der Hinweis steht.
-- Ein netto unveränderter Pfad bekommt bei `datei=` den 404-Text, den heute ein Zwischenname bekommt (`datei_fehlt`, `:651`). Den Wortlaut ändert #234 nur nach einer Entscheidung des product-owner, siehe „Offene Fragen“.
-- Kein zusätzlicher Git-Prozess: Belastung und verworfene Netto-Einträge sind nach dem Namens- und dem Netto-Lauf bekannt.
+- 404-Texte bei `datei=` (entschieden): Pfad in Kartencommits ohne Eintrag `datei_ohne_aenderung` (PO Z. 509), hinter dem Schnitt ein eigener Text (PO Z. 514), nur ein Pfad außerhalb von `D_karte` `datei_fehlt`. Vorbild für die 20-MB-Grenze mit `datei=`: A3, `src/dienst/diff.rs:122`, `:140` (N5.1 Regel 6).
+- Kein zusätzlicher Git-Prozess: Belastung und verworfene Netto-Einträge sind nach dem Namens- und dem Netto-Lauf bekannt; auch `datei=` ändert nur die Bytegrenze, nicht die Pfadangabe (N8.6 Pre-Mortem o).
 
 ## Offene Fragen
 
 Keine hält den Bau auf. An den product-owner (über den Director), je mit Empfehlung:
 
-1. **404-Text für einen netto unveränderten Pfad.** Heute lautet er „die Datei steht in keinem Kartencommit von #<nr> — datei= nennt einen Pfad der Karte, buchstäblich“. Für `d/x` und für Zwischennamen stimmt das nicht, denn der Pfad steht in Kartencommits. Empfehlung: ein eigener Text für diesen Fall, etwa „die Datei hat im Gesamtbild von #<nr> keine Änderung (die Aufgabe nimmt sie selbst zurück) — die Schritte mit commit= und datei= laden“. Dann bekommt die Karte das Label `text`. Bis zur Antwort gilt der heutige Text (N8.3 Punkt 4), und AK 1 und AK 2 prüfen nur Status 404 und `{fehler}`.
+1. **Entschieden (PO Z. 509; hinter dem Schnitt PO Z. 514).** **404-Text für einen netto unveränderten Pfad.** Heute lautet er „die Datei steht in keinem Kartencommit von #<nr> — datei= nennt einen Pfad der Karte, buchstäblich“. Für `d/x` und für Zwischennamen stimmt das nicht, denn der Pfad steht in Kartencommits. Empfehlung: ein eigener Text für diesen Fall, etwa „die Datei hat im Gesamtbild von #<nr> keine Änderung (die Aufgabe nimmt sie selbst zurück) — die Schritte mit commit= und datei= laden“. Dann bekommt die Karte das Label `text`. Bis zur Antwort gilt der heutige Text (N8.3 Punkt 4), und AK 1 und AK 2 prüfen nur Status 404 und `{fehler}`.
 2. **Satz an einer Folge-Datei, die nur ein Merge der Karte belastet (Fall M).** Nach dem Fix steht dort weiter „Fremde Commits haben diese Datei zwischen den Schritten der Aufgabe geändert …“. Der Abschnitt hat dann aber keinen Satz über fremde Commits mehr, nur „<MK> ist ein Merge und in diesem Gesamtbild ausgelassen.“ Die ADR stellt das ausdrücklich außerhalb von #234 (N8.3 Punkt 3). Empfehlung: nicht in #234. Der Satz ist sachlich gedeckt, weil der Merge fremde Änderungen in die Datei gebracht hat. Eine eigene Folgekarte lohnt erst, wenn ein Reviewer darüber stolpert.
 
 ## Warum löst diese Anforderung das Problem? (Pflicht)
@@ -133,3 +147,4 @@ Auslöser: Die Aufgabe nimmt eine eigene Änderung an `d/x` zurück. `d/x` hat d
 - Workaround: die Commit-Liste und „Ein Commit“ lesen.
 - Heimat: I0215 unter D0009, eigene Interaction statt Bubble an I0198 oder I0200 (Lehre #17/#80).
 - Proben: `gemeinsam/scratchpad/etest-229/ui_board.py` (Ausgangslage der Seite); die Nachstellung des architekten (`gemeinsam/scratchpad/arch-234/r`) ist entfernt. Beide liegen im Factory-Repo.
+- **Nachtrag 2026-11-22 (Karte #234, Code-Review Muss 1 und 2, ADR-0032 N8.6 `bcad566e`, PO Z. 514 `373c1a73`, über `/anforderung review` im Auftrag des Directors, Lauf 234-planer-2):** Status von „Erledigt“ zurück auf „In Arbeit“. Neu AK 10 „Gruppen“ (G1, G2); AK 6 um D1 und D2; AK 7 um m5–m8 und Killer von m2 berichtigt; AK 8 um den Halbsatz zum 404 hinter dem Schnitt; AK 9 um die neuen Proben. Kästchen 6–10 offen, 1–5 bleiben abgehakt. Lösung Punkt 1 und 4, Implementierungshinweise und Offene Frage 1 nach N8.6 und PO Z. 509/514 nachgezogen. AK 10 steht hinten, damit die Nummern 6–9 und ihre Verweise bleiben. Nacharbeit in I0215, Bubbles B1189–B1192.
