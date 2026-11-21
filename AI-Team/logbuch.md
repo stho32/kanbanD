@@ -1477,3 +1477,15 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - **Anmerkung für den PO:** Die Antworten von POST und PATCH tragen `braucht` nicht, nur GET; so verlangt es die Anforderung.
   - **Optional:** `ablage.rs:119` ist quadratisch, gehört zu #241.
 | 2026-11-21 | #228 | Erledigt | architekt | bestanden | 2 min | A00004/A00006 nachgeführt · claude · opus · Lauf 228-architekt-2 · 0,72 $ · Karte gesamt 29,69 $ |
+| 2026-11-21 | #231 | Entwicklertest | entwicklertester | bestanden | 5 min | S1 behoben, US-6/US-4/AK 5 bestanden; AK 10 Tagprobe offen · claude · sonnet · Lauf 231-entwicklertester-2 · 0,31 $ · Karte gesamt 17,51 $ |
+
+**Retrospektive #231** (Wackler unter Last: ak08_antwortbudget und r00209:58, R00215; 2026-11-21, 17,51 $, ausgeliefert 28de5cc3)
+- **Gut:**
+  - **Wackler ohne Last nachgestellt:** Ein langsames `git` im `PATH` (*d* = 0,15 s) und um 150–600 ms verzögerte GETs machen ihn deterministisch nach. Es war keine Lastfrage. Die Proben staffeln jetzt mit `gestaffelt`, die Erwartungen sind wörtlich unverändert, `src/` ist unberührt.
+  - **Ursache in der Seite selbst:** R00209 AK 9 war ein echter Fehler der Seite. Das Nachladen nach dem Speichern überschrieb Eingaben. Er ist in derselben Karte behoben, der PO hat das bestätigt (Z. 454).
+  - **Gate auf main:** beim ersten Lauf ganz grün, Playwright 2170, auch ohne den Wackler r00127.
+- **Lehre (ein Fix gegen ein Zeitfenster öffnet ein zweites):** Der Fix schrieb nach dem `await` in einen Entwurf, den ein Ansichtswechsel schon auf `null` gesetzt hatte. Das gab eine rote technische Meldung, obwohl gespeichert war. Das UX-Review fand sie, der Entwicklertest stufte sie zum Muss hoch, das kostete eine Nacharbeit. Der PO schlägt vor, die Nachbarübergänge derselben Ansicht als Kriterium aufzunehmen. Der Vorschlag ist für die Factory notiert.
+- **Lehre (Kriterium falsch):** R00215 AK 5 nannte ak20b als Fänger für Mutant (f). Getötet wird er aber nur vom Modultest, schon seit #213. Der planer hat das in einem zweiten Durchgang nachgezogen. R00206 AK 20 (f) trägt dieselbe falsche Zuordnung; sie ist abgeschlossen und bleibt.
+- **Lehre (Merge):** Beim Rebase ist B1096 doppelt in die WBS geraten, einmal grün an der Bubble und einmal rot unter „Offene Fragen“. `wbs_loesen.py` hängt eigene Knoten an, die in „ours“ fehlen. Nach jedem Rebase der WBS muss jede eigene ID genau einmal vorkommen.
+- **Neue Karten:** #240 (Wackler r00127:356, Höhe 0) und #242 (Tagprobe R00215 AK 10).
+- **Verworfen:** UX O2 (`role="status"` für „gespeichert“). Das Problem bestand schon vorher und braucht eine dauerhafte Live-Region, also eine Gestaltungsfrage.
