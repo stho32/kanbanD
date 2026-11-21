@@ -1,7 +1,8 @@
 // R00214 (I0204, Karte #228): Braucht zwischen Karten — Deutung, Prüfung an der Tür und Lesefeld in der API.
 // Schichten: Testfall (je AK) → Testsprache (`Lage`: Ausgangslage, Labels, Ziehen, Lesen) → Treiber (`gemeinsam::senden`,
-// HTTP-GET, Dateien, Git) → echtes Programm. AK 14 (Bestand) liest und schreibt den Altbestand `tests/altbestaende/kanbanD-main-ddb6986c/`,
-// AK 15 laufen die Proben der Factory gegen eine Instanz mit diesem Stand (B1090).
+// HTTP-GET, Dateien, Git) → echtes Programm. AK 14 (Bestand) liest und schreibt den Altbestand unter
+// `tests/altbestaende/kanbanD-main-ddb6986c/`. Für AK 15 laufen die Proben der Factory gegen eine Instanz mit diesem
+// Stand (B1090).
 mod gemeinsam;
 
 use gemeinsam::{Laufendes, git, senden};
