@@ -986,3 +986,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #220 R00218 | B1112 Sondierung: V2 gegen das Orakel, sechs Fälle, p95 auf 20.000 Commits | Standard | 0,5h | 0,1h | 0,1h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1113 Startort: achter Befehl `patch-id`, nur `--stable`, nur `stdin` | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1114 Fenster und Vorfilter nach Pfadmenge | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-21 | Karte #220 R00218 | B1115 Patch und `patch-id`, Binärschutz → Kandidaten | Standard | 1-2h | 0,3h | 0,3h | autonom |
