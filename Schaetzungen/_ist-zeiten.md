@@ -985,3 +985,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #216 R00217 | Nacharbeit 1: AK 1 ab laeuft, Leserichtung je Zug, Aufräumen beim Zuklappen, N1, Sichtzustand | Standard | 1h | 0,4h | 0,4h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1112 Sondierung: V2 gegen das Orakel, sechs Fälle, p95 auf 20.000 Commits | Standard | 0,5h | 0,1h | 0,1h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1113 Startort: achter Befehl `patch-id`, nur `--stable`, nur `stdin` | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #220 R00218 | B1114 Fenster und Vorfilter nach Pfadmenge | Standard | 1-2h | 0,3h | 0,3h | autonom |

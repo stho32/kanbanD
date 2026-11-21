@@ -280,6 +280,8 @@ pub struct Metadaten {
     pub titel: String,
     pub autor: String,
     pub datum: String,
+    /// Autordatum in Sekunden seit 1970 (ADR-0038 Punkt 2.2: das Fenster der Nachfolger beginnt einen Tag davor)
+    pub autordatum: i64,
     pub plus: u64,
     pub minus: u64,
     pub dateien: u64,
@@ -330,7 +332,7 @@ fn objekt(name: &str, zeile: &str) -> Objekt {
 
 /// Format je Commit: Hash, Elternteile, Autor, Commit-Datum, Nachricht roh — je mit NUL abgeschlossen (die Nachricht kann
 /// kein NUL enthalten, alles andere schon).
-const LOG_FORMAT: &str = "--format=%H%x00%P%x00%an%x00%cI%x00%B%x00";
+const LOG_FORMAT: &str = "--format=%H%x00%P%x00%an%x00%cI%x00%at%x00%B%x00";
 
 /// Metadaten der Commits (volle Hashes) in einem Aufruf `log --no-walk`.
 pub fn metadaten(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<HashMap<String, Metadaten>, Arbeitsrepofehler> {
@@ -360,10 +362,11 @@ fn log_lesen(aus: &[u8]) -> Option<HashMap<String, Metadaten>> {
         let eltern = text(felder.next()?);
         let autor = text(felder.next()?);
         let datum = text(felder.next()?);
+        let autordatum = text(felder.next()?).parse::<i64>().ok()?;
         let nachricht = text(felder.next()?);
         let erster_elternteil = eltern.split(' ').next().filter(|e| !e.is_empty()).map(String::from);
         let elternzahl = eltern.split(' ').filter(|e| !e.is_empty()).count();
-        let mut m = Metadaten { erster_elternteil, elternzahl, titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, plus: 0, minus: 0, dateien: 0 };
+        let mut m = Metadaten { erster_elternteil, elternzahl, titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, autordatum, plus: 0, minus: 0, dateien: 0 };
         if !felder.next()?.is_empty() {
             return None;
         }
@@ -437,6 +440,8 @@ pub fn diff_tree_viele(wurzel: &Path, vergleiche: &[Vergleich], art: Vielart, pf
         Vielart::Diff(Diffart::Roh) => &["-M50%", "-l1000", "--raw", "-z"],
         Vielart::Diff(Diffart::Zahlen) => &["-M50%", "-l1000", "--numstat", "-z"],
         Vielart::Diff(Diffart::Patch) => &["-M50%", "-l1000", "-p", "--full-index", "--submodule=short"],
+        Vielart::Pfade => &["--no-renames", "--raw", "-z"],
+        Vielart::Patchtext => &["--no-renames", "-p", "--full-index", "--submodule=short"],
     });
     let eingabe: String = vergleiche.iter().map(|v| match v.eltern {
         Some(e) => format!("{} {e}\n", v.commit),
@@ -450,6 +455,11 @@ pub fn diff_tree_viele(wurzel: &Path, vergleiche: &[Vergleich], art: Vielart, pf
 pub enum Vielart {
     Namen,
     Diff(Diffart),
+    /// Vorfilter der Nachfolger (ADR-0038 Punkt 2.3): `--raw -z` ohne Umbenennungen — je Pfad ein Eintrag, wie `patch-id`
+    /// ihn über `---`/`+++` sieht
+    Pfade,
+    /// Patch für `patch-id` (ADR-0038 Punkt 2.4): `-p` ohne Umbenennungen, volle Blob-Hashes, Submodule kurz
+    Patchtext,
 }
 
 /// Höchstzahl der Zeilen von `patch-id` (ADR-0038 Punkt 3): eine Zeile je Commit, 1.000 Fenster-Commits und Spielraum.
@@ -475,6 +485,18 @@ pub fn patch_ids(wurzel: &Path, patch: &[u8], frist: Instant) -> Result<Vec<(Str
 pub fn linie(wurzel: &Path, letzter: &str, hoechstens: usize, frist: Instant) -> Result<Vec<u8>, Arbeitsrepofehler> {
     let anzahl = format!("--max-count={hoechstens}");
     lesen(wurzel, Befehl::RevList, &["--first-parent", "--parents", &anzahl, "--end-of-options", letzter, "--"], None, frist)
+}
+
+/// Das Fenster der Nachfolger (ADR-0038 Punkt 2.2): Commits der lokalen und entfernten Zweige, ohne Merges, die nicht
+/// Vorfahr von `verwaist` sind und deren Commit-Datum ab `seit` (Sekunden seit 1970) liegt — neueste zuerst, höchstens
+/// `hoechstens + 1` (ein Commit mehr zeigt die Kappe). Je Commit `(commit, erster Elternteil)`, beim Wurzel-Commit ohne.
+pub fn fenster(wurzel: &Path, verwaist: &str, seit: i64, hoechstens: usize, frist: Instant) -> Result<Vec<(String, Option<String>)>, Arbeitsrepofehler> {
+    let (seit, anzahl, ohne) = (format!("--since={seit}"), format!("--max-count={}", hoechstens + 1), format!("^{verwaist}"));
+    let aus = lesen(wurzel, Befehl::RevList, &["--no-merges", "--parents", &seit, &anzahl, "--branches", "--remotes", "--end-of-options", &ohne, "--"], None, frist)?;
+    Ok(String::from_utf8_lossy(&aus).lines().filter_map(|z| {
+        let mut teile = z.split(' ');
+        Some((teile.next().filter(|c| !c.is_empty())?.to_string(), teile.next().map(String::from)))
+    }).collect())
 }
 
 /// Höchstzahl der Zeilen von `rev-list` (ADR-0032 N3.4); darüber wird der Lauf abgebrochen, nie gekürzt.
@@ -510,22 +532,51 @@ pub fn koepfe(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<Vec<Str
 /// Fingerabdrucks zählen, gilt das Ergebnis für ihn, auch wenn sich ein Zweig währenddessen bewegt. Commits, die kein
 /// Zweig erreicht, fehlen im Ergebnis.
 pub fn erreichbar(wurzel: &Path, fingerabdruck: &str, commits: &[&str], frist: Instant) -> Result<HashMap<String, Vec<String>>, Arbeitsrepofehler> {
-    let mut je_spitze: HashMap<&str, Vec<&str>> = HashMap::new();
+    if commits.is_empty() {
+        return Ok(HashMap::new());
+    }
+    zweiggraph(wurzel, fingerabdruck, frist)?.erreichbar(commits, frist)
+}
+
+/// Der Graph ab den Spitzen eines Fingerabdrucks, einmal gelesen (ADR-0038 Punkt 2.7): der Zustand des verwaisten Commits
+/// und die Zweige der Kandidaten kommen aus demselben Lauf `rev-list --parents --stdin` — kein zweiter Prozess.
+pub struct Zweiggraph {
+    ausgabe: Vec<u8>,
+    je_spitze: Vec<(String, Vec<String>)>,
+}
+
+/// Liest den [`Zweiggraph`] zu `fingerabdruck`; ohne Zweig startet kein Git.
+pub fn zweiggraph(wurzel: &Path, fingerabdruck: &str, frist: Instant) -> Result<Zweiggraph, Arbeitsrepofehler> {
+    let mut je_spitze: Vec<(String, Vec<String>)> = vec![];
     // `refs/remotes/<entfernt>/HEAD` zeigt nur auf einen anderen entfernten Zweig; ein lokaler `feature/HEAD` zählt
     let verweis_auf_zweig = |n: &str| n.starts_with("refs/remotes/") && n.ends_with("/HEAD");
     for (spitze, name) in fingerabdruck.lines().filter_map(|z| z.split_once(' ')).filter(|(_, n)| !verweis_auf_zweig(n)) {
-        je_spitze.entry(spitze).or_default().push(name);
+        match je_spitze.iter_mut().find(|(s, _)| s == spitze) {
+            Some((_, namen)) => namen.push(name.to_string()),
+            None => je_spitze.push((spitze.to_string(), vec![name.to_string()])),
+        }
     }
-    if je_spitze.is_empty() || commits.is_empty() {
-        return Ok(HashMap::new());
+    if je_spitze.is_empty() {
+        return Ok(Zweiggraph { ausgabe: vec![], je_spitze });
     }
-    let eingabe: String = je_spitze.keys().map(|s| format!("{s}\n")).collect();
+    let eingabe: String = je_spitze.iter().map(|(s, _)| format!("{s}\n")).collect();
     let aus = git(wurzel, Befehl::RevList, &["--parents", "--stdin"], Lauf { zeitgrenze: grenze_bis(frist)?, eingabe: Some(eingabe.as_bytes()), hoechstzeilen: Some(HOECHSTZEILEN_ZWEIGLISTE) })?;
     if !aus.status.success() {
         let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
         return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Git verweigert {}: {grund}", wurzel.display())));
     }
-    Graph::aus(&aus.stdout, frist)?.erreichbar(&je_spitze, commits, frist)
+    Ok(Zweiggraph { ausgabe: aus.stdout, je_spitze })
+}
+
+impl Zweiggraph {
+    /// Je Commit die vollen Namen der Zweige, die ihn erreichen; Commits, die kein Zweig erreicht, fehlen.
+    pub fn erreichbar(&self, commits: &[&str], frist: Instant) -> Result<HashMap<String, Vec<String>>, Arbeitsrepofehler> {
+        if self.je_spitze.is_empty() || commits.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let je_spitze: HashMap<&str, Vec<&str>> = self.je_spitze.iter().map(|(s, n)| (s.as_str(), n.iter().map(String::as_str).collect())).collect();
+        Graph::aus(&self.ausgabe, frist)?.erreichbar(&je_spitze, commits, frist)
+    }
 }
 
 /// Alle so vielen Schritte prüft die Speicherphase von [`erreichbar`] die Frist — bei Millionen Kanten und Tausenden

@@ -13,6 +13,7 @@ mod bewegen;
 mod bindung;
 mod commits;
 mod commits_lesen;
+pub mod nachfolger;
 pub use commits_lesen::GESAMTGRENZE;
 pub mod antwortbudget;
 pub mod diff;
