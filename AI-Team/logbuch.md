@@ -1754,3 +1754,13 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #238 | Detailplanung | product-owner | bestanden | 2 min | PO Z. 512-513 · claude · opus · Lauf 238-product-owner-1 · 0,98 $ · Karte gesamt 2,40 $ |
 | 2026-11-21 | #243 | Architektur | architekt | bestanden | 1 min | keine Technikfrage, Muster ADR-0037 · claude · opus · Lauf 243-architekt-1 · 0,56 $ · Karte gesamt 0,56 $ |
 | 2026-11-21 | #238 | Detailplanung | planer | bestanden | 7 min | R00226, I0216, 5 Bubbles · claude · opus · Lauf 238-planer-1 · 2,71 $ · Karte gesamt 5,11 $ |
+| 2026-11-21 | #243 | Detailplanung | planer | bestanden | 3 min | R00227, I0217, 2 Bubbles · claude · opus · Lauf 243-planer-1 · 1,22 $ · Karte gesamt 1,78 $ |
+| 2026-11-21 | #249 | Architektur | architekt | bestanden | 2 min | keine Technikfrage; .anw-Kollision, Hausform 900 px · claude · opus · Lauf 249-architekt-1 · 0,75 $ · Karte gesamt 0,75 $ |
+| 2026-11-21 | #249 | Detailplanung | planer | bestanden | 3 min | R00228, I0218, 2 Bubbles · claude · opus · Lauf 249-planer-1 · 1,21 $ · Karte gesamt 1,96 $ |
+| 2026-11-21 | #247 | Architektur | architekt | bestanden | 3 min | ADR-0025 N5 · claude · opus · Lauf 247-architekt-1 · 1,02 $ · Karte gesamt 1,02 $ |
+| 2026-11-21 | #249 | Detailplanung | ux-reviewer | befund | 4 min | Vorprüfung: Muss AK 1a schmal · claude · sonnet · Lauf 249-ux-reviewer-1 · 1,08 $ · Karte gesamt 3,04 $ |
+| 2026-11-21 | #247 | Detailplanung | planer | bestanden | 5 min | R00229, I0219, 2 Bubbles · claude · opus · Lauf 247-planer-1 · 1,79 $ · Karte gesamt 2,81 $ |
+| 2026-11-21 | #247 | Detailplanung | ux-reviewer | bestanden | 2 min | Zeiger Z = default · claude · sonnet · Lauf 247-ux-reviewer-1 · 0,75 $ · Karte gesamt 3,56 $ |
+| 2026-11-21 | #249 | Detailplanung | planer | bestanden | 3 min | Vorprüfung eingearbeitet · claude · opus · Lauf 249-planer-2 · 1,12 $ · Karte gesamt 4,16 $ |
+| 2026-11-21 | #247 | Detailplanung | planer | bestanden | 1 min | Z=default eingetragen · claude · opus · Lauf 247-planer-2 · 0,51 $ · Karte gesamt 4,07 $ |
+| 2026-11-21 | #249 | Detailplanung | ux-reviewer | bestanden | 1 min | Muss geschlossen · claude · sonnet · Lauf 249-ux-reviewer-2 · 0,37 $ · Karte gesamt 4,53 $ |
