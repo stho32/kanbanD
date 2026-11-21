@@ -414,6 +414,12 @@ pub struct Aufgabe {
     /// wörtlich wie in der Datei, in der Reihenfolge des Hinterlegens; auch ein unlesbarer Eintrag bleibt stehen
     #[serde(default)]
     pub commits: Vec<String>,
+    /// `transcripts` (R00216, ADR-0036 Regel 3): Transkripte der Agentenläufe in der Reihenfolge des Ablegens; in der
+    /// API als `transkripte: [{kennung, at, role, column, bytes}]` nur die lesbaren, ohne Zugriff auf `transkripte/`.
+    /// Ein formwidriger Eintrag bleibt wörtlich in der Datei und erscheint nur in `GET …/transkripte` (als `unlesbar`).
+    #[serde(default, rename = "transkripte", serialize_with = "nur_lesbare", deserialize_with = "nie_gelesen_liste")]
+    #[schema(value_type = Vec<super::Transkripteintrag>)]
+    pub transkripte: Vec<super::Transkriptzeile>,
     /// `estimate` (R00129): geschätzte Zeit in ganzen Minuten, ≥ 1 und ≤ 100.000; null/fehlend heißt „keine Schätzung“
     #[serde(rename = "estimate")]
     pub geschaetzte_minuten: Option<u32>,
@@ -455,6 +461,7 @@ impl Aufgabe {
             kosten: None,
             kosteneintraege: vec![],
             commits: vec![],
+            transkripte: vec![],
             geschaetzte_minuten: None,
             braucht: None,
             weitere: vec![],
@@ -518,6 +525,15 @@ fn braucht_schema() -> utoipa::openapi::schema::Array {
 }
 
 /// Ein nur lesbares Feld: was immer ankommt, wird überlesen.
+fn nur_lesbare<S: serde::Serializer>(zeilen: &[super::Transkriptzeile], s: S) -> Result<S::Ok, S::Error> {
+    s.collect_seq(zeilen.iter().filter_map(super::Transkriptzeile::lesbar))
+}
+
+/// `transkripte` im Rumpf einer Anfrage wird überlesen — geschrieben wird nur über `…/transkripte` (R00216).
+fn nie_gelesen_liste<'de, D: serde::Deserializer<'de>, T>(d: D) -> Result<Vec<T>, D::Error> {
+    serde::de::IgnoredAny::deserialize(d).map(|_| vec![])
+}
+
 fn nie_gelesen<'de, D: serde::Deserializer<'de>, T>(d: D) -> Result<Option<T>, D::Error> {
     serde::de::IgnoredAny::deserialize(d).map(|_| None)
 }

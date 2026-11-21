@@ -177,3 +177,42 @@ async fn ak14c_beleg_der_vorversion_wird_gelesen_und_beim_schreiben_zur_flusszei
     assert_eq!(s, 200, "{a}");
     assert_eq!(lies(tmp.path(), "aufgaben/0001-a1.md"), "---\nid: 1\ntitle: umbenannt\ntranscripts:\n  - {at: 2026-11-13 10:34+01:00, role: entwickler, column: Entwicklung, bytes: 55}\n---\n");
 }
+
+// B1098 · FA 7, AK 10 (formwidrig), AK 15: `GET /api/aufgaben/{nr}` und die Liste liefern die gespeicherten lesbaren
+// Einträge in der Reihenfolge der Datei, mit Kennung; ein formwidriger Eintrag macht die Aufgabe nicht defekt.
+#[tokio::test]
+async fn b1098_get_liefert_die_gespeicherten_eintraege() {
+    let tmp = tempfile::tempdir().unwrap();
+    fabrik(tmp.path(), &format!("transcripts:\n{EIN}{FORMWIDRIG}{ZWEI}"), "", "");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+
+    let erwartet = json!([
+        { "kennung": "entwickler@2026-11-13T10:34+01:00", "at": "2026-11-13 10:34+01:00", "role": "entwickler", "column": "Entwicklung", "bytes": 281234 },
+        { "kennung": "code-reviewer@2026-11-13T11:02+01:00", "at": "2026-11-13 11:02+01:00", "role": "code-reviewer", "column": "Entwicklung", "bytes": 1024 },
+    ]);
+    let (s, a) = holen(&lauf.adresse, "api/aufgaben/1").await;
+    assert_eq!((s, &a["transkripte"]), (200, &erwartet), "{a}");
+    let (s, liste) = holen(&lauf.adresse, "api/aufgaben").await;
+    assert_eq!(s, 200, "{liste}");
+    let eins = liste["aufgaben"].as_array().or(liste.as_array()).unwrap().iter().find(|a| a["nummer"] == 1).unwrap().clone();
+    assert_eq!(eins["transkripte"], erwartet);
+    let (s, z) = holen(&lauf.adresse, "api/zustand").await;
+    assert_eq!((s, &z["defekte"]), (200, &json!([])), "{z}");
+}
+
+// B1098 · AK 13d: Duplizieren nimmt `transcripts` nicht mit; die Quelle bleibt.
+#[tokio::test]
+async fn ak13d_duplizieren_nimmt_transcripts_nicht_mit() {
+    let tmp = tempfile::tempdir().unwrap();
+    let kopf = format!("transcripts:\n{EIN}");
+    fabrik(tmp.path(), &kopf, "", "");
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+
+    let (s, kopie) = senden(Method::POST, &lauf.adresse, "api/aufgaben/1/duplizieren", "st", json!({})).await;
+    assert_eq!(s, 201, "{kopie}");
+    let nr = kopie["nummer"].as_u64().unwrap();
+    assert_eq!(holen(&lauf.adresse, &format!("api/aufgaben/{nr}")).await.1["transkripte"], json!([]));
+    let text = std::fs::read_dir(tmp.path().join("aufgaben")).unwrap().map(|e| e.unwrap().path()).find(|p| p.file_name().unwrap().to_string_lossy().starts_with(&format!("{nr:04}-"))).map(|p| std::fs::read_to_string(p).unwrap()).unwrap();
+    assert!(!text.contains("transcripts"), "{text}");
+    assert_eq!(lies(tmp.path(), "aufgaben/0001-a1.md"), format!("---\nid: 1\ntitle: a1\n{kopf}---\n"), "die Quelle bleibt");
+}

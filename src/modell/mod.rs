@@ -11,6 +11,7 @@ mod commit_verweis;
 mod einstellungen;
 mod kosten;
 mod kosteneintrag;
+mod transkript;
 
 pub use anwendungen::{Anwendungen, Herkunftsschluessel, id_gueltig};
 pub(crate) use aufgabe::mitgeschickt;
@@ -23,6 +24,7 @@ pub use commit_verweis::{Ersetzungsfehler, HASH_MAX, HASH_MIN, HOECHSTZAHL_PAARE
 pub use braucht::{Abhaengigkeit, BRAUCHT_UEBER_LABELS, Deutung, FORM_MELDUNG, abhaengigkeiten, an_der_tuer, braucht_nummern, deuten as braucht_deuten, in_letzter_spalte, ist_erledigt, kreis_meldung, kreis_suchen, neue_braucht_labels, selbstbezug_meldung, unbekannt_meldung};
 pub use board::{Belegung, Berichtsfilter, Bestandseinstellung, Bewegfehler, Board, ColumnOwnerEintrag, Eigentuemer, Einstellung, Einstellungsaenderung, Einstellungsaenderungen, Entnahmesperre, FIEBER_AUFLOESUNGEN, FIEBER_PERZENTILE, Fieber, Grenzverletzung, Grenzverletzungen, Klassengeltung, Linie, Spalte, SpaltenAenderung, Spaltenbelegung, Spaltenfehler, Staerke, Termin, ist_datum, ist_hexfarbe, meint_human_wert, slug_gueltig, spaltenname_gueltig};
 pub use kosteneintrag::{Kosteneintrag, ROLLE_HOECHSTENS_ZEICHEN, Roheintrag};
+pub use transkript::{HOECHSTZAHL_TRANSKRIPTE, TRANSKRIPT_HOECHSTENS, Transkripteintrag, Transkriptzeile};
 pub use kosten::{Gesamt, HOECHSTWERT_CENT, HOECHSTZAHL_POSITIONEN, Kosten, Position, Rohkosten, Rohposition, Wert};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
 

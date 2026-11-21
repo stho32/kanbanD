@@ -1,7 +1,7 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Kosteneintrag, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Wirkung, Zeiteintrag, geschaetzte_minuten_pruefen, slug};
+use crate::modell::{Aktion, Aufgabe, Ausfuehrung, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Kosteneintrag, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Transkriptzeile, Wirkung, Zeiteintrag, geschaetzte_minuten_pruefen, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
@@ -23,6 +23,8 @@ pub const KOSTEN: &str = "cost";
 pub const KOSTENEINTRAEGE: &str = "cost-entries";
 /// Commit-Verweise der Aufgabe (R00202, ADR-0032 Punkt 1) — Blockliste hinter `cost-entries`
 pub const COMMITS: &str = "commits";
+/// Transkripte der Agentenläufe (R00216, ADR-0036 Regel 3) — Flusszeilen hinter `commits`
+pub const TRANSKRIPTE: &str = "transcripts";
 /// Geschätzte Zeit in ganzen Minuten (R00129, ADR-0023)
 pub const GESCHAETZT: &str = "estimate";
 /// Die Berichte, für die `reporting` einen Schlüssel kennt.
@@ -85,6 +87,10 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     let commits = m.get(COMMITS).and_then(commits_lesen);
     let commits_bekannt = commits.is_some();
     a.commits = commits.unwrap_or_default();
+    // wie `commits`: was keine Liste ist, bleibt als unbekannter Schlüssel wörtlich stehen (ADR-0036 Regel 3)
+    let transkripte = m.get(TRANSKRIPTE).and_then(transkripte_lesen);
+    let transkripte_bekannt = transkripte.is_some();
+    a.transkripte = transkripte.unwrap_or_default();
     if let Some(e) = m.get(GESCHAETZT) {
         a.geschaetzte_minuten = geschaetzte_minuten_pruefen(Some(e)).map_err(Formatfehler)?;
     }
@@ -92,7 +98,7 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
         a.reservierung = reservierung_lesen(r)?;
     }
     for (k, v) in &m {
-        if let Some(k) = k.as_str().filter(|k| !(BEKANNT.contains(k) || (commits_bekannt && *k == COMMITS))) {
+        if let Some(k) = k.as_str().filter(|k| !(BEKANNT.contains(k) || (commits_bekannt && *k == COMMITS) || (transkripte_bekannt && *k == TRANSKRIPTE))) {
             a.weitere.push((k.to_string(), v.clone()));
         }
     }
@@ -137,6 +143,30 @@ fn commits_lesen(v: &Value) -> Option<Vec<String>> {
         Value::Sequence(l) => l.iter().map(|e| e.as_str().map(String::from)).collect(),
         _ => None,
     }
+}
+
+/// `transcripts` als Liste von Zeilen; leer heißt keine. Ein formwidriger Eintrag bleibt als `Unlesbar` stehen — nie
+/// defekt (ADR-0036 Regel 3). `None`, wenn es keine Liste ist.
+fn transkripte_lesen(v: &Value) -> Option<Vec<Transkriptzeile>> {
+    match v {
+        Value::Null => Some(vec![]),
+        Value::Sequence(l) => Some(l.iter().map(Transkriptzeile::lesen).collect()),
+        _ => None,
+    }
+}
+
+/// `  - {at: 2026-11-13 10:34+01:00, role: entwickler, column: Entwicklung, bytes: 281234}` — feste Schlüsselfolge, dann
+/// Unbekanntes; eine unlesbare Zeile wörtlich in Flussform.
+fn transkript_schreiben(z: &Transkriptzeile) -> String {
+    let zeile = match z {
+        Transkriptzeile::Lesbar(e) => {
+            let mut teile = vec![format!("at: {}", e.zeitpunkt), format!("role: {}", yaml::skalar(&e.rolle)), format!("column: {}", yaml::skalar(&e.spalte)), format!("bytes: {}", e.bytes)];
+            teile.extend(e.weitere.iter().map(|(k, v)| format!("{}: {}", yaml::skalar(k), yaml::wert(v))));
+            format!("{{{}}}", teile.join(", "))
+        }
+        Transkriptzeile::Unlesbar(v) => yaml::wert(v),
+    };
+    format!("  - {zeile}\n")
 }
 
 /// Ein Eintrag von `commits` in der Schreibweise von serde_yaml — so schreibt ihn auch die Vorversion, die `commits` als
@@ -516,6 +546,9 @@ pub fn schreiben(a: &Aufgabe) -> String {
     }
     if !a.commits.is_empty() {
         s.push_str(&format!("{COMMITS}:\n{}", a.commits.iter().map(|c| format!("  - {}\n", commit_eintrag(c))).collect::<String>()));
+    }
+    if !a.transkripte.is_empty() {
+        s.push_str(&format!("{TRANSKRIPTE}:\n{}", a.transkripte.iter().map(transkript_schreiben).collect::<String>()));
     }
     if let Some(d) = &a.archiviert {
         s.push_str(&format!("archived: {}\n", yaml::skalar(d)));

@@ -79,11 +79,7 @@ impl Kosteneintrag {
         let fehlt = |feld: &str| format!("{pfad}: {feld} fehlt");
         let zeitpunkt = roh.zeitpunkt.ok_or_else(|| fehlt("at"))?;
         let zeitpunkt = crate::uhr::Zeitpunkt::lesen(&zeitpunkt).ok_or_else(|| format!("{pfad}.at: Zeitpunkt JJJJ-MM-TT HH:MM±HH:MM erwartet"))?.datei();
-        let rolle = roh.rolle.ok_or_else(|| fehlt("role"))?.trim().to_string();
-        let zeichen = rolle.chars().count();
-        if zeichen == 0 || zeichen > ROLLE_HOECHSTENS_ZEICHEN || rolle.contains('@') || rolle.chars().any(char::is_control) {
-            return Err(format!("{pfad}.role: einzeiliger Text mit 1 bis {ROLLE_HOECHSTENS_ZEICHEN} Zeichen ohne @ erwartet"));
-        }
+        let rolle = rolle_pruefen(pfad, &roh.rolle.ok_or_else(|| fehlt("role"))?)?;
         let spalte = roh.spalte.ok_or_else(|| fehlt("column"))?;
         if spalte.trim().is_empty() {
             return Err(format!("{pfad}.column: leer"));
@@ -99,9 +95,26 @@ impl Kosteneintrag {
     /// Kennung `role@JJJJ-MM-TTTHH:MM±HH:MM` (ADR-0028 Punkt 4), gerechnet wie bei Zeiteinträgen: ein Zeitpunkt ohne
     /// Versatz bekommt den seiner Ortszeit-Deutung.
     pub fn kennung(&self) -> String {
-        let zeitpunkt = crate::uhr::Zeitpunkt::lesen(&self.zeitpunkt).map(|z| z.iso()).unwrap_or_else(|| self.zeitpunkt.clone());
-        format!("{}@{zeitpunkt}", self.rolle)
+        kennung(&self.rolle, &self.zeitpunkt)
     }
+}
+
+/// Die Rolle eines Laufs (ADR-0028 Punkt 2), getrimmt: einzeiliger Text mit 1 bis 60 Zeichen ohne `@` — für
+/// Kosteneinträge und Transkripte (ADR-0036 Regel 3) dieselbe Regel.
+pub(crate) fn rolle_pruefen(pfad: &str, rolle: &str) -> Result<String, String> {
+    let rolle = rolle.trim().to_string();
+    let zeichen = rolle.chars().count();
+    if zeichen == 0 || zeichen > ROLLE_HOECHSTENS_ZEICHEN || rolle.contains('@') || rolle.chars().any(char::is_control) {
+        return Err(format!("{pfad}.role: einzeiliger Text mit 1 bis {ROLLE_HOECHSTENS_ZEICHEN} Zeichen ohne @ erwartet"));
+    }
+    Ok(rolle)
+}
+
+/// Kennung `role@JJJJ-MM-TTTHH:MM±HH:MM` eines Laufs (ADR-0028 Punkt 4, ADR-0036 Regel 3) aus Rolle und Zeitpunkt in
+/// Dateiform: ein Zeitpunkt ohne Versatz bekommt den seiner Ortszeit-Deutung.
+pub(crate) fn kennung(rolle: &str, zeitpunkt: &str) -> String {
+    let zeitpunkt = crate::uhr::Zeitpunkt::lesen(zeitpunkt).map(|z| z.iso()).unwrap_or_else(|| zeitpunkt.to_string());
+    format!("{rolle}@{zeitpunkt}")
 }
 
 /// Für `GET`: die Schlüssel der Datei, der Betrag als JSON-Zahl in Dollar, dazu die berechnete `kennung`;
