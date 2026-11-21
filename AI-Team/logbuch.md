@@ -1718,3 +1718,25 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Neue Karte:** #249 Einrichten: Feld „Repository“ zu schmal, erster Start scrollt quer. Das ist Bestand.
 - **Produktfrage offen:** Die Überschrift „Prüfungen“ der Hinweisleiste zeigt nur noch Hinweise zu unbekannten Eigentümern.
 - **Wackler:** `transkripte_api::ak03_wirksamer_schalter` im zweiten Gate, allein 3 von 3 grün (#246).
+| 2026-11-21 | #227 | Entwicklung | entwickler | bestanden | 1 h 24 min | B1159–B1166, AK 1–16; Gate grün bis Wackler r00127:356 (#240, 20/20 allein) · claude · Lauf 227-entwickler-1 · 30,04 $ · Karte gesamt 38,38 $ |
+| 2026-11-21 | #227 | Auto-Reviews | architektur-reviewer | bestanden | 3 min | 0 Muss, 0 Sollte; Drift für architekt · claude · sonnet · Lauf 227-architektur-reviewer-1 · 0,54 $ · Karte gesamt 38,92 $ |
+| 2026-11-21 | #227 | Auto-Reviews | code-reviewer | bestanden | 3 min | kein Muss, 6 Härtungen · claude · sonnet · Lauf 227-code-reviewer-1 · 1,00 $ · Karte gesamt 39,92 $ |
+| 2026-11-21 | #227 | Auto-Reviews | legacy-reviewer | bestanden | 10 min | 5 Board-Kopien + 2 Szenarien alt gegen neu, kein Muss · claude · sonnet · Lauf 227-legacy-reviewer-1 · 1,18 $ · Karte gesamt 41,10 $ |
+| 2026-11-21 | #227 | Auto-Reviews | ux-reviewer | bestanden | 22 min | kein Befund, Wortlaute Z. 502/504 wörtlich · claude · sonnet · Lauf 227-ux-reviewer-2 · 0,66 $ · Karte gesamt 41,76 $ |
+| 2026-11-21 | #227 | Entwicklertest | entwicklertester | befund | 13 min | US-1: Fever-Cache-Commit beim Ansehen (Bestand); Rest bestanden · claude · sonnet · Lauf 227-entwicklertester-1 · 1,42 $ · Karte gesamt 43,18 $ |
+| 2026-11-21 | #227 | Entwicklertest | product-owner | bestanden | 1 min | Z. 505: US-1 nimmt Fieber-Cache aus (fc25e953) · claude · opus · Lauf 227-product-owner-3 · 0,40 $ · Karte gesamt 43,58 $ |
+| 2026-11-21 | #227 | Detailplanung | planer | bestanden | 0 min | US-1 nach PO Z. 505 (73b5ca7e) · claude · opus · Lauf 227-planer-3 · 0,18 $ · Karte gesamt 43,76 $ |
+
+**Retrospektive #227** (Phasen werden gewöhnliche Spalten, Scheibe S3 von ADR-0034, R00223; 2026-11-21; Gate grün auf fc753084, ausgeliefert. Karte gesamt rund 44 $.)
+- **Gut:**
+  - **architekt:** Er fand vor dem Bau zwei Dinge, die ADR-0034 falsch oder gar nicht beschrieb: Bei JoinPuya liegen zwei Spalten auf einer Phase, und die gespeicherte Fieber-Wahl „Entwicklung“ hätte still ihre Bedeutung gewechselt. Beides steht jetzt in N4; die Wahl wird als Datenpflege umgestellt (PO Z. 501).
+  - **Lehren aus #224 im Auftrag:** Gelöschte Tests wurden einzeln geprüft, und die Messungen am DOM laufen in `expect.poll`. Kein Review fand ein Muss, das Gate auf main war im ersten Lauf ganz grün.
+  - **Belege:** Der architektur-reviewer belegte mit strace, dass das alte Programm noch `kd-phasen.md` öffnete und das neue nichts mehr im Arbeits-Repository liest. Der legacy-reviewer verglich die Berichte auf 7 Boards: Der Abschlussblock ist bytegleich.
+- **Lehre (Story gegen Bestand):** US-1 verlangte „kein Commit beim Ansehen“. Der Fever Chart committet aber beim ersten Öffnen seinen Cache (R00078). Der Entwicklertest fand das, der PO schränkte die Zeile ein (Z. 505). Ein Kriterium der Form „Ansehen schreibt nichts“ wird vor dem Bau gegen alle Berichte geprüft.
+- **Offen, Datenpflege JoinPuya (PO Z. 501):** Die Instanz von JoinPuya (Port 57943) läuft noch mit dem alten Programm von vor #224 und liefert Phasen. „Erledigt heißt: Entwicklung“ wird erst nach ihrem Neustart auf „Reviews“ umgestellt. Dasselbe gilt für die Instanzen von localchatA und goaltreetoolA.
+- **Offen für den architekt:** A00002–A00010, X00001, X00004, ADR-0027 (Regel 4, N5).
+- **Offen für den gestalter:** D0001–D0003 (PO Z. 503/504).
+- **Härtung, nicht gebaut:**
+  - `entfaellt: () => false` in `berichte.js` ist tot.
+  - OpenAPI `Board.anwendungen` sagt noch „reines Kanban“.
+  - „Spalten einrichten“ behält beim Wechsel des Boards den Entwurf.
