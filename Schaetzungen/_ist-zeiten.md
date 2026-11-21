@@ -957,3 +957,11 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #231 R00215 (Wackler unter Last) | B1093 R00209 AK 9 belegt, Fehler der Seite behoben | Standard | 1-2h | 0,9h | 0,9h | autonom |
 | 2026-11-21 | Karte #231 R00215 (Wackler unter Last) | B1094 Gate, 5× langsames Git (Tagprobe AK 10 offen) | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #231 R00215 (Wackler unter Last) | B1096 Nacharbeit S1 Ansichtswechsel beim Speichern, A3/A4/A2/A7 | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1097 Probe am heutigen Stand, Altbestand, Beleg der Vorversion | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1098 transcripts in Datei und Aufgabe | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1099 Schalter record-transcripts, wirksamer Wert | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1100 Dateiname und Pfad an einer Stelle | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1101 Hochladen mit Reihenfolge der Prüfungen | Standard | 2-4h | 0,5h | 0,5h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1102 Liste und Herunterladen im Antwortbudget | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1103 Löschen und Lebenszyklus | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #208 R00216 | B1104 Beschreibung, Probe im echten Programm, Vorversion, Mutanten, Gate | Standard | 1-2h | 0,8h | 0,8h | autonom |
