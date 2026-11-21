@@ -88,6 +88,12 @@ async function halten(page, muster) {
   return { frei: (i, wert) => tore[i](wert), angehalten: () => tore.length };
 }
 
+/** Nimmt die festen Antworten eines Falls weg; eine eingesetzte Mutante (KD_MUTANTE) bleibt. */
+async function routenZuruecksetzen(page) {
+  await page.unrouteAll();
+  await mutanteEinsetzen(page);
+}
+
 /** Feste Antwort `status` mit `body` für passende Anfragen. */
 const fest = (page, muster, status, body) => page.route(muster, route => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) }));
 const fehlt404 = (grund, zustand = 'repository_fehlt') => ({ fehler: 'Repository nicht erreichbar', zustand, ...(grund == null ? {} : { grund }) });
@@ -225,11 +231,13 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
     await expect.poll(() => z.offen).toBe(0);
     await expect(page.locator('.rv-laedt')).toHaveText('Liest die Änderungen der Aufgabe …');
     liste.frei(0);
+    await expect.poll(() => z.diff.length).toBe(1 + reihe.length);
+    await expect.poll(() => z.offen).toBe(0);
+    expect(z.hoechstens, 'gleichzeitig offene …/diff').toBe(1);
+    expect(z.diff).toEqual(['', ...reihe.map(kz => `?anwendung=${kz}`)]);
     await expect(page.locator('section.rv-abs')).toHaveCount(3);
     await expect(abschnitt(page, 'Anwendung wb').locator('.rv-satz')).toBeVisible();
     await expect(page.locator('section.rv-abs[aria-busy]')).toHaveCount(0);
-    expect(z.diff).toEqual(['', ...reihe.map(kz => `?anwendung=${kz}`)]);
-    expect(z.hoechstens).toBe(1);
     const vorher = z.diff.length;
     await abschnitt(page, 'Anwendung wb').getByRole('button', { name: 'Erneut versuchen' }).click();
     await expect(abschnitt(page, 'Anwendung wb').locator('.rv-satz')).toBeVisible();
@@ -324,7 +332,7 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
 
   test('AK 8: feste 404 unlesbar — „Der Eintrag an der Aufgabe ist nicht lesbar.“ mit „Kurz-Hash mehrdeutig“, ohne grund ohne Hinweiszeile', async ({ page }) => {
     for (const grund of ['Kurz-Hash mehrdeutig', null]) {
-      await page.unrouteAll();
+      await routenZuruecksetzen(page);
       await page.goto('about:blank');
       await fest(page, url => istDiff(url, 11) && url.searchParams.has('commit'), 404, fehlt404(grund, 'unlesbar'));
       await page.goto(reviewAdresse(k, 11, `kd:${rep.k1}`));
@@ -345,7 +353,7 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
     await expect(meldung.locator('h2')).toHaveText(`Zu diesem Verweis gibt es keinen Diff: ${kurz(rep.k1, 'kd')} — x.`);
     await expect(meldung.locator('svg')).toHaveCount(0);
     await expect(meldung).not.toHaveClass(/\b(fehl|warn)\b/);
-    await page.unrouteAll();
+    await routenZuruecksetzen(page);
     await page.goto('about:blank');
     await page.goto(reviewAdresse(k, 11, `kd:${rep.a0}`));
     await expect(meldung.locator('h2')).toHaveText(new RegExp(`^Zu diesem Verweis gibt es keinen Diff: ${kurz(rep.a0, 'kd')} — .+\\.$`));
@@ -357,7 +365,7 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
 
   /** #24 mit fester Liste (ein Eintrag ohne Kürzel, `zustand`) und fester 404 an jeder Anfrage `…/diff`. */
   async function standardFest(page, zustand, grund) {
-    await page.unrouteAll();
+    await routenZuruecksetzen(page);
     await page.goto('about:blank');
     await fest(page, url => istListe(url, 24), 200, { commits: [{ verweis: rep.f, anwendung: '', hash: rep.f, zustand, ...(grund == null ? {} : { grund }) }] });
     await fest(page, url => istDiff(url, 24), 404, fehlt404(grund, zustand));
