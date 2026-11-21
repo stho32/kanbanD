@@ -658,7 +658,7 @@ async fn ak13_legacy_probe_joinpuya_kopie() {
         assert_eq!(z["defekte"], json!([]), "{log}: {}", z["defekte"]);
         let alle = lesen(lauf.adresse(), "api/aufgaben").await;
         let mut je_verweis = std::collections::BTreeMap::new();
-        for nr in alle.as_array().unwrap().iter().filter(|a| a["commits"].as_array().is_some_and(|c| !c.is_empty())).filter_map(|a| a["nummer"].as_u64()) {
+        for nr in alle["aufgaben"].as_array().unwrap().iter().filter(|a| a["commits"].as_array().is_some_and(|c| !c.is_empty())).filter_map(|a| a["nummer"].as_u64()) {
             let l = lesen(lauf.adresse(), &format!("api/aufgaben/{nr}/commits")).await;
             for e in l["commits"].as_array().unwrap() {
                 je_verweis.insert(format!("#{nr} {}", e["verweis"]), e["zustand"].clone());
