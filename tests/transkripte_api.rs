@@ -482,6 +482,11 @@ async fn ak09cd_lesen_ueber_einen_symlink() {
         let (s, e) = holen(o.adresse(), &format!("api/aufgaben/1/transkripte/{}", K.replace('+', "%2B"))).await;
         assert_eq!((s, &e["zustand"]), (404, &json!("unlesbar")), "{ebene}: {e}");
         assert_eq!(umgebung(&o).into_iter().filter(|(p, _)| p.starts_with("aussen")).collect::<Vec<_>>(), vorher, "{ebene}: außen unverändert");
+        // B1103: ist der Pfad ein Symlink, entfernt DELETE nur den Eintrag — der Symlink bleibt, außen bleibt
+        let (s, e) = gemeinsam::senden(reqwest::Method::DELETE, o.adresse(), &format!("api/aufgaben/1/transkripte/{}", K.replace('+', "%2B")), "sh", json!({})).await;
+        assert_eq!(s, 200, "{ebene}: {e}");
+        assert!(std::fs::symlink_metadata(o.pfad.join(ebene)).is_ok_and(|m| m.file_type().is_symlink()), "{ebene}: der Symlink bleibt");
+        assert_eq!(umgebung(&o).into_iter().filter(|(p, _)| p.starts_with("aussen")).collect::<Vec<_>>(), vorher, "{ebene}: außen unverändert nach DELETE");
     }
 }
 
