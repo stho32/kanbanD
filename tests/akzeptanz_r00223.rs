@@ -545,14 +545,16 @@ async fn ak08_durchlaeufe_mit_phase_wie_vor_der_karte() {
 // ---- AK 16: Legacy-Probe gegen eine Kopie des JoinPuya-Ordners (von Hand, B1166) --------------------------------------
 
 /// `R00223_KOPIE` = Kopie des JoinPuya-Board-Ordners (mit `.git`) in der eigenen Ablage, `R00223_ALT` = Programm vor der
-/// Karte, `R00223_ABLAGE` = Ordner für die Bewegungen beider Läufe (für den Node-Teil von AK 16, Fieber-Tage). Erst das alte,
+/// Karte, `R00223_ABLAGE` = Ordner für Bewegungen und Aufgaben beider Läufe (für den Node-Teil von AK 16, Fieber-Tage),
+/// `R00223_WER` = Kürzel eines Menschen im Ordner. Erst das alte,
 /// dann dieses Programm auf je einer frischen Kopie: kein Commit beim Start und Lesen, keine defekte Datei, kein Log-Rest,
 /// gleiche Zustände der Commit-Verweise; danach `PATCH titel` an einer Aufgabe mit `phases` und eine Bewegung.
 #[tokio::test]
-#[ignore = "Legacy-Probe von Hand: R00223_KOPIE, R00223_ALT, R00223_ABLAGE"]
+#[ignore = "Legacy-Probe von Hand: R00223_KOPIE, R00223_ALT, R00223_ABLAGE, R00223_WER"]
 async fn ak16_legacy_probe_joinpuya_kopie() {
     let var = |n: &str| PathBuf::from(std::env::var(n).unwrap_or_else(|_| panic!("{n} fehlt")));
     let (kopie, alt, ablage) = (var("R00223_KOPIE"), var("R00223_ALT"), var("R00223_ABLAGE"));
+    let wer = std::env::var("R00223_WER").expect("R00223_WER fehlt (Kürzel eines Menschen im Ordner)");
     let mut zustaende = vec![];
     for (lauf_name, programm) in [("alt", alt.as_path()), ("neu", Path::new(env!("CARGO_BIN_EXE_kanbanD")))] {
         let ordner = ablage.join(format!("jopu-{lauf_name}"));
@@ -568,6 +570,7 @@ async fn ak16_legacy_probe_joinpuya_kopie() {
         }
         let bew = lesen(a, "api/berichte/bewegungen?board=joinpuya").await;
         std::fs::write(ablage.join(format!("bewegungen-{lauf_name}.json")), bew.to_string()).unwrap();
+        std::fs::write(ablage.join(format!("aufgaben-{lauf_name}.json")), lesen(a, "api/aufgaben").await.to_string()).unwrap();
         assert_eq!(zaehlen(), vorher, "{lauf_name}: kein Commit beim Start und Lesen");
         assert_eq!(lesen(a, "api/zustand").await["defekte"], json!([]), "{lauf_name}: keine defekte Datei");
         assert_eq!(lies(&ordner, "berichte/joinpuya-fieber.md"), fieber_vorher, "{lauf_name}: Fieber-Cache unverändert");
@@ -588,7 +591,7 @@ async fn ak16_legacy_probe_joinpuya_kopie() {
             let datei = mit_phases.lines().next().expect("eine Aufgabe mit phases");
             let nr: u32 = datei.trim_start_matches("aufgaben/").split('-').next().unwrap().parse().unwrap();
             let erwartet = phases_in(&lies(&ordner, datei));
-            let (s, v) = senden(reqwest::Method::PATCH, a, &format!("api/aufgaben/{nr}"), json!({"titel": format!("Probe {nr}")})).await;
+            let (s, v) = gemeinsam::senden(reqwest::Method::PATCH, a, &format!("api/aufgaben/{nr}"), &wer, json!({"titel": format!("Probe {nr}")})).await;
             assert_eq!(s, 200, "{v}");
             assert_eq!(phases_in(&lies(&ordner, datei)), erwartet, "phases inhaltlich gleich");
             let b = lesen(a, "api/boards/joinpuya").await;
@@ -596,10 +599,13 @@ async fn ak16_legacy_probe_joinpuya_kopie() {
             let (von, nach) = (spalten.iter().position(|s| !s["aufgaben"].as_array().unwrap().is_empty()).unwrap(), 0usize);
             let nummer = spalten[von]["aufgaben"][0].as_u64().unwrap();
             let ziel = spalten[if von == nach { 1 } else { nach }]["name"].as_str().unwrap();
-            let (s, v) = senden(reqwest::Method::POST, a, "api/boards/joinpuya/bewegen", json!({"nummer": nummer, "spalte": ziel})).await;
+            let (s, v) = gemeinsam::senden(reqwest::Method::POST, a, "api/boards/joinpuya/bewegen", &wer, json!({"nummer": nummer, "spalte": ziel})).await;
             assert_eq!(s, 200, "{v}");
             assert!(!git(&ordner, &["show", "HEAD:boards/joinpuya.md"]).contains("column-phases"), "column-phases fehlt im Commit der Bewegung");
         }
     }
+    // leer wäre die Probe wahr, ohne etwas zu vergleichen (Lehre aus R00222 B1158): die Kopie trägt dafür Verweise
+    assert!(!zustaende[0].is_empty(), "die Kopie trägt mindestens einen Commit-Verweis");
+    eprintln!("Zustände der Verweise: {:?}", zustaende[1]);
     assert_eq!(zustaende[0], zustaende[1], "zustand jedes Verweises in beiden Läufen gleich");
 }

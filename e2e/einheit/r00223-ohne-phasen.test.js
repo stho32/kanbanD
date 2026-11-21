@@ -85,13 +85,15 @@ test('AK 9: fieberSchluessel ergibt ohne Wahl und mit Wahl „Reviews“ dieselb
 });
 
 /* ── AK 16: Fieber-Tage JoinPuya vor und nach der Karte (Legacy-Probe von Hand, B1166) ── */
-/** R00223_JOPU = Ordner mit `bewegungen-alt.json` (Programm vor der Karte) und `bewegungen-neu.json` (dieses Programm) aus
-    tests/akzeptanz_r00223.rs `ak16_…`, dazu `fieber-alt.json`: die Fieber-Tage, mit dem web/berichte.js vor der Karte gerechnet. */
+/** R00223_JOPU = Ordner mit `bewegungen-neu.json` und `aufgaben-neu.json` (dieses Programm) aus tests/akzeptanz_r00223.rs
+    `ak16_…`, dazu `fieber-alt.json`: die Fieber-Tage aus `bewegungen-alt.json` und `aufgaben-alt.json`, mit dem
+    web/berichte.js vor der Karte gerechnet (wie die Oberfläche damals: mit `bew.phasen`). */
 const JOPU = process.env.R00223_JOPU;
 test('AK 16: fieberTag ohne Wahl an 2026-11-10, -15, -20 gleich wie mit dem Programm vor der Karte', { skip: !JOPU && 'R00223_JOPU fehlt (Legacy-Probe von Hand)' }, () => {
   const lies = n => JSON.parse(fs.readFileSync(path.join(JOPU, n), 'utf8'));
-  const bew = lies('bewegungen-neu.json'), vorher = lies('fieber-alt.json');
-  const nachher = vorher.map(t => B.fieberTag(bew, filter({}), mitDatei, t.datum, t.start, null));
+  const bew = lies('bewegungen-neu.json'), aufgaben = lies('aufgaben-neu.json').aufgaben, vorher = lies('fieber-alt.json');
+  const zu = nr => aufgaben.find(a => a.nummer === nr);
+  const nachher = vorher.map(t => B.fieberTag(bew, filter({}), zu, t.datum, t.start, null));
   assert.deepStrictEqual(nachher.map(t => [t.datum, t.erledigt, t.umfang, t.ende7, t.ende5]), vorher.map(t => [t.datum, t.erledigt, t.umfang, t.ende7, t.ende5]));
 });
 
