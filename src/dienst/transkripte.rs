@@ -18,6 +18,23 @@ use std::path::{Path, PathBuf};
 /// Inhalt von `transkripte/.gitignore`: der Ordner ignoriert sich selbst, die `.gitignore` des Menschen bleibt unberührt.
 const GITIGNORE: &str = "*\n";
 
+#[cfg(test)]
+thread_local! {
+    /// Haken zwischen Prüfen und Handeln (Lehre „Prüfen-dann-Handeln“): ein Test legt je Stelle eine Handlung ab, die
+    /// genau dort einmal läuft — deterministisch statt mit Threads, die die Lücke nur zufällig treffen.
+    static HAKEN: std::cell::RefCell<std::collections::HashMap<&'static str, Box<dyn FnOnce()>>> = std::cell::RefCell::default();
+}
+
+#[cfg(test)]
+fn haken(stelle: &'static str) {
+    if let Some(handlung) = HAKEN.with(|h| h.borrow_mut().remove(stelle)) {
+        handlung();
+    }
+}
+
+#[cfg(not(test))]
+fn haken(_: &'static str) {}
+
 /// Körpergrenze der Route `POST …/transkripte` (ADR-0036 Regel 5): die größte Datei und 64 KB für Felder und Rahmen.
 pub const KOERPERGRENZE: usize = TRANSKRIPT_HOECHSTENS as usize + 64 * 1024;
 /// Steht in jeder Meldung zu den Feldern vorn, z. B. `transkript.role: …`.
@@ -95,6 +112,7 @@ impl Empfang {
         let ordner_da = self.wurzel.join(ORDNER).join(format!("{:04}", self.nr)).exists();
         let ordner = ordner_anlegen(&self.wurzel, self.nr).map_err(|f| Fehler::Intern(f.meldung().to_string()))?;
         self.angelegt = Angelegt { oben: !oben_da, ordner: !ordner_da };
+        haken("empfang: Ordner da, Zwischendatei noch nicht");
         let pfad = ordner.join(format!("{}.kanbanD-tmp", zwischenname()));
         let datei = std::fs::OpenOptions::new().write(true).create_new(true).open(&pfad)?;
         self.zwischen = Some(pfad);
@@ -248,7 +266,7 @@ fn zustand(wurzel: &Path, nr: u32, z: &Transkriptzeile) -> Transkriptzustand {
         return Transkriptzustand::Abweichend;
     }
     let mut kopf = [0u8; 3];
-    match std::fs::File::open(&pfad).and_then(|mut f| f.read_exact(&mut kopf)) {
+    match lesend_oeffnen(&pfad).and_then(|mut f| f.read_exact(&mut kopf)) {
         Ok(()) if kopf == GZIP_KENNBYTES => Transkriptzustand::Vorhanden,
         _ => Transkriptzustand::Unlesbar,
     }
@@ -285,7 +303,7 @@ impl Kanban {
         let platz = self.antwortbudget.platz(e.bytes as usize).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Transkript in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
         let pfad = datei(wurzel, nr, e).map_err(|_| nicht_lieferbar(nr, kennung, Transkriptzustand::Unlesbar))?;
         let mut bytes = Vec::with_capacity(e.bytes as usize);
-        std::fs::File::open(&pfad)?.take(e.bytes).read_to_end(&mut bytes)?;
+        lesend_oeffnen(&pfad)?.take(e.bytes).read_to_end(&mut bytes)?;
         #[cfg(test)]
         GELESEN.with(|g| g.set(g.get() + bytes.len() as u64));
         if bytes.len() as u64 != e.bytes {
@@ -308,6 +326,7 @@ impl Kanban {
             Ok(Some(nachricht))
         })?;
         let e = weg.expect("nach dem Commit gesetzt");
+        haken("löschen: Eintrag committet, Datei noch da");
         if let Ok(pfad) = datei(self.ordner().wurzel(), nr, &e) {
             let _ = std::fs::remove_file(pfad);
         }
@@ -324,6 +343,12 @@ pub(crate) fn ordner_raeumen(wurzel: &Path, nr: u32) -> Result<(), String> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(e) => Err(format!("{ORDNER}/{nr:04}/ ließ sich nicht entfernen: {e}")),
     }
+}
+
+/// Öffnet die Datei eines Eintrags zum Lesen.
+fn lesend_oeffnen(pfad: &Path) -> std::io::Result<std::fs::File> {
+    haken("lesen: geprüft, noch nicht geöffnet");
+    std::fs::File::open(pfad)
 }
 
 fn nicht_lieferbar(nr: u32, kennung: &str, zustand: Transkriptzustand) -> Fehler {
