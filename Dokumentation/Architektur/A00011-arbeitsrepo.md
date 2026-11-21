@@ -28,6 +28,7 @@ Das Arbeits-Repository (lesend) startet Git in den Arbeits-Repositories des Regi
   - Zweige: `fingerabdruck`, `fingerabdruck_probe`, `erreichbar` (Z5: ein Lauf `rev-list --parents`, Erreichbarkeit im Speicher, ADR-0032 N3.4)
   - Diff: `diff_tree` (ein Commit gegen seinen ersten Elternteil oder zwei Bäume; Liste, Zähler, Patch), `diff_tree_viele` (`diff-tree --stdin` über viele Commits, Zeilen `<commit> <erster Elternteil>`; Namenslauf und Folge-Läufe, N6.2/N7.1)
   - Gesamt-Diff: `koepfe` (`merge-base --independent`), `linie` (`rev-list --first-parent --parents --max-count`)
+  - Soll nach ADR-0038 (#220): Nachfolgersuche — Fenster der Zweig-Commits ab dem Autordatum (`rev-list --since --max-count`), `patch-id --stable` über `stdin`
   - Startort: `git` (ganz oder Fehler, Zeilengrenze), `git_teil` (Bytegrenze, Teil nur für `diff-tree`, Eingabe auf `stdin`), `laufen`; Zähler `aufrufe()` für Proben
 - ausgehend: Kindprozess `git -C <wurzel> -c core.fsmonitor=false -c core.hooksPath=/dev/null [Schalter des Befehls] <befehl> … --end-of-options <revisionen> -- [pfade]`, Argumentliste ohne Shell, Umgebung ohne System- und Benutzerkonfiguration, mit `GIT_OPTIONAL_LOCKS=0`, `GIT_NO_REPLACE_OBJECTS=1`; Befehl nur aus der abschließenden Liste `Befehl` mit sieben Einträgen: `rev-parse`, `cat-file`, `log`, `for-each-ref`, `rev-list`, `diff-tree`, `merge-base` (nur `--independent`)
 
@@ -46,6 +47,7 @@ Das Arbeits-Repository (lesend) startet Git in den Arbeits-Repositories des Regi
 - [ADR-0032 Nachtrag N6](../ADRs/0032-commit-verweise-an-der-karte-diff-live-und-nur-lesend.md#nachtrag-2026-11-20-n6-gesamt-diff-der-karte--basis-spanne-klassifikation-je-datei-merges-antwortform-mit-folge-einträgen-und-summen-grenzen-prozesszahl-datei-formatpatch-etag-karte-214-scheibe-a4) — gebaut (#214, A4): neuer Befehl `merge-base` (nur `--independent`, ohne Schalter, kein Teil); `git_teil` mit Eingabe auf `stdin` für `diff-tree --stdin` (Namenslauf `--raw -z --no-renames`, Folge-Läufe), Zeilen `<commit> <erster Elternteil>`; Gesamt-Diff höchstens 15 Git-Prozesse je Anwendung, unabhängig von der Zahl der Commits
 
 - [ADR-0032 Nachtrag N7](../ADRs/0032-commit-verweise-an-der-karte-diff-live-und-nur-lesend.md#nachtrag-2026-11-20-n7-gruppen-über-umbenennungen-der-karte-abgeschlossene-pfadangaben-namen-über-4-mb-gehärteter-startort-etag-über-alle-verweise-karte-214-nacharbeit-1) — gebaut (#214, Nacharbeit 1): Namenslauf mit `-M50% -l1000`; `--` immer hinter den Revisionen (`git_teil`, `metadaten`, `linie`); `GIT_NO_REPLACE_OBJECTS=1`
+- [ADR-0038: Nachfolger eines verwaisten Commits über `patch-id` mit Vorfilter](../ADRs/0038-nachfolger-eines-verwaisten-commits-ueber-patch-id-mit-vorfilter.md) — Soll, Vorgeschlagen bis zur Sondierung (#220, A5): achter Befehl `patch-id` (nur `--stable`, Eingabe nur über `stdin`, kein Teil, keine Schalter); die Suche läuft über bestehende Funktionen (`rev-list`-Fenster, `diff_tree_viele` mit `--raw` als Vorfilter und mit `-p`), alle Prozesse nacheinander in einem Platz der Lesegrenze, keine Röhre zwischen zwei Git-Prozessen
 
 ## Offene Fragen
 
