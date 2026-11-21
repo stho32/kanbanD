@@ -1457,3 +1457,22 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #208 | Architektur | architekt | bestanden | 7 min | ADR-0036 Transkripte · claude · opus · Lauf 208-architekt-1 · 2,56 $ · Karte gesamt 2,56 $ |
 | 2026-11-21 | #208 | Detailplanung | planer | bestanden | 7 min | I0206 B1097–B1104, R00216 · claude · opus · Lauf 208-planer-1 · 2,68 $ · Karte gesamt 5,24 $ |
 | 2026-11-21 | #208 | Entwicklung | product-owner | bestanden | 2 min | keine Plattengrenze; #231 Fix in der Karte bestätigt · claude · opus · Lauf 208-product-owner-1 · 1,07 $ · Karte gesamt 6,31 $ |
+| 2026-11-21 | #228 | Auto-Reviews | security-reviewer | bestanden | 19 min | Muss 1 geschlossen; Nebenbefund PATCH mehrere n² → neue Karte · claude · sonnet · Lauf 228-security-reviewer-2 · 0,65 $ · Karte gesamt 28,35 $ |
+| 2026-11-21 | #228 | Auto-Reviews | architektur-reviewer | bestanden | 1 min | Muss behoben; Sollte A00004/A00006 nachführen · claude · sonnet · Lauf 228-architektur-reviewer-2 · 0,18 $ · Karte gesamt 28,53 $ |
+| 2026-11-21 | #228 | Entwicklertest | entwicklertester | bestanden | 5 min | US-1..US-5 bestanden, kein Befund · claude · sonnet · Lauf 228-entwicklertester-1 · 0,44 $ · Karte gesamt 28,97 $ |
+| 2026-11-21 | #231 | Nacharbeit | entwickler | bestanden | 25 min | Nacharbeit 1: B1096 S1 behoben, A2/A3/A4/A7 behoben, O2 verworfen · claude · Lauf 231-entwickler-2 · 2,56 $ · Karte gesamt 17,20 $ |
+
+**Retrospektive #228** (Braucht zwischen Karten, S1 der API, R00214; 2026-11-21, 28,97 $, ausgeliefert 358aa95f)
+- **Gut:**
+  - Die Nacharbeit 1 hat den einen Muss-Befund mit Messung behoben. Das Speichern von 150.000 Labels dauerte vorher 110,7 s und ein fremder PATCH wartete 109 s; jetzt sind es 0,28 s und 0,06 s.
+  - Sie hat dieselbe Fehlerklasse auch in `ist_erledigt` gefunden und behoben. Alle Sollte-Befunde außer A00004 sind erledigt: Kreis über eine archivierte Karte, AK 14 im Gate statt `#[ignore]`, Grammatik, API-Text.
+  - Die Kreissuche läuft über Tarjan in O(V+E). Die Gleichheit mit der alten Suche ist an 2.000 Zufallsgraphen belegt, 4 von 4 Mutanten sind getötet.
+  - Der Entwicklertest hat die Story gegen Kopien beider echter Boards bestanden, ohne Befund.
+- **Lehre (Kosten unter der Sperre):** Funktional grüne Tests sagten nichts über die Kosten. Der Fehler zeigte sich erst in der Probe des security-reviewer mit großer Eingabe. Künftig braucht jede Prüfung unter der Schreibsperre einen Modultest mit großer Eingabe und Zeitgrenze, dazu den statischen Test „`.contains` nur auf Mengen“. Das ist als Trainer-Anfrage notiert.
+- **Lehre (Merge):** Der Konflikt in A00005 entstand, weil #208 in derselben Liste eine ADR-Zeile ergänzt hatte. Ich habe ihn mechanisch gelöst und beide Zeilen behalten. Architektur-Dokumente, an denen ein Kartenzweig arbeitet, zieht der architekt erst nach dem Merge nach.
+- **Gate:** cargo 1186/0, node 1401/0, Playwright 2163 grün. Einmal rot war der Wackler r00127:356 (#240), allein 3 von 3 grün; #228 ändert `web/` nicht.
+- **Neue Karte:** #241 `PATCH mehrere` liest das Verzeichnis bei jeder Änderung neu, unter der Sperre: 4.000 Änderungen dauern 18 s. Das ist Bestand von main.
+- **Offen:**
+  - **Sollte (e), A00004 und A00006 nachführen:** Es fehlen `dienst::braucht`, der Filter `wartet`, `erledigen` über `in_letzter_spalte` und die Signaturen mit `&HashSet`. Das übernimmt der architekt auf main.
+  - **Anmerkung für den PO:** Die Antworten von POST und PATCH tragen `braucht` nicht, nur GET; so verlangt es die Anforderung.
+  - **Optional:** `ablage.rs:119` ist quadratisch, gehört zu #241.
