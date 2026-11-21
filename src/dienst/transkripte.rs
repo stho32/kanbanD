@@ -328,17 +328,15 @@ impl Kanban {
 
 impl Kanban {
     /// `DELETE …/transkripte/{kennung}` (ADR-0036 Regel 5): erst den Eintrag entfernen und committen, danach die Datei
-    /// löschen — fehlt sie oder ist ihr Pfad nicht sicher (Symlink), bleibt es beim Eintrag. Geht auch bei „aus“.
+    /// löschen — beides unter **einer** Sperre, damit ein gleichzeitiger Upload derselben Kennung seine Datei behält.
+    /// Fehlt sie oder ist ihr Pfad nicht sicher (Symlink), bleibt es beim Eintrag. Geht auch bei „aus“.
     pub fn transkript_loeschen(&self, wer: &Person, nr: u32, kennung: &str) -> Result<Transkripteintrag, Fehler> {
-        let mut weg = None;
-        self.aufgabe_schreiben(wer, nr, |a| {
-            let i = a.transkripte.iter().position(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung))))?;
-            let Transkriptzeile::Lesbar(e) = a.transkripte.remove(i) else { unreachable!("als lesbar gefunden") };
-            let nachricht = format!("#{nr} Transkript entfernt: {}", crate::nachricht::wert(&e.kennung()));
-            weg = Some(e);
-            Ok(Some(nachricht))
-        })?;
-        let e = weg.expect("nach dem Commit gesetzt");
+        let _sperre = self.gesperrt();
+        let mut a = self.ordner().aufgabe(nr)?;
+        let i = a.transkripte.iter().position(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung))))?;
+        let Transkriptzeile::Lesbar(e) = a.transkripte.remove(i) else { unreachable!("als lesbar gefunden") };
+        let nachricht = format!("#{nr} Transkript entfernt: {}", crate::nachricht::wert(&e.kennung()));
+        self.aktion(wer, &nachricht, &[Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;
         haken("löschen: Eintrag committet, Datei noch da");
         if let Ok(pfad) = datei(self.ordner().wurzel(), nr, &e) {
             let _ = std::fs::remove_file(pfad);
@@ -624,6 +622,37 @@ mod tests {
             }
             assert_eq!(git_status(w.path()), "");
         }
+    }
+
+    // Nacharbeit 1 #208 (code-reviewer Sollte, transkript_loeschen): ein Upload derselben Kennung, der zwischen dem Commit
+    // des Löschens und dem Entfernen der Datei eingehängt wird, verlor seine Datei — Eintrag ohne Datei. Jetzt entfernt
+    // das Löschen die Datei unter der Sperre; der Upload wartet und behält Eintrag und Datei.
+    #[test]
+    fn loeschen_nimmt_einem_gleichzeitigen_upload_die_datei_nicht() {
+        let (w, k, wer) = ordner();
+        let alt = k.transkript_einhaengen(&wer, 1, &angaben(), empfangen(&k)).unwrap();
+        let neu = empfangen(&k);
+        let (committet, auf_commit_warten) = std::sync::mpsc::channel::<()>();
+        let (eingehaengt, auf_upload_warten) = std::sync::mpsc::channel::<()>();
+        std::thread::scope(|s| {
+            let (k, wer) = (&k, &wer);
+            let upload = s.spawn(move || {
+                auf_commit_warten.recv().unwrap();
+                let r = k.transkript_einhaengen(wer, 1, &angaben(), neu);
+                let _ = eingehaengt.send(());
+                r
+            });
+            haken_setzen("löschen: Eintrag committet, Datei noch da", move || {
+                committet.send(()).unwrap();
+                // mit Sperre wartet der Upload; ohne hängt er hier ein, und das Löschen entfernt danach seine Datei
+                let _ = auf_upload_warten.recv_timeout(std::time::Duration::from_millis(1500));
+            });
+            k.transkript_loeschen(wer, 1, &alt.kennung()).unwrap();
+            assert!(upload.join().unwrap().is_ok());
+        });
+        assert_eq!(k.ordner().aufgabe(1).unwrap().transkripte.len(), 1, "der Eintrag des Uploads");
+        assert_eq!(dateien(w.path()), ["entwickler@2026-11-13T1034+0100.jsonl.gz"], "und seine Datei");
+        assert_eq!(git_status(w.path()), "");
     }
 
     // Prüfen-dann-Handeln (ADR-0036 Regel 5): zwei Uploads derselben Kennung haben beide die Vorprüfung und die
