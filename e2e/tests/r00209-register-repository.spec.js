@@ -59,6 +59,7 @@ async function langsameApi(page) {
   });
   return {
     verzoegerung: neu => { ms = neu; },
+    offen: () => offen,
     ruhig: () => expect.poll(async () => offen === 0 && await page.evaluate(() => window.kdTest.gezeichnet()), { message: 'die Seite lädt nicht mehr', timeout: 15000 }).toBe(true),
   };
 }
@@ -215,6 +216,8 @@ test.describe('R00209 Einrichten mit Repository', () => {
     const vorher = +k.git('rev-list', '--count', 'HEAD');
     await speichern(page);
     await commitSteht(k, vorher + 1);
+    // Vorbedingung: das Nachladen nach dem Speichern läuft noch — sonst prüft der Test das Fenster nicht (Code-Review A3)
+    expect(api.offen()).toBeGreaterThan(0);
     await repository.fill(`${r}/neu`);
     await api.ruhig();
     await expect(repository).toHaveValue(`${r}/neu`);
