@@ -1670,3 +1670,19 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Wackler:** r00127:332 war im Gate rot und lief allein 3 von 3 grün. Steht in #240.
 | 2026-11-21 | #210 | Nacharbeit | entwickler | bestanden | 2 h 18 min | Nacharbeit 1: Budget, FA 8, Links-Probe, 4 Sollte; e78e303c · claude · Lauf 210-entwickler-2 |
 | 2026-11-21 | #210 | Auto-Reviews | security-reviewer | bestanden | 3 min | Nachprüfung Muss 1: Budget hält · claude · sonnet · Lauf 210-security-reviewer-2 · 0,31 $ · Karte gesamt 0,31 $ |
+| 2026-11-21 | #210 | Entwicklertest | entwicklertester | bestanden | 12 min | US-1 bis US-8 bestanden · claude · sonnet · Lauf 210-entwicklertester-1 · 1,34 $ · Karte gesamt 1,65 $ |
+| 2026-11-21 | #224 | Detailplanung | planer | bestanden | 11 min | R00222, I0212, B1150–B1158 (f6b755e1) · claude · opus · Lauf 224-planer-1 · 4,70 $ · Karte gesamt 9,20 $ |
+| 2026-11-21 | #224 | Detailplanung | ux-reviewer | bestanden | 1 min | Vorprüfung: kein Muss, 3 Sollte an AK · claude · sonnet · Lauf 224-ux-reviewer-1 · 0,24 $ · Karte gesamt 9,44 $ |
+| 2026-11-21 | #224 | Detailplanung | product-owner | bestanden | 2 min | Z. 497–500 wie empfohlen (a7f5dec5) · claude · opus · Lauf 224-product-owner-2 · 0,76 $ · Karte gesamt 10,20 $ |
+| 2026-11-21 | #224 | Detailplanung | planer | bestanden | 2 min | R00222 nach PO Z. 497–500 und UX-Sollte, AK 14 (5a04bb09) · claude · opus · Lauf 224-planer-2 · 0,87 $ · Karte gesamt 11,07 $ |
+
+**Retrospektive #210** (Laufansicht: Transkript eines Agentenlaufs lesen, R00221 und ADR-0041; 2026-11-21; Gate grün auf 4df10fc9, ausgeliefert a7f5dec5. Gemessene Kosten unvollständig: Die fortgesetzten Läufe sind „nicht messbar“.)
+- **Gut:**
+  - **security-reviewer:** belegte das Muss mit drei Varianten. 1 Mio. × U+202E, gepackt nur 3 KiB, froren den Tab 14 s ein. Nach dem Budget waren es 182 ms bei 4.096 Knoten statt 4,2 Mio. Die Nachprüfung fand auch über viele kurze Texte, Name, Werkzeugtext oder die eingeklappte Vorschau keine Umgehung.
+  - **entwicklertester:** bestand alle 8 Szenarien ohne Befund, auch bei Live-Ereignissen während des Lesens. Scrollposition und offener Aufruf blieben erhalten.
+  - **product-owner:** entschied Budget, Links und FA 8 in einem Lauf (Z. 493–496). Die Nacharbeit brauchte keine weitere Rückfrage.
+- **Lehre (Verstärkung durch Sichtbarmachen):** Wer unsichtbare Zeichen sichtbar macht (Marke je Zeichen), vervielfacht fremde Eingaben. Aus 3 KiB gepackt wurden 4 Mio. DOM-Knoten. Jede Darstellung, die je Eingabezeichen ein Element erzeugt, braucht ein Budget je Text und je Ganzem, sonst bestimmt die Eingabe den Speicher.
+- **Lehre (Vorschau zählt mit):** Die eingeklappte Vorschau hätte eigene Marken gezeichnet. Dann hätte die Zahl in der Zusammenfassung nicht gestimmt, und das Budget wäre umgangen gewesen. Der entwickler zeigt sie jetzt nur als Text.
+- **Vorfall:** Der Bericht der Nacharbeit erreichte den Director nicht, weil die Übergabe je Agent nur einen Bericht annimmt. Der Director las ihn mit rund 2 h Verzug aus dem Protokoll. Prüfende Läufe startet er seitdem frisch, statt sie fortzusetzen.
+- **Offen für den architekt:** A00009 (Laufansicht, `NIE_GEROLLT`).
+- **Anmerkungen, nicht gebaut:** FA 8 ist nur per Fehlerinjektion erreichbar. `[x](javascript:…)` lässt ein „)“ stehen. Der Fokusring am `h1` liegt eng am Text.
