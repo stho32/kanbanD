@@ -4,7 +4,6 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { kanbanStarten, einrichten, alsPerson, bereit, breiteSetzen } = require('./hilfen');
-const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte ── */
 /** Schreibt Dateien und hält den Stand als Commit mit diesem Datum fest. */
@@ -246,54 +245,6 @@ test('R00169 AK 8 (B0826): mit gespeicherter Zielspalte steht bei ausgeschlossen
   } finally { await k.stoppen(); await k2.stoppen(); }
 });
 
-/* ── Board mit Phasen (AK 9) ── */
-/** Board mit Phasen (Entwicklung → Entwicklertest → Abnahme), gebunden an die Anwendung des Registers; #1 und #2 am 02.11. in
-    „Entwicklung“, am 03.11. #1 nach „Abnahme“ und #2 nach „Entwicklertest“. `kopfzeile` ergänzt den Kopf der Board-Datei. */
-function phasenBoard(arbeit, kopfzeile = '') {
-  const kopf = `---\ncolumn-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n  Abnahme: Abnahme\n${kopfzeile}---\n\n# Entwicklung\n`;
-  const board = spalten => kopf + ['Backlog', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'].map(sp => `\n## ${sp}\n\n${zeilen(spalten[sp] || [])}`).join('');
-  return ordner => {
-    mitRegister(arbeit, { ...Object.fromEntries([1, 2].map(n => [datei(n), aufgabe(n)])), 'boards/entwicklung.md': board({}) })(ordner);
-    standAm(ordner, '2026-11-02T09:00:00', { 'boards/entwicklung.md': board({ Entwicklung: [1, 2] }) });
-    standAm(ordner, '2026-11-03T09:00:00', { 'boards/entwicklung.md': board({ Entwicklertest: [2], Abnahme: [1] }) });
-  };
-}
-async function phasenBerichtAm0411(page, k, route) {
-  await alsPerson(page, 'st');
-  await page.clock.setFixedTime(new Date('2026-11-04T12:00:00+01:00'));
-  await page.goto(`${k.adresse}#/berichte/${route}`);
-  await bereit(page, '#main .leiste');
-}
-
-test.describe('R00169 Board mit Phasen', () => {
-  let k, arbeit;
-  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
-
-  test('R00169 AK 9 (B0826): mit der Phase „Entwicklertest“ als Ziel nennen Burndown und Fluss dieselben Zahlen — „fertig heißt: „Entwicklertest“ durchlaufen“, „fertig (nach „Entwicklertest“)“', async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
-    k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
-    await phasenBerichtAm0411(page, k, 'verlauf');
-    await expect.poll(() => burndownJeTag(page)).toEqual([['2', '2'], ['1', '2'], ['1', '2']]);
-    await page.goto(`${k.adresse}#/berichte/fluss`);
-    await bereit(page, 'svg.cfd');
-    const raender = (await flussJeTag(page)).raender;
-    expect(raender.map(([offen, gesamt]) => [offen, gesamt]), 'offen · gesamt wie Burndown offen · Umfang').toEqual([['2', '2'], ['1', '2'], ['1', '2']]);
-    expect(raender.map(z => z[3]), '„fertig“: #1 hat den Entwicklertest am 03.11. durchlaufen, #2 steht noch in seiner Spalte').toEqual(['0', '1', '1']);
-    await expect(kopfleiste(page)).toHaveText('Kumulativer Fluss · Bestand je Spalte über die Zeit · fertig heißt: „Entwicklertest“ durchlaufen');
-    await expect(legende(page).last()).toHaveText('fertig (nach „Entwicklertest“)');
-  });
-
-  test('R00169 AK 8 (B0826): auf einem Board mit Phasen gibt es den Hinweis auf die ausgeschlossene Abschlussspalte nicht — Auswahl und Texte bleiben', async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
-    k = await kanbanStarten(phasenBoard(arbeit, 'report-filter: {exclude-columns: [Erledigt]}\n'));
-    await phasenBerichtAm0411(page, k, 'fluss');
-    expect((await eintraege(page)).slice(-1)).toEqual([['Abnahme durchlaufen (Standard)', '', true]]);
-    await expect(hinweisFilter(page)).toHaveCount(0);
-    await expect(kopfleiste(page)).toHaveText('Kumulativer Fluss · Bestand je Spalte über die Zeit');
-    await expect(legende(page).last()).toHaveText('fertig');
-  });
-});
-
 /* ── F0135 Durchlaufzeit öffnet mit „bis“ Zielspalte (Zeichnung D0006 #fluss-erledigt-heisst, Bilder 3 und 4) ── */
 const von = page => page.getByRole('combobox', { name: 'von Spalte' });
 const bis = page => page.getByRole('combobox', { name: 'bis Spalte' });
@@ -417,16 +368,3 @@ test('R00169 AK 7b (B0829): der Geltungssatz nennt in Burndown, Fluss und Fever 
   } finally { await k.stoppen(); }
 });
 
-test.describe('R00169 Durchlaufzeit auf einem Board mit Phasen', () => {
-  let k, arbeit;
-  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
-
-  test('R00169 AK 5, AK 7b (B0829): mit der Phase „Entwicklertest“ als Ziel ist „bis“ die Spalte „Abnahme“ — dort ist der Entwicklertest durchlaufen; der Satz sagt „„Entwicklertest“ durchlaufen“', async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
-    k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
-    await phasenBerichtAm0411(page, k, 'durchlauf');
-    await expect(von(page)).toHaveValue('Backlog');
-    await expect(bis(page)).toHaveValue('Abnahme');
-    await expect(stand(page)).toHaveText('folgt „Erledigt heißt“: „Entwicklertest“ durchlaufen');
-  });
-});

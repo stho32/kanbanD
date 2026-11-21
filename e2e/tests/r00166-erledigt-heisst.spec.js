@@ -4,7 +4,6 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { kanbanStarten, einrichten, alsPerson, bereit, thema, breiteSetzen, kontrastVerstoesse } = require('./hilfen');
-const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte ── */
 /** Schreibt Dateien und hält den Stand als Commit mit diesem Datum fest. */
@@ -122,24 +121,6 @@ const gruppe = page => page.getByRole('group', { name: 'Erledigt heißt' });
 const eintraege = page => auswahl(page).locator('option').evaluateAll(optionen => optionen.map(o => [o.textContent, o.value, o.selected]));
 const oberkante = async ort => (await ort.boundingBox()).y;
 
-/** Board mit Phasen (Entwicklung → Entwicklertest → Abnahme), gebunden an die Anwendung des Registers; #1 und #2 am 02.11. in
-    „Entwicklung“, #1 am 03.11. nach „Erledigt“. `kopfzeile` ergänzt den Kopf der Board-Datei. */
-function phasenBoard(arbeit, kopfzeile = '') {
-  const kopf = `---\ncolumn-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n  Abnahme: Abnahme\n${kopfzeile}---\n\n# Entwicklung\n`;
-  const board = spalten => kopf + ['Backlog', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'].map(sp => `\n## ${sp}\n\n${zeilen(spalten[sp] || [])}`).join('');
-  return ordner => {
-    mitRegister(arbeit, { ...Object.fromEntries([1, 2].map(n => [datei(n), aufgabe(n)])), 'boards/entwicklung.md': board({}) })(ordner);
-    standAm(ordner, '2026-11-02T09:00:00', { 'boards/entwicklung.md': board({ Entwicklung: [1, 2] }) });
-    standAm(ordner, '2026-11-03T09:00:00', { 'boards/entwicklung.md': board({ Entwicklung: [2], Erledigt: [1] }) });
-  };
-}
-async function phasenBerichtAm0411(page, k, route) {
-  await alsPerson(page, 'st');
-  await page.clock.setFixedTime(new Date('2026-11-04T12:00:00+01:00'));
-  await page.goto(`${k.adresse}#/berichte/${route}`);
-  await bereit(page, '#main .leiste');
-}
-
 test('R00166 AK 4 (B0807): der Burndown zeigt „Erledigt heißt“ mit den Blöcken des Fever Charts und dem Geltungssatz — zwischen Berichtsfilter und Kennzahlzeile', async ({ page }) => {
   const k = await kanbanStarten(rechenbeispiel());
   try {
@@ -188,22 +169,6 @@ test('R00166 AK 4, AK 6 (B0807): eine gespeicherte Zielspalte ist in Burndown un
     await expect(page.locator('.fb-einst > .muted')).toHaveText(GILT_FUER);
     expect(await page.locator('.fb-einst > .muted').evaluate(e => [getComputedStyle(e).fontSize, e.previousElementSibling.textContent.startsWith('Erledigt heißt')])).toEqual(['12px', true]);
   } finally { await k.stoppen(); }
-});
-
-test.describe('R00166 Board mit Phasen', () => {
-  let k, arbeit;
-  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
-
-  test('R00166 AK 4 (B0807): auf einem Board mit Phasen sind die Einträge in Burndown und Durchsatz die Blöcke „… durchlaufen“', async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
-    k = await kanbanStarten(phasenBoard(arbeit));
-    const BLOECKE = [['Entwicklung durchlaufen', 'Entwicklung', false], ['Entwicklertest durchlaufen', 'Entwicklertest', false], ['Abnahme durchlaufen (Standard)', '', true]];
-    await phasenBerichtAm0411(page, k, 'verlauf');
-    expect(await eintraege(page)).toEqual(BLOECKE);
-    await page.goto(`${k.adresse}#/berichte/durchsatz`);
-    await bereit(page, '#dus-kennzahl');
-    expect(await eintraege(page)).toEqual(BLOECKE);
-  });
 });
 
 /** Wählt einen Eintrag und wartet, bis die Wahl gespeichert, nachgeladen und gezeichnet ist: die Auswahl trägt den neuen Wert. */
@@ -359,22 +324,6 @@ for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es ni
   });
 }
 
-test.describe('R00166 Texte auf einem Board mit Phasen', () => {
-  let k, arbeit;
-  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
-
-  test('R00166 AK 10 (B0810): mit der Phase „Entwicklertest“ als Ziel heißt es im Burndown „„Entwicklertest“ durchlaufen“ und „nach „Entwicklertest““', async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
-    k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
-    await phasenBerichtAm0411(page, k, 'verlauf');
-    await expect(auswahl(page)).toHaveValue('Entwicklertest');
-    await expect(kopftext(page)).toContainText('· erledigt = „Entwicklertest“ durchlaufen');
-    await expect(page.locator('#bd-kennzahl span')).toHaveText(['+ 2 hinzugekommen', '− 1 erledigt (nach „Entwicklertest“)', '− 0 entfernt']);
-    await expect(page.locator('#bd-legende span')).toHaveText(['+ hinzugekommen', '− erledigt (nach „Entwicklertest“)', '− entfernt']);
-    await expect(page.locator('.bd-hinweis')).toContainText(`Erledigt heißt hier: „Entwicklertest“ durchlaufen. ${ZUG_ZURUECK}`);
-  });
-});
-
 /** Seit R00167 steht unter der Legende, was der Zugang zählt — der Satz „„Von“ lässt sich noch nicht wählen: …“ ist entfallen. */
 const ZUGANG_ZAEHLT = '„Zugang“ zählt jede Aufgabe einmal: in der Periode, in der sie „A“ oder eine Spalte rechts davon erstmals erreicht; Rückläufer zählen nicht erneut.Deshalb darf der Zugang vom „+ hinzugekommen“ des Burndowns abweichen: dort zählt Nacharbeit jedes Mal.';
 const durchsatzDiagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: Zugang und Abgang je Periode' });
@@ -421,20 +370,6 @@ for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es ni
     } finally { await k.stoppen(); }
   });
 }
-
-test.describe('R00166 Durchsatz auf einem Board mit Phasen', () => {
-  let k, arbeit;
-  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
-
-  test('R00166 AK 10 (B0811): mit der Phase „Entwicklertest“ als Ziel heißt es im Durchsatz „bis „Entwicklertest““', async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
-    k = await kanbanStarten(phasenBoard(arbeit, 'fever: {target-column: Entwicklertest}\n'));
-    await phasenBerichtAm0411(page, k, 'durchsatz');
-    await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode · bis „Entwicklertest“');
-    await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 1 bis „Entwicklertest“ ·');
-    await expect(page.locator('.fluss-leg .fluss-le').nth(1)).toHaveText('Abgang: erledigte Aufgaben (bis „Entwicklertest“)');
-  });
-});
 
 for (const farbschema of ['light', 'dark']) {
   test(`R00166 AK 10 (B0811): Auswahl, Geltungssatz und die neuen Texte sind in Burndown und Durchsatz lesbar (${farbschema}); bei 375 px scrollt nichts quer`, async ({ page }) => {

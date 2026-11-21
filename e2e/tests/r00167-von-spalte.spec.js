@@ -4,7 +4,6 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { kanbanStarten, einrichten, alsPerson, bereit, thema, breiteSetzen, kontrastVerstoesse } = require('./hilfen');
-const { arbeitsRepository, mitRegister, wbsText, zeile } = require('./wbs-hilfen');
 
 /* ── Treiber: Ordner mit datierter Geschichte ── */
 /** Schreibt Dateien und hält den Stand als Commit mit diesem Datum fest. */
@@ -200,27 +199,6 @@ test('R00167 AK 6 (B0815): schließt der Berichtsfilter die gewählte Von-Spalte
     await expect(hinweisWeg(page)).toHaveText('Spalte „Arbeit“ für „Zugang ab“ gibt es nicht mehr — gerechnet wird ab „Backlog“.');
     expect(await eintraege(zugangAb(page))).toEqual([['Spalte „Backlog“ (Standard)', '', false], ['Spalte „Erledigt“', 'Erledigt', false], ['„Arbeit“ — gibt es nicht mehr', 'Arbeit', true]]);
   } finally { await k.stoppen(); }
-});
-
-test.describe('R00167 Board mit Phasen', () => {
-  let k, arbeit;
-  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
-
-  test('R00167 (B0815): auf einem Board mit Phasen ist der Standard die erste Spalte des Boards, die Blöcke heißen „Phase „…““', async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([zeile('A0001', 'Application', '—', 'kanbanD', 'rot')]));
-    const kopf = '---\ncolumn-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n  Abnahme: Abnahme\n---\n\n# Entwicklung\n';
-    const board = spalten => kopf + ['Backlog', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'].map(sp => `\n## ${sp}\n\n${zeilen(spalten[sp] || [])}`).join('');
-    k = await kanbanStarten(ordner => {
-      mitRegister(arbeit, { ...Object.fromEntries([1, 2].map(n => [datei(n), aufgabe(n)])), 'boards/entwicklung.md': board({}) })(ordner);
-      standAm(ordner, '2026-11-02T09:00:00', { 'boards/entwicklung.md': board({ Entwicklung: [1, 2] }) });
-      standAm(ordner, '2026-11-03T09:00:00', { 'boards/entwicklung.md': board({ Entwicklung: [2], Erledigt: [1] }) });
-    });
-    await alsPerson(page, 'st');
-    await page.clock.setFixedTime(new Date('2026-11-04T12:00:00+01:00'));
-    await page.goto(`${k.adresse}#/berichte/durchsatz`);
-    await bereit(page, '#dus-kennzahl');
-    expect(await eintraege(zugangAb(page))).toEqual([['Spalte „Backlog“ (Standard)', '', true], ['Phase „Entwicklung“', 'Entwicklung', false], ['Phase „Entwicklertest“', 'Entwicklertest', false], ['Phase „Abnahme“', 'Abnahme', false]]);
-  });
 });
 
 /* ── F0133 Zugang rechnen und zeigen (Zeichnung D0006 #durchsatz-von, Bild 2 bis 6) ── */

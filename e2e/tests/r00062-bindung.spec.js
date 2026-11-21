@@ -15,17 +15,20 @@ test.describe('R00062', () => {
   test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
   const spalten = page => page.locator('.bahn[data-col]');
 
-  test('US-2: Standard bleibt bequem — ohne Angabe an die einzige Anwendung gebunden, mit ihren Phasen-Spalten', async ({ page }) => {
+  test('US-2: Standard bleibt bequem — ohne Angabe an die einzige Anwendung gebunden; seit R00223 kommen keine Spalten dazu, das Lesen schreibt nichts', async ({ page }) => {
     await alsPerson(page, 'st');
+    const commits = k.git('rev-list', '--count', 'HEAD');
     await page.goto(k.adresse);
-    await expect(spalten(page)).toHaveCount(5);
-    expect(k.git('log', '-1', '--format=%s')).toContain('Phasen-Spalten von „Entwicklung“ ergänzt');
+    await expect(spalten(page)).toHaveCount(2);
+    await ausMehr(page, 'Spalten einrichten');
+    await expect(page.getByRole('button', { name: 'Bindung kanbanD' })).toHaveAttribute('aria-pressed', 'true');
+    expect(k.git('rev-list', '--count', 'HEAD')).toBe(commits);
   });
 
-  test('US-1: Board lösen — im Spalten-Dialog „keine“, danach reines Kanban ohne neue Phasen-Spalten', async ({ page }) => {
+  test('US-1: Board lösen — im Spalten-Dialog „keine“, ein Commit, die Spalten bleiben', async ({ page }) => {
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
-    await expect(spalten(page)).toHaveCount(5);
+    await expect(spalten(page)).toHaveCount(2);
     await ausMehr(page, 'Spalten einrichten');
     const kd = page.getByRole('button', { name: 'Bindung kanbanD' });
     await expect(kd).toHaveAttribute('aria-pressed', 'true');
@@ -40,12 +43,6 @@ test.describe('R00062', () => {
     expect(k.git('log', '-1', '--format=%s')).toBe('Anwendungen von „Entwicklung“: keine');
     expect(k.lies('boards/entwicklung.md')).toMatch(/^---\napplications: \[\]\n/);
 
-    // Die nachgetragenen Spalten entfernt der Mensch selbst; danach kommen sie nicht wieder.
-    k.schreib('boards/entwicklung.md', '---\napplications: []\n---\n\n' + BOARD);
-    k.git('-c', 'user.name=x', '-c', 'user.email=x@x', 'commit', '-q', '-am', 'leere Spalten weg');
-    await page.reload();
     await expect(spalten(page)).toHaveCount(2);
-    await expect(page.locator('.kz-nav a', { hasText: 'Board' })).toBeVisible();
-    expect(k.git('log', '-1', '--format=%s')).toBe('leere Spalten weg');
   });
 });

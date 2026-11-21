@@ -50,8 +50,6 @@ sources:
 `;
 const BOARD = `---
 start: ${tag(-14)}
-column-phases:
-  In Arbeit: Entwicklung
 ---
 
 # Entwicklung
@@ -429,14 +427,14 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
     await expect(neu.getByLabel('Herkunft der neuen Aufgabe', { exact: true })).toHaveValue('');
   });
 
-  test('US-8: Phasen, Reservierung und Repository deutsch beschriftet, Schlüssel als eigenes Element (Wirkungen, WBS und Anforderungen entfallen mit R00222)', async ({ page }) => {
+  test('US-8: Reservierung und Repository deutsch beschriftet, Schlüssel als eigenes Element (Wirkungen, WBS und Anforderungen entfallen mit R00222, Phasen mit R00223)', async ({ page }) => {
     await starten(page);
     const eins = await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
     await eins.locator('.felder .k').first().waitFor();
     const inEins = await beschriftungenPruefen(eins, FELDER);
     expect(verstoesse(inEins)).toEqual([]);
-    expect(beschriftungen(inEins)).toEqual(expect.arrayContaining(['Phasen']));
+    expect(beschriftungen(inEins)).not.toContain('Phasen');
     expect(beschriftungen(inEins)).not.toContain('Wirkungen');
     await schliessen(page);
     const zwei = await fensterOeffnen(page, 2);

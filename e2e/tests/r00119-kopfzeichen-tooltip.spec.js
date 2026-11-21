@@ -5,13 +5,12 @@ const { kanbanStarten, einrichten, alsPerson, liveBereit, kontrastAm, thema } = 
 const MENSCH = 'Spalte gehört dem Menschen — Agenten können Karten hineinlegen, aber nicht herausnehmen';
 const AGENT = 'Spalte gehört den Agenten — kennzeichnet nur, sperrt nichts';
 const INFO = 'Kommentar: Hier legen Agenten Rückfragen ab';
-const PHASE = 'Phase: Abnahme';
 const GRENZE_UEBER = 'Grenze 3 · überschritten — höchstens 3 Karten in dieser Spalte';
 const GRENZE_NORMAL = 'Grenze 5 — höchstens 5 Karten in dieser Spalte';
 const OK = 'Abschlussspalte';
 
-const BOARD = '---\nlimits:\n  Eingang: 3\n  In Arbeit: 5\ncolumn-owner:\n  Eingang: human\n  In Arbeit: agent\ncolumn-phases:\n  Eingang: Abnahme\n  In Arbeit: Entwicklung\ncolumn-notes:\n  Eingang: Hier legen Agenten Rückfragen ab\n---\n\n# Entwicklung\n\n## Eingang\n\n- #1\n- #2\n- #3\n- #4\n\n## In Arbeit\n\n- #5\n\n## Bereit\n\n- #6\n\n## Erledigt\n\n- #7\n';
-const OHNE_INFO = '---\nlimits:\n  Eingang: 3\n  In Arbeit: 5\ncolumn-owner:\n  Eingang: human\n  In Arbeit: agent\ncolumn-phases:\n  Eingang: Abnahme\n  In Arbeit: Entwicklung\n---\n\n# Entwicklung\n\n## Eingang\n\n- #1\n- #2\n- #3\n- #4\n\n## In Arbeit\n\n- #5\n\n## Bereit\n\n- #6\n\n## Erledigt\n\n- #7\n';
+const BOARD = '---\nlimits:\n  Eingang: 3\n  In Arbeit: 5\ncolumn-owner:\n  Eingang: human\n  In Arbeit: agent\ncolumn-notes:\n  Eingang: Hier legen Agenten Rückfragen ab\n---\n\n# Entwicklung\n\n## Eingang\n\n- #1\n- #2\n- #3\n- #4\n\n## In Arbeit\n\n- #5\n\n## Bereit\n\n- #6\n\n## Erledigt\n\n- #7\n';
+const OHNE_INFO = '---\nlimits:\n  Eingang: 3\n  In Arbeit: 5\ncolumn-owner:\n  Eingang: human\n  In Arbeit: agent\n---\n\n# Entwicklung\n\n## Eingang\n\n- #1\n- #2\n- #3\n- #4\n\n## In Arbeit\n\n- #5\n\n## Bereit\n\n- #6\n\n## Erledigt\n\n- #7\n';
 
 const DATEIEN = {
   'boards/entwicklung.md': BOARD,
@@ -76,14 +75,13 @@ test.describe('R00119', () => {
     await expect(blase(page)).toBeVisible();
   });
 
-  test('US-1: ✓, Phase und Grenze zeigen ihre Blase bei Fokus, hell und dunkel (375 px)', async ({ page }) => {
+  test('US-1: ✓ und Grenze zeigen ihre Blase bei Fokus, hell und dunkel (375 px)', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(k.adresse);
     const faelle = [
       [kopf(page, 'Erledigt').locator('.ok'), OK],
-      [kopf(page, 'In Arbeit').locator('.v.ph'), 'Phase: Entwicklung'],
-      [kopf(page, 'In Arbeit').locator('.v:not(.ph)'), GRENZE_NORMAL],
-      [kopf(page, 'Eingang').locator('.v:not(.ph)'), GRENZE_UEBER],
+      [kopf(page, 'In Arbeit').locator('.v'), GRENZE_NORMAL],
+      [kopf(page, 'Eingang').locator('.v'), GRENZE_UEBER],
     ];
     for (const t of ['light', 'dark']) {
       await thema(page, t);
@@ -115,7 +113,7 @@ test.describe('R00119', () => {
       };
       return { ziel, zeichen: [...document.querySelectorAll('.bahn-kopf [data-tip]')].map(el => ({ id: el.dataset.tip, ...flaeche(el) })) };
     });
-    expect(masse.zeichen.map(z => z.id).sort()).toEqual(['eig:Eingang', 'eig:In Arbeit', 'grenze:Eingang', 'grenze:In Arbeit', 'info:Eingang', 'ph:Eingang', 'ph:In Arbeit', 'ok:Erledigt'].sort());
+    expect(masse.zeichen.map(z => z.id).sort()).toEqual(['eig:Eingang', 'eig:In Arbeit', 'grenze:Eingang', 'grenze:In Arbeit', 'info:Eingang', 'ok:Erledigt'].sort());
     const zuKlein = masse.zeichen.filter(z => z.breite < masse.ziel || z.hoehe < masse.ziel);
     expect(zuKlein, `--kd-ziel fein ${masse.ziel}`).toEqual([]);
   });
@@ -172,14 +170,13 @@ test.describe('R00119', () => {
     expect(fokus.inKopf, 'der Fokus steht auf dem nächsten Kopfzeichen').toBe(true);
   });
 
-  test('US-4: zugänglicher Name ist wörtlich der Tooltiptext, ohne aria-describedby an den fünf Zeichen', async ({ page }) => {
+  test('US-4: zugänglicher Name ist wörtlich der Tooltiptext, ohne aria-describedby an den vier Zeichen (das Phasen-Zeichen entfällt mit R00223)', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(k.adresse);
     const zeichen = [
       [kopf(page, 'Eingang').locator('.info'), INFO],
       [kopf(page, 'Erledigt').locator('.ok'), OK],
-      [kopf(page, 'Eingang').locator('.v.ph'), PHASE],
-      [kopf(page, 'Eingang').locator('.v:not(.ph)'), GRENZE_UEBER],
+      [kopf(page, 'Eingang').locator('.v'), GRENZE_UEBER],
       [kopf(page, 'Eingang').locator('.eig-z'), MENSCH],
     ];
     for (const [ort, text] of zeichen) {
@@ -291,7 +288,7 @@ test.describe('R00119 Touch (hasTouch/isMobile)', () => {
       return { ziel, zeichen };
     });
     expect(masse.ziel).toBe(48);
-    expect(masse.zeichen.length, 'die fünf Zeichen sind da').toBeGreaterThanOrEqual(5);
+    expect(masse.zeichen.length, 'alle sechs Auslöser: zwei Eigentümer, zwei Grenzen, ⓘ und ✓').toBe(6);
     const zuKlein = masse.zeichen.filter(z => z.breite < 44 || z.hoehe < 44);
     expect(zuKlein, `--kd-ziel Touch ${masse.ziel}`).toEqual([]);
   });

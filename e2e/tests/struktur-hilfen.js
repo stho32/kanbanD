@@ -1,6 +1,5 @@
 // Grundbestand und Prüffunktionen der Struktur für Hilfstechnik (R00113, ADR-0018): geteilt von der Routenprobe, ihren Mutanten
 // und dem Fotoskript für vorher/nachher. Jede Prüffunktion liefert Verstöße als Liste, damit eine Mutante lesen kann, was sie fängt.
-const fs = require('node:fs');
 const path = require('node:path');
 const { zeile, wbsText, arbeitsRepository } = require('./wbs-hilfen');
 const { ansichtenDerAnwendung } = require('./ansichten');
@@ -11,17 +10,9 @@ const WBS = wbsText([
   zeile('I0001', 'Interaction', 'D0001', 'Ansehen', 'rot', { fertig: 'US-1' }),
 ]);
 
-// Eine Phase, „In Arbeit“ zugeordnet: so bleibt das gebundene Board bei den drei Spalten der User Story, statt dass kanbanD die
-// Spalten des Standardmodells (Entwicklung, Entwicklertest, Abnahme) nachträgt (src/dienst/phasen.rs, board_mit_phasen).
-const PHASEN = '# Phasen\n\n## Phasen\n\n| Nr | Phase | Nachweis |\n|---|---|---|\n| 1 | Entwicklung | — |\n';
-
-/** Arbeits-Repository mit der WBS von „kd“ und einer Phasen-Datei mit nur der Phase „Entwicklung“. */
-function arbeitMitEinerPhase() {
-  const arbeit = arbeitsRepository(WBS);
-  fs.writeFileSync(path.join(path.dirname(arbeit.wbs), 'kanbanD-phasen.md'), PHASEN);
-  arbeit.git('add', '-A');
-  arbeit.git('-c', 'user.name=KI', '-c', 'user.email=k@k', 'commit', '-q', '-m', 'Phasen');
-  return arbeit;
+/** Arbeits-Repository mit der WBS von „kd“ (seit R00223 liest kanbanD daneben keine Datei mehr). */
+function arbeitMitWbs() {
+  return arbeitsRepository(WBS);
 }
 
 const einstellungen = arbeit => `---
@@ -41,10 +32,10 @@ sources:
 ---
 `;
 
-/** Dateien des Grundbestands aus user-stories/R00113.md; `arbeit` aus arbeitMitEinerPhase(). */
+/** Dateien des Grundbestands aus user-stories/R00113.md; `arbeit` aus arbeitMitWbs(). */
 const grundbestand = arbeit => ({
   'kanbanD.md': einstellungen(arbeit),
-  'boards/entwicklung.md': '---\ncolumn-phases:\n  In Arbeit: Entwicklung\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n- [#4](../aufgaben/0004-vier.md)\n- [#9](../aufgaben/0009-neun.md)\n\n## Erledigt\n',
+  'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n- [#4](../aufgaben/0004-vier.md)\n- [#9](../aufgaben/0009-neun.md)\n\n## Erledigt\n',
   'aufgaben/0001-eins.md': '---\nid: 1\ntitle: eins\nclass: bug\ndue: 2026-10-28\nsignals: [mail]\norigins: [kd:I0001]\n---\n',
   'aufgaben/0002-zwei.md': '---\nid: 2\ntitle: zwei\nclass: feature\n---\n',
   'aufgaben/0003-drei.md': '---\nid: 3\ntitle: "Ölwechsel & <Prüfung>"\n---\n',
@@ -226,7 +217,7 @@ function vollstaendigkeitPruefen(quelltext, geprueft) {
 }
 
 module.exports = {
-  grundbestand, arbeitMitEinerPhase, BERICHTSNAMEN, ROUTEN, ZUSTAENDE, APP_JS,
+  grundbestand, arbeitMitWbs, BERICHTSNAMEN, ROUTEN, ZUSTAENDE, APP_JS,
   gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, sichtenVonVHaupt, vollstaendigkeitPruefen,
   ebenenPruefen, GESTALTUNG, gestaltungPruefen,
 };

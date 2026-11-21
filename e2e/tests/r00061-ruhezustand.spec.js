@@ -1,7 +1,7 @@
 // R00061 Ein Ereignis ohne neuen Stand zeichnet die Seite nicht neu.
-// Ursache der unzuverlässigen Specs: das Echo eines eigenen Schreibzugriffs (Phasen-Spalten beim ersten Lesen) lud neu und
-// ersetzte die Ansicht, während der Test schon klickte oder maß. Seit R00222 (ADR-0034 Regel 4) ohne die WBS-Sicht: die
-// Zusage gilt am Board, dessen erstes Lesen die Phasen-Spalten mit eigenem Commit nachträgt (S3 bleibt bis #227).
+// Ursache der unzuverlässigen Specs: das Echo eines eigenen Schreibzugriffs lud neu und ersetzte die Ansicht, während der
+// Test schon klickte oder maß. Seit R00223 schreibt das erste Lesen eines gebundenen Boards nichts mehr; die Zusage gilt
+// für ein Ereignis, nach dem der Stand gleich bleibt (eine Datei mit unverändertem Inhalt neu geschrieben).
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, alsPerson } = require('./hilfen');
 const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen');
@@ -37,11 +37,15 @@ test.describe('R00061', () => {
   });
   test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
 
-  test('Erstes Lesen trägt Phasen-Spalten nach — das Echo des Commits zeichnet das Board nicht ein zweites Mal', async ({ page }) => {
+  test('Erstes Lesen eines gebundenen Boards schreibt nichts; ein Ereignis ohne neuen Stand zeichnet das Board nicht ein zweites Mal', async ({ page }) => {
+    const commits = k.git('rev-list', '--count', 'HEAD');
     await page.goto(k.adresse + '#/board/entwicklung');
-    await expect(page.locator('.bahn[data-col="Entwicklertest"]')).toBeVisible();
+    await expect(page.locator('.bahn').first()).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.kdTest.gezeichnet())).toBe(true);
+    expect((await gezaehlt(page)).neu).toBe(1);
+    k.schreib('kanbanD.md', k.lies('kanbanD.md'));
     await nachEreignissen(page, 1);
-    expect(k.git('log', '-1', '--format=%an')).toBe('kanbanD');
+    expect(k.git('rev-list', '--count', 'HEAD')).toBe(commits);
     expect((await gezaehlt(page)).neu).toBe(1);
   });
 });

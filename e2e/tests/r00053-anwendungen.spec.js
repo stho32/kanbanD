@@ -38,7 +38,7 @@ test.describe('R00053', () => {
     const zeile = page.locator('.anw[data-anwendung="kd"]');
     await expect(zeile.locator('.erreich.ja')).toHaveCount(1);
     expect(k.lies('kanbanD.md')).toContain(`    kd: {name: kanbanD, repository: ${kd}}\n`);
-    // das Board ist jetzt gebunden: seine Phasen-Spalten trägt kanbanD als eigene Aktion nach (R00058)
+    // nur das Speichern committet kanbanD.md; die Bindung hat seit R00223 keine eigene Wirkung
     expect(+k.git('rev-list', '--count', 'HEAD', '--', 'kanbanD.md')).toBe(vorher + 1);
     expect(k.git('log', '-1', '--format=%an|%s', '--', 'kanbanD.md')).toBe('Stefan|Einstellungen geändert');
   });

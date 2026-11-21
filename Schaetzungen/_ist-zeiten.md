@@ -1027,3 +1027,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #227 R00223 | B1161 Aufgabe ohne phases: Phasenangaben/Phasenaenderung weg, phases als unbekannter Schlüssel, PATCH phasen überlesen, Bewegung.uebersprungen weg | Standard | 1h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1162 Warnung ohne knoten/details, Endpunktliste und OpenAPI ohne phasen, phase, uebersprungen, Nachtragen | Standard | 1h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1163 Berichte rechnen nur je Spalte: phasenRang/-Schwelle/-Stufen, Parameter phasen, nachPhasen weg, Ergebnis heißt bloecke; Node-Tests je Fall geprüft | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-21 | Karte #227 R00223 | B1164 Oberfläche: Feld „Phasen“, Leiste, Phasenname am Kopf, Wortlaute nach PO Z. 504, Tooltips Bindung weg; e2e-Specs je Fall angepasst | Standard | 1-2h | 0,5h | 0,5h | autonom |

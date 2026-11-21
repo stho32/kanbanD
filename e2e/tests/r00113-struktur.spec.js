@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, ausMehr } = require('./hilfen');
 const {
-  grundbestand, arbeitMitEinerPhase, ROUTEN, ZUSTAENDE, APP_JS,
+  grundbestand, arbeitMitWbs, ROUTEN, ZUSTAENDE, APP_JS,
   gezeichnet, seitenueberschriftPruefen, landmarkenPruefen, sichtenVonVHaupt, vollstaendigkeitPruefen,
   ebenenPruefen, GESTALTUNG, gestaltungPruefen,
 } = require('./struktur-hilfen');
@@ -45,7 +45,7 @@ async function eintraegeOhneRolle(liste, name) {
 
 /** „Erledigt“ ohne sichtbare Karte, aber mit einer archivierten: die Fläche zeigt „leer“ und den Link „Archiv (1)“ (FA 6). */
 const ERLEDIGT_MIT_ARCHIV = {
-  'boards/entwicklung.md': '---\ncolumn-phases:\n  In Arbeit: Entwicklung\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n- [#4](../aufgaben/0004-vier.md)\n- [#9](../aufgaben/0009-neun.md)\n\n## Erledigt\n\n- [#5](../aufgaben/0005-fuenf.md)\n',
+  'boards/entwicklung.md': '# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## In Arbeit\n\n- [#4](../aufgaben/0004-vier.md)\n- [#9](../aufgaben/0009-neun.md)\n\n## Erledigt\n\n- [#5](../aufgaben/0005-fuenf.md)\n',
   'aufgaben/0005-fuenf.md': '---\nid: 5\ntitle: fünf\narchived: 2026-10-01\n---\n',
 };
 
@@ -184,7 +184,7 @@ function mitAbbau(k) {
 
 /** kanbanD mit dem Grundbestand der User Story; `mehr` überschreibt Dateien. */
 async function starten(page, mehr = {}) {
-  const arbeit = arbeitMitEinerPhase();
+  const arbeit = arbeitMitWbs();
   laufende.push(async () => arbeit.aufraeumen());
   const k = mitAbbau(await kanbanStarten(einrichten({ ...grundbestand(arbeit), ...mehr })));
   laufende.push(() => k.stoppen());

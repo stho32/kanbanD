@@ -217,7 +217,7 @@ function gewaehltesBoard(zustand) {
 }
 
 /** Was der Server zuletzt geliefert hat, und wohin die Adresse zeigt. Ein Ereignis, nach dem das gleich bleibt — das Echo
-    eines eigenen Schreibzugriffs, auch der Phasen-Spalten, die das erste Lesen nachträgt —, zeichnet nicht neu: sonst ersetzt
+    eines eigenen Schreibzugriffs —, zeichnet nicht neu: sonst ersetzt
     es die Seite, während jemand klickt oder liest (R00061). */
 let geladenerStand = null;
 /** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
@@ -267,8 +267,7 @@ async function sichtLaden(zustand) {
   const view = adresseLesen(hash).sicht;
   const slug = gewaehltesBoard(zustand);
   let fbFehler = null;
-  // Das Board zuerst: sein Lesen kann Phasen-Spalten nachtragen (ein Commit) — was danach gelesen wird, zeigt schon diesen
-  // Stand, sodass das Echo des Commits nichts Neues bringt und nicht neu zeichnet (R00061).
+  // Das Board zuerst, dann was davon abhängt (R00061); sein Lesen schreibt nichts (ADR-0034 N4 Regel 3).
   let boardDefekt = null;
   // 423: Board-Datei defekt (R00025); 400: Dateiname nicht in Board-Form (R00104) — beide als Defektfläche, der Grund aus `defekte`
   const board = slug ? await api('GET', '/api/boards/' + encodeURIComponent(slug) + '?archivierte=ja').catch(f => { if (f.status !== 423 && f.status !== 400) throw f; boardDefekt = { slug, fehler: defekterGrund(slug, zustand) || f.message }; return null; }) : null;
@@ -4028,10 +4027,6 @@ async function aktion(a, arg, wert) {
         // zählt (Standard oder true) → false; false → Schlüssel entfernen, der Standard gilt wieder
         const r = aufgabe(u.offen).reporting || {};
         return aufgabeAendern(u.offen, { reporting: { [arg]: r[arg] === false ? null : false } });
-      }
-      case 'phase-entfaellt': {
-        const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
-        return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
       case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map((sp, i) => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), eigentuemerAlt: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), roh: sp.eigentuemer_unbekannt || '', datumsTrenner: sp.datums_trenner == null ? i === S.board.spalten.length - 1 : sp.datums_trenner })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen], klassenWahl: S.board.klassen ? 'eigen' : 'vorgabe', klassen: S.board.klassen ? kopie(S.board.klassen) : null, klassenFehler: null }; u.palFuer = null; break;
       case 'bind': u.setup.anwendungen = bindungUmschalten(u.setup.anwendungen, arg, S.zustand.einstellungen.quellen.anwendungen || []); break;

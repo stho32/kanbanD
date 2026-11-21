@@ -49,7 +49,7 @@ const TAGE = [
 ];
 
 /** Ordner `K` (mit `column-phases` und `phases` an #3) bzw. sein Zwilling `K'` (ohne), mit denselben datierten Bewegungen.
- *  `K` trägt zusätzlich `zuordnung` (AK 10) und `breit` (AK 13); `register` ersetzt die Registerzeilen (AK 11); ohne
+ *  Beide tragen zusätzlich `zuordnung` (AK 10) und `breit` (AK 13), nur `K` mit `column-phases`; `register` ersetzt die Registerzeilen (AK 11); ohne
  *  `gebunden` steht `applications: []` (Farbprobe AK 13: vor und nach der Karte dieselben Spaltenblöcke). */
 const ausgangslage = (R, { mitPhasen = true, register = null, gebunden = true } = {}) => ordner => {
   const schreib = (rel, inhalt) => { fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true }); fs.writeFileSync(path.join(ordner, rel), inhalt); };
@@ -64,10 +64,8 @@ const ausgangslage = (R, { mitPhasen = true, register = null, gebunden = true } 
   execFileSync('git', ['-C', ordner, 'init', '-q']);
   for (const [datum, entwicklung, breit] of TAGE) {
     schreib('boards/entwicklung.md', boardText('Entwicklung', `limits:\n  Nacharbeit: 1\n${phasen}applications: [${gebunden ? 'kd' : ''}]\n`, ENTWICKLUNG, entwicklung));
-    if (mitPhasen) {
-      schreib('boards/zuordnung.md', boardText('Zuordnung', 'column-phases:\n  Bereit: Abnahme\n  Live: Abnahme\ncolumn-owner:\n  Offen: chef\napplications: [kd]\n', ZUORDNUNG, []));
-      schreib('boards/breit.md', boardText('Breit', 'column-phases:\n  Entwicklung: Entwicklung\n  Code-Review: Reviews\n  Reviews: Reviews\napplications: [kd]\n', BREIT, breit));
-    }
+    schreib('boards/zuordnung.md', boardText('Zuordnung', `${mitPhasen ? 'column-phases:\n  Bereit: Abnahme\n  Live: Abnahme\n' : ''}column-owner:\n  Offen: chef\napplications: [kd]\n`, ZUORDNUNG, []));
+    schreib('boards/breit.md', boardText('Breit', `${mitPhasen ? 'column-phases:\n  Entwicklung: Entwicklung\n  Code-Review: Reviews\n  Reviews: Reviews\n' : ''}applications: [kd]\n`, BREIT, breit));
     git(['add', '-A'], datum);
     git(['commit', '-q', '--allow-empty', '-m', `Stand ${datum}`], datum);
   }
@@ -92,7 +90,9 @@ async function vorbereiten(page) {
   await page.clock.setFixedTime(AM_0808);
 }
 
-const bericht = (page, k, slug, route) => oeffnen(page, k, slug, `berichte/${route}`, '#main .dtitel');
+/** Anker je Bericht: ein Element, das erst mit dem fertig gerechneten Bericht entsteht (das Fever Chart wartet auf seinen Cache). */
+const ANKER = { verlauf: '#bd-kennzahl', prognose: '#main .dtitel', fieber: '#main .fb-einst' };
+const bericht = (page, k, slug, route) => oeffnen(page, k, slug, `berichte/${route}`, ANKER[route] || '#main .dtitel');
 const board = (page, k, slug) => oeffnen(page, k, slug, null);
 
 /** Klappt Tabellenansicht und jede weitere zugeklappte Box des Hauptbereichs auf und wartet, bis sie offen stehen. */
@@ -167,17 +167,19 @@ async function farbenMessen(page, k, ungebunden) {
 }
 
 /** Breiten, an denen Dokument oder ein Bildlaufbehälter quer scrollt (`scrollWidth > clientWidth`). */
-async function querScrollen(page) {
+async function querScrollen(page, { fensterOffen = false } = {}) {
   const treffer = [];
   for (const breite of BREITEN) {
     await breiteSetzen(page, breite);
-    await bereit(page);
+    // bei offenem Aufgabenfenster meldet `kdTest.gezeichnet()` keinen gezeichneten Stand; dann genügt das Layout von breiteSetzen
+    if (!fensterOffen) await bereit(page);
     const zuBreit = await page.evaluate(() => {
       const behaelter = [document.documentElement, ...document.querySelectorAll('#main, #main *, #fenster, #fenster *')].filter(e => {
         const s = getComputedStyle(e);
         return e === document.documentElement || /(auto|scroll)/.test(s.overflowX);
       });
-      return behaelter.filter(e => e.scrollWidth > e.clientWidth + 1 && !e.closest('.bahnen')).map(e => `${e.tagName}.${e.className}#${e.id}`);
+      // ausgenommen sind die Behälter, die eine breite Tabelle bzw. die Bahnen absichtlich in sich quer rollen (vor wie nach der Karte)
+      return behaelter.filter(e => e.scrollWidth > e.clientWidth + 1 && !e.closest('.bahnen') && !e.matches('.wl-scroll, .bericht-rahmen')).map(e => `${e.tagName}.${e.className}#${e.id}`);
     });
     if (zuBreit.length) treffer.push(`${breite}: ${zuBreit.join(', ')}`);
   }
@@ -205,8 +207,17 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
       const texte = [];
       for (const x of [k, zwilling]) {
         await bericht(page, x, 'entwicklung', route);
-        await allesAufklappen(page);
-        texte.push(await sichttext(page));
+        // das Fever Chart zeichnet nach dem Rechnen seines Caches neu und schließt dabei aufgeklappte Boxen: so lange aufklappen
+        // und lesen, bis alles offen ist und der Text zwischen zwei Lesungen gleich bleibt
+        let vorher = null, text = null;
+        await expect.poll(async () => {
+          const zu = page.locator('#main details:not([open]) > summary');
+          if (await zu.count()) { await zu.first().click(); return false; }
+          vorher = text;
+          text = await sichttext(page);
+          return text === vorher;
+        }, { message: `${route}: alles offen, Text steht` }).toBe(true);
+        texte.push(text);
       }
       expect(texte[0], `${route}: derselbe Text auf K und K'`).toBe(texte[1]);
     }
@@ -243,7 +254,8 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
     await spaltenEinrichten(page, k, 'entwicklung');
     const schalter = page.locator('[data-act="bind"]');
     const titel = await schalter.evaluateAll(l => l.map(b => [b.getAttribute('aria-label'), b.getAttribute('title')]));
-    expect(titel).toEqual([['Bindung KD', '„KD“ (kd)'], ['Bindung Abrechnung', '„Abrechnung“ (ab)'], ['Bindung keine', 'applications: []']]);
+    // die Schalter stehen in der Reihenfolge des Registers (nach Kürzel), „keine“ zuletzt
+    expect(titel).toEqual([['Bindung Abrechnung', '„Abrechnung“ (ab)'], ['Bindung KD', '„KD“ (kd)'], ['Bindung keine', 'applications: []']]);
     for (const [, t] of titel) expect(t).not.toMatch(/Phasen|reines Kanban|Spalten bleiben/);
   });
 
@@ -279,9 +291,13 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
     pruefen('Board', await sichttext(page));
     await aufgabeDetails(page, k, 3);
     pruefen('Aufgabenfenster Details', await sichttext(page, '#fenster'));
+    // bei offenem Fenster meldet `kdTest.gezeichnet()` keinen gezeichneten Stand: geschlossen und frisch geladen weiter
     await page.keyboard.press('Escape');
+    await page.reload();
     await spaltenEinrichten(page, k, 'entwicklung');
     pruefen('Spalten einrichten', await sichttext(page, 'body'));
+    await page.getByRole('button', { name: 'Verwerfen' }).click();
+    await expect(page.locator('#setup-vorschau')).toHaveCount(0);
     for (const route of ['prognose', 'fieber']) {
       await bericht(page, k, 'entwicklung', route);
       await allesAufklappen(page);
@@ -302,7 +318,9 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
     await board(page, k, 'zuordnung');
     funde.push(...(await querScrollen(page)).map(x => `Board zuordnung ${x}`));
     await aufgabeDetails(page, k, 3);
-    funde.push(...(await querScrollen(page)).map(x => `Aufgabe #3 ${x}`));
+    funde.push(...(await querScrollen(page, { fensterOffen: true })).map(x => `Aufgabe #3 ${x}`));
+    await page.keyboard.press('Escape');
+    await page.reload();
     for (const [slug, route] of [['entwicklung', 'prognose'], ['breit', 'prognose'], ['entwicklung', 'fieber']]) {
       await bericht(page, k, slug, route);
       await allesAufklappen(page);
