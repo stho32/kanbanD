@@ -1769,3 +1769,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #234 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | keine Funde · claude · sonnet · Lauf 234-rechtschreib-reviewer-1 · 0,39 $ · Karte gesamt 13,35 $ |
 | 2026-11-22 | #234 | Auto-Reviews | architekt | bestanden | 4 min | ADR-0032 N8.6 · claude · opus · Lauf 234-architekt-2 · 1,26 $ · Karte gesamt 14,61 $ |
 | 2026-11-22 | #234 | Auto-Reviews | product-owner | bestanden | 1 min | PO Z. 514 · claude · opus · Lauf 234-product-owner-2 · 0,56 $ · Karte gesamt 15,17 $ |
+| 2026-11-22 | #234 | Auto-Reviews | planer | bestanden | 3 min | R00225 nach N8.6, B1189-B1192 · claude · opus · Lauf 234-planer-2 · 1,35 $ · Karte gesamt 16,52 $ |
+| 2026-11-22 | #234 | Auto-Reviews | legacy-reviewer | befund | 12 min | Muss: ETag unverändert, 304 auf veraltete Antwort · claude · sonnet · Lauf 234-legacy-reviewer-1 · 2,24 $ · Karte gesamt 18,76 $ |
