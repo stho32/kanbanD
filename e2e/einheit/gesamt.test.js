@@ -217,3 +217,23 @@ test('zuordnenGesamt: Artwechsel Netto ↔ Folge — die neue Antwort gilt', () 
   assert.strictEqual(g.zuordnenGesamt([nettoA], 0, [folgeA]), folgeA);
   assert.strictEqual(g.zuordnenGesamt([folgeA], 0, [nettoA]), nettoA);
 });
+
+/* ── R00224 B1171: erste Antwort 404 mit zustand — Anwendungen und seitenweite Hinweise aus der Liste der Commits ── */
+
+const eintrag = (anwendung, zustand, c = 'a') => ({ verweis: anwendung ? `${anwendung}:${hash(c)}` : hash(c), anwendung, hash: hash(c), zustand });
+
+test('anwendungenAusListe: jedes Kürzel einmal in der Reihenfolge des ersten Auftretens, auch das leere; unlesbar und anwendung_unbekannt zählen nicht', () => {
+  const liste = [eintrag('kd', 'auf_zweig', 'a'), eintrag('xx', 'verwaist', 'b'), eintrag('kd', 'fehlt', 'c'), eintrag('xy', 'anwendung_unbekannt', 'd'), { verweis: 'kd:ab‮cd', anwendung: 'kd2', zustand: 'unlesbar' }, eintrag('', 'repository_fehlt', 'e'), eintrag('wb', 'repository_fehlt', 'f'), eintrag('xx', 'auf_zweig', 'g')];
+  assert.deepStrictEqual(g.anwendungenAusListe(liste), ['kd', 'xx', '', 'wb']);
+  assert.deepStrictEqual(g.anwendungenAusListe([{ verweis: hash('a'), zustand: 'fehlt' }]), ['']);
+  assert.deepStrictEqual(g.anwendungenAusListe([]), []);
+});
+
+test('listenHinweise: unlesbar und anwendung_unbekannt der Liste als seitenweite Hinweise, entdoppelt mit denen der Antworten', () => {
+  const xy = eintrag('xy', 'anwendung_unbekannt', 'd');
+  const unlesbar = { verweis: 'kd:ab‮cd', anwendung: 'kd', zustand: 'unlesbar' };
+  const vonListe = g.listenHinweise([eintrag('kd', 'auf_zweig'), xy, unlesbar, eintrag('wb', 'repository_fehlt')]);
+  assert.deepStrictEqual(g.seitenHinweise([vonListe]), [{ verweis: xy.verweis, zustand: 'anwendung_unbekannt' }, { verweis: unlesbar.verweis, zustand: 'unlesbar' }]);
+  const ausAntwort = [{ art: 'ausgelassen', verweis: xy.verweis, zustand: 'anwendung_unbekannt' }];
+  assert.strictEqual(g.seitenHinweise([ausAntwort, vonListe]).length, 2);
+});

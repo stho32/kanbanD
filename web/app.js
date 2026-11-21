@@ -1314,6 +1314,11 @@ async function reviewListeLesen(r) {
   if (S.ui.review !== r || r.liste !== lauf) return;
   r.liste = ergebnis;
   reviewPraefixAufloesen(r);
+  // wartet „Alle Änderungen“ nach einer 404 der ersten Anwendung auf die Liste, geht es jetzt weiter (R00224 FA 3)
+  if (r.ansicht === 'alle' && r.alle && r.alle.erste.status === 'fehlt') {
+    reviewAlleAusListe(r, r.alle);
+    reviewAlleWeiter(r, r.alle);
+  }
   reviewFokus(r);
   render();
 }
@@ -1378,6 +1383,7 @@ function reviewBild(r) {
   if (r.ansicht === 'alle') {
     const erste = (r.alle && r.alle.erste) || { status: 'laedt' };
     if (erste.status === 'fehler' && erste.fehler.status === 404) return { art: 'alle_ohne_verweise' };
+    if (erste.status === 'fehlt' && liste.status === 'fehler') return { art: 'alle_liste_fehler' };
     if (erste.status === 'fehler') return { art: 'alle_fehler' };
     if (erste.status === 'da') return { art: 'alle' };
     return { art: 'alle_laedt' };
@@ -1529,7 +1535,7 @@ function reviewAlleAbbrechen(r) {
 /** Öffnet „Alle Änderungen“: ein neues Gesamtbild, die erste Anfrage ohne `anwendung` durch die Reihe. */
 function reviewAlleLesen(r) {
   reviewAlleAbbrechen(r);
-  const alle = r.alle = { erste: { status: 'laedt' }, abschnitte: [], reihe: { laufend: null, wartend: [], anwendungen: [] }, plan: { rest: BUDGET_ZEILEN, gesperrt: false, erste: true }, ansage: '' };
+  const alle = r.alle = { erste: { status: 'laedt' }, abschnitte: [], vonListe: [], reihe: { laufend: null, wartend: [], anwendungen: [] }, plan: { rest: BUDGET_ZEILEN, gesperrt: false, erste: true }, ansage: '' };
   reviewAlleAnfragen(r, alle, { art: 'erste' });
 }
 
@@ -1584,12 +1590,30 @@ async function reviewAlleAnfragen(r, alle, auftrag) {
   reviewLesepositionHalten(merk);
 }
 
-/** Die erste Antwort: Abschnitt der ersten Anwendung, dazu je weitere Anwendung ein wartender Abschnitt in der Reihe. */
+/** Die erste Antwort: Abschnitt der ersten Anwendung, dazu je weitere Anwendung ein wartender Abschnitt in der Reihe. Eine 404 mit
+    `zustand` heißt: die erste Anwendung ist nicht erreichbar, die Anwendungen kommen aus der Liste der Commits (R00224 FA 2, 3). */
 function reviewAlleErste(r, alle, antwort, fehler) {
+  if (fehler && fehler.status === 404 && fehler.daten && fehler.daten.zustand) {
+    alle.erste = { status: 'fehlt', fehler };
+    reviewAlleAusListe(r, alle);
+    return;
+  }
   if (fehler) { alle.erste = { status: 'fehler', fehler }; return; }
   alle.erste = { status: 'da' };
   alle.abschnitte.push(reviewAbschnittAufbauen(r, alle, antwort));
   weitereAnwendungen(antwort.hinweise).forEach(kuerzel => {
+    alle.abschnitte.push({ status: 'wartet', kuerzel });
+    alle.reihe.anwendungen.push(kuerzel);
+  });
+}
+
+/** Nach einer 404 der ersten Anwendung, sobald die Liste da ist: je Kürzel der Liste ein wartender Abschnitt in der Reihe, auch für die
+    fehlende Anwendung, und die seitenweiten Hinweise der Liste (R00224 FA 3, 4). Ohne Liste wartet die Seite weiter. */
+function reviewAlleAusListe(r, alle) {
+  if (!r.liste || r.liste.status !== 'da') return;
+  alle.erste = { status: 'da' };
+  alle.vonListe = listenHinweise(r.liste.eintraege);
+  anwendungenAusListe(r.liste.eintraege).forEach(kuerzel => {
     alle.abschnitte.push({ status: 'wartet', kuerzel });
     alle.reihe.anwendungen.push(kuerzel);
   });
@@ -1697,7 +1721,7 @@ function reviewAbschnittNeu(r, alle, a) {
   const fokusDarin = alt.contains(document.activeElement);
   alt.outerHTML = abschnittHtml(alle.abschnitte[a], a, reviewGesamtKontext(r));
   const seite = document.getElementById('rv-seite-hw');
-  const seiteNeu = seitenHinweiseHtml(seitenHinweise(alle.abschnitte.filter(ab => ab.status === 'da').map(ab => ab.antwort.hinweise)), esc);
+  const seiteNeu = seitenHinweiseHtml(seitenHinweise([...alle.abschnitte.filter(ab => ab.status === 'da').map(ab => ab.antwort.hinweise), alle.vonListe]), esc);
   if (seite && seite.outerHTML !== seiteNeu) seite.outerHTML = seiteNeu;
   if (fokusDarin) fokusVersuchen(`#rv-a${a}-t`, null, null, { selektor: `#rv-a${a}-t`, sichtbar: false });
 }
@@ -1779,8 +1803,9 @@ function vReviewAlle(r, b) {
   let inhalt;
   if (b.art === 'alle_laedt') inhalt = '<p class="rv-laedt" role="status" aria-busy="true">Liest die Änderungen der Aufgabe …</p>';
   else if (b.art === 'alle_fehler') inhalt = diffFehlerHtml(alle.erste.fehler, null, esc);
+  else if (b.art === 'alle_liste_fehler') inhalt = reviewListeFehltHtml(r);
   else if (inselGehalten) inhalt = `<div class="rv-alle" id="rv-insel" data-insel="${esc(reviewInselSchluessel())}"></div>`;
-  else inhalt = gesamtInselHtml(r.nr, alle.abschnitte, reviewGesamtKontext(r));
+  else inhalt = gesamtInselHtml(r.nr, alle.abschnitte, reviewGesamtKontext(r), alle.vonListe);
   let summe = '';
   if (b.art === 'alle') {
     const offen = alle.abschnitte.some(ab => ab.status === 'da' && ab.staende.some(st => st.offen));
@@ -1790,6 +1815,15 @@ function vReviewAlle(r, b) {
     summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span>${knopfAlle}</div>`;
   }
   return `<div class="rv-leiste">${umschalter}${summe}${ansage}</div>${inhalt}`;
+}
+
+/** Die erste Anwendung ist nicht erreichbar und die Liste der Commits scheitert (R00224 FA 5, PO Z. 511): eine Seitenmeldung mit dem
+    grund der ersten Antwort und dem Grund der Liste; „Erneut versuchen“ liest beides. Die Ansage-Region bleibt leer. */
+function reviewListeFehltHtml(r) {
+  const satz = zustandSatz('repository_fehlt', '', r.alle.erste.fehler.daten.grund);
+  const hinweis = satz.hinweis ? `<p class="rv-hin">${esc(satz.hinweis)}</p>` : '';
+  const liste = `<p class="rv-satz">${esc(listeFehlerText(r.liste.fehler))} Die übrigen Anwendungen der Aufgabe sind deshalb nicht zu sehen.</p>`;
+  return meldungHtml({ ton: satz.ton, rolle: 'alert', bild: zustandsSymbol(satz.symbol), zeilen: true, kopf: 'Das Repository einer Anwendung dieser Aufgabe ist nicht erreichbar.', rumpf: hinweis + liste, knoepfe: knopf('Erneut versuchen', 'review-erneut', 'alle', 'rv-erneut') });
 }
 
 /** Die Seite (Hauptbereich) aus dem Zustand; der Kopf steht in `#kopf` (vReviewKopf). */
@@ -3447,6 +3481,7 @@ async function aktion(a, arg, wert) {
         if (!r) break;
         r.fokusOffen = true;
         if (arg === 'diff' && r.ansicht === 'alle' && r.alle && r.alle.erste.status === 'fehler') { reviewAlleLesen(r); break; }
+        if (arg === 'alle' && r.ansicht === 'alle') { reviewListeLesen(r); reviewAlleLesen(r); break; }
         if (arg === 'liste' && (!r.liste || r.liste.status !== 'laedt')) reviewListeLesen(r);
         if (arg === 'diff' && r.commit && (!r.diff || r.diff.status !== 'laedt')) reviewDiffWiederholen(r);
         break;

@@ -91,6 +91,18 @@
     return [...gesehen.values()];
   }
 
+  /** Die Anwendungen der Aufgabe aus der Liste der Commits, wenn die erste Antwort 404 mit `zustand` ist (R00224 FA 3): jedes Kürzel
+      einmal, auch das leere, in der Reihenfolge des ersten Auftretens; seitenweite Zustände nennen keine erreichbare Anwendung. */
+  function anwendungenAusListe(eintraege) {
+    const kuerzel = eintraege.filter(e => !SEITENWEIT.includes(e.zustand)).map(e => e.anwendung || '');
+    return [...new Set(kuerzel)];
+  }
+
+  /** Seitenweite Hinweise aus der Liste (R00224 FA 4) in der Form der Hinweise einer Antwort, für `seitenHinweise`. */
+  function listenHinweise(eintraege) {
+    return eintraege.filter(e => SEITENWEIT.includes(e.zustand)).map(e => ({ art: 'ausgelassen', verweis: e.verweis, zustand: e.zustand }));
+  }
+
   function weitereAnwendungen(hinweise) {
     const h = hinweise.find(x => x.art === 'weitere_anwendungen');
     if (!h) return [];
@@ -360,9 +372,10 @@
     return `<div id="rv-seite-hw"><ul class="rv-aus" aria-label="Ausgelassene Verweise der Aufgabe">${eintraege.map(e => ausgelassenHtml(e, esc)).join('')}</ul></div>`;
   }
 
-  /** Die Insel „Alle Änderungen“ (N1.3): `data-insel="<nr>:alle"`, darin die seitenweiten Hinweise und je Anwendung ein Abschnitt. */
-  function gesamtInselHtml(nr, abschnitte, ctx) {
-    const seite = seitenHinweise(abschnitte.filter(ab => ab.status === 'da').map(ab => ab.antwort.hinweise));
+  /** Die Insel „Alle Änderungen“ (N1.3): `data-insel="<nr>:alle"`, darin die seitenweiten Hinweise und je Anwendung ein Abschnitt;
+      `vonListe` sind die seitenweiten Hinweise aus der Liste, wenn die erste Antwort 404 war (R00224 FA 4). */
+  function gesamtInselHtml(nr, abschnitte, ctx, vonListe = []) {
+    const seite = seitenHinweise([...abschnitte.filter(ab => ab.status === 'da').map(ab => ab.antwort.hinweise), vonListe]);
     return `<div class="rv-alle" id="rv-insel" data-insel="${nr}:alle">${seitenHinweiseHtml(seite, ctx.esc)}${abschnitte.map((ab, a) => abschnittHtml(ab, a, ctx)).join('')}</div>`;
   }
 
@@ -375,5 +388,5 @@
     return `${diff.dateienWort(s.dateien)} · <span class="pl">+${tausender(s.plus)}</span> <span class="mi">−${tausender(s.minus)}</span>${noch}`;
   }
 
-  Object.assign(ziel, { umschalterHtml, abschnittHtml, abschnittDateiHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt });
+  Object.assign(ziel, { umschalterHtml, abschnittHtml, abschnittDateiHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
 })(typeof module !== 'undefined' ? module.exports : window);

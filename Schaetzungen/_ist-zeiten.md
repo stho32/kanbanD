@@ -1034,3 +1034,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #232 R00224 | B1168 zustandSatz und zustandsSymbol in commits.js, anwendungName aus diff.js dorthin (ein Wörterbuch) | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-22 | Karte #232 R00224 | B1169 „Ein Commit“: Überschrift, Satz und Hinweiszeile als Blöcke, Ton und Symbol aus commits.js, angefragter Verweis | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #232 R00224 | B1170 Abschnitt bei 404 repository_fehlt: Satz und Hinweiszeile in df-zeilen, Symbol aus commits.js | Standard | 0,5h | 0,3h | 0,3h | autonom |
+| 2026-11-22 | Karte #232 R00224 | B1171 erste Anwendung mit 404 + zustand: Kürzel und seitenweite Hinweise aus der Liste, Warten auf die Liste, Seitenmeldung bei gescheiterter Liste | Standard | 1-2h | 0,5h | 0,5h | autonom |

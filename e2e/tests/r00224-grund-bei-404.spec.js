@@ -129,10 +129,6 @@ function ansagenAufzeichnen(page) {
 /** Die Ansagen, je Live-Region einmal. */
 const ansagen = page => page.evaluate(() => [...new Map(window.ANSAGEN.map(a => [a.id + '|' + a.klasse, a])).values()]);
 
-/** Kriterien, die am heutigen Stand rot sind (ATDD): ihre Tests laufen als „erwartet rot“, bis die Bubble sie grün macht. */
-const ERWARTET_ROT = new Set(['AK 2', 'AK 3', 'AK 5', 'AK 6', 'AK 10']);
-const erwartetRot = ak => test.fail(ERWARTET_ROT.has(ak), `${ak} erwartet rot (R00224 B1167)`);
-
 test.describe('R00224 Grund bei 404 in Worten', () => {
   let k, rep;
   test.beforeEach(async ({ page }) => {
@@ -146,7 +142,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   /* ── Alle Änderungen ── */
 
   test('AK 1: #11 — Abschnitt wb sagt „Das Repository der Anwendung wb ist nicht erreichbar.“ mit dem grund darunter, ordner-offen im Ton fehl, Live-Rolle wie bei 503; kd und xx geladen', async ({ page }) => {
-    erwartetRot('AK 1');
     const grund = await erwarteterGrund(page, k, rep);
     expect(grund).toMatch(/^Ordner fehlt: /);
     await page.goto(reviewAdresse(k, 11));
@@ -172,7 +167,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 2: #20 — erste Anwendung fehlt: drei Abschnitte in der Reihenfolge der Liste, wb mit Satz und grund, nie die Leer-Meldung', async ({ page }) => {
-    erwartetRot('AK 2');
     const grund = await erwarteterGrund(page, k, rep);
     const liste = await listeLesen(page, k, 20);
     const reihe = [...new Set(liste.filter(e => !['unlesbar', 'anwendung_unbekannt'].includes(e.zustand)).map(e => e.anwendung))];
@@ -194,7 +188,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 3: #21 — nur wb: ein Abschnitt mit Satz und grund, darüber der Hinweis zu xy:<K1>, „Ein Commit“ gedämpft ohne href', async ({ page }) => {
-    erwartetRot('AK 3');
     const grund = await erwarteterGrund(page, k, rep);
     await page.goto(reviewAdresse(k, 21));
     await expect(page.locator('section.rv-abs')).toHaveCount(1);
@@ -212,7 +205,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 4: #14 ohne Verweise und eine feste 404 ohne zustand — die Leer-Meldung bleibt', async ({ page }) => {
-    erwartetRot('AK 4');
     await page.goto(reviewAdresse(k, 14));
     await expect(page.locator('.rv-meld')).toContainText('Keine Änderungen zu zeigen. An dieser Aufgabe sind keine Commit-Verweise hinterlegt.');
     await expect(page.getByRole('button', { name: 'Zurück zur Liste der Commits' })).toBeVisible();
@@ -224,7 +216,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 5: #20 — je Kürzel genau eine Anfrage, nie zwei zugleich; „Erneut versuchen“ an wb liest einmal; gehaltene Liste lässt warten', async ({ page }) => {
-    erwartetRot('AK 5');
     const z = zaehlen(page);
     const reihe = [...new Set((await listeLesen(page, k, 20)).map(e => e.anwendung))];
     const liste = await halten(page, url => istListe(url, 20));
@@ -249,7 +240,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 6: #20 und die Liste scheitert (500) — eine Seitenmeldung mit grund und Listensatz, Fokus, genau eine Ansage, untereinander; Erneut liest beides', async ({ page }) => {
-    erwartetRot('AK 6');
     const grund = await erwarteterGrund(page, k, rep);
     const z = zaehlen(page);
     const liste = await halten(page, url => istListe(url, 20));
@@ -287,7 +277,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 6: erste 404 ohne grund und die Liste scheitert — die Meldung steht ohne Hinweiszeile', async ({ page }) => {
-    erwartetRot('AK 6');
     await fest(page, url => istDiff(url, 20) && ersteAnfrage(url), 404, fehlt404(null));
     await fest(page, url => istListe(url, 20), 500, { fehler: 'kaputt' });
     await page.goto(reviewAdresse(k, 20));
@@ -301,7 +290,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
 
   for (const [fall, adresse] of [['voller Verweis', r => `wb:${r.w1}`], ['Hash-Präfix ohne Kürzel', r => r.w1.slice(0, 7)]]) {
     test(`AK 7: #11 ?commit=<${fall}> — „Zu wb:<W1> gibt es keinen Diff.“, Satz, grund, Zur Liste; fehl, status, ordner-offen`, async ({ page }) => {
-      erwartetRot('AK 7');
       const grund = await erwarteterGrund(page, k, rep);
       await page.goto(reviewAdresse(k, 11, adresse(rep)));
       const meldung = page.locator('.rv-meld');
@@ -317,7 +305,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   }
 
   test('AK 8: #6 und #24 — fehlt, anwendung_unbekannt mit und ohne Kürzel; Symbol und Ton der Liste, Rolle status', async ({ page }) => {
-    erwartetRot('AK 8');
     for (const [nr, adresse, kopf, satz, ton, symbol] of [
       [6, `kd:${rep.v2}`, `Zu ${kurz(rep.v2, 'kd')} gibt es keinen Diff.`, 'Das Repository der Anwendung kd kennt diesen Commit nicht mehr.', 'fehl', 'fehlt'],
       [6, `xy:${rep.k1}`, `Zu ${kurz(rep.k1, 'xy')} gibt es keinen Diff.`, 'Die Anwendung xy ist unter Einrichten nicht eingetragen.', 'warn', 'frage'],
@@ -336,7 +323,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 8: feste 404 unlesbar — „Der Eintrag an der Aufgabe ist nicht lesbar.“ mit „Kurz-Hash mehrdeutig“, ohne grund ohne Hinweiszeile', async ({ page }) => {
-    erwartetRot('AK 8');
     for (const grund of ['Kurz-Hash mehrdeutig', null]) {
       await page.unrouteAll();
       await page.goto('about:blank');
@@ -353,7 +339,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 9: unbekannter Zustand und 404 ohne zustand — der alte Satz, ohne Symbol und ohne Ton', async ({ page }) => {
-    erwartetRot('AK 9');
     await fest(page, url => istDiff(url, 11) && url.searchParams.has('commit'), 404, { fehler: 'x', zustand: 'neu_art' });
     await page.goto(reviewAdresse(k, 11, `kd:${rep.k1}`));
     const meldung = page.locator('.rv-meld');
@@ -379,7 +364,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   }
 
   test('AK 10: Verweis ohne Kürzel — „Das Repository der Standardanwendung …“ in beiden Ansichten, nie „Anwendung “ ohne Namen; ohne grund ohne Hinweiszeile', async ({ page }) => {
-    erwartetRot('AK 10');
     for (const [zustand, grund, satz] of [
       ['repository_fehlt', 'Ordner fehlt: /da/weg', 'Das Repository der Standardanwendung ist nicht erreichbar.'],
       ['repository_fehlt', null, 'Das Repository der Standardanwendung ist nicht erreichbar.'],
@@ -404,7 +388,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
   });
 
   test('AK 11: fremder Text im grund — kein Skript, kein Bild, wörtlich als Text, ohne Bidi-Steuerzeichen, endet auf „gpj.exe“, beide Ansichten', async ({ page }) => {
-    erwartetRot('AK 11');
     await fest(page, url => istDiff(url, 11) && (url.searchParams.get('anwendung') === 'wb' || url.searchParams.has('commit')), 404, fehlt404(BOESE));
     for (const [ansicht, adresse, ort] of [['Alle', null, 'section.rv-abs .rv-hin'], ['Ein Commit', `wb:${rep.w1}`, '.rv-meld .rv-hin']]) {
       await page.goto('about:blank');
@@ -421,7 +404,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
 
   for (const breite of [320, 414]) {
     test(`AK 12 (${breite} px): grund mit 500 Zeichen — kein Querscrollen in beiden Ansichten, Symbol, Satz und Hinweiszeile sichtbar, „Erneut versuchen“ in der Breite`, async ({ page }) => {
-      erwartetRot('AK 12');
       const grund = 'Ordner fehlt: ' + langerOrdner('/tmp/kanband-lang', 500);
       expect(grund.length).toBe(500);
       await breiteSetzen(page, breite, 900);
@@ -445,7 +427,6 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
 
   for (const breite of [320, 414, 1280]) {
     test(`AK 12 Lage (${breite} px): #11 — Hinweiszeile unter dem Satz, auf „Ein Commit“ der Satz unter der Überschrift; dazwischen nur Leerraum`, async ({ page }) => {
-      erwartetRot('AK 12');
       const grund = await erwarteterGrund(page, k, rep);
       const satz = 'Das Repository der Anwendung wb ist nicht erreichbar.';
       await breiteSetzen(page, breite, 900);
