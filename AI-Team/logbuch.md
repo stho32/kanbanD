@@ -1497,3 +1497,9 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #208 | Auto-Reviews | architektur-reviewer | befund | 2 min | Muss: Zyklus Wächter → dienst::transkripte::ORDNER · claude · sonnet · Lauf 208-architektur-reviewer-1 · 0,53 $ · Karte gesamt 24,95 $ |
 | 2026-11-21 | #220 | Architektur | architekt | bestanden | 6 min | ADR-0038 vorgeschlagen bis Sondierung · claude · opus · Lauf 220-architekt-1 · 1,83 $ · Karte gesamt 1,83 $ |
 | 2026-11-21 | #220 | Detailplanung | product-owner | bestanden | 3 min | Z. 455–457: Oberfläche gehört dazu, keine ähnlichen, kein Hinweis (#216) · claude · opus · Lauf 220-product-owner-1 · 1,16 $ · Karte gesamt 2,99 $ |
+| 2026-11-21 | #220 | Detailplanung | planer | bestanden | 10 min | I0208 F0160/F0161 B1112–B1122, R00218 · claude · opus · Lauf 220-planer-1 · 3,56 $ · Karte gesamt 6,55 $ |
+| 2026-11-21 | #208 | Auto-Reviews | legacy-reviewer | bestanden | 18 min | kein Muss; Altbestände, Rundlauf, API-Form, Factory-Client grün · claude · sonnet · Lauf 208-legacy-reviewer-1 · 1,56 $ · Karte gesamt 26,51 $ |
+| 2026-11-21 | #208 | Auto-Reviews | observability-reviewer | bestanden | 2 min | kein Muss; Sollte gehören nach #239 · claude · sonnet · Lauf 208-observability-reviewer-1 · 0,37 $ · Karte gesamt 26,88 $ |
+| 2026-11-21 | #216 | Detailplanung | ux-reviewer | bestanden | 1 min | Vorprüfung: Kontrast ≥ 5,45 in allen 42 Paaren; 2 Sollte zu AK 7/9 · claude · sonnet · Lauf 216-ux-reviewer-1 · 0,20 $ · Karte gesamt 4,17 $ |
+| 2026-11-21 | #220 | Detailplanung | gestalter | bestanden | 10 min | D0009 #nachfolger, 12 Zustände, 3 Fragen an den PO · claude · sonnet · Lauf 220-gestalter-1 · 4,07 $ · Karte gesamt 10,62 $ |
+| 2026-11-21 | #220 | Detailplanung | product-owner | bestanden | 3 min | D0009 #nachfolger freigegeben mit Änderung, Z. 458–462 · claude · opus · Lauf 220-product-owner-2 · 1,05 $ · Karte gesamt 11,67 $ |
