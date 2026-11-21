@@ -1545,3 +1545,10 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #217 | Detailplanung | ux-reviewer | befund | 5 min | M1 Fehler-liest-erneut/Fokus, M2 doppelte Ansage alert+status · claude · sonnet · Lauf 217-ux-reviewer-1 · 0,80 $ · Karte gesamt 15,47 $ |
 | 2026-11-21 | #217 | Detailplanung | gestalter | bestanden | 5 min | Nachzeichnung M1/M2: Bild 7 und 9, eine Ansage · claude · sonnet · Lauf 217-gestalter-3 · 1,12 $ · Karte gesamt 16,59 $ |
 | 2026-11-21 | #217 | Detailplanung | product-owner | bestanden | 3 min | Nachzeichnung freigegeben, Z. 478–482 · claude · opus · Lauf 217-product-owner-3 · 1,11 $ · Karte gesamt 17,70 $ |
+| 2026-11-21 | #217 | Detailplanung | planer | bestanden | 7 min | M1, M2, S1–S7, Z. 478–482 eingearbeitet · claude · opus · Lauf 217-planer-3 · 2,22 $ · Karte gesamt 19,92 $ |
+| 2026-11-21 | #217 | Detailplanung | ux-reviewer | bestanden | 2 min | M1/M2 behoben; S-A Ausnahme gesperrter Text, S-B zwei Änderungen je Lesen · claude · sonnet · Lauf 217-ux-reviewer-2 · 0,48 $ · Karte gesamt 20,40 $ |
+| 2026-11-21 | #217 | Entwicklung | entwickler | blockiert | 1 h 59 min | AK 1 Zeichnen 161–172 ms > 100 ms; Frage an architekt ADR-0039 Punkt 7; Rest grün, Gate im Worktree grün · claude · Lauf 217-entwickler-1 · 22,34 $ · Karte gesamt 42,74 $ |
+| 2026-11-21 | #216 | Entwicklung | entwickler | blockiert | 26 min | Sondierung B1105 gescheitert: M1 352 ms und feindlich 5,4 s, M2 226 ms; Frage an architekt ADR-0037 · claude · Lauf 216-entwickler-1 |
+| 2026-11-21 | #217 | Entwicklung | architekt | bestanden | 5 min | ADR-0039 N1: Tabelle als Insel, die im Dokument bleibt (41c2749c); Frage an PO zum NFR-Wortlaut · claude · opus · Lauf 217-architekt-2 · 0,90 $ · Karte gesamt 43,64 $ |
+| 2026-11-21 | #216 | Entwicklung | architekt | bestanden | 7 min | ADR-0040 Worker mit Frist löst ADR-0037 ab (a9755924); WBS und AK neu zu planen · claude · opus · Lauf 216-architekt-2 |
+| 2026-11-21 | #217 | Entwicklung | product-owner | bestanden | 4 min | PO Z. 483–484 (d1a3fac7): NFA auf Neuzeichnen, S-A/S-B/mittlere Form bestätigt · claude · opus · Lauf 217-product-owner-4 |
