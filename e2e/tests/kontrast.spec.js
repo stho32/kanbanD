@@ -23,7 +23,7 @@ const GRUNDBESTAND = () => ({
 });
 
 /** Alle Ansichten der Anwendung aus der gemeinsamen Liste; gemessen wird der ganze `body` samt Kopf mit seinem aktiven Segment. Der Bestand hat keine WBS. */
-const ANSICHTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: '' });
+const ANSICHTEN = ansichtenDerAnwendung({ board: 'entwicklung' });
 /**
  * Ausdrücklich nicht gemessen: gedimmte Zustände über `opacity`, die nicht `aria-disabled` sind und unter 4,5 messen — je Eintrag
  * { selektor, ansicht, karte, heute: { light, dark }, grund }. Seit Karte #57 (R00188) leer: die stillgelegte Initiale trägt ein

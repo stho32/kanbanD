@@ -184,7 +184,7 @@ test.describe('Selbstprobe Breite', () => {
     expect(await breiteMessen(page, 'probe')).toEqual([]);
     await page.setContent(seite('<div class="body" style="overflow:auto"><table style="width:900px"><tr><td>x</td></tr></table></div>'));
     expect((await breiteMessen(page, 'probe')).map(v => v.ort)).toEqual(['div.body']);
-    for (const rahmen of ['wbs-tabelle', 'best-scroll', 'ko-scroll', 'res-rahmen', 'wl-scroll', 'bericht-rahmen']) {
+    for (const rahmen of ['best-scroll', 'ko-scroll', 'res-rahmen', 'wl-scroll', 'bericht-rahmen']) {
       await page.setContent(seite(`<div class="body" style="overflow:auto"><div class="${rahmen}" style="overflow-x:auto"><table style="width:900px"><tr><td>x</td></tr></table></div></div>`));
       expect(await breiteMessen(page, 'probe'), rahmen).toEqual([]);
     }

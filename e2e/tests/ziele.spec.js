@@ -341,11 +341,11 @@ const brett = page => page.goto(k.adresse + '#/board/entwicklung');
 const menue = id => async page => { await brett(page); await page.locator(id).click(); await page.getByRole('menu').first().waitFor(); };
 const bericht = name => page => page.goto(k.adresse + '#/berichte/' + name);
 /** Was eine Ansicht der gemeinsamen Liste nach dem Laden noch braucht, bis ihre Ziele stehen. */
-const NACH_DEM_LADEN = { 'WBS-Sicht': page => page.locator('.wbs-tabelle').waitFor() };
+const NACH_DEM_LADEN = {};
 const geladen = async () => {};
 /** Die Ansichten der Anwendung aus der gemeinsamen Liste (ADR-0012 Regel 6), dazu die Zustände, die nur diese Probe misst. */
 const ANSICHTEN = [
-  ...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(({ ansicht, adresse }) => ({
+  ...ansichtenDerAnwendung({ board: 'entwicklung' }).map(({ ansicht, adresse }) => ({
     ansicht,
     oeffnen: async page => { await page.goto(k.adresse + adresse); await (NACH_DEM_LADEN[ansicht] || geladen)(page); },
   })),
@@ -364,7 +364,7 @@ const ANSICHTEN = [
 
 test('Ansichten der Messprobe: jede Ansicht der gemeinsamen Liste und die Zustände mit Archiv, Palette, API, Fenster und Menüs, keine doppelt', () => {
   const namen = ANSICHTEN.map(a => a.ansicht);
-  const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
+  const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung' }).map(a => a.ansicht);
   const zustaende = ['Archiv des Boards', 'Einrichten mit offener Palette', 'API für Agenten', 'Aufgabenfenster #1', 'Menü Seite', 'Menü Mehr', 'Menü Berichte', 'Menü Ich', 'Kontextmenü #1'];
   expect([...gemeinsam, ...zustaende].filter(name => !namen.includes(name))).toEqual([]);
   expect(new Set(namen).size).toBe(namen.length);
@@ -573,7 +573,7 @@ for (const breite of [320, 375, 414]) {
 
 // B0982 (R00200 AK 1, 7): dieselbe Breitenprobe in einer frischen Sitzung — keine Person gewählt, Timer läuft. Gemessen wird gegen
 // clientWidth (breiteMessen), nie gegen innerWidth, das mit isMobile mit dem Inhalt wächst; dazu „…“ im Bild und der Name von #t-ich.
-const OHNE_PERSON = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
+const OHNE_PERSON = ansichtenDerAnwendung({ board: 'entwicklung' }).map(a => a.ansicht);
 for (const breite of [320, 375, 414]) {
   test.describe(`Breitenprobe ohne gewählte Person, Touch, ${breite} px`, () => {
     test.use({ viewport: { width: breite, height: 844 }, isMobile: true, hasTouch: true });

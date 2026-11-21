@@ -328,7 +328,8 @@ async fn folge_ak01(l: &Lage, lauf: &Instanz) -> Vec<(String, u16, Value)> {
         schritte.push((bericht.into(), s, Value::Null));
     }
     let (s, c) = status_von(reqwest::Method::GET, a, "api/aufgaben/1/commits", None).await;
-    schritte.push(("Commits #1".into(), s, json!(c["commits"].as_array().map(|l| l.iter().map(|e| json!([e["verweis"], e["zustand"], e["titel"]])).collect::<Vec<_>>()))));
+    // ohne Verweis und Hash: zwei Lagen haben verschiedene Commits (Zeitstempel) — verglichen werden Zustand und Titel
+    schritte.push(("Commits #1".into(), s, json!(c["commits"].as_array().map(|l| l.iter().map(|e| json!([e["zustand"], e["titel"]])).collect::<Vec<_>>()))));
     let (s, e) = status_von(reqwest::Method::GET, a, "api/einstellungen", None).await;
     schritte.push(("Einstellungen lesen".into(), s, l.ohne_pfad(&e)));
     let (s, _) = senden(reqwest::Method::PUT, a, "api/einstellungen", e).await;
@@ -360,7 +361,10 @@ async fn ak01_unlesbare_wbs_stoert_nichts_und_bleibt_bytegleich() {
     let lesbar_lage = Lage::neu();
     let lesbar_lauf = lesbar_lage.starten();
     let lesbar = folge_ak01(&lesbar_lage, &lesbar_lauf).await;
-    assert_eq!(lesbar, unlesbar, "dieselbe Folge mit lesbarer WBS liefert dieselben Antworten");
+    assert_eq!(lesbar.len(), unlesbar.len());
+    for (l, u) in lesbar.iter().zip(&unlesbar) {
+        assert_eq!(l, u, "dieselbe Folge mit lesbarer WBS liefert dieselben Antworten — Schritt „{}“", l.0);
+    }
     l.wbs_rechte(0o644);
 }
 
@@ -392,7 +396,13 @@ async fn ak02_endpunkte_der_wbs_antworten_404_ohne_commit() {
     assert_eq!(l.wbs_bytes(), wbs_vorher, "WBS bytegleich");
     for pfad in ["api/endpunkte", "api/openapi.json"] {
         let text = lesen(a, pfad).await.to_string().to_lowercase();
-        let stellen: Vec<&str> = text.match_indices("wbs").map(|(i, _)| &text[i.saturating_sub(60)..(i + 40).min(text.len())]).collect();
+        let grenze = |mut i: usize| {
+            while !text.is_char_boundary(i) {
+                i -= 1;
+            }
+            i
+        };
+        let stellen: Vec<&str> = text.match_indices("wbs").map(|(i, _)| &text[grenze(i.saturating_sub(60))..grenze((i + 40).min(text.len()))]).collect();
         assert!(stellen.is_empty(), "{pfad} nennt „wbs“: {stellen:#?}");
     }
 }

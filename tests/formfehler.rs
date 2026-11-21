@@ -9,7 +9,7 @@ use std::path::Path;
 const JSON: Option<&str> = Some("application/json");
 
 /// R00153 AK 2: Methode, Pfad der Beschreibung, Rumpf mit falschem Typ, Feldname in `fehler`.
-const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 41] = [
+const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 39] = [
     ("POST", "/api/einrichten", r#"{"ich": 7}"#, "ich"),
     ("PATCH", "/api/boards/{slug}", r#"{"archiviert": "ja"}"#, "archiviert"),
     ("POST", "/api/aufgaben", r#"{"titel": 7}"#, "titel"),
@@ -41,8 +41,6 @@ const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 41] = [
     ("POST", "/api/aufgaben/{nr}/commits", r#"{"commits": "kd:3f2a9c1"}"#, "commits"),
     ("POST", "/api/aufgaben/{nr}/commits/ersetzen", r#"{"ersetzungen": "kd:3f2a9c1"}"#, "ersetzungen"),
     ("POST", "/api/aufgaben/{nr}/durchlaeufe", r#"{"phase": 7, "ergebnis": "ok"}"#, "phase"),
-    ("PATCH", "/api/wbs/{kuerzel}/knoten/{id}", r#"{"status": 7}"#, "status"),
-    ("POST", "/api/wbs/{kuerzel}/knoten", r#"{"name": 7}"#, "name"),
     ("POST", "/api/boards/{slug}/aufgaben", r#"{"nummer": "eins"}"#, "nummer"),
     ("POST", "/api/aufgaben/mehrere", r#"{"titel": 7}"#, "titel"),
     ("POST", "/api/aufgaben/{nr}/teilaufgaben/mehrere", r#"{"texte": [7]}"#, "texte"),
@@ -57,10 +55,9 @@ const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 41] = [
 const MIT_WAHLFREIEM_JSON_RUMPF: [(&str, &str); 1] = [("POST", "/api/aufgaben/{nr}/duplizieren")];
 
 /// R00153 AK 3: lesen den Rumpf als `Bytes` und bleiben, wie sie sind.
-const MIT_BYTES_RUMPF: [(&str, &str); 5] = [
+const MIT_BYTES_RUMPF: [(&str, &str); 4] = [
     ("POST", "/api/boards/{slug}/ziehen"),
     ("POST", "/api/aufgaben/{nr}/timer/stop"),
-    ("POST", "/api/wbs/{kuerzel}/knoten/{id}/verwerfen"),
     ("POST", "/api/aufgaben/{nr}/reservierung"),
     ("DELETE", "/api/aufgaben/{nr}/reservierung"),
 ];
@@ -92,8 +89,7 @@ const RAHMENTEXT: [&str; 6] = ["invalid type", "invalid value", "expected", "mis
 
 /// Der Pfad der Beschreibung mit den Werten des Grundbestands, ohne führenden Schrägstrich.
 fn gesendeter_pfad(pfad: &str) -> String {
-    let kuerzel = if pfad.starts_with("/api/wbs/") { "kd" } else { "st" };
-    pfad[1..].replace("{slug}", "entwicklung").replace("{nr}", "1").replace("{kuerzel}", kuerzel).replace("{id}", "I0001").replace("{i}", "0").replace("{kennung}", "x")
+    pfad[1..].replace("{slug}", "entwicklung").replace("{nr}", "1").replace("{kuerzel}", "st").replace("{id}", "I0001").replace("{i}", "0").replace("{kennung}", "x")
 }
 
 /// Git-Stand des Board-Ordners: letzter Commit und offene Änderungen.
@@ -170,9 +166,9 @@ async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_ei
     let liste: serde_json::Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let beschrieben: Vec<String> = liste.as_array().unwrap().iter().filter(|e| e["methode"] != "GET").map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
     let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_WAHLFREIEM_JSON_RUMPF.iter().map(|(m, p)| (m, p))).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
-    assert_eq!((beschrieben.len(), benannt.len()), (65, 65), "65 = 41 + 1 + 5 + 18 (R00222: ohne die drei schreibenden Wirkungs-Endpunkte)");
+    assert_eq!((beschrieben.len(), benannt.len()), (62, 62), "62 = 39 + 1 + 4 + 18 (R00222: ohne die drei schreibenden Endpunkte der Wirkungen und die drei der WBS)");
     let (beschrieben, benannt): (BTreeSet<_>, BTreeSet<_>) = (beschrieben.into_iter().collect(), benannt.into_iter().collect());
-    assert_eq!(benannt.len(), 65, "kein Endpunkt steht in zwei Listen");
+    assert_eq!(benannt.len(), 62, "kein Endpunkt steht in zwei Listen");
     assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der vier Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "benannter Endpunkt fehlt in der Beschreibung");
 }
@@ -336,7 +332,7 @@ async fn die_beschreibung_nennt_400_mit_fehlerantwort_und_keinen_code_des_transp
             }
         }
     }
-    assert_eq!(schreibend, 65);
+    assert_eq!(schreibend, 62);
     // 413: nur POST …/transkripte (R00216 AK 6 und AK 15, ADR-0036 Regel 5) — die Datei ist der Körper; jeder JSON-Rumpf bleibt ohne 413
     assert_eq!(api["paths"].as_object().unwrap().iter().flat_map(|(p, m)| m.as_object().unwrap().iter().filter(|(_, b)| b["responses"].get("413").is_some()).map(move |(m, _)| format!("{m} {p}"))).collect::<Vec<_>>(), ["post /api/aufgaben/{nr}/transkripte"]);
     // 304: GET …/diff mit If-None-Match (R00206 FA 12) — die einzige Route mit ETag

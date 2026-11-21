@@ -204,7 +204,7 @@ const gepruefteDateien = () => ['kd-app.css', 'kd-base.css', ...fs.readdirSync(W
 
 /** Verzierung, Linie oder inaktives Bedienelement (R00107 FA 11) — und die sichtbare Sperrform (R00148 AK 19,
     freigegeben 2026-11-14): der gesperrte Auslöser dämpft Schrift und Symbol auf --kd-faint. */
-const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz', '.bf-chip', '.wbs-zeile .trenner',
+const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz', '.bf-chip',
   '.btn[data-sperrform]', '.btn[data-sperrform]:hover',
   '.btn-haupt[data-sperrform]', '.btn-haupt[data-sperrform]:hover',
   '.btn-sym[data-sperrform]', '.btn-sym[data-sperrform]:hover',

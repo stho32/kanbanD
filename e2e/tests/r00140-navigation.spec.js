@@ -1,6 +1,6 @@
-// R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“ (Karte #105). Die Leiste trägt ab 600 px nur
-// Board und Berichte ▾; die vier seltenen Ziele liegen im Menü „…“ (`#t-mehr`, role=menu) als erste Gruppe,
-// jeder als menuitem-Link mit tabindex="-1" und data-act="seite" (auch WBS), gefolgt von genau einem
+// R00140 Aufgaben, Personen und Einrichten im Menü „…“ (Karte #105; der Eintrag „WBS“ entfiel mit R00222). Die Leiste trägt ab 600 px nur
+// Board und Berichte ▾; die seltenen Ziele liegen im Menü „…“ (`#t-mehr`, role=menu) als erste Gruppe,
+// jeder als menuitem-Link mit tabindex="-1" und data-act="seite", gefolgt von genau einem
 // role="separator" und den Werkzeugen. Markiert ist genau ein Eintrag mit `an` + aria-current="page" —
 // in der Leiste oder im offenen Menü; der „…“-Auslöser nie (ADR-0018 Regel 5 geweitet).
 const { test, expect } = require('@playwright/test');
@@ -9,12 +9,13 @@ const { zeile, wbsText, arbeitsRepository, mitRegister } = require('./wbs-hilfen
 const { gezeichnet } = require('./struktur-hilfen');
 
 const DREI_PUNKTE = '…';
-const ZIELE = ['Aufgaben', 'Personen', 'WBS', 'Einrichten'];
+// R00222: der Eintrag „WBS“ entfiel mit der WBS-Sicht (ADR-0034 Regel 4)
+const ZIELE = ['Aufgaben', 'Personen', 'Einrichten'];
 
 const jetztMinus = min => { const d = new Date(Date.now() - min * 60000); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 const lauft = wer => `\`\`\`kanbanD-time\n${jetztMinus(30)} · ... · ${wer}\n\`\`\`\n`;
 
-/** Grundbestand der R00140: Board „entwicklung“, an kd gebunden (WBS-Eintrag), Ich „EM“, drei Spalten, #1 mit laufendem Timer. */
+/** Grundbestand der R00140: Board „entwicklung“, an kd gebunden , Ich „EM“, drei Spalten, #1 mit laufendem Timer. */
 const BOARD = '# Entwicklung\n\n## Zu erledigen\n\n- #1\n\n## In Arbeit\n\n## Erledigt\n';
 const AUFGABE_1 = ['aufgaben/0001-eins.md', `---\nid: 1\ntitle: eins\nassignees: [em]\n---\n${lauft('em')}`];
 
@@ -30,7 +31,6 @@ const ROUTEN = [
   { adresse: '#/aufgaben', eintrag: 'Aufgaben', bereit: '.ziele' },
   { adresse: '#/personen', eintrag: 'Personen' },
   { adresse: '#/berichte/verlauf', eintrag: 'Berichte', bereit: '.dtitel' },
-  { adresse: '#/wbs/kd', eintrag: 'WBS', bereit: '.wbs-titel' },
   { adresse: '#/einrichten', eintrag: 'Einrichten', bereit: '.einr' },
 ];
 
@@ -69,10 +69,10 @@ async function mehrOeffnen(page) {
   await page.locator('#pop[aria-label="Mehr"]').waitFor();
 }
 
-test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“', () => {
+test.describe('R00140 Aufgaben, Personen und Einrichten im Menü „…“', () => {
   test.describe.configure({ timeout: 180000 });
 
-  test('US-1/AK 1: die Leiste trägt nur Board und Berichte; die vier Ziele kommen darin nicht vor', async ({ page }) => {
+  test('US-1/AK 1: die Leiste trägt nur Board und Berichte; die drei Ziele kommen darin nicht vor', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -84,7 +84,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
     for (const ziel of ZIELE) expect(text, `„${ziel}“ steht noch in der Leiste`).not.toContain(ziel);
   });
 
-  test('US-2/AK 2: unter 600 px trägt das Seitenmenü dieselben zwei Ziele — die vier nicht', async ({ page }) => {
+  test('US-2/AK 2: unter 600 px trägt das Seitenmenü dieselben zwei Ziele — die drei nicht', async ({ page }) => {
     const k = await starten(page);
     await page.goto(k.adresse);
     await expect(page.locator('.ka')).toHaveCount(1);
@@ -105,7 +105,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
     }
   });
 
-  test('US-3/US-4/AK 3+4: das Menü „…“ trägt die vier Ziele bei jeder Breite; jeder Eintrag zeigt seine Ansicht', async ({ page }) => {
+  test('US-3/US-4/AK 3+4: das Menü „…“ trägt die drei Ziele bei jeder Breite; jeder Eintrag zeigt seine Ansicht', async ({ page }) => {
     const k = await starten(page);
     for (const breite of [375, 560, 900, 1280, 1440]) {
       await page.goto(k.adresse + '#/board/entwicklung');
@@ -132,7 +132,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
       }
       await page.keyboard.press('Escape');
     }
-    for (const [ziel, url] of [['Aufgaben', /#\/aufgaben$/], ['Personen', /#\/personen$/], ['WBS', /#\/wbs\/kd$/], ['Einrichten', /#\/einrichten$/]]) {
+    for (const [ziel, url] of [['Aufgaben', /#\/aufgaben$/], ['Personen', /#\/personen$/], ['Einrichten', /#\/einrichten$/]]) {
       await page.goto(k.adresse + '#/board/entwicklung');
       await gezeichnet(page, '#/board/entwicklung', '.bahn');
       await mehrOeffnen(page);
@@ -142,7 +142,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
     }
   });
 
-  test('US-8/AK 11: jeder Menüeintrag ist per ↓ erreichbar, auch WBS; im Menü steht kein a ohne Rolle', async ({ page }) => {
+  test('US-8/AK 11: jeder Menüeintrag ist per ↓ erreichbar, auch die Ziele; im Menü steht kein a ohne Rolle', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -159,10 +159,10 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
     }
     expect(besucht, '↓ erreicht jeden Eintrag').toHaveLength(zahl);
     expect(besucht.every(Boolean), 'der Fokus bleibt im Menü').toBe(true);
-    expect(besucht).toContain('WBS');
+    expect(besucht).toEqual(expect.arrayContaining(ZIELE));
   });
 
-  test('US-9/AK 12: die vier Ziele zuerst, genau ein Trenner, dann die Werkzeuge; kein zweiter Abschnittskopf', async ({ page }) => {
+  test('US-9/AK 12: die drei Ziele zuerst, genau ein Trenner, dann die Werkzeuge; kein zweiter Abschnittskopf', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const k = await starten(page);
     await page.goto(k.adresse + '#/board/entwicklung');
@@ -175,7 +175,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
     const trenner = kinder.map((k, i) => k.rolle === 'separator' ? i : -1).filter(i => i >= 0);
     expect(trenner, 'genau ein role="separator"').toHaveLength(1);
     const zielIndizes = kinder.map((k, i) => k.rolle === 'menuitem' && k.tag === 'A' ? i : -1).filter(i => i >= 0);
-    expect(zielIndizes.map(i => kinder[i].text), 'die vier Ziele als erste Gruppe').toEqual(ZIELE);
+    expect(zielIndizes.map(i => kinder[i].text), 'die drei Ziele als erste Gruppe').toEqual(ZIELE);
     expect(Math.max(...zielIndizes), 'die Ziele stehen vor dem Trenner').toBeLessThan(trenner[0]);
     expect(trenner[0], 'der Trenner folgt direkt auf das letzte Ziel').toBe(Math.max(...zielIndizes) + 1);
     const werkzeuge = kinder.map((k, i) => k.tag === 'BUTTON' && k.rolle && k.rolle.startsWith('menuitem') ? i : -1).filter(i => i >= 0);
@@ -232,7 +232,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
       expect(gefunden[0].an, `${route.adresse}: der Eintrag mit aria-current trägt an`).toBe(true);
       // Auf einer Sekundärroute liegt die Markierung im geöffneten Menü „…“, sonst in der Leiste.
       const imMenue = await markierte(page).evaluateAll(es => es.map(e => e.closest('#pop[role="menu"]') !== null));
-      expect(imMenue, `${route.adresse}: Ort der Markierung`).toEqual([['Aufgaben', 'Personen', 'WBS', 'Einrichten'].includes(route.eintrag)]);
+      expect(imMenue, `${route.adresse}: Ort der Markierung`).toEqual([ZIELE.includes(route.eintrag)]);
       await expect(page.locator('#t-mehr'), `der „${DREI_PUNKTE}“-Auslöser ist nie markiert`).not.toHaveClass(/\ban\b/);
       await expect(page.locator('#t-mehr')).not.toHaveAttribute('aria-current', /page/);
       await page.keyboard.press('Escape');
@@ -269,7 +269,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
     await expect(menue(page).getByRole('menuitem', { name: 'Personen', exact: true })).toHaveCount(0);
   });
 
-  test('AK 11: der WBS-Eintrag als bloßer Link ohne Rolle macht die Probe rot', async ({ page }) => {
+  test('AK 11: ein Ziel als bloßer Link ohne Rolle macht die Probe rot', async ({ page }) => {
     let griff = false;
     await page.route('**/ansicht.js', async route => {
       const antwort = await route.fetch();
@@ -283,7 +283,7 @@ test.describe('R00140 Aufgaben, Personen, WBS und Einrichten im Menü „…“'
     await page.goto(k.adresse + '#/board/entwicklung');
     await gezeichnet(page, '#/board/entwicklung', '.bahn');
     await mehrOeffnen(page);
-    expect(griff, 'die Mutante „WBS ohne Rolle“ greift').toBe(true);
+    expect(griff, 'die Mutante „Ziel ohne Rolle“ greift').toBe(true);
     expect(await menue(page).locator('a:not([role])').count()).toBeGreaterThan(0);
   });
 

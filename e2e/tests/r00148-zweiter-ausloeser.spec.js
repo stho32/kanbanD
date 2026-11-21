@@ -348,26 +348,6 @@ test.describe('R00148 Doppelter Auslöser im Aufgabenfenster', () => {
     expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
   });
 
-  test('AK 10 (#134 a): Doppelklick auf das ✕ einer Wirkung entfernt genau eine', async ({ page }) => {
-    await k.stoppen();
-    k = await kanbanStarten(einrichten(bestandMit(DREI_OFFEN, 'wbs-effects:\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014}\n')));
-    await fensterOeffnen(page);
-    const vorher = commits(k);
-    await reiter(page, 'Details');
-    await expect(page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]')).toHaveCount(2);
-    const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/wbs-effects/0', 'DELETE');
-    await page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]').nth(0).dblclick();
-    await bisAnfrageLaeuft(halte);
-    halte.freigeben();
-
-    expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
-    await expect.poll(() => commits(k), { message: 'genau ein Commit' }).toBe(vorher + 1);
-    await expect(page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]')).toHaveCount(1);
-    const datei = k.lies(KARTE);
-    expect(datei.match(/node: D0002/g) || [], 'die erste Wirkung ist weg').toHaveLength(0);
-    expect(datei.match(/node: I0014/g) || [], 'die zweite Wirkung steht noch').toHaveLength(1);
-  });
-
   test('AK 11 (#134 b): Doppelklick auf das ✕ einer Entwurfs-Teilaufgabe lässt „zwei“ stehen', async ({ page }) => {
     await page.goto(k.adresse);
     await liveBereit(page);
@@ -573,12 +553,13 @@ test.describe('R00148 Nacharbeit: Schreibwirkung entscheidet, jeder Weg ist gesp
   });
 });
 
-/** Karte #1 mit drei Teilaufgaben und zwei Wirkungen — die Familien ✕, Kästchen und Chip-✕ an einem Fenster. */
-const MIT_WIRKUNGEN = 'wbs-effects:\n  - {application: kd, action: rework, node: D0002}\n  - {application: kd, action: remove, node: I0014}\n';
+/** Karte #1 mit drei Teilaufgaben und zwei Herkünften — die Familien ✕, Kästchen und Chip-✕ an einem Fenster (bis R00222 trugen
+ *  die Wirkungen das Chip-✕; seit sie entfielen, das ✕ am Herkunfts-Chip, D0003). */
+const MIT_HERKUNFT = 'origins: [I0001, R00014]\n';
 
 test.describe('R00148 Nacharbeit: jede Variante als eigene Probe (AK 12, 14, 16, 19, 20)', () => {
   let k;
-  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(bestandMit(DREI_OFFEN, MIT_WIRKUNGEN))); await alsPerson(page, 'st'); });
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(bestandMit(DREI_OFFEN, MIT_HERKUNFT))); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
   const fensterOeffnen = async (page) => {
@@ -686,19 +667,6 @@ test.describe('R00148 Nacharbeit: jede Variante als eigene Probe (AK 12, 14, 16,
     expect(commits(k)).toBe(vorher + 1);
   });
 
-  test('AK 12 (wirkung-weg): zweimal Enter auf dem ✕ der ersten Wirkung sendet genau ein DELETE', async ({ page }) => {
-    await fensterOeffnen(page);
-    const vorher = commits(k);
-    await reiter(page, 'Details');
-    const halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/wbs-effects/'), 'DELETE');
-    await zweimalEnter(page, page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]').nth(0), halte);
-    await expect(page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]')).toHaveCount(1);
-    await expect.poll(() => commits(k)).toBe(vorher + 1);
-    expect(halte.anzahl(), 'genau ein DELETE').toBe(1);
-    expect(k.lies(KARTE)).toContain('node: I0014');
-    expect(k.lies(KARTE)).not.toContain('node: D0002');
-  });
-
   test('AK 14: der gesperrte Auslöser bleibt per Tab erreichbar', async ({ page }) => {
     await fensterOeffnen(page);
     const halte = await anfragenHalten(page, p => p === '/api/aufgaben/1/teilaufgaben/1', 'DELETE');
@@ -766,8 +734,8 @@ test.describe('R00148 Nacharbeit: jede Variante als eigene Probe (AK 12, 14, 16,
       await page.locator('.ka[data-id="1"] .t').click();
       await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
       await reiter(page, 'Details');
-      halte = await anfragenHalten(page, p => p.startsWith('/api/aufgaben/1/'), 'DELETE');
-      const chip = page.locator('#fenster #wirkungen button[data-act="wirkung-weg"]').nth(0);
+      halte = await anfragenHalten(page, p => p === '/api/aufgaben/1', 'PATCH');
+      const chip = page.locator('#fenster button[data-act="herkunft-weg"]').nth(0);
       await chip.click();
       await bisAnfrageLaeuft(halte);
       await sperrformPruefen(page, chip, 'Chip-✕');

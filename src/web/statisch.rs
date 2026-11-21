@@ -51,7 +51,6 @@ dateien! {
     "fokus.js" => "text/javascript; charset=utf-8",
     "berichte.js" => "text/javascript; charset=utf-8",
     "kosten.js" => "text/javascript; charset=utf-8",
-    "wbs.js" => "text/javascript; charset=utf-8",
     "kd-tokens.css" => "text/css; charset=utf-8",
     "kd-base.css" => "text/css; charset=utf-8",
     "kd-app.css" => "text/css; charset=utf-8",

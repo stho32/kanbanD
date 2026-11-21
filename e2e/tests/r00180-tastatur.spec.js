@@ -253,7 +253,7 @@ test('AK 6: in jeder Ansicht hat jedes Element mit Rolle button oder checkbox un
     for (const fund of await page.evaluate(ohneTabHalt)) funde.push(`${ansicht}: ${fund}`);
   };
 
-  for (const { ansicht, adresse } of ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' })) {
+  for (const { ansicht, adresse } of ansichtenDerAnwendung({ board: 'entwicklung' })) {
     await page.goto(k.adresse + adresse);
     await bereit(page, '#main > *');
     if (ansicht === 'Einrichten') {

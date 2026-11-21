@@ -9,7 +9,7 @@ const MASS = { fein: 24, touch: 44 };
  * eine breite Tabelle in einem anderen Bereich erkennt breiteMessen selbst.
  */
 // Abschließende Liste nach F0050 und PO Z. 137: nur diese benannten Rahmen dürfen in sich quer scrollen
-const QUER_ERLAUBT = '.bahnen, .leg, .wbs-tabelle, .best-scroll, .ko-scroll, .res-rahmen, .wl-scroll, .bericht-rahmen, .cl-rahmen, .df-sc';
+const QUER_ERLAUBT = '.bahnen, .leg, .best-scroll, .ko-scroll, .res-rahmen, .wl-scroll, .bericht-rahmen, .cl-rahmen, .df-sc';
 
 /**
  * Läuft im Browser: misst jedes Bedienziel und liefert die Verstöße.

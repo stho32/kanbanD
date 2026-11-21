@@ -16,7 +16,7 @@ const SPALTEN_VORHER = [
   { breite: 320, handy: true, bahnen: [292, 49, 292] },
 ];
 const [ERSTER_START, EINRICHTUNGSMODUS, DEFEKTES_BOARD] = ZUSTAENDE;
-const WBS_SICHT = ROUTEN.find(r => r.ansicht === 'WBS-Sicht');
+const EINRICHTEN = ROUTEN.find(r => r.ansicht === 'Einrichten');
 
 const spalte = (page, name) => page.locator(`#main section.bahn[data-col="${name}"]`);
 
@@ -66,19 +66,19 @@ const SPALTEN_MUTANTEN = [
 ];
 
 /** Rückgaben in vHaupt(), die nicht die Form `[if (…) ]return vX();` haben: die Probe kann ihre Sicht nicht lesen und muss das melden. */
-const WBS_ZWEIG = "  if (S.ui.view === 'wbs') return vWbs();";
+const BESTAND_ZWEIG = "  if (S.ui.view === 'berichte/bestand') return vBestand();";
 const RUECKGABE_MUTANTEN = [
-  { name: 'anderer Rückgabeausdruck', aus: WBS_ZWEIG, ein: "  if (S.ui.view === 'wbs') return vWbs() + vNeueSicht();" },
+  { name: 'anderer Rückgabeausdruck', aus: BESTAND_ZWEIG, ein: "  if (S.ui.view === 'berichte/bestand') return vBestand() + vNeueSicht();" },
   { name: 'Ternary', aus: '  return vBoard();\n}', ein: "  return S.ui.view === 'neu' ? vNeueSicht() : vBoard();\n}" },
-  { name: 'Aufruf mit Argument', aus: WBS_ZWEIG, ein: "  if (S.ui.view === 'wbs') return vWbs(S.ui);" },
-  { name: 'return ohne v-Präfix', aus: WBS_ZWEIG, ein: "  if (S.ui.view === 'wbs') return wbsSicht();" },
+  { name: 'Aufruf mit Argument', aus: BESTAND_ZWEIG, ein: "  if (S.ui.view === 'berichte/bestand') return vBestand(S.ui);" },
+  { name: 'return ohne v-Präfix', aus: BESTAND_ZWEIG, ein: "  if (S.ui.view === 'berichte/bestand') return bestandSicht();" },
 ];
 
 /** Der Eintrag, der je Route `an` + `aria-current="page"` trägt (US-9): in der Leiste (Board, Berichte) oder im Menü „…“ (R00140). */
-const AKTUELLER_EINTRAG = { Board: 'Board', Aufgabenliste: 'Aufgaben', Personen: 'Personen', Einrichten: 'Einrichten', 'WBS-Sicht': 'WBS' };
+const AKTUELLER_EINTRAG = { Board: 'Board', Aufgabenliste: 'Aufgaben', Personen: 'Personen', Einrichten: 'Einrichten' };
 const erwarteterEintrag = route => AKTUELLER_EINTRAG[route.ansicht] || 'Berichte';
 /** Die Sekundärrouten: ihre aktuelle Seite liegt im Menü „…“ und ist nur bei geöffnetem Menü im Dokument (R00140). */
-const IM_MEHR = new Set(['Aufgabenliste', 'Personen', 'WBS-Sicht', 'Einrichten']);
+const IM_MEHR = new Set(['Aufgabenliste', 'Personen', 'Einrichten']);
 
 /** Öffnet das Menü „…“ (Mehr), falls es zu ist. */
 async function mehrOeffnen(page) {
@@ -240,27 +240,28 @@ test.describe('R00113 Struktur für Hilfstechnik', () => {
 
   test('US-1: die Probe prüft jede Verzweigung von vHaupt()', () => {
     const quelltext = fs.readFileSync(APP_JS, 'utf8');
-    expect(sichtenVonVHaupt(quelltext)).toHaveLength(17);
+    expect(sichtenVonVHaupt(quelltext)).toHaveLength(16);
     expect(vollstaendigkeitPruefen(quelltext, [...ROUTEN, ...ZUSTAENDE])).toEqual([]);
   });
 
-  test('US-2: M1 — eine zweite Überschrift erster Ebene in der WBS-Sicht macht die Probe rot', async ({ page }) => {
+  // R00222: M1 lag in der WBS-Sicht; seit sie entfiel, an der Überschrift „ANWENDUNGEN“ der Einstellungsseite
+  test('US-2: M1 — eine zweite Überschrift erster Ebene in „Einrichten“ macht die Probe rot', async ({ page }) => {
     await page.route('**/ansicht.js', async route => {
       const antwort = await route.fetch();
       const text = await antwort.text();
-      const mutiert = text.replace('<h2 class="wbs-titel">', '<h1 class="wbs-titel">').replace('${nc}</h2>', '${nc}</h1>');
+      const mutiert = text.replace('<h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2>', '<h1 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h1>');
       expect(mutiert, 'Mutante M1 greift nicht').not.toBe(text);
       await route.fulfill({ response: antwort, body: mutiert });
     });
     const k = await starten(page);
-    await page.goto(k.adresse + WBS_SICHT.adresse);
-    await gezeichnet(page, WBS_SICHT.adresse, WBS_SICHT.bereit);
-    expect(await seitenueberschriftPruefen(page, WBS_SICHT)).toEqual(['2 Überschriften erster Ebene in WBS-Sicht']);
+    await page.goto(k.adresse + EINRICHTEN.adresse);
+    await gezeichnet(page, EINRICHTEN.adresse, EINRICHTEN.bereit);
+    expect(await seitenueberschriftPruefen(page, EINRICHTEN)).toEqual(['2 Überschriften erster Ebene in Einrichten']);
   });
 
   test('US-2: M2 — eine Verzweigung mehr in vHaupt(), als die Probe prüft, macht die Probe rot', () => {
     const quelltext = fs.readFileSync(APP_JS, 'utf8');
-    const mutiert = quelltext.replace("  if (S.ui.view === 'wbs') return vWbs();", "  if (S.ui.view === 'wbs') return vWbs();\n  if (S.ui.view === 'neu') return vNeueSicht();");
+    const mutiert = quelltext.replace(BESTAND_ZWEIG, BESTAND_ZWEIG + "\n  if (S.ui.view === 'neu') return vNeueSicht();");
     expect(mutiert, 'Mutante M2 greift nicht').not.toBe(quelltext);
     expect(vollstaendigkeitPruefen(mutiert, [...ROUTEN, ...ZUSTAENDE])).toEqual(['Route ohne Prüfung: vNeueSicht() in vHaupt()']);
   });

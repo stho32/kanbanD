@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 /// R00154 AK 2: Methode, Schablone des Pfads und die Parameter, die eine Zahl sind — die Parameter selbst stehen in der Schablone.
-const MIT_PFADPARAMETER: [(&str, &str, &[&str]); 66] = [
+const MIT_PFADPARAMETER: [(&str, &str, &[&str]); 62] = [
     ("GET", "/api/aufgaben/{nr}", &["nr"]),
     ("PATCH", "/api/aufgaben/{nr}", &["nr"]),
     ("DELETE", "/api/aufgaben/{nr}", &["nr"]),
@@ -70,10 +70,6 @@ const MIT_PFADPARAMETER: [(&str, &str, &[&str]); 66] = [
     ("POST", "/api/boards/{slug}/ziehen", &[]),
     ("PATCH", "/api/personen/{kuerzel}", &[]),
     ("DELETE", "/api/personen/{kuerzel}", &[]),
-    ("GET", "/api/wbs/{kuerzel}", &[]),
-    ("POST", "/api/wbs/{kuerzel}/knoten", &[]),
-    ("PATCH", "/api/wbs/{kuerzel}/knoten/{id}", &[]),
-    ("POST", "/api/wbs/{kuerzel}/knoten/{id}/verwerfen", &[]),
 ];
 
 /// R00154 AK 6: Anfrage und das Feld, das die Meldung nennt.
@@ -199,8 +195,8 @@ async fn jede_route_weist_ungueltiges_utf8_an_jedem_pfadparameter_mit_400_und_de
     let (tmp, lauf) = grundbestand();
     let vorher = stand(tmp.path());
     let (rot, anfragen) = tabelle_fahren(&lauf.adresse, "%FF", |alle, _| alle.iter().map(|n| n.to_string()).collect()).await;
-    assert_eq!(anfragen, 83, "49 Routen mit einem Parameter + 17 mit zweien (R00222: ohne die vier Wirkungs-Endpunkte)");
-    assert!(rot.is_empty(), "{} von 83 Anfragen rot:\n{}", rot.len(), rot.join("\n"));
+    assert_eq!(anfragen, 77, "47 Routen mit einem Parameter + 15 mit zweien (R00222: ohne die Endpunkte der Wirkungen und der WBS)");
+    assert!(rot.is_empty(), "{} von 77 Anfragen rot:\n{}", rot.len(), rot.join("\n"));
     assert_eq!(stand(tmp.path()), vorher, "kein Commit, keine offene Änderung");
 }
 
@@ -223,13 +219,13 @@ async fn die_tabelle_nennt_jede_route_der_beschreibung_mit_pfadparameter_genau_e
     let eintraege = liste.as_array().unwrap();
     let beschrieben: Vec<String> = eintraege.iter().filter(|e| e["pfad"].as_str().unwrap().split('?').next().unwrap().contains('{')).map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
     let benannt: BTreeSet<String> = MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect();
-    assert_eq!((eintraege.len(), beschrieben.len(), benannt.len()), (92, 66, 66), "92 Einträge, 66 mit Pfadparameter, keine Zeile doppelt (R00222: ohne die vier Wirkungs-Endpunkte)");
+    assert_eq!((eintraege.len(), beschrieben.len(), benannt.len()), (88, 62, 62), "88 Einträge, 62 mit Pfadparameter, keine Zeile doppelt (R00222: ohne die vier Endpunkte der Wirkungen und die vier der WBS)");
     let beschrieben: BTreeSet<String> = beschrieben.into_iter().collect();
     assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "Route mit Pfadparameter fehlt in der Tabelle zu AK 2");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "Zeile der Tabelle fehlt in der Beschreibung");
     let stellen: usize = MIT_PFADPARAMETER.iter().map(|(_, p, _)| parameter(p).len()).sum();
     let zahlen: usize = MIT_PFADPARAMETER.iter().map(|(_, _, z)| z.len()).sum();
-    assert_eq!((stellen, zahlen), (83, 42), "83 Parameterstellen, davon 42 Zahlen");
+    assert_eq!((stellen, zahlen), (77, 42), "77 Parameterstellen, davon 42 Zahlen");
     for (_, schablone, zahlen) in MIT_PFADPARAMETER {
         assert!(zahlen.iter().all(|z| parameter(schablone).contains(z)), "{schablone}: jede Zahl ist ein Parameter der Schablone");
     }
@@ -391,8 +387,8 @@ async fn die_beschreibung_nennt_jeden_pfad_und_abfrageparameter() {
             }
         }
     }
-    assert_eq!(routen, 92);
-    assert_eq!(mit_pfad, MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect::<BTreeSet<_>>(), "die 66 Routen der Tabelle");
+    assert_eq!(routen, 88);
+    assert_eq!(mit_pfad, MIT_PFADPARAMETER.iter().map(|(m, p, _)| format!("{m} {p}")).collect::<BTreeSet<_>>(), "die 62 Routen der Tabelle");
     assert_eq!(abfragen, [
         "get /api/aufgaben: board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte",
         "get /api/aufgaben/{nr}/diff: commit, anwendung, datei, format",

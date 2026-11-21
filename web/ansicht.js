@@ -132,7 +132,7 @@ function vBereichChips() {
   return `<span class="kz-chips" role="radiogroup" aria-label="Bereich">${BEREICHE.map(([k, t]) => `<button type="button" class="kz-chip${u.bereich === k ? ' an' : ''}" data-act="bereich" data-arg="${k}" role="radio" aria-checked="${u.bereich === k}">${u.bereich === k ? '<span class="kz-auswahl-haken" aria-hidden="true">✓</span> ' : ''}${t}</button>`).join('')}</span>`;
 }
 
-/** Menü „Mehr“ (R00140, UX-Vorprüfung #105): die vier seltenen Ziele als erste Gruppe, darunter genau ein
+/** Menü „Mehr“ (R00140, UX-Vorprüfung #105): die seltenen Ziele (Aufgaben, Personen, Einrichten; R00222) als erste Gruppe, darunter genau ein
  *  Trenner, dann die Werkzeuge. Jeder Eintrag löst dieselbe Aktion aus wie früher sein Knopf. */
 function vMehrPop() {
   const u = S.ui;
@@ -141,11 +141,7 @@ function vMehrPop() {
     const eintrag = aktuelleSeite(istAktuell);
     return `<a class="${cssKlassen('iz', eintrag.klasse)}"${eintrag.attribut} href="${hash}" data-act="seite" data-arg="${hash}" role="menuitem" tabindex="-1">${esc(titel)}</a>`;
   };
-  const wbs = gebunden().map(a => {
-    const titel = gebunden().length > 1 ? 'WBS · ' + a.kuerzel : 'WBS';
-    return mehrZiel(titel, u.view === 'wbs' && wbsKuerzel() === a.kuerzel, '#/wbs/' + esc(encodeURIComponent(a.kuerzel)));
-  }).join('');
-  const ziele = `${mehrZiel('Aufgaben', u.view === 'aufgaben', '#/aufgaben')}${mehrZiel('Personen', u.view === 'personen', '#/personen')}${wbs}${mehrZiel('Einrichten', u.view === 'einrichten', '#/einrichten')}`;
+  const ziele = `${mehrZiel('Aufgaben', u.view === 'aufgaben', '#/aufgaben')}${mehrZiel('Personen', u.view === 'personen', '#/personen')}${mehrZiel('Einrichten', u.view === 'einrichten', '#/einrichten')}`;
   const eintrag = {
     signale: () => `<button type="button" class="iz${u.signaleOben ? ' an' : ''}" id="signale-oben" role="menuitemcheckbox" tabindex="-1" aria-checked="${!!u.signaleOben}" data-act="signale-oben" title="Karten mit Signal zuerst zeigen — nur die Anzeige, die Reihenfolge im Board bleibt">${u.signaleOben ? '<span class="kz-auswahl-haken" aria-hidden="true">☑</span>' : ''}Signale oben</button>`,
     spalten: () => '<button type="button" class="iz" id="mehr-spalten" role="menuitem" tabindex="-1" data-act="setup" title="Spalten dieses Boards einrichten">Spalten einrichten</button>',
@@ -589,9 +585,6 @@ function vPop() {
   if (u.pop === 'ber') return vBerichtePop();
   if (u.pop === 'defekt') return vDefektePop();
   if (u.pop === 'reservierungen') return vReservierungenPop();
-  if (u.pop === 'wbs-status') return vWbsStatusPop();
-  if (u.pop === 'wbs-neu') return vWbsNeuPop();
-  if (u.pop === 'wbs-verwerfen') return vWbsVerwerfenPop();
   if (u.pop !== 'ich') return '';
   const ps = personen();
   const waehlbar = ps.filter(p => p.art === 'human' && p.aktiv);
@@ -669,7 +662,7 @@ const alleLaufenden = () => S.aufgaben.filter(a => !a.archiviert).flatMap(a => l
 const PAL = ['yellow', 'amber', 'orange', 'red', 'rose', 'pink', 'magenta', 'violet', 'indigo', 'blue', 'sky', 'cyan', 'teal', 'green', 'lime', 'grey'];
 const cv = farbe => !farbe ? '' : PAL.includes(farbe) ? `--c:var(--kd-c-${farbe});--cl:var(--kd-c-${farbe}-line)` : `--c:color-mix(in srgb,${farbe} var(--kd-klasse-anteil),var(--kd-surface));--cl:${farbe}`;
 /** Sichten außerhalb eines Boards (ADR-0031 Regel 3); Board und Berichte gelten dem gezeigten Board. */
-const AUSSERHALB_EINES_BOARDS = ['aufgaben', 'personen', 'einrichten', 'wbs'];
+const AUSSERHALB_EINES_BOARDS = ['aufgaben', 'personen', 'einrichten'];
 const ausserhalbEinesBoards = () => AUSSERHALB_EINES_BOARDS.includes(S.ui.view);
 /** Der Klassenvorrat der Sicht (R00195, ADR-0031 Regel 2, 3 und 8): auf einem Board und in seinen Berichten der des
     gezeigten Boards — sein eigener Satz, sonst die Vorgabe des Ordners; außerhalb eines Boards der des ersten Boards der
@@ -835,7 +828,7 @@ const KUERZEL_BOARD = [['p', 'Zuständige zuweisen (Dialog)'], ['Rechtsklick · 
 const KUERZEL_FENSTER = [['t', 'Timer an / aus'], ['m', 'mir zuweisen / mich abnehmen'], ['a', 'archivieren / zurückholen'], ['e', 'Titel bearbeiten'], ['b', 'Beschreibung bearbeiten'], ['Strg + Enter', 'Beschreibung speichern'], ['s', 'neue Teilaufgabe'], ['k', 'Kommentar schreiben'], ['d', 'Inhalt / Datei'], ['Esc', 'Eingabe verwerfen; ohne Eingabe schließen']];
 const KUERZEL_LISTE = [['↑ ↓', 'Zeile wählen'], ['Enter', 'Aufgabe öffnen'], ['n', 'Neue Aufgabe ohne Board'], ['a · Entf', 'archivieren / zurückholen'], ['c', 'Verweis kopieren'], ['Umschalt + F10', 'Menü der Zeile'], ['Ziehen', 'Zeile auf eine Spalte oder ins Archiv'], ['/', 'Filter']];
 const KUERZEL_NEU = [['Enter (im Titel) · Strg + Enter', 'anlegen'], ['Umschalt + Strg + Enter', 'anlegen und weitere'], ['Enter (Teilaufgabe)', 'Teilaufgabe anfügen'], ['Esc', 'abbrechen']];
-const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g d', 'Durchlaufzeit'], ['g w', 'Wie lange noch'], ['g f', 'Projekt-Fever-Chart'], ['g k', 'WBS der gebundenen Anwendung'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
+const KUERZEL_UEBERALL = [['g b', 'Board'], ['g a', 'Aufgaben'], ['g p', 'Personen'], ['g s', 'Stundenzettel'], ['g z', 'Zeiten nach Aufgabe und Person'], ['g v', 'Burndown'], ['g d', 'Durchlaufzeit'], ['g w', 'Wie lange noch'], ['g f', 'Projekt-Fever-Chart'], ['g e', 'Einrichten'], ['n', 'Neue Aufgabe'], ['b', 'Board wechseln'], ['i', 'Ich bin …'], ['Strg + Z', 'rückgängig (solange der Hinweis steht)'], ['?', 'diese Übersicht']];
 function hilfeOrt() {
   if (S.ui.offen) return ['Aufgabenfenster', KUERZEL_FENSTER];
   if (S.ui.view === 'board') return ['Board', KUERZEL_BOARD];
@@ -2163,67 +2156,6 @@ function vFieberMethodik() {
   return `<h2 class="dtitel">Lesehinweise und Methodik</h2><ul class="wl-liste"><li>Fortschritt: Anteil der Aufgaben, die die Zielspalte erreicht bzw. ihre Phase durchlaufen haben — ohne Wahl die Abschlussspalte bzw. die letzte Phase („Erledigt heißt“) —, am Umfang des Tages. Prognose und Durchsatz gehören zu demselben Block wie in „Wie lange noch“. Neue Aufgaben senken ihn — der Punkt springt nach links.</li><li>Gesamtdauer = Projektstart bis Zieltermin in der Einheit; davon ist der Puffer abgezogen, der Rest ist der Arbeitsbereich mit seinem Planende.</li><li>Für jeden Tag rechnet der Bericht die Prognose aus „Wie lange noch“ mit dem Wissen dieses Tages (Messbasis: die ${S.ui.bf.messbasisTage} Tage vor diesem Tag, nie vor „Rechnen ab“ und nie vor der ersten Aufgabe; nur der gewählte Block) und nimmt das gewählte Perzentil als prognostiziertes Ende. Pufferverbrauch = (Ende − Planende) / Puffer; negativ heißt: die Prognose war vor dem Planende fertig, Puffer gewonnen — der Tooltip nennt die Tage. Tief im Grünen liegen oft frühe Tage mit kleinem Umfang: die Prognose kannte nur die Aufgaben, die damals auf dem Board standen; ist der Umfang seitdem stark gewachsen, sagt das der Tooltip. Steht die Arbeit still, steigt der Verbrauch allein, weil Zeit vergeht.</li><li>Zonen: die Grenzen steigen von links nach rechts — früher Verbrauch ist gefährlicher, weil noch die ganze Arbeit folgt. Genau auf einer Grenze gilt die höhere Zone.</li><li>Auflösung: gerechnet wird je Tag; „Woche“ und „Monat“ zeigen vom letzten Stand rückwärts jeden 7. bzw. 30. Tag (fehlt dort ein Punkt, der davor) — Umschalten rechnet nichts neu.</li><li>Ohne ${MIN_LAEUFE} Läufe in der Messbasis kein Punkt. In Arbeitstagen nur Werktage. Die Bahn endet am ersten Tag mit 100 %.</li><li>Cache: je Projektstart und Berichtsfilter ein Abschnitt; Zieltermin, Puffer, Perzentil, Einheit und Zonen rechnen nichts neu. Der heutige Tag wird nie gespeichert, fehlende Tage ergänzt der Bericht beim Öffnen (Commit von „kanbanD“).</li></ul>`;
 }
 
-/* ── WBS-Sicht (R00054): Tabelle nach /planung karte, Stand im Kopf, live aus dem Arbeits-Repository ── */
-function vWbs() {
-  if (!wbsKuerzel()) return `<div class="body bericht"><p class="muted">Dieses Board ist an keine Anwendung gebunden. Anwendungen registrierst du unter <a href="#/einrichten">Einrichten</a>; ein Board bindet sie mit <span class="mono">applications: [kd]</span>.</p></div>`;
-  if (S.wbsFehler) return `<div class="body bericht"><div class="warnh" role="alert">${esc(S.wbsFehler)}</div></div>`;
-  if (!S.wbs) return '';
-  return `<div class="body bericht wbs-seite">${vWbsKopf(S.wbs)}${vWbsTabelle(S.wbs)}</div>`;
-}
-/** Der Kopf zeigt nur den Stand: Slice-Fortschritt, aktiver Pfad, was läuft, ob die Datei committet ist. */
-function vWbsKopf(w) {
-  const s = w.stand, p = prozente(s), nach = new Map(w.knoten.map(k => [k.id, k]));
-  const knopf = id => `<button class="lnk" data-act="wbs-gehe" data-arg="${esc(id)}" title="zur Zeile ${esc(id)}">${esc(nach.get(id).name)} <span class="mono">${esc(id)}</span></button>`;
-  const pfad = s.pfad.length ? s.pfad.map(knopf).join('<span class="trenner">›</span>') : '<span class="muted">nichts offen</span>';
-  const laufend = s.laufend.length ? s.laufend.map(knopf).join(', ') : s.aktiv ? `nichts in Arbeit — nächster Knoten: ${knopf(s.aktiv)}` : 'nichts in Arbeit, nichts offen';
-  const nc = w.nicht_committet ? `<span class="wbs-nc" title="Die WBS-Datei hat Änderungen, die im Arbeits-Repository nicht committet sind — kanbanD committet dort nie">nicht committet</span>` : '';
-  return `<div class="wbs-kopf"><h2 class="wbs-titel">WBS · ${esc(w.name)} <span class="mono">${esc(w.datei)}</span>${nc}</h2><div class="wbs-stand"><span>${s.gruen} von ${s.slices} Slices funktional · ${s.gelb} in Bearbeitung · ${s.rot} offen</span><b id="wbs-stand">${esc(standText(s))}</b></div><div class="wbs-balken" role="img" aria-label="${esc(standText(s))}"><i class="gruen" style="width:${p.gruen}%"></i><i class="gelb" style="width:${p.gelb}%"></i><i class="rot" style="width:${p.rot}%"></i></div><div class="wbs-zeile"><span class="k">aktiv</span><span class="wbs-pfad">${pfad}</span></div><div class="wbs-zeile"><span class="k">in Arbeit</span><span class="wbs-laufend">${laufend}</span></div></div>`;
-}
-/** Die Plakette: gesetzt gefüllt, gerechnet umrandet; widerspricht die Datei, steht ihr Wert daneben. */
-function vWbsStatus(k, gerechnet, setzbar) {
-  const p = setzbar
-    ? `<button class="ampel ${esc(k.gerechnet)} setzbar${S.ui.pop === 'wbs-status' && S.ui.wbsKnoten === k.id ? ' auf' : ''}" id="wbs-st-${esc(k.id)}" data-act="wbs-status-pop" data-arg="${esc(k.id)}" aria-haspopup="menu" title="Status von ${esc(k.id)} setzen" aria-label="Status von ${esc(k.id)}: ${esc(k.gerechnet)} — setzen">${esc(k.gerechnet)}</button>`
-    : `<span class="ampel ${esc(k.gerechnet)}${gerechnet ? ' gerechnet' : ''}"${gerechnet ? ' title="gerechnet aus den Kindern"' : ''}>${esc(k.gerechnet)}</span>`;
-  return gerechnet && k.gerechnet !== k.status ? p + `<span class="wbs-widerspruch" title="In der Datei steht „${esc(k.status)}“, gerechnet aus den Kindern: ${esc(k.gerechnet)}">Datei: ${esc(k.status)}</span>` : p;
-}
-function vWbsTabelle(w) {
-  const tiefe = tiefen(w.knoten), eltern = mitKindern(w.knoten, false), gerechnet = mitKindern(w.knoten, true);
-  const zu = zugeklappt(w.knoten, wbsKlapp(), w.stand.pfad), weg = ausgeblendet(w.knoten, zu);
-  const wirkend = wirkungenJeKnoten(S.aufgaben, w.kuerzel);
-  const aufgabenAn = id => (wirkend[id] || []).length ? `<span class="wbs-aufgaben">${wirkend[id].map(x => `<button class="lnk wbs-aufgabe${x.archiviert ? ' arch' : ''}" data-aktion="${esc(x.aktion)}" data-act="oeffnen" data-arg="${x.nummer}" title="#${x.nummer} ${esc(x.titel)} — ${esc((WIRKUNG[x.aktion] || {}).wort || x.aktion)}${x.archiviert ? ' · archiviert' : ''}">#${x.nummer}</button>`).join('')}</span>` : '';
-  const req = zelle => esc(zelle).replace(/\bR\d{5}\b/g, id => w.anforderungen[id] ? `<a href="vscode://file${esc(w.anforderungen[id])}" title="Anforderung ${id} im Editor öffnen">${id}</a>` : id);
-  const zeilen = w.knoten.map(k => {
-    const klapp = klappbar(k, eltern) ? `<button class="klapp" data-act="wbs-klapp" data-arg="${esc(k.id)}" aria-label="${esc(k.id)} ${zu.has(k.id) ? 'aufklappen' : 'zuklappen'}" aria-expanded="${!zu.has(k.id)}">${zu.has(k.id) ? '+' : '−'}</button>` : '<span class="klapp-platz"></span>';
-    const was = k.ebene === 'Bubble' && k.eingabe_ausgabe ? k.eingabe_ausgabe : k.fertig_kriterium;
-    return `<tr class="wbs-z ${esc(k.gerechnet)}" id="wbs-${esc(k.id)}" data-id="${esc(k.id)}" data-ebene="${esc(k.ebene)}" data-eltern="${esc(k.eltern)}"${weg.has(k.id) ? ' hidden' : ''}><td class="mono"><a href="vscode://file${esc(w.datei)}:${k.zeile}" title="Zeile ${k.zeile} im Editor öffnen">${esc(k.id)}</a></td><td class="wbs-ebene" title="erreicht: ${esc(k.erreicht)}">${esc(k.ebene)}</td><td class="wbs-name" style="padding-left:calc(var(--kd-s3) + ${tiefe[k.id]} * 18px)"${k.braucht.length ? ` title="braucht: ${esc(k.braucht.join(', '))}"` : ''}>${klapp}<span class="n">${esc(anzeigename(k))}</span>${aufgabenAn(k.id)}${kindEbenen(k).length ? `<button class="lnk wbs-plus" id="wbs-neu-${esc(k.id)}" data-act="wbs-neu-pop" data-arg="${esc(k.id)}" aria-label="Knoten unter ${esc(k.id)} anlegen" title="Knoten unter ${esc(k.id)} anlegen">+ Knoten</button>` : ''}</td><td class="wbs-text">${esc(was)}</td><td>${k.aufwand ? esc(k.aufwand) + 'h' : '—'}</td><td>${vWbsStatus(k, gerechnet.has(k.id), statusSetzbar(k, gerechnet))}</td><td class="mono">${req(k.requirement)}</td><td class="wbs-text">${esc(k.notiz)}</td></tr>`;
-  }).join('');
-  return `<div class="wbs-tabelle"><table class="pt dicht"><thead><tr><th>ID</th><th>Ebene</th><th>Knoten</th><th>Fertig-Kriterium / Eingabe → Ausgabe</th><th>Aufwand</th><th>Status</th><th>Requirement</th><th>Notiz</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
-}
-
-/** Wahl des Status an einem Blatt: rot · gelb · gruen; kanbanD schreibt die WBS-Datei und committet dort nicht. */
-function vWbsStatusPop() {
-  const id = S.ui.wbsKnoten, k = S.wbs && S.wbs.knoten.find(x => x.id === id);
-  if (!k) return '';
-  return `<div class="pop" id="pop" data-for="wbs-st-${esc(id)}" data-al="l" style="width:240px" role="menu" aria-label="Status von ${esc(id)}"><div class="pop-kopf">STATUS <span class="mono">${esc(id)}</span></div>${STATUS_WAHL.map(s => `<div class="iz${s === k.status ? ' an' : ''}" data-act="wbs-status" data-arg="${esc(id)}|${s}" role="menuitem" tabindex="-1"><span class="ampel ${s}">${s}</span><span class="muted">${s === k.status ? 'gesetzt' : ''}</span></div>`).join('')}<div class="fuss">Schreibt die WBS-Datei im Arbeits-Repository, ohne Commit.</div></div>`;
-}
-
-/** Neuer Knoten unter einem Eltern-Knoten: Ebene, Name, Fertig-Kriterium; Bubbles dazu Eingabe → Ausgabe und Aufwand. */
-function vWbsNeuPop() {
-  const f = S.ui.wbsNeu, k = f && S.wbs && S.wbs.knoten.find(x => x.id === f.eltern);
-  if (!k) return '';
-  const ebenen = kindEbenen(k), feld = (n, titel, ph) => `<span class="k">${titel}</span><span class="w"><input class="mini-inp full" id="wbs-neu-${n}" data-wn="${n}" value="${esc(f[n])}" placeholder="${esc(ph)}" data-enter="wbs-neu-anlegen" aria-label="${esc(titel)}"></span>`;
-  return `<div class="pop wbs-neu" id="pop" data-for="wbs-neu-${esc(k.id)}" data-al="l" style="width:420px" role="dialog" aria-label="Knoten unter ${esc(k.id)} anlegen"><h4 class="pop-kopf">NEUER KNOTEN <span class="mono">unter ${esc(k.id)} ${esc(k.name)}</span></h4><div class="felder"><span class="k">Ebene</span><span class="w"><select id="wbs-neu-ebene" data-wn="ebene" aria-label="Ebene">${ebenen.map(e => `<option${e === f.ebene ? ' selected' : ''}>${e}</option>`).join('')}</select></span>${feld('name', 'Name', 'was entsteht')}${feld('fertig_kriterium', 'Fertig', f.ebene === 'Bubble' ? 'Test gruen' : 'US-1')}${f.ebene === 'Bubble' ? feld('eingabe_ausgabe', 'Eingabe → Ausgabe', 'Eingabe → Ausgabe') + feld('aufwand', 'Aufwand', '0,5-1') : ''}</div>${f.fehler ? `<div class="warnh" role="alert">${esc(f.fehler)}</div>` : ''}<div class="fuss"><span>rot mit der nächsten freien ID · ohne Commit</span><button class="btn btn-haupt" data-act="wbs-neu-anlegen">anlegen</button></div></div>`;
-}
-
-/** Rückfrage vor dem Verwerfen: was mitgeht, Grund für die Notiz. */
-function vWbsVerwerfenPop() {
-  const id = S.ui.wbsVerwerfen, k = S.wbs && S.wbs.knoten.find(x => x.id === id);
-  if (!k) return '';
-  const mit = nachfahren(S.wbs.knoten, id).filter(zaehlt).length;
-  return `<div class="pop wbs-verwerfen" id="pop" data-for="wbs-${esc(id)}" data-al="l" style="width:420px" role="dialog" aria-label="${esc(id)} verwerfen"><h4 class="pop-kopf">VERWERFEN <span class="mono">${esc(id)} ${esc(k.name)}</span></h4><p class="hin">${mit ? `Mit ${esc(id)} werden ${mit} Knoten darunter verworfen.` : `${esc(id)} wird verworfen.`} Keine Zeile wird gelöscht; die Zeilen bleiben durchgestrichen stehen und zählen nicht mehr im Stand.</p><div class="felder"><span class="k">Grund</span><span class="w"><input class="mini-inp full" id="wbs-verwerfen-grund" placeholder="kommt in die Notiz" data-enter="wbs-verwerfen" data-arg="${esc(id)}" aria-label="Grund"></span></div><div class="fuss"><button class="btn" data-act="wbs-verwerfen-zu">abbrechen</button><button class="btn btn-haupt" data-act="wbs-verwerfen" data-arg="${esc(id)}">verwerfen</button></div></div>`;
-}
-
-/* ── Einrichten: Personen, Klassen, Quellen, Anwendungen ── */
 /** Erreichbarkeit eines Pfads zu WBS oder Anforderungen, wie der Server sie zuletzt gemeldet hat — nur solange der Pfad
     gespeichert ist; ein leeres Feld trägt kein Wort (R00209: beide Felder sind nicht mehr nötig). */
 function vErreichbar(a, feld) {

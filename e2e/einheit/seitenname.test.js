@@ -11,7 +11,7 @@ test('Seitenname je Ansicht wie der Seitenknopf', () => {
   assert.strictEqual(seitenNameVon('aufgaben'), 'Aufgaben');
   assert.strictEqual(seitenNameVon('personen'), 'Personen');
   assert.strictEqual(seitenNameVon('berichte/verlauf'), 'Berichte');
-  assert.strictEqual(seitenNameVon('wbs'), 'WBS');
+  assert.strictEqual(seitenNameVon('wbs'), 'Board', 'R00222: keine WBS-Sicht mehr');
   assert.strictEqual(seitenNameVon('einrichten'), 'Einrichten');
 });
 
@@ -29,9 +29,8 @@ test('Bericht mit dem Namen aus dem Menü Berichte', () => {
   assert.strictEqual(Object.keys(BERICHTSNAMEN).length, 10);
 });
 
-test('WBS mit dem Namen der Anwendung', () => {
-  assert.strictEqual(seitenUeberschrift({ ansicht: 'wbs', anwendung: 'kanbanD' }), 'WBS · kanbanD');
-  assert.strictEqual(seitenUeberschrift({ ansicht: 'wbs' }), 'WBS');
+test('R00222: keine Seite heißt WBS — eine Ansicht „wbs“ ist wie jede unbekannte das Board', () => {
+  assert.strictEqual(seitenUeberschrift({ ansicht: 'wbs', anwendung: 'kanbanD', boardTitel: 'Entwicklung' }), 'Board · Entwicklung');
 });
 
 test('erster Start heißt Einrichten, gleich welche Ansicht', () => {
@@ -57,7 +56,7 @@ function ladeModul(quelltext) {
   return exports;
 }
 
-/** Die Routen der Anwendung wie die Verzweigungen von vHaupt() (web/app.js) — Board mit und ohne Titel, WBS ohne Sonderform. */
+/** Die Routen der Anwendung wie die Verzweigungen von vHaupt() (web/app.js) — Board mit und ohne Titel. */
 const ROUTEN = [
   { ansicht: 'board', boardTitel: 'Entwicklung' },
   { ansicht: 'board', boardTitel: '' },
@@ -65,7 +64,6 @@ const ROUTEN = [
   { ansicht: 'personen' },
   { ansicht: 'einrichten' },
   ...Object.keys(BERICHTSNAMEN).map(route => ({ ansicht: `berichte/${route}` })),
-  { ansicht: 'wbs', anwendung: 'kanbanD' },
 ];
 
 /** Je Route muss der Namensteil ohne Zähler gleich `seitenUeberschrift + ' — kanbanD'` sein; gibt die Abweichungen zurück. */
@@ -92,7 +90,7 @@ function pruefeBerichtsnamen(bibliothek) {
 
 /** Seiten- und Berichtsnamen, die im Rumpf von fenstertitel() nichts zu suchen haben (R00137 AK 3):
     die Namen aus dem Menü samt den kurzen Namen, die die alte zweite Tabelle führte („Zeiten", „Fluss", „Fever Chart", „Bestand"). */
-const NAMENSLITERALE = new Set([...Object.values(BERICHTSNAMEN), 'Zeiten', 'Fluss', 'Fever Chart', 'Bestand', 'Aufgaben', 'Personen', 'Einrichten', 'Board', 'WBS']);
+const NAMENSLITERALE = new Set([...Object.values(BERICHTSNAMEN), 'Zeiten', 'Fluss', 'Fever Chart', 'Bestand', 'Aufgaben', 'Personen', 'Einrichten', 'Board']);
 
 /** Der Rumpf von `fenstertitel()` aus dem Quelltext — bis zur schließenden Klammer in erster Spalte. */
 function fenstertitelRumpf(quelltext) {
@@ -117,7 +115,7 @@ function pruefeFenstertitelRumpf(quelltext) {
 test('R00137: Routenliste deckt die Berichte aus BERICHTSNAMEN und die übrigen Ansichten', () => {
   const berichtsRouten = ROUTEN.filter(route => route.ansicht.startsWith('berichte/')).map(route => route.ansicht.slice('berichte/'.length));
   assert.deepStrictEqual(berichtsRouten.sort(), Object.keys(BERICHTSNAMEN).sort());
-  for (const ansicht of ['board', 'aufgaben', 'personen', 'einrichten', 'wbs']) {
+  for (const ansicht of ['board', 'aufgaben', 'personen', 'einrichten']) {
     assert.ok(ROUTEN.some(route => route.ansicht === ansicht), `Route fehlt: ${ansicht}`);
   }
 });
@@ -139,9 +137,10 @@ test('R00137 AK 4: Zähler laufender Timer vorn, Anwendungsname hinten', () => {
   assert.strictEqual(fenstertitelName({ ansicht: 'board', boardTitel: 'Entwicklung' }, { zaehler: 0 }), 'Board · Entwicklung — kanbanD');
 });
 
-test('R00137 AK 5: WBS-Sonderform bei gesetztem Stand und Namen', () => {
-  assert.strictEqual(fenstertitelName({ ansicht: 'wbs', anwendung: 'kanbanD' }, { wbsStand: 63, wbsName: 'kanbanD' }), '63 % · WBS · kanbanD — kanbanD');
-  assert.strictEqual(fenstertitelName({ ansicht: 'wbs', anwendung: 'kanbanD' }, {}), 'WBS · kanbanD — kanbanD');
+test('R00222 (ändert R00137 AK 5): keine Sonderform mehr — ein Stand und ein Name ändern den Titel nicht, kein „WBS“, keine Prozentzahl', () => {
+  const titel = fenstertitelName({ ansicht: 'wbs', boardTitel: 'Entwicklung' }, { wbsStand: 63, wbsName: 'kanbanD' });
+  assert.strictEqual(titel, 'Board · Entwicklung — kanbanD');
+  assert.doesNotMatch(titel, /WBS|\d+ %/);
 });
 
 test('R00137 AK 6: ein abweichender Name in seitenname.js wird rot und nennt die Route', () => {

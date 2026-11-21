@@ -340,30 +340,3 @@ pub fn pfad_zu_nummer(wurzel: &Path, ordner: &str, nummer: u32) -> Result<Option
         .find(|pfad| pfad.rsplit('/').next().is_some_and(|n| n.starts_with(&praefix) && n.ends_with(".md")))
         .map(str::to_string))
 }
-
-/// Alle committeten Stände einer Datei mit vollem Pfad, auch in einem fremden Repository (dem Arbeits-Repository einer Anwendung);
-/// liegt sie in keinem Repository, gibt es keine.
-pub fn staende_der_datei(datei: &Path) -> Vec<String> {
-    let (Some(ordner), Some(name)) = (datei.parent(), datei.file_name()) else { return vec![] };
-    if git_verzeichnis(ordner).is_none() {
-        return vec![];
-    }
-    staende(ordner, &name.to_string_lossy()).map(|s| s.into_iter().map(|stand| stand.inhalt).collect()).unwrap_or_default()
-}
-
-/// Hat die Datei Änderungen, die nicht committet sind (ungestagt, gestagt oder unversioniert)?
-/// Liegt sie in keinem Repository oder fehlt Git, gilt sie als unverändert. Liest nur: der Index wird
-/// nicht nebenbei aufgefrischt (`GIT_OPTIONAL_LOCKS=0`), sonst löste jede Abfrage beim Dateiwächter
-/// eine neue Änderung im Repository aus.
-pub fn geaendert(datei: &Path) -> bool {
-    let (Some(ordner), Some(name)) = (datei.parent(), datei.file_name()) else { return false };
-    let Ok(a) = Command::new("git").arg("-C").arg(ordner).env("GIT_OPTIONAL_LOCKS", "0").args(["status", "--porcelain", "--"]).arg(name).output() else { return false };
-    a.status.success() && !a.stdout.is_empty()
-}
-
-/// Das Git-Verzeichnis des Repositorys, in dem `ordner` liegt — absolut; ohne Repository keines.
-pub fn git_verzeichnis(ordner: &Path) -> Option<std::path::PathBuf> {
-    let a = Command::new("git").arg("-C").arg(ordner).args(["rev-parse", "--absolute-git-dir"]).output().ok().filter(|a| a.status.success())?;
-    let pfad = std::path::PathBuf::from(String::from_utf8_lossy(&a.stdout).trim());
-    Some(pfad.canonicalize().unwrap_or(pfad))
-}

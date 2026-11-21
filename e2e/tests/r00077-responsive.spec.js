@@ -39,13 +39,11 @@ test.describe('Handy', () => {
     await page.locator('#t-mehr').click();
     await page.locator('#pop').getByRole('menuitem', { name: 'Einrichten', exact: true }).click();
     await expect(page).toHaveURL(/#\/einrichten$/);
-    for (const ziel of ['#/einrichten', '#/aufgaben', '#/berichte/prognose', '#/berichte/verlauf', '#/wbs/kd']) {
+    for (const ziel of ['#/einrichten', '#/aufgaben', '#/berichte/prognose', '#/berichte/verlauf']) {
       await page.goto(k.adresse + ziel);
       await page.waitForTimeout(300);
       expect(await seitenbreite(page), ziel).toEqual([390, 390]);
     }
-    const tabelle = page.locator('.wbs-tabelle');
-    expect(await tabelle.evaluate(e => e.scrollWidth > e.clientWidth), 'die WBS-Tabelle scrollt in sich').toBe(true);
   });
 
   test('US-2: das Aufgabenfenster füllt den Bildschirm, einspaltig; Verschieben über „Spalte“ (R00127)', async ({ page }) => {

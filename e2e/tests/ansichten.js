@@ -2,15 +2,14 @@
 
 const BERICHTE = ['stundenzettel', 'kreuz', 'verlauf', 'fluss', 'durchsatz', 'durchlauf', 'prognose', 'fieber', 'kosten', 'bestand'];
 
-/** Je Ansicht Name und Adresse (Hash); Board und WBS-Sicht tragen den Slug des Testbestands. */
-function ansichtenDerAnwendung({ board, wbs }) {
+/** Je Ansicht Name und Adresse (Hash); das Board trägt den Slug des Testbestands (die WBS-Sicht entfiel mit R00222). */
+function ansichtenDerAnwendung({ board }) {
   return [
     { ansicht: 'Board', adresse: '#/board/' + board },
     { ansicht: 'Aufgabenliste', adresse: '#/aufgaben' },
     { ansicht: 'Personen', adresse: '#/personen' },
     { ansicht: 'Einrichten', adresse: '#/einrichten' },
     ...BERICHTE.map(name => ({ ansicht: 'Bericht ' + name, adresse: '#/berichte/' + name })),
-    { ansicht: 'WBS-Sicht', adresse: '#/wbs/' + wbs },
   ];
 }
 

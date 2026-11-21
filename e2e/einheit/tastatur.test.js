@@ -39,7 +39,7 @@ test('g-Folgen', () => {
   assert.deepStrictEqual(gFolge('g', 'd'), { ziel: '#/berichte/durchlauf', warte: false });
   assert.deepStrictEqual(gFolge('g', 'u'), { ziel: '#/berichte/durchsatz', warte: false });
   assert.deepStrictEqual(gFolge('g', 'w'), { ziel: '#/berichte/prognose', warte: false });
-  assert.deepStrictEqual(gFolge('g', 'k'), { ziel: '#/wbs/', warte: false });
+  assert.deepStrictEqual(gFolge('g', 'k'), { ziel: null, warte: false }, 'R00222: g k führt nirgends hin');
   assert.deepStrictEqual(gFolge('g', 'x'), { ziel: null, warte: false });
   assert.deepStrictEqual(gFolge(null, 'a'), { ziel: null, warte: false });
   assert.deepStrictEqual(gFolge('g', 'g'), { ziel: null, warte: false });

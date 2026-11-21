@@ -78,7 +78,7 @@ test('large: Filter, Bereich und „Neue Aufgabe“ direkt in der Kopfzeile; Sig
   await expect(mehr(page)).toHaveAttribute('aria-haspopup', 'menu');
   await mehr(page).click();
   await expect(menue(page).getByRole('menuitemcheckbox')).toHaveText(['Signale oben']);
-  await expect(menue(page).getByRole('menuitem')).toHaveText(['Aufgaben', 'Personen', 'WBS', 'Einrichten', 'Spalten einrichten', /Darstellung: System/]);
+  await expect(menue(page).getByRole('menuitem')).toHaveText(['Aufgaben', 'Personen', 'Einrichten', 'Spalten einrichten', /Darstellung: System/]);
   await menue(page).getByRole('menuitem', { name: 'Spalten einrichten' }).click();
   await expect(page.locator('header.kz.modus')).toContainText('Spalten einrichten');
 });
@@ -87,9 +87,9 @@ test('Menü „Mehr“: ein Eintrag löst dieselbe Aktion aus wie vorher der Kno
   await starten(page);
   await mehr(page).focus();
   await page.keyboard.press('Enter');
-  // die vier seltenen Ziele stehen als erste Gruppe; ↓ führt von dort zum ersten Werkzeug
+  // die drei seltenen Ziele stehen als erste Gruppe (der Eintrag „WBS“ entfiel mit R00222); ↓ führt von dort zum ersten Werkzeug
   await expect(menue(page).getByRole('menuitem', { name: 'Aufgaben' })).toBeFocused();
-  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
   const signale = menue(page).getByRole('menuitemcheckbox', { name: 'Signale oben' });
   await expect(signale).toBeFocused();
   await page.keyboard.press('Enter');

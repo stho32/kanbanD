@@ -57,5 +57,22 @@
     return standard + (quellen.anwendungen || []).length;
   }
 
-  Object.assign(ziel, { REPOSITORY_ZUSTAENDE, startordner, pfadeZurDatei, repositoryZustand, anwendungenZahl });
+  // Bindung eines Boards an Anwendungen (R00062) — seit R00222 hier (ADR-0034 Regel 4: die Bindung bleibt)
+  /** Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; fehlt `applications`
+      (null), gilt bei genau einer registrierten Anwendung diese, `[]` bindet keine (R00062). `register` = [{kuerzel, name, …}]. */
+  function gebundeneAnwendungen(board, register) {
+    const genannt = board && board.anwendungen;
+    if (!Array.isArray(genannt)) return register.length === 1 ? [register[0]] : [];
+    return genannt.map(k => register.find(a => a.kuerzel === k)).filter(Boolean);
+  }
+
+  /** Bindung im Spalten-Dialog: schaltet `kuerzel` im gerechneten Stand um (fehlt `applications`, der Standard);
+      leeres Kürzel = „keine“. Ergebnis ist immer eine ausdrückliche Liste für PUT …/anwendungen (R00062). */
+  function bindungUmschalten(anwendungen, kuerzel, register) {
+    if (!kuerzel) return [];
+    const jetzt = Array.isArray(anwendungen) ? anwendungen : gebundeneAnwendungen({ anwendungen }, register).map(a => a.kuerzel);
+    return jetzt.includes(kuerzel) ? jetzt.filter(k => k !== kuerzel) : [...jetzt, kuerzel];
+  }
+
+  Object.assign(ziel, { REPOSITORY_ZUSTAENDE, startordner, pfadeZurDatei, repositoryZustand, anwendungenZahl, gebundeneAnwendungen, bindungUmschalten });
 })(typeof module !== 'undefined' ? module.exports : window);

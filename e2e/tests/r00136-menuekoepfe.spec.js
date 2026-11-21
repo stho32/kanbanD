@@ -39,7 +39,6 @@ const MENUES = [
   { name: 'Berichte', breite: 1280, adresse: '#/board/entwicklung', bereit: '.bahn', ort: '#t-ber', menue: '#pop[aria-label="Berichte"]' },
   { name: '#1 eins', breite: 1280, adresse: '#/board/entwicklung', bereit: '.bahn', ort: '.ka[data-id="1"]', menue: '#kmenue[role="menu"]', rechtsklick: true },
   { name: '#4 auf Board legen', kopf: '#4 AUF BOARD LEGEN', breite: 1280, adresse: '#/aufgaben', bereit: '.ziele', ort: '#leg-4', menue: '#pop[aria-label="#4 auf Board legen"]' },
-  { name: 'Status von B0002', kopf: 'STATUS B0002', mono: 'B0002', breite: 1280, adresse: '#/wbs/kd', bereit: '.wbs-titel', ort: '#wbs-st-B0002', menue: '#pop[aria-label="Status von B0002"]' },
 ];
 
 /** Öffnet das Menü aus MENUES; wartet, bis die Sicht und das Menü gezeichnet sind. */

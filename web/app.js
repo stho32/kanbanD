@@ -121,21 +121,6 @@ async function api(methode, pfad, daten) {
   return json;
 }
 
-/** Kürzel der Anwendung in `#/wbs/<kürzel>`. */
-const wbsKuerzel = () => decodeURIComponent((/^#\/wbs\/([^/]*)/.exec(location.hash) || [])[1] || '');
-/** Gewählter Klappzustand der WBS-Sicht je Anwendung ({id: offen?}); überdauert das Neuladen. */
-function wbsKlapp() {
-  const k = wbsKuerzel();
-  if (!S.ui.wbsKlapp || S.ui.wbsKlapp.k !== k) {
-    let kl = {};
-    try { kl = JSON.parse(localStorage.getItem('kanbanD.wbs-klapp.' + k) || '{}'); } catch (_) { }
-    S.ui.wbsKlapp = { k, kl };
-  }
-  return S.ui.wbsKlapp.kl;
-}
-function wbsKlappMerken() {
-  try { localStorage.setItem('kanbanD.wbs-klapp.' + wbsKuerzel(), JSON.stringify(wbsKlapp())); } catch (_) { }
-}
 /** Zugeklappte Spalten des Boards (R00074): je Betrachter und Board im Browser-Speicher, keine Datei ändert sich. */
 function spaltenZu() {
   const slug = S.ui.slug || '';
@@ -187,17 +172,12 @@ const gebunden = () => gebundeneAnwendungen(S.board, (S.zustand && S.zustand.ein
 
 /** Die verborgene Überschrift erster Ebene vor jeder Sicht (R00113, ADR-0018 Regel 2): keine Sicht schreibt selbst eine h1. */
 function vSeitenUeberschrift() {
-  const seite = { ansicht: S.ui.view, ersterStart: Boolean(S.ui.first), boardTitel: boardTitelDerSeite(), anwendung: anwendungDerSeite() };
+  const seite = { ansicht: S.ui.view, ersterStart: Boolean(S.ui.first), boardTitel: boardTitelDerSeite() };
   return `<h1 class="vh">${esc(seitenUeberschrift(seite))}</h1>`;
 }
 function boardTitelDerSeite() {
   if (S.boardDefekt || !S.board) return '';
   return S.board.titel;
-}
-function anwendungDerSeite() {
-  const anwendung = gebunden().find(a => a.kuerzel === wbsKuerzel());
-  if (!anwendung) return '';
-  return anwendung.name;
 }
 /** Die Review-Seite trägt ihre Überschrift erster Ebene selbst im Kopf („Review“, R00207 FA 5). */
 const vMain = () => {
@@ -222,7 +202,6 @@ function vHaupt() {
   if (S.ui.view === 'berichte/fieber') return vFieber();
   if (S.ui.view === 'berichte/kosten') return vKosten();
   if (S.ui.view === 'berichte/bestand') return vBestand();
-  if (S.ui.view === 'wbs') return vWbs();
   return vBoard();
 }
 
@@ -243,7 +222,7 @@ function gewaehltesBoard(zustand) {
 let geladenerStand = null;
 /** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
 const defekterGrund = (slug, zustand) => ((zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
-const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.transkripteVorgabe, S.wbs, S.wbsFehler, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
+const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.transkripteVorgabe, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
 /** Nur die neueste Antwort wird übernommen (R00110, ADR-0014): jedes Laden zieht beim Start eine Nummer aus dem Takt; übernommen
     wird nur, was neuer ist als das zuletzt übernommene desselben Ziels — Hauptstand oder Fenster — und als die Marke der Schlange. */
@@ -268,8 +247,7 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   }
   zuletztStand = start;
   fieberGesendet.clear();
-  // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand —
-  // vorher war S.wbs für die Dauer der Anfrage null, und ein Klick auf Zuklappen ging verloren (R00061).
+  // Alles auf einmal übernehmen: eine Aktion oder ein Zeichnen während des Ladens sieht nie einen halben Stand (R00061).
   const neu = { zustand, einstellungenDefekt };
   if (sicht) Object.assign(neu, sicht.haupt);
   Object.assign(S, neu);
@@ -280,10 +258,6 @@ async function laden({ nurBeiAenderung = false, wennVerworfen = () => { } } = {}
   if (nurBeiAenderung && stand === geladenerStand && !nachgetragen) return false;
   geladenerStand = stand;
   render();
-  // `#/wbs/<kürzel>/<id>` zeigt die Zeile einmal — spätere Ereignisse laden neu, ohne erneut zu springen
-  const ziel = S.ui.view === 'wbs' && S.wbs && wbsZiel(location.hash);
-  if (ziel && S.ui.wbsGesprungen !== location.hash) { S.ui.wbsGesprungen = location.hash; await act('wbs-gehe', ziel); }
-  else if (!ziel) S.ui.wbsGesprungen = null;
   fieberNachtragen();
 }
 
@@ -318,9 +292,7 @@ async function sichtLaden(zustand) {
   const quellenStand = einstellungen ? quellenStandAus(einstellungen) : S.quellenStand;
   // die Vorgabe „Transkripte erfassen“, wie sie in kanbanD.md steht — /api/zustand trägt sie nicht (R00220 FA 6, ADR-0036 G8)
   const transkripteVorgabe = einstellungen ? einstellungen.transkripte_erfassen ?? null : S.transkripteVorgabe;
-  let wbs = null, wbsFehler = null;
-  if (view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
-  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, transkripteVorgabe, wbs, wbsFehler } };
+  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, transkripteVorgabe } };
 }
 
 /** Aus `GET /api/einstellungen`: das gespeicherte Repository der Quellen und ob sein Ordner da ist. */
@@ -2911,8 +2883,8 @@ function ersterTabbarer(bereich) {
 
 function fenstertitel() {
   if (!S.zustand || !S.zustand.eingerichtet) return 'kanbanD';
-  const seite = { ansicht: S.ui.view, boardTitel: boardTitelDerSeite(), anwendung: anwendungDerSeite(), review: reviewTitel() };
-  return fenstertitelName(seite, { zaehler: alleLaufenden().length, wbsStand: S.wbs && prozente(S.wbs.stand).gruen, wbsName: S.wbs && S.wbs.name });
+  const seite = { ansicht: S.ui.view, boardTitel: boardTitelDerSeite(), review: reviewTitel() };
+  return fenstertitelName(seite, { zaehler: alleLaufenden().length });
 }
 
 /** Nummer und Kurzform des gezeigten Commits für den Fenstertitel der Review-Seite (R00207 FA 5). */
@@ -3823,70 +3795,6 @@ async function aktion(a, arg, wert) {
       case 'bestand-tauschen': return bestandAchsenSetzen('tauschen');
       case 'bestand-zelle': filterSetzen(arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
       case 'person-filter': filterSetzen('@' + arg); u.bereich = 'alle'; location.hash = '#/board/' + (u.slug || ''); return;
-      case 'wbs-klapp': {
-        const kl = wbsKlapp(), zu = zugeklappt(S.wbs.knoten, kl, S.wbs.stand.pfad);
-        kl[arg] = zu.has(arg);
-        wbsKlappMerken();
-        u.fokus = `[data-act="wbs-klapp"][data-arg="${arg}"]`;
-        break;
-      }
-      case 'wbs-status-pop': {
-        if (ichNoetig()) break;
-        u.wbsKnoten = arg; u.pop = u.pop === 'wbs-status' ? null : 'wbs-status';
-        break;
-      }
-      case 'wbs-status': {
-        if (ichNoetig()) break;
-        const [id, status] = arg.split('|');
-        u.pop = null;
-        return durchDieSchlange(async () => {
-          try { await api('PATCH', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(id)}`, { status }); }
-          catch (f) { u.hinweis = { text: `${id} nicht gesetzt: ${f.message}`, at: Date.now() }; }
-          u.fokus = `#wbs-st-${id}`;
-        });
-      }
-      case 'wbs-neu-pop': {
-        if (ichNoetig()) break;
-        const k = S.wbs.knoten.find(x => x.id === arg);
-        u.wbsNeu = { eltern: arg, ebene: kindEbenen(k)[0], name: '', fertig_kriterium: '', eingabe_ausgabe: '', aufwand: '', fehler: null };
-        u.pop = 'wbs-neu'; u.fokus = '#wbs-neu-name';
-        break;
-      }
-      case 'wbs-neu-anlegen': {
-        const f = u.wbsNeu;
-        if (!f || ichNoetig()) break;
-        const bubble = f.ebene === 'Bubble';
-        try {
-          const r = await durchDieSchlange(() => api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten`, { ebene: f.ebene, eltern: f.eltern, name: f.name, fertig_kriterium: f.fertig_kriterium, eingabe_ausgabe: bubble ? f.eingabe_ausgabe : '', aufwand: bubble ? f.aufwand : '' }));
-          u.pop = null; u.wbsNeu = null;
-          u.hinweis = { text: `${r.id} angelegt · WBS-Datei nicht committet`, at: Date.now() };
-          return act('wbs-gehe', r.id);
-        } catch (fehler) { f.fehler = fehler.message; u.fokus = '#wbs-neu-name'; break; }
-      }
-      case 'wbs-verwerfen-frage': if (ichNoetig()) break; u.wbsVerwerfen = arg; u.pop = 'wbs-verwerfen'; u.fokus = '#wbs-verwerfen-grund'; break;
-      case 'wbs-verwerfen-zu': u.pop = null; u.wbsVerwerfen = null; break;
-      case 'wbs-verwerfen': {
-        if (ichNoetig()) break;
-        const feld = $('#wbs-verwerfen-grund'), grund = wert != null ? wert : (feld ? feld.value : '');
-        u.pop = null; u.wbsVerwerfen = null;
-        try {
-          await durchDieSchlange(() => api('POST', `/api/wbs/${encodeURIComponent(wbsKuerzel())}/knoten/${encodeURIComponent(arg)}/verwerfen`, { grund }));
-          u.hinweis = { text: `${arg} verworfen · WBS-Datei nicht committet`, at: Date.now() };
-        } catch (f) { u.hinweis = { text: `${arg} nicht verworfen: ${f.message}`, at: Date.now() }; }
-        render();
-        return;
-      }
-      case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
-      case 'wbs-gehe': {
-        const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
-        const gesehen = new Set();
-        for (let e = nach.get((nach.get(arg) || {}).eltern); e && !gesehen.has(e.id); e = nach.get(e.eltern)) { gesehen.add(e.id); kl[e.id] = true; }
-        wbsKlappMerken();
-        render();
-        const z = document.getElementById('wbs-' + arg);
-        if (z) { z.scrollIntoView({ block: 'center' }); z.classList.add('ziel'); }
-        return;
-      }
       case 'list-bereich': u.listBereich = arg; merken('kanbanD.listBereich', arg); break;
       case 'legen-pop': u.legenNr = +arg; u.pop = u.pop === 'legen' ? null : 'legen'; break;
       case 'liste-ablegen': {
@@ -4448,7 +4356,6 @@ document.addEventListener('change', e => {
     return;
   }
   if (e.target.dataset && e.target.dataset.bestand) { bestandAchsenSetzen(e.target.dataset.bestand, e.target.value); return; }
-  if (e.target.dataset && e.target.dataset.wn === 'ebene' && S.ui.wbsNeu) { S.ui.wbsNeu.ebene = e.target.value; S.ui.wbsNeu.fehler = null; render(); return; }
   if (e.target.id === PERSONENWAHL) { act('sp', e.target.value); return; }
   if (e.target.dataset && e.target.dataset.dl) { durchlaufWaehlen(e.target.dataset.dl, e.target.value); render(); return; }
   if (e.target.dataset && e.target.dataset.fb) { act('fb-setzen', e.target.dataset.fb, e.target.value); return; }
@@ -4542,8 +4449,6 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });
 document.addEventListener('input', e => {
-  const wn = e.target.dataset && e.target.dataset.wn;
-  if (wn && S.ui.wbsNeu && wn !== 'ebene') { S.ui.wbsNeu[wn] = e.target.value; return; }
   if (e.target.dataset && (e.target.dataset.tf === 'name' || e.target.dataset.tf === 'datum')) { S.ui.tf[e.target.dataset.tf] = e.target.value; return; }
   const nf = e.target.dataset && e.target.dataset.nf;
   if (nf && S.ui.neu) {
@@ -4814,12 +4719,6 @@ function menueTaste(ev) {
 }
 document.addEventListener('contextmenu', e => {
   if (!e.target.closest) return;
-  const wbsZeile = S.ui.view === 'wbs' && S.wbs && e.target.closest('tr.wbs-z[data-id]');
-  if (wbsZeile) {
-    const k = S.wbs.knoten.find(x => x.id === wbsZeile.dataset.id), eintraege = k ? wbsZeilenMenue(k) : [];
-    if (eintraege.length) { e.preventDefault(); menueOeffnen(`${k.id} ${k.name}`, eintraege, e.clientX, e.clientY); }
-    return;
-  }
   const karte = e.target.closest('.ka[data-id]:not(.fehlt):not(.defekt)'), kopf = e.target.closest('.bahn-kopf[data-kopf]'), zeile = e.target.closest('tr[data-zeile]');
   if (karte && S.ui.view === 'board') { e.preventDefault(); menueFuerKarte(+karte.dataset.id, e.clientX, e.clientY); }
   else if (kopf && S.ui.view === 'board' && !S.ui.setup) { e.preventDefault(); menueFuerSpalte(+kopf.dataset.kopf, e.clientX, e.clientY); }
@@ -4865,7 +4764,7 @@ function ueberallTaste(e, t) {
   clearTimeout(S.gUhr);
   S.gVorher = g.warte ? 'g' : null;
   if (g.warte) { S.gUhr = setTimeout(() => { S.gVorher = null; }, 1500); e.preventDefault(); return true; }
-  if (g.ziel) { e.preventDefault(); location.hash = g.ziel === '#/board/' ? '#/board/' + (u.slug || '') : g.ziel === '#/wbs/' ? '#/wbs/' + encodeURIComponent((gebunden()[0] || {}).kuerzel || '') : g.ziel; return true; }
+  if (g.ziel) { e.preventDefault(); location.hash = g.ziel === '#/board/' ? '#/board/' + (u.slug || '') : g.ziel; return true; }
   if (e.key === 'b' || e.key === 'i') { e.preventDefault(); act('pop', e.key === 'b' ? 'board' : 'ich'); return true; }
   if (u.view === 'aufgaben') return listenTaste(e, t);
   if (e.key === 'n' && u.view !== 'board') { e.preventDefault(); act('add', '-'); return true; }

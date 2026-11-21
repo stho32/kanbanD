@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, bereit } = require('./hilfen');
 const { ansichtenDerAnwendung } = require('./ansichten');
 // Die Berichte aus der einen Liste der Ansichten (ADR-0012 Regel 6), damit die Sammelprobe keinen auslässt
-const BERICHTE = ansichtenDerAnwendung({ board: 'fabrik', wbs: '' }).filter(({ ansicht }) => ansicht.startsWith('Bericht ')).map(({ adresse }) => adresse.replace('#/berichte/', ''));
+const BERICHTE = ansichtenDerAnwendung({ board: 'fabrik' }).filter(({ ansicht }) => ansicht.startsWith('Bericht ')).map(({ adresse }) => adresse.replace('#/berichte/', ''));
 const BEISPIEL = require('./r00171-beispielboard');
 
 /* ── Bestand über Dateien (wie R00172) ── */

@@ -74,8 +74,9 @@ test('alle bisherigen Adressen → Sicht und Slug wie zuvor, nie eine Nummer', (
     ['#/berichte/kosten', 'berichte/kosten', null],
     ['#/berichte/bestand', 'berichte/bestand', null],
     ['#/berichte/gibtsnicht', 'board', null],
-    ['#/wbs/kd', 'wbs', null],
-    ['#/wbs/kd/I0164', 'wbs', null],
+    // R00222: die WBS-Sicht gibt es nicht mehr — ihre alte Adresse zeigt wie jede unbekannte das Board
+    ['#/wbs/kd', 'board', null],
+    ['#/wbs/kd/I0164', 'board', null],
     ['#/unbekannt', 'board', null],
   ];
   for (const [hash, sicht, slug] of bisher) assert.deepStrictEqual(adresseLesen(hash), { sicht, slug, nummer: null }, hash);

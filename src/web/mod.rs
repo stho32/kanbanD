@@ -92,10 +92,6 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(person_aendern, person_stilllegen))
         .routes(routes!(aufgaben, aufgabe_anlegen))
         .routes(routes!(anwendungen))
-        .routes(routes!(wbs))
-        .routes(routes!(wbs_knoten_anlegen))
-        .routes(routes!(wbs_status))
-        .routes(routes!(wbs_verwerfen))
         .routes(routes!(zeiten_csv))
         .routes(routes!(verlauf))
         .routes(routes!(bewegungen))
@@ -1607,77 +1603,6 @@ async fn zurueckholen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>
 async fn anwendungen(State(app): State<App>) -> Result<Response, Fehler> {
     let r = blockierend(&app, |k| k.anwendungen()).await?;
     Ok(Json(r).into_response())
-}
-
-#[utoipa::path(
-    get,
-    path = "/api/wbs/{kuerzel}",
-    tag = "WBS",
-    description = "WBS einer registrierten Anwendung {knoten: [{id, ebene, eltern, name, status, gerechnet, erreicht, …, zeile}], stand: {gruen, gelb, rot, slices, aktiv, pfad, laufend}, nicht_committet, anforderungen}; 404 unbekannt, 409 nicht erreichbar",
-    params(("kuerzel" = String, Path, description = "Kürzel einer Person bzw. Anwendung")),
-    responses((status = 200, description = "Erfolg", body = crate::dienst::WbsSicht), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wbs(State(app): State<App>, Pfad(kuerzel): Pfad<String>) -> Result<Response, Fehler> {
-    let w = blockierend(&app, move |k| k.wbs(&kuerzel)).await?;
-    Ok(Json(w).into_response())
-}
-
-#[derive(serde::Deserialize, utoipa::ToSchema)]
-struct StatusWahl {
-    #[serde(default)]
-    status: String,
-}
-
-#[utoipa::path(
-    patch,
-    path = "/api/wbs/{kuerzel}/knoten/{id}",
-    tag = "WBS",
-    description = "Status eines Blatts setzen {status: rot|gelb|gruen} → {geaendert: [ids]}; Vorfahren gerechnet, zuletzt gesetzt, kein Commit im Arbeits-Repository; 409 bei Kindern oder defekter Datei, 400 bei option/ausbau/verworfen/bestehend",
-    params(("kuerzel" = String, Path, description = "Kürzel einer Person bzw. Anwendung"), ("id" = String, Path, description = "Knoten-ID der WBS, z. B. I0007"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    request_body = StatusWahl,
-    responses((status = 200, description = "Erfolg", body = crate::dienst::WbsGeaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wbs_status(State(app): State<App>, Wer(wer): Wer, Pfad((kuerzel, id)): Pfad<(String, String)>, JsonKoerper(w): JsonKoerper<StatusWahl>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, _| k.wbs_status_setzen(&kuerzel, &id, &w.status)).await
-}
-
-#[utoipa::path(
-    post,
-    path = "/api/wbs/{kuerzel}/knoten",
-    tag = "WBS",
-    description = "Knoten anlegen {ebene, eltern, name, fertig_kriterium, eingabe_ausgabe?, aufwand?, ausbaustufe?, braucht?, requirement?, notiz?} → 201 {id}; nächste freie ID auch aus der Git-Historie der WBS, Zeile rot nach dem letzten Nachfahren der Eltern, kein Commit; 400 bei fehlendem Pflichtfeld, falscher Eltern-Ebene oder Aufwand unter 0,4h",
-    params(("kuerzel" = String, Path, description = "Kürzel einer Person bzw. Anwendung"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    request_body = crate::wbs_datei::NeuerKnoten,
-    responses((status = 201, description = "Erfolg", body = crate::dienst::WbsNeu), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wbs_knoten_anlegen(State(app): State<App>, Wer(wer): Wer, Pfad(kuerzel): Pfad<String>, JsonKoerper(neu): JsonKoerper<crate::wbs_datei::NeuerKnoten>) -> Result<Response, Fehler> {
-    let r = blockierend(&app, move |k| {
-        k.handelnder(wer.as_deref())?;
-        k.wbs_knoten_anlegen(&kuerzel, &neu)
-    })
-    .await?;
-    Ok((StatusCode::CREATED, Json(r)).into_response())
-}
-
-#[derive(serde::Deserialize, Default, utoipa::ToSchema)]
-struct Grund {
-    #[serde(default)]
-    grund: String,
-}
-
-/// Der Körper ist freiwillig: leer, `null` oder `{"grund": "…"}`.
-#[utoipa::path(
-    post,
-    path = "/api/wbs/{kuerzel}/knoten/{id}/verwerfen",
-    tag = "WBS",
-    description = "Knoten verwerfen {grund?} → {geaendert: [ids]}; verworfen an Knoten und zählenden Nachfahren, keine Zeile gelöscht, Grund in der Notiz, kein Commit; 409 schon verworfen oder Application",
-    params(("kuerzel" = String, Path, description = "Kürzel einer Person bzw. Anwendung"), ("id" = String, Path, description = "Knoten-ID der WBS, z. B. I0007"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    request_body = Grund,
-    responses((status = 200, description = "Erfolg", body = crate::dienst::WbsGeaendert), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wbs_verwerfen(State(app): State<App>, Wer(wer): Wer, Pfad((kuerzel, id)): Pfad<(String, String)>, koerper: axum::body::Bytes) -> Result<Response, Fehler> {
-    let grund = serde_json::from_slice::<Option<Grund>>(&koerper).ok().flatten().unwrap_or_default().grund;
-    als_person(&app, wer, move |k, _| k.wbs_verwerfen(&kuerzel, &id, &grund)).await
 }
 
 #[derive(serde::Deserialize, utoipa::ToSchema)]

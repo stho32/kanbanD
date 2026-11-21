@@ -1,4 +1,4 @@
-// R00106 Nacharbeit (Karte #8, architektur-reviewer M1): auch die Menüs „Auf Board legen“ und „Status“ der WBS-Sicht
+// R00106 Nacharbeit (Karte #8, architektur-reviewer M1): auch das Menü „Auf Board legen“ (das Menü „Status“ der WBS-Sicht entfiel mit R00222)
 // führen den echten DOM-Fokus — Enter öffnet auf dem ersten Eintrag, ↓ und Ende bewegen ihn, Esc gibt ihn dem Auslöser zurück.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, einrichten, alsPerson, liveBereit } = require('./hilfen');
@@ -52,28 +52,6 @@ test.describe('Menü „Auf Board legen“', () => {
     await page.keyboard.press('Enter');
     await expect(page.locator('tr[data-zeile="4"] .orte')).toContainText('Test · Geprüft');
     await expect(page.locator('[role="menu"]')).toHaveCount(0);
-  });
-});
-
-test.describe('Menü „Status“ der WBS-Sicht', () => {
-  let k, arbeit;
-  test.beforeEach(async ({ page }) => {
-    arbeit = arbeitsRepository(wbsText([
-      zeile('A0001', 'Application', '—', 'kanbanD', 'gelb'),
-      zeile('D0001', 'Dialog', 'A0001', 'Board', 'gelb'),
-      zeile('I0001', 'Interaction', 'D0001', 'Ansehen', 'gelb', { fertig: 'US-1' }),
-      zeile('B0001', 'Bubble', 'I0001', 'Board lesen', 'gruen', { ea: 'Datei → Board', aufwand: '0,5-1' }),
-      zeile('B0002', 'Bubble', 'I0001', 'Board zeigen', 'rot', { ea: 'Board → HTML', aufwand: '1-2' }),
-    ]));
-    k = await kanbanStarten(mitRegister(arbeit));
-    await alsPerson(page, 'st');
-  });
-  test.afterEach(async () => { await k.stoppen(); arbeit.aufraeumen(); });
-
-  test('Enter auf den Status von B0002 → Fokus auf „rot“; ↓, Ende, Pos1; Esc → Fokus auf dem Auslöser', async ({ page }) => {
-    await page.goto(k.adresse + '#/wbs/kd');
-    await liveBereit(page);
-    await menueFuehrtDenFokus(page, '#wbs-st-B0002', [/^rot/, /^gelb/, /^gruen/]);
   });
 });
 

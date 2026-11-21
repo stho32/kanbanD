@@ -18,10 +18,9 @@ test('data-halt ist der Schlüssel, wenn keine id da ist', () => {
   assert.strictEqual(schluessel(element({ daten: { halt: 'leiste' }, klassen: ['mod-side'] }), bereichMit({})), '[data-halt="leiste"]');
 });
 
-test('Feldschlüssel samt Wert, in der Reihenfolge af, nf, wn, tf (wf entfällt mit den Wirkungen, R00222)', () => {
+test('Feldschlüssel samt Wert, in der Reihenfolge af, nf, tf (wf und wn entfallen mit Wirkungen und Knotenformular, R00222)', () => {
   assert.strictEqual(schluessel(element({ daten: { af: 'titel' }, klassen: ['titel'] }), bereichMit({})), '[data-af="titel"]');
   assert.strictEqual(schluessel(element({ daten: { nf: 'board' } }), bereichMit({})), '[data-nf="board"]');
-  assert.strictEqual(schluessel(element({ daten: { wn: 'ebene' } }), bereichMit({})), '[data-wn="ebene"]');
   assert.strictEqual(schluessel(element({ daten: { tf: 'name' } }), bereichMit({})), '[data-tf="name"]');
   assert.strictEqual(schluessel(element({ daten: { tf: 'name', af: 'labels' } }), bereichMit({})), '[data-af="labels"]', 'af vor tf');
 });
@@ -37,7 +36,7 @@ test('Feldschlüssel einer Listenzeile tragen ihre Zeile: data-i gehört zum Sch
   const bereich = bereichMit({ '[data-ef="pname"]': 3, '[data-sf="name"]': 4, '.inp': 9 });
   assert.strictEqual(schluessel(element({ daten: { ef: 'pname', i: '1' }, klassen: ['inp'] }), bereich), '[data-ef="pname"][data-i="1"]');
   assert.strictEqual(schluessel(element({ daten: { sf: 'name', i: '2' }, klassen: ['inp'] }), bereich), '[data-sf="name"][data-i="2"]');
-  assert.strictEqual(schluessel(element({ daten: { ef: 'wbs' }, klassen: ['mini-inp'] }), bereichMit({ '.mini-inp': 4 })), '[data-ef="wbs"]', 'ohne Zeile der Feldschlüssel allein');
+  assert.strictEqual(schluessel(element({ daten: { ef: 'repo' }, klassen: ['mini-inp'] }), bereichMit({ '.mini-inp': 4 })), '[data-ef="repo"]', 'ohne Zeile der Feldschlüssel allein');
 });
 
 test('Aktion mit Argument, sonst Aktion allein', () => {
@@ -67,7 +66,7 @@ test('auch ein nicht zerstörender Inhaltsträger hält nie über die Stelle (R0
 
 test('eine im Bereich eindeutige Klasse, die erste eindeutige gewinnt', () => {
   assert.strictEqual(schluessel(element({ klassen: ['mod-main'] }), bereichMit({})), '.mod-main');
-  assert.strictEqual(schluessel(element({ klassen: ['flaeche', 'wbs-tabelle'] }), bereichMit({ '.flaeche': 3 })), '.wbs-tabelle');
+  assert.strictEqual(schluessel(element({ klassen: ['flaeche', 'bericht-tabelle'] }), bereichMit({ '.flaeche': 3 })), '.bericht-tabelle');
 });
 
 test('Vorrang: id vor data-halt vor Feld vor Aktion vor Klasse', () => {
@@ -114,8 +113,8 @@ test('href ist der Schlüssel eines Links ohne id, data-halt, Feld und Aktion �
 });
 
 test('Fehlfall: ein mehrdeutiges href fällt auf die Klasse zurück; ohne href und ohne Klasse kein Schlüssel', () => {
-  const zweiGleiche = bereichMit({ '[href="#"]': 2, '.kz-wbs': 1 });
-  assert.strictEqual(schluessel(element({ href: '#', klassen: ['kz-wbs'] }), zweiGleiche), '.kz-wbs');
+  const zweiGleiche = bereichMit({ '[href="#"]': 2, '.kz-ziel': 1 });
+  assert.strictEqual(schluessel(element({ href: '#', klassen: ['kz-ziel'] }), zweiGleiche), '.kz-ziel');
   assert.strictEqual(schluessel(element({ href: '#' }), zweiGleiche), '');
   assert.strictEqual(schluessel(element({ href: null }), bereichMit({})), '', 'fehlendes href ist kein Schlüssel');
   assert.strictEqual(schluessel(element({ href: '' }), bereichMit({})), '', 'leeres href ist kein Schlüssel');

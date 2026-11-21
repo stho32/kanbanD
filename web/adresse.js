@@ -1,5 +1,5 @@
 /* kanbanD — Adresse der Ansicht und der geöffneten Aufgabe (R00174, ADR-0029): reines Lesen und Bilden, im Browser und in Node nutzbar.
-   Formen: `#/board/<slug>[/aufgabe/<nr>]`, `#/aufgaben[/aufgabe/<nr>]`, dazu die Seiten ohne Aufgabe (Personen, Einrichten, Berichte, WBS). */
+   Formen: `#/board/<slug>[/aufgabe/<nr>]`, `#/aufgaben[/aufgabe/<nr>]`, dazu die Seiten ohne Aufgabe (Personen, Einrichten, Berichte). */
 (function (ziel) {
   "use strict";
 
@@ -62,7 +62,6 @@
 
   /** Der Router der Ansichten: Unbekanntes zeigt das Board. */
   function ansichtAusAdresse(hash) {
-    if (/^#\/wbs\//.test(hash)) return 'wbs';
     const m = /^#\/(einrichten|aufgaben|personen|berichte\/stundenzettel|berichte\/kreuz|berichte\/verlauf|berichte\/fluss|berichte\/durchsatz|berichte\/durchlauf|berichte\/prognose|berichte\/fieber|berichte\/kosten|berichte\/bestand)/.exec(hash);
     return m ? m[1] : 'board';
   }

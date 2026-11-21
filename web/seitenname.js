@@ -20,19 +20,17 @@
     if (ansicht === 'aufgaben') return 'Aufgaben';
     if (ansicht === 'personen') return 'Personen';
     if (ansicht.startsWith('berichte')) return 'Berichte';
-    if (ansicht === 'wbs') return 'WBS';
     if (ansicht === 'einrichten') return 'Einrichten';
     if (ansicht === 'review') return 'Review';
     if (ansicht === 'lauf') return 'Lauf';
     return 'Board';
   }
 
-  /** Was hinter dem Seitennamen steht: Boardtitel, Berichtsname oder Anwendung; leer, wenn nichts dazugehört. */
-  function zusatz({ ansicht, boardTitel, anwendung }) {
+  /** Was hinter dem Seitennamen steht: Boardtitel oder Berichtsname; leer, wenn nichts dazugehört. */
+  function zusatz({ ansicht, boardTitel }) {
     const name = seitenNameVon(ansicht);
     if (name === 'Board') return boardTitel;
     if (name === 'Berichte') return BERICHTSNAMEN[ansicht.slice('berichte/'.length)];
-    if (name === 'WBS') return anwendung;
     return '';
   }
 
@@ -44,9 +42,8 @@
     return teile.join(' · ');
   }
 
-  /** Fenstertitel aus derselben Namensquelle wie die Seitenüberschrift: Zähler laufender Timer vorn, „ — kanbanD“ hinten; die WBS-Sicht als Sonderform. */
-  function fenstertitelName(seite, { zaehler = 0, wbsStand, wbsName } = {}) {
-    if (seite.ansicht === 'wbs' && wbsName) return `${wbsStand} % · WBS · ${wbsName} — kanbanD`;
+  /** Fenstertitel aus derselben Namensquelle wie die Seitenüberschrift: Zähler laufender Timer vorn, „ — kanbanD“ hinten. */
+  function fenstertitelName(seite, { zaehler = 0 } = {}) {
     const ueberschrift = seitenUeberschrift(seite);
     if (zaehler) return `(${zaehler} ▶) ${ueberschrift} — kanbanD`;
     return `${ueberschrift} — kanbanD`;

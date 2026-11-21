@@ -6,7 +6,7 @@ const path = require('node:path');
 const { G_ZIELE } = require('../../web/tastatur.js');
 const { ansichtenDerAnwendung } = require('../tests/ansichten.js');
 
-const ANSICHTEN = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' });
+const ANSICHTEN = ansichtenDerAnwendung({ board: 'entwicklung' });
 const adressen = ANSICHTEN.map(a => a.adresse);
 const gedeckt = (liste, ziel) => liste.some(adresse => adresse.startsWith(ziel));
 
@@ -23,7 +23,7 @@ test('Ansichten: jeder Bericht, den app.js zeichnet, ist eine Ansicht der Liste'
 
 /**
  * Die Adressen, die der Router `ansichtAusAdresse` in adresse.js erkennt (bis R00174 in app.js): je Regex-Literal ab `^#\/` seine Alternativen
- * (`#/wbs/`, `#/einrichten`, …) und der Rückfall (`board`). Gelesen wird der Router selbst, nicht eine zweite Liste.
+ * (`#/einrichten`, `#/aufgaben`, …) und der Rückfall (`board`). Gelesen wird der Router selbst, nicht eine zweite Liste.
  */
 function routerAdressen(app) {
   const rumpf = /function ansichtAusAdresse\(hash\) \{([\s\S]*?)\n  \}/.exec(app);
@@ -38,7 +38,8 @@ const APP = fs.readFileSync(path.join(__dirname, '../../web/adresse.js'), 'utf8'
 test('Ansichten: jede Adresse, die der Router ansichtAusAdresse erkennt, ist eine Ansicht der Liste', () => {
   const erkannt = routerAdressen(APP);
   assert.ok(erkannt.length >= 11, `Adressen des Routers: ${erkannt.join(' ')}`);
-  for (const muss of ['#/wbs/', '#/board', '#/einrichten', '#/berichte/bestand']) assert.ok(erkannt.includes(muss), muss);
+  for (const muss of ['#/board', '#/einrichten', '#/berichte/bestand']) assert.ok(erkannt.includes(muss), muss);
+  assert.ok(!erkannt.some(a => a.startsWith('#/wbs')), 'R00222: der Router kennt keine WBS-Sicht mehr');
   assert.deepStrictEqual(erkannt.filter(ziel => !gedeckt(adressen, ziel)), []);
 });
 
@@ -48,9 +49,9 @@ test('Selbstprobe Router: eine zusätzliche Alternative hilfe in ansichtAusAdres
   assert.deepStrictEqual(routerAdressen(mitHilfe).filter(ziel => !gedeckt(adressen, ziel)), ['#/hilfe']);
 });
 
-test('Ansichten: Board und WBS-Sicht tragen den übergebenen Slug, jeder Name kommt einmal vor', () => {
+test('Ansichten: das Board trägt den übergebenen Slug, keine Ansicht ist die WBS-Sicht (R00222), jeder Name kommt einmal vor', () => {
   assert.ok(adressen.includes('#/board/entwicklung'));
-  assert.ok(adressen.includes('#/wbs/kd'));
+  assert.ok(!adressen.some(a => a.startsWith('#/wbs')));
   const namen = ANSICHTEN.map(a => a.ansicht);
   assert.strictEqual(new Set(namen).size, namen.length);
 });

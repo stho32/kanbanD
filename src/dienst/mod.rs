@@ -41,7 +41,6 @@ mod termine;
 mod timer;
 pub(crate) mod transkripte;
 mod verlauf;
-mod wbs;
 mod zeiten;
 mod zugregeln;
 mod zuordnung;
@@ -55,7 +54,6 @@ pub use aufgabe_anlegen::{Angelegt, NeueAufgabe, NeueAufgaben, Zielort};
 pub use bewegen::{Bewegt, Bewegung};
 pub use phasen::{BoardMitPhasen, Phasenstand};
 pub use teilaufgaben::Teilaufgabenaenderung;
-pub use wbs::{WbsGeaendert, WbsNeu, WbsSicht, WbsZeile};
 pub use zeiten::{Zeitkorrektur, Zeitnachtrag};
 pub use commits::{Commitangaben, Ersetzungsangaben, Ersetzungspaar, Ersetzungsplan, HOECHSTZAHL_COMMITS};
 pub use kosteneintraege::{HOECHSTZAHL_KOSTENEINTRAEGE, Kosteneintragsangaben};
@@ -75,13 +73,11 @@ use crate::modell::{Aufgabe, Board, Einstellungen, Person};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 pub struct Kanban {
     ordner: Ordner,
     sperre: Mutex<()>,
-    /// je WBS-Datei im Arbeits-Repository eine eigene Sperre — getrennt von der des Ordners
-    wbs_sperren: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
     eigene: Eigene,
     /// Startsekunde je laufendem Timer (Aufgabe, Kürzel) — die Datei kennt nur Minuten (R00068)
     timer_beginn: Mutex<HashMap<(u32, String), std::time::Instant>>,
@@ -152,7 +148,7 @@ impl Schritt {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), wbs_sperren: Mutex::default(), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN,
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN,
             #[cfg(test)]
             nach_dem_belegen: Mutex::default(),
             #[cfg(test)]

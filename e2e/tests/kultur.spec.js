@@ -314,7 +314,6 @@ async function allesAufklappen(page) {
 /** Was eine Ansicht der gemeinsamen Liste nach dem Laden noch braucht, bis ihr Inhalt steht. */
 function nachDemLaden(ansicht) {
   if (ansicht === 'Board') return page => page.locator('.ka[data-id="1"]').waitFor();
-  if (ansicht === 'WBS-Sicht') return page => page.locator('.wbs-tabelle').waitFor();
   if (ansicht === 'Personen') return page => page.locator('tr[data-person="st"]').waitFor();
   if (ansicht === 'Aufgabenliste') return page => page.locator('main').getByText('eins').first().waitFor();
   if (ansicht === 'Einrichten') return page => page.locator('pre.yaml').first().waitFor();
@@ -340,7 +339,7 @@ const tooltip = (bericht, name) => async page => {
  * und die Zustände, die nur unter einer Handlung erscheinen. `leer` startet in einem leeren Ordner (erster Start).
  */
 const ANSICHTEN = [
-  ...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(({ ansicht, adresse }) => ({
+  ...ansichtenDerAnwendung({ board: 'entwicklung' }).map(({ ansicht, adresse }) => ({
     ansicht,
     oeffnen: async page => { await page.goto(k.adresse + adresse); await liveBereit(page); await nachDemLaden(ansicht)(page); await allesAufklappen(page); },
   })),
@@ -375,15 +374,15 @@ test.describe('US-6: keine ISO-Form in keiner Ansicht', () => {
     expect(AUSNAHMEN).toEqual([]);
   });
   test('Vollständigkeit: jede Ansicht der gemeinsamen Liste und jeder Zustand steht in der Probe, keiner doppelt', () => {
-    const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht);
+    const gemeinsam = ansichtenDerAnwendung({ board: 'entwicklung' }).map(a => a.ansicht);
     expect(vollstaendigkeit(ANSICHTEN.map(a => a.ansicht), gemeinsam, ZUSTAENDE)).toEqual({ fehlend: [], doppelt: [] });
   });
   test('jede Ansicht der gemeinsamen Liste hat eine Wartebedingung, eine unbekannte fällt auf', () => {
-    for (const { ansicht } of ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' })) expect(typeof nachDemLaden(ansicht), ansicht).toBe('function');
+    for (const { ansicht } of ansichtenDerAnwendung({ board: 'entwicklung' })) expect(typeof nachDemLaden(ansicht), ansicht).toBe('function');
     expect(() => nachDemLaden('Bericht neu')).toThrow('nachDemLaden kennt „Bericht neu“ nicht');
   });
   test('Selbstprobe der Vollständigkeit: eine neue Ansicht der gemeinsamen Liste und eine doppelte fallen auf', () => {
-    const gemeinsam = [...ansichtenDerAnwendung({ board: 'entwicklung', wbs: 'kd' }).map(a => a.ansicht), 'Bericht neu'];
+    const gemeinsam = [...ansichtenDerAnwendung({ board: 'entwicklung' }).map(a => a.ansicht), 'Bericht neu'];
     const namen = [...ANSICHTEN.map(a => a.ansicht), 'Menü Ich'];
     expect(vollstaendigkeit(namen, gemeinsam, ZUSTAENDE)).toEqual({ fehlend: ['Bericht neu'], doppelt: ['Menü Ich'] });
   });
