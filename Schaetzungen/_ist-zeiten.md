@@ -1012,3 +1012,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #210 R00221 | B1146–B1148 Seite, Insel, Breite/Ziele/Themen/Fokus/Ansage (ein Commit, siehe Bericht) | Standard | 3-5h | 1,6h | 1,6h | autonom |
 | 2026-11-21 | Karte #210 R00221 | B1149 Gate im Worktree, Beobachtung Tempo (bei Last 4, gilt nicht), R00219-Proben auf „Ansehen“ nachgezogen | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #210 R00221 | Nacharbeit 1: Budget für sichtbar gemachte Zeichen, FA 8 „verarbeiten“, Links-Probe, UX S1, Code S2, Architektur S1/S2 | Standard | 1-2h | 1,0h | 1,0h | autonom |
+| 2026-11-21 | Karte #224 R00222 | B1150 Abnahme-Proben rot, Farben gemessen | Standard | 1-2h | 0,8h | 0,8h | autonom |

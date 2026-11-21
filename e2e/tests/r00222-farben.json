@@ -1,0 +1,176 @@
+{
+  "light": {
+    "diffPlus": {
+      "color": "oklch(0.38 0.1 150)",
+      "background": "oklch(0.955 0.04 150)",
+      "borderTop": "oklch(0.38 0.1 150)",
+      "borderLeft": "oklch(0.38 0.1 150)"
+    },
+    "diffMinus": {
+      "color": "oklch(0.43 0.16 27)",
+      "background": "oklch(0.95 0.04 25)",
+      "borderTop": "oklch(0.43 0.16 27)",
+      "borderLeft": "oklch(0.43 0.16 27)"
+    },
+    "kopfPlus": {
+      "color": "oklch(0.38 0.1 150)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.38 0.1 150)",
+      "borderLeft": "oklch(0.38 0.1 150)"
+    },
+    "kopfMinus": {
+      "color": "oklch(0.43 0.16 27)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.43 0.16 27)",
+      "borderLeft": "oklch(0.43 0.16 27)"
+    },
+    "bidi": {
+      "color": "oklch(0.42 0.11 65)",
+      "background": "oklch(0.955 0.05 80)",
+      "borderTop": "oklch(0.42 0.11 65)",
+      "borderLeft": "oklch(0.42 0.11 65)"
+    },
+    "neu": {
+      "color": "oklch(0.38 0.1 150)",
+      "background": "oklch(0.955 0.04 150)",
+      "borderTop": "oklch(0.6 0.13 150)",
+      "borderLeft": "oklch(0.6 0.13 150)"
+    },
+    "entfernt": {
+      "color": "oklch(0.43 0.16 27)",
+      "background": "oklch(0.95 0.04 25)",
+      "borderTop": "oklch(0.58 0.19 27)",
+      "borderLeft": "oklch(0.58 0.19 27)"
+    },
+    "geaendert": {
+      "color": "oklch(0.4 0.012 250)",
+      "background": "oklch(0.935 0.006 250)",
+      "borderTop": "oklch(0.58 0.012 250)",
+      "borderLeft": "oklch(0.58 0.012 250)"
+    },
+    "fehlerText": "oklch(0.43 0.16 27)",
+    "meldungFehler": {
+      "color": "oklch(0.43 0.16 27)",
+      "background": "oklch(0.95 0.04 25)",
+      "borderTop": "oklch(0.43 0.16 27)",
+      "borderLeft": "oklch(0.43 0.16 27)"
+    },
+    "meldungWarnung": {
+      "color": "oklch(0.42 0.11 65)",
+      "background": "oklch(0.955 0.05 80)",
+      "borderTop": "oklch(0.42 0.11 65)",
+      "borderLeft": "oklch(0.42 0.11 65)"
+    },
+    "listePlus": {
+      "color": "oklch(0.38 0.1 150)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.38 0.1 150)",
+      "borderLeft": "oklch(0.38 0.1 150)"
+    },
+    "listeMinus": {
+      "color": "oklch(0.43 0.16 27)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.43 0.16 27)",
+      "borderLeft": "oklch(0.43 0.16 27)"
+    },
+    "wipWarnung": {
+      "color": "oklch(0.93 0.01 250)",
+      "background": "oklch(0.29 0.028 255)",
+      "borderTop": "oklch(0.93 0.01 250)",
+      "borderLeft": "oklch(0.58 0.19 27)"
+    },
+    "wipAusruf": {
+      "color": "oklch(0.43 0.16 27)",
+      "background": "oklch(0.95 0.04 25)",
+      "borderTop": "oklch(0.43 0.16 27)",
+      "borderLeft": "oklch(0.43 0.16 27)"
+    }
+  },
+  "dark": {
+    "diffPlus": {
+      "color": "oklch(0.86 0.1 150)",
+      "background": "oklch(0.31 0.045 150)",
+      "borderTop": "oklch(0.86 0.1 150)",
+      "borderLeft": "oklch(0.86 0.1 150)"
+    },
+    "diffMinus": {
+      "color": "oklch(0.84 0.1 27)",
+      "background": "oklch(0.31 0.045 27)",
+      "borderTop": "oklch(0.84 0.1 27)",
+      "borderLeft": "oklch(0.84 0.1 27)"
+    },
+    "kopfPlus": {
+      "color": "oklch(0.86 0.1 150)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.86 0.1 150)",
+      "borderLeft": "oklch(0.86 0.1 150)"
+    },
+    "kopfMinus": {
+      "color": "oklch(0.84 0.1 27)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.84 0.1 27)",
+      "borderLeft": "oklch(0.84 0.1 27)"
+    },
+    "bidi": {
+      "color": "oklch(0.87 0.11 75)",
+      "background": "oklch(0.31 0.045 75)",
+      "borderTop": "oklch(0.87 0.11 75)",
+      "borderLeft": "oklch(0.87 0.11 75)"
+    },
+    "neu": {
+      "color": "oklch(0.86 0.1 150)",
+      "background": "oklch(0.31 0.045 150)",
+      "borderTop": "oklch(0.72 0.14 150)",
+      "borderLeft": "oklch(0.72 0.14 150)"
+    },
+    "entfernt": {
+      "color": "oklch(0.84 0.1 27)",
+      "background": "oklch(0.31 0.045 27)",
+      "borderTop": "oklch(0.72 0.14 27)",
+      "borderLeft": "oklch(0.72 0.14 27)"
+    },
+    "geaendert": {
+      "color": "oklch(0.84 0.012 250)",
+      "background": "oklch(0.3 0.006 250)",
+      "borderTop": "oklch(0.66 0.012 250)",
+      "borderLeft": "oklch(0.66 0.012 250)"
+    },
+    "fehlerText": "oklch(0.84 0.1 27)",
+    "meldungFehler": {
+      "color": "oklch(0.84 0.1 27)",
+      "background": "oklch(0.31 0.045 27)",
+      "borderTop": "oklch(0.84 0.1 27)",
+      "borderLeft": "oklch(0.84 0.1 27)"
+    },
+    "meldungWarnung": {
+      "color": "oklch(0.87 0.11 75)",
+      "background": "oklch(0.31 0.045 75)",
+      "borderTop": "oklch(0.87 0.11 75)",
+      "borderLeft": "oklch(0.87 0.11 75)"
+    },
+    "listePlus": {
+      "color": "oklch(0.86 0.1 150)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.86 0.1 150)",
+      "borderLeft": "oklch(0.86 0.1 150)"
+    },
+    "listeMinus": {
+      "color": "oklch(0.84 0.1 27)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderTop": "oklch(0.84 0.1 27)",
+      "borderLeft": "oklch(0.84 0.1 27)"
+    },
+    "wipWarnung": {
+      "color": "oklch(0.93 0.01 250)",
+      "background": "oklch(0.15 0.015 255)",
+      "borderTop": "oklch(0.93 0.01 250)",
+      "borderLeft": "oklch(0.72 0.14 27)"
+    },
+    "wipAusruf": {
+      "color": "oklch(0.84 0.1 27)",
+      "background": "oklch(0.31 0.045 27)",
+      "borderTop": "oklch(0.84 0.1 27)",
+      "borderLeft": "oklch(0.84 0.1 27)"
+    }
+  }
+}
