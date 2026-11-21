@@ -320,10 +320,9 @@ async function sichtLaden(zustand) {
   const transkripteVorgabe = einstellungen ? einstellungen.transkripte_erfassen ?? null : S.transkripteVorgabe;
   let wbs = null, wbsFehler = null;
   if (view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
-  // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
+  // die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
   const pruefWbs = {};
-  // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
-  if (view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
+  if (view === 'board') await Promise.all([...new Set(wirkungsAnwendungen(board, aufgaben.aufgaben))].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
   return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, transkripteVorgabe, wbs, wbsFehler, pruefWbs } };
 }
 
@@ -4171,9 +4170,8 @@ async function aktion(a, arg, wert) {
         const weg = (aufgabe(u.offen).phasen || {}).uebersprungen || [];
         return aufgabeAendern(u.offen, { phasen: { uebersprungen: weg.includes(arg) ? weg.filter(n => n !== arg) : [...weg, arg] } });
       }
-      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map((sp, i) => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, pruefungen: [...(sp.pruefungen || [])], notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), eigentuemerAlt: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), roh: sp.eigentuemer_unbekannt || '', datumsTrenner: sp.datums_trenner == null ? i === S.board.spalten.length - 1 : sp.datums_trenner })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen], klassenWahl: S.board.klassen ? 'eigen' : 'vorgabe', klassen: S.board.klassen ? kopie(S.board.klassen) : null, klassenFehler: null }; u.palFuer = null; break;
+      case 'setup': u.pop = null; u.setup = { spalten: S.board.spalten.map((sp, i) => ({ name: sp.name, alt: sp.name, grenze: sp.grenze || '', n: sp.aufgaben.length, notiz: sp.notiz || '', farbe: sp.farbe || '', eigentuemer: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), eigentuemerAlt: sp.eigentuemer || (sp.eigentuemer_unbekannt ? 'roh' : ''), roh: sp.eigentuemer_unbekannt || '', datumsTrenner: sp.datums_trenner == null ? i === S.board.spalten.length - 1 : sp.datums_trenner })), anwendungen: S.board.anwendungen == null ? null : [...S.board.anwendungen], klassenWahl: S.board.klassen ? 'eigen' : 'vorgabe', klassen: S.board.klassen ? kopie(S.board.klassen) : null, klassenFehler: null }; u.palFuer = null; break;
       case 'bind': u.setup.anwendungen = bindungUmschalten(u.setup.anwendungen, arg, S.zustand.einstellungen.quellen.anwendungen || []); break;
-      case 'col-pruef': { const sp = u.setup.spalten[+arg]; sp.pruefungen = umschalten(sp.pruefungen, 'wbs-effects-green'); break; }
       case 'col-dates': { const sp = u.setup.spalten[+arg]; sp.datumsTrenner = !sp.datumsTrenner; break; }
       case 'setup-weg': u.setup = null; break;
       case 'p-art': { const [i, art] = arg.split('|'); u.einr.personen[+i].art = art; break; }
@@ -4291,7 +4289,7 @@ async function aktion(a, arg, wert) {
         const name = (wert || '').trim();
         if (!name) break;
         const d = u.setup.spalten;
-        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0, pruefungen: [], notiz: '', farbe: '', datumsTrenner: false });
+        d.splice(Math.max(0, d.length - 1), 0, { name, alt: null, grenze: '', n: 0, notiz: '', farbe: '', datumsTrenner: false });
         u.fokus = '#col-new';
         break;
       }
@@ -4311,7 +4309,7 @@ async function aktion(a, arg, wert) {
                 await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/klassen`, { klassen });
               } catch (f) { u.setup.klassenFehler = f.message; return; }
             }
-            await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map((sp, i) => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, pruefungen: sp.pruefungen, notiz: sp.notiz, farbe: sp.farbe, ...(trennerAbweichend ? { datums_trenner: sp.datumsTrenner } : {}), ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
+            await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/spalten`, u.setup.spalten.map((sp, i) => ({ name: sp.name.trim(), alt: sp.alt, grenze: +sp.grenze > 0 ? +sp.grenze : null, notiz: sp.notiz, farbe: sp.farbe, ...(trennerAbweichend ? { datums_trenner: sp.datumsTrenner } : {}), ...(eigentuemerGeaendert(sp) ? { eigentuemer: sp.eigentuemer === 'roh' ? null : (sp.eigentuemer || null) } : {}) })));
             if (u.setup.anwendungen && JSON.stringify(u.setup.anwendungen) !== JSON.stringify(S.board.anwendungen)) await api('PUT', `/api/boards/${encodeURIComponent(u.slug)}/anwendungen`, u.setup.anwendungen);
             u.setup = null;
           } catch (f) { u.setup.fehler = f.message; }

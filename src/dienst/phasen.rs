@@ -4,7 +4,7 @@ use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::modell::{Art, Board, Person};
 use crate::phasen::{Phasenfolge, gebundene_anwendungen};
-use crate::pruefungen::unbekannte;
+use crate::warnung::unbekannte;
 use serde::Serialize;
 
 /// Die Phasen eines Boards: die Folge der ersten gebundenen Anwendung mit erreichbarer WBS und was am Board nicht stimmt.

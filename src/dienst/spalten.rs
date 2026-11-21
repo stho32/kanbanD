@@ -55,7 +55,7 @@ mod tests {
     const AUSGANG: &str = "---\nlimits:\n  In Arbeit: 2\ncolumn-owner:\n  Eingang: human\n---\n\n# Entwicklung\n\n## Eingang\n\n## In Arbeit\n\n## Erledigt\n";
 
     fn aend(name: &str, alt: &str) -> SpaltenAenderung {
-        SpaltenAenderung { name: name.into(), alt: Some(alt.into()), grenze: None, pruefungen: None, notiz: None, farbe: None, eigentuemer: None, datums_trenner: None }
+        SpaltenAenderung { name: name.into(), alt: Some(alt.into()), grenze: None, notiz: None, farbe: None, eigentuemer: None, datums_trenner: None }
     }
 
     fn geaendert(text: &str, neu: &[SpaltenAenderung]) -> Vec<(String, Einstellung)> {

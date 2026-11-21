@@ -122,7 +122,7 @@ async fn ohne_alt_haelt_aufgaben_und_einstellungen() {
     let t = lies(tmp.path(), "boards/entwicklung.md");
     assert_eq!(
         t,
-        "---\nlimits:\n  Zu erledigen: 5\n  In Arbeit: 2\ncolumn-checks:\n  Zu erledigen: [wbs-effects-green]\ncolumn-notes:\n  Zu erledigen: höchstens zwei\ncolumn-colors:\n  Zu erledigen: \"#ffe8b0\"\ncolumn-owner:\n  Zu erledigen: human\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## Review\n\n## In Arbeit\n\n## Erledigt\n",
+        "---\nlimits:\n  Zu erledigen: 5\n  In Arbeit: 2\ncolumn-notes:\n  Zu erledigen: höchstens zwei\ncolumn-colors:\n  Zu erledigen: \"#ffe8b0\"\ncolumn-owner:\n  Zu erledigen: human\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n- [#1](../aufgaben/0001-eins.md)\n- [#2](../aufgaben/0002-zwei.md)\n- [#3](../aufgaben/0003-drei.md)\n\n## Review\n\n## In Arbeit\n\n## Erledigt\n",
         "Aufgaben und Einstellungen bleiben, Review ist neu"
     );
     assert!(vorher.contains("Zu erledigen: 5"), "Vorbedingung: Einstellungen standen vorher in der Datei");

@@ -255,8 +255,8 @@ async fn agent_richtet_ein_was_keine_regel_traegt() {
     assert!(w.board.contains("## In Arbeit\n\n## Eingang\n"), "{}", w.board);
 
     let w = setzen("bot", alle(|name, s| if name == "Eingang" { s["pruefungen"] = json!(["Ziel klar"]); s["notiz"] = json!("nur Neues"); s["farbe"] = json!("#336699"); })).await;
-    assert_eq!((w.status, w.neue_commits), (200, 1), "pruefungen, notiz, farbe: {}", w.roh);
-    assert!(w.board.contains("column-owner:\n  Eingang: human\n") && w.board.contains("Ziel klar") && w.board.contains("nur Neues") && w.board.contains("#336699"), "{}", w.board);
+    assert_eq!((w.status, w.neue_commits), (200, 1), "pruefungen (überlesen, R00222), notiz, farbe: {}", w.roh);
+    assert!(w.board.contains("column-owner:\n  Eingang: human\n") && !w.board.contains("Ziel klar") && w.board.contains("nur Neues") && w.board.contains("#336699"), "{}", w.board);
 }
 
 #[tokio::test]

@@ -6,7 +6,7 @@ use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
 use crate::modell::{Art, Aufgabe, Person, Reservierung, instanz_gueltig};
-use crate::pruefungen::Warnung;
+use crate::warnung::Warnung;
 use crate::uhr;
 use serde::{Deserialize, Serialize};
 
@@ -102,8 +102,7 @@ impl Kanban {
         let nachricht = format!("#{nr} gezogen: „{}“ → „{}“ ({}, {})", crate::nachricht::wert(&zug.von), crate::nachricht::wert(&nach), crate::nachricht::wert(&self.inhaber(a.reservierung.as_ref().expect("gesetzt"))), crate::nachricht::wert(&b.titel));
         let dateien = [Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a)), Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, None)?)];
         self.aktion(wer, &nachricht, &dateien)?;
-        let warnungen = [grenzwarnungen, self.warnungen(&b, nr, &zug.von, &nach)].concat();
-        Ok(Gezogen { aufgabe: a, von: zug.von.clone(), nach, warnungen })
+        Ok(Gezogen { aufgabe: a, von: zug.von.clone(), nach, warnungen: grenzwarnungen })
     }
 
     /// Die eigene Instanz gibt frei, ein Mensch jede; die fremde Instanz eines Agenten nicht (409).

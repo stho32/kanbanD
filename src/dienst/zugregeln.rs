@@ -5,7 +5,7 @@
 
 use crate::fehler::Fehler;
 use crate::modell::{Art, Aufgabe, Board, Einstellungsaenderungen, Entnahmesperre, Grenzverletzungen, Person};
-use crate::pruefungen::Warnung;
+use crate::warnung::Warnung;
 use std::collections::BTreeSet;
 
 /// Die Nummern der archivierten Aufgaben — sie stehen weiter in der Board-Datei, zählen aber nicht.
@@ -211,7 +211,7 @@ mod tests {
     }
 
     fn board_mit_eingang() -> Board {
-        let spalte = |name: &str, eigner, grenze, aufgaben: Vec<u32>| crate::modell::Spalte { notiz: None, farbe: None, eigentuemer: eigner, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben, phase: None, pruefungen: vec![], datums_trenner: None };
+        let spalte = |name: &str, eigner, grenze, aufgaben: Vec<u32>| crate::modell::Spalte { notiz: None, farbe: None, eigentuemer: eigner, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben, phase: None, datums_trenner: None };
         Board {
             slug: "b".into(),
             titel: "B".into(),

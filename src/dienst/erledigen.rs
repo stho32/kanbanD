@@ -10,7 +10,7 @@ use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
 use crate::modell::{Art, Aufgabe, Board, Einstellungen, Fremdschluessel, Person, Schluesseltreffer, in_letzter_spalte, ist_erledigt, signal_unbekannt};
-use crate::pruefungen::Warnung;
+use crate::warnung::Warnung;
 use serde::Serialize;
 
 /// Eingabe von `POST /api/aufgaben/erledigen`; fehlende Felder gelten als leer und werden abgewiesen.

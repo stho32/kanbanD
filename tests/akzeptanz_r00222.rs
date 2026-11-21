@@ -463,12 +463,14 @@ async fn ak06_spalten_mit_pruefungen_200_ohne_column_checks() {
     let l = Lage::neu();
     let lauf = l.starten();
     let spalten = json!([
-        {"name": "Offen"}, {"name": "In Arbeit", "grenze": 1}, {"name": "Review", "pruefungen": ["wbs-effects-green"]}, {"name": "Erledigt", "pruefungen": ["wbs-effects-green"]}
+        {"name": "Offen", "notiz": "neu"}, {"name": "In Arbeit", "grenze": 1}, {"name": "Review", "pruefungen": ["wbs-effects-green"]}, {"name": "Erledigt", "pruefungen": ["wbs-effects-green"]}
     ]);
+    let vorher = l.commits_k();
     let (s, v) = senden(reqwest::Method::PUT, lauf.adresse(), "api/boards/entwicklung/spalten", spalten).await;
     assert_eq!(s, 200, "{v}");
     let datei = l.datei("boards/entwicklung.md");
-    assert!(!datei.contains("column-checks") && !datei.contains("wbs-effects-green"), "{datei}");
+    assert_eq!(l.commits_k(), vorher + 1, "die Notiz schreibt das Board in einem Commit");
+    assert!(datei.contains("column-notes") && !datei.contains("column-checks") && !datei.contains("wbs-effects-green"), "{datei}");
     let b = lesen(lauf.adresse(), "api/boards/entwicklung").await;
     assert!(b["spalten"].as_array().unwrap().iter().all(|s| s.get("pruefungen").is_none()), "{b}");
 }

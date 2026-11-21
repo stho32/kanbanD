@@ -77,9 +77,10 @@ async fn reservierte_karte_wird_in_einem_commit_erledigt() {
     assert_eq!(git(tmp.path(), &["show", "--name-only", "--format=", "HEAD"]), "aufgaben/0007-befund.md\nboards/fabrik.md");
 }
 
-// AK Gegenbeispiel Spaltenprüfung (B0333): column-checks laufen beim Erledigen nicht
+// AK Gegenbeispiel Spaltenprüfung (B0333): beim Erledigen keine Prüf-Warnung; seit R00222 (ADR-0034 Regel 2) fällt
+// column-checks im Commit der Aktion weg, die das Board ohnehin schreibt
 #[tokio::test]
-async fn spaltenpruefungen_laufen_beim_erledigen_nicht() {
+async fn erledigen_ohne_pruefwarnung_column_checks_faellt_im_commit_weg() {
     let tmp = tempfile::tempdir().unwrap();
     let wirkung = "wbs-effects:\n  - {application: kd, action: create, node: I0048}\n";
     fabrik(tmp.path(), "column-checks:\n  In Arbeit: [wbs-effects-green]\n", &[(7, "k1", "In Arbeit", wirkung)]);
@@ -88,7 +89,7 @@ async fn spaltenpruefungen_laufen_beim_erledigen_nicht() {
     let (s, r) = erledigen(&lauf.adresse, "bot", eingespielt("k1")).await;
     assert_eq!((s, &r["ergebnis"], &r["warnungen"]), (200, &json!("erledigt"), &json!([])), "{r}");
     assert_eq!(commits(tmp.path()), vorher + 1);
-    assert!(lies(tmp.path(), "boards/fabrik.md").contains("column-checks:\n  In Arbeit: [wbs-effects-green]\n"), "Board-Kopf bleibt");
+    assert!(!lies(tmp.path(), "boards/fabrik.md").contains("column-checks"), "column-checks fällt im Commit des Erledigens weg");
 }
 
 /// Zustand, an dem „nichts geschrieben“ abzulesen ist: Kopf-Commit und alle Dateien.
