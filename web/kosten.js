@@ -322,5 +322,5 @@
     return { tab: 'inhalt', fokus: lage.fokusBeiReiter ? '#fenster [data-act="fenster-menue"][data-arg="ansicht"]' : null };
   }
 
-  Object.assign(ziel, { kostenInCent, geld, spanne, preisetikett, angefallenAufKarte, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenbereichGewaehlt, kostenSpaltenwahl, filterOhneZeitraum, kostenUmfang });
+  Object.assign(ziel, { inCent, kostenInCent, geld, spanne, preisetikett, angefallenAufKarte, reiterRueckfall, kostentabelle, hatAltePosten, kosteneintragstabelle, kostenbericht, kostenaufstellung, kostenbereichGewaehlt, kostenSpaltenwahl, filterOhneZeitraum, kostenUmfang });
 })(typeof module !== 'undefined' ? module.exports : window);

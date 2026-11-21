@@ -6,7 +6,7 @@
   'use strict';
   const { zeitMs } = typeof module !== 'undefined' ? require('./zeiten.js') : window;
   const { zeitpunktAusMs } = typeof module !== 'undefined' ? require('./kultur.js') : window;
-  const { geld } = typeof module !== 'undefined' ? require('./kosten.js') : window;
+  const { geld, inCent } = typeof module !== 'undefined' ? require('./kosten.js') : window;
 
   /** Je Lauf eine Zeile `{kennung, at, role, column, transkript, kosten}`, neueste zuerst. Schlüssel ist allein die `kennung`
       des Servers als Text — die Spalte zählt nicht; Doppel paaren sich der Reihe nach, ein Teil ohne Partner steht allein. */
@@ -125,7 +125,7 @@
     return `<tr role="row"${z.kennung === null ? ' class="ohnek"' : ''}><th scope="row" role="rowheader" class="lf-zp">${zeitpunkt === null ? ohneWert('kein Zeitpunkt') : zeitpunkt}</th>`
       + zelle('lf-ro', z.role == null ? ohneWert('keine Rolle') : esc(ohneSteuerzeichen(z.role)))
       + zelle('lf-sp', spalteHtml(z, esc))
-      + zelle('lf-be r', z.kosten ? esc(geld(Math.round(z.kosten.amount * 100), z.kosten.currency)) : ohneWert('kein Betrag'))
+      + zelle('lf-be r', z.kosten ? esc(geld(inCent(z.kosten.amount), z.kosten.currency)) : ohneWert('kein Betrag'))
       + zelle('lf-zs', zustandHtml(z, gelesen)) + '</tr>';
   }
 
