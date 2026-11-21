@@ -95,8 +95,8 @@ Herleitung von *d* (Hypothese, in Bubble A gemessen und in die Commit-Nachricht 
 - [x] **AK 8 R00209 AK 9 behoben, Erwartung unverändert:** Gegeben AK 7 hat rot gezeigt. Wenn der Test danach mit denselben Kombinationen und `--repeat-each=10` läuft, dann ist er 0 von 80 rot, und es gilt weiter wörtlich: nach jedem Speichern ist `kanbanD.md` bytegleich zum Text von `#einr-vorschau` vor dem Speichern, und je Speichern entsteht genau ein Commit (Commitzahl +1, nicht +2). Hat AK 7 gezeigt, dass eine Eingabe nach „gespeichert“ durch ein spätes Neuladen verloren geht, ist das ein Fehler der Seite: dann behebt `web/app.js` ihn, und ein eigener Test belegt mit 600 ms Verzögerung, dass der Betreiber nach „gespeichert“ eingegebene Text im Feld „Repository jopu“ stehen bleibt (ohne Fix rot). Sonst wartet der Test nach ADR-0026 auf den Zielzustand, nie auf Zeit.
 - [ ] **AK 9 Selbstbeschreibung, wenn nicht reproduzierbar:** Gegeben AK 7 zeigt in keiner Kombination Rot. Dann meldet der Test AK 9 bei einem künftigen Rot ohne Nachfahren den Schritt und den Zustand aus AK 7. Probe: Mutant „Vorschau zeigt ein Zeichen mehr als die Datei“ → der Test ist rot, und seine Meldung nennt den Schritt, beide Texte und die Commitzahl vorher und nachher.
 - [ ] **AK 10 Tagprobe (nur am Tag, hält die Karte nicht):** Gegeben fremde Last mit Load average (1 min) ≥ 5 vor und nach jedem Lauf, z. B. das volle Gate des Directors. Wenn `ak08_antwortbudget`, `ak20b_viele_die_nicht_lesen` und `r00209-register-repository.spec.js` je fünfmal hintereinander laufen, dann sind alle 5 von 5 grün, ohne geänderte Erwartung. Ergebnis und gemessene Last trägt nach, wer die Probe am Tag fährt; ein Rot wird eine neue Befundkarte, keine Nacharbeit dieser Karte.
-- [ ] Der Reproduktionstest ist ohne Fix rot und mit Fix grün (AK 1 → AK 3)
-- [ ] Der ursprüngliche Fehler tritt im Szenario der User Story nicht mehr auf
+- [x] Der Reproduktionstest ist ohne Fix rot und mit Fix grün (AK 1 → AK 3)
+- [x] Der ursprüngliche Fehler tritt im Szenario der User Story nicht mehr auf
 - [ ] Keine neuen Fehler: alle Tests aller Ebenen grün
 
 ## Implementierungshinweise
