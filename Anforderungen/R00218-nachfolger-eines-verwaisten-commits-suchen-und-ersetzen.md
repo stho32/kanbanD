@@ -1,6 +1,6 @@
 ---
 id: R00218
-status: In Arbeit
+status: Erledigt
 datum: 2026-11-21
 ---
 
@@ -120,7 +120,7 @@ Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu 
   - bei `kandidaten_weitere: 2`: 10 Kandidaten und „2 weitere Commits mit gleichem Patch sind nicht gezeigt.“; bei `kandidaten_weitere: 1`: „1 weiterer Commit mit gleichem Patch ist nicht gezeigt.“;
   - **Ort der Sätze bei vorhandenen Kandidaten:** Der Satz zu „weitere“ und der Satz zu „gekappt“ stehen in der Gruppe nach der Liste der Kandidaten, nie zwischen Kopf und Liste. Trägt eine Antwort beides (per `page.route`: 10 Kandidaten, `kandidaten_weitere: 1`, `suche_gekappt` mit `durchsucht: 1000`), steht in Dokumentreihenfolge zuerst der Kopf, dann die Liste, dann „1 weiterer Commit mit gleichem Patch ist nicht gezeigt.“, dann „Die Suche hat nach 1.000 Commits aufgehört; ein Nachfolger kann fehlen.“;
   - bei 503: „Der Nachfolger ließ sich nicht suchen: <`fehler` der Antwort> (503).“ mit „Erneut versuchen“, das genau einen weiteren Aufruf auslöst; ohne Verbindung: „Der Nachfolger ließ sich nicht suchen: keine Verbindung zum Programm.“ ohne Zahl (Z. 450), ebenfalls mit „Erneut versuchen“.
-- [ ] **9. Ersetzen und Entfernen.** Gegeben `sh` ist gewählt und die Suche an `kd:<K>` von #1 zeigt K'. Wenn `sh` „Ersetzen“ drückt, dann gilt:
+- [x] **9. Ersetzen und Entfernen.** Gegeben `sh` ist gewählt und die Suche an `kd:<K>` von #1 zeigt K'. Wenn `sh` „Ersetzen“ drückt, dann gilt:
   - Es gibt genau ein `POST /api/aufgaben/1/commits/ersetzen` mit `{ersetzungen: [{alt: "kd:<K>", neu: "kd:<K'>"}]}` und keinen Dialog.
   - Die Commit-Zahl steigt um genau 1, mit `sh` als Autor.
   - Die Liste wird einmal neu gelesen. In der Aufgabendatei steht `kd:<K'>` an der Stelle, an der `kd:<K>` stand, und `kd:<K>` steht dort nicht mehr. In der Liste steht `kd:<K'>` auf `main`, ohne „auf keinem Zweig“, in der Reihenfolge der Antwort (R00205 FA 4).
@@ -128,7 +128,7 @@ Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu 
   - Danach ist `document.activeElement` der Kurz-Hash-Verweis (`a.cl-hash`) in der Zeile von K'. Sein zugänglicher Name beginnt mit „Commit kd:<K':7>“. Der Fokus springt erst, wenn der Satz im Statusbereich steht (AK 13).
   - Für #3 ergibt „Verwaisten Verweis entfernen“ genau ein `DELETE …/commits/kd:<K>` und einen Commit. Danach steht K' allein an der Karte, und der Statusbereich sagt „Verwaisten Verweis kd:<K:7> entfernt.“. `document.activeElement` ist wieder der Kurz-Hash-Verweis in der Zeile von K'.
   - Ohne gewählte Person öffnet der Klick „Ich bin …“ mit Hinweis und sendet nichts (R00003).
-- [ ] **10. Fehler, Sperre und Nachbarübergänge.** Gegeben die Suche an `kd:<K>` zeigt K', dann gilt:
+- [x] **10. Fehler, Sperre und Nachbarübergänge.** Gegeben die Suche an `kd:<K>` zeigt K', dann gilt:
   - Hat eine zweite Sitzung inzwischen `kd:<K'>` an #1 hinterlegt, ergibt „Ersetzen“ 409 mit `verweis` gleich `kd:<K>`. Am Kandidaten steht dann „Der Verweis ließ sich nicht ersetzen: kd:<K':7> steht inzwischen schon an der Aufgabe (409).“, ohne den Text des Servers. Der Kandidat wechselt in die Form `an_der_karte` (Marke „schon an der Aufgabe“, Knopf „Verwaisten Verweis entfernen“), und der Fokus steht auf diesem Knopf. Der Satz ist keine Live-Region; er hängt als Beschreibung (`aria-describedby`) an diesem Knopf. Der Kopf heißt danach „1 Commit mit gleichem Patch“, daneben „neuester zuerst · „Verwaisten Verweis entfernen“ nimmt kd:<K:7> von der Aufgabe“: Der Zusatz zu „Ersetzen“ fällt weg, sobald kein Kandidat mehr „Ersetzen“ trägt, und der Zusatz zu „Entfernen“ kommt dazu (Z. 465). Es geht kein `DELETE` hinaus, und die Aufgabendatei bleibt byte-gleich. Erst der Klick darauf ergibt genau ein `DELETE …/commits/kd:<K>` und einen Commit (weiter wie AK 9).
   - Jeder andere 409, etwa mit einem anderen `verweis` oder ohne `verweis` (per `page.route`), zeigt die allgemeine Form „Der Verweis ließ sich nicht ersetzen: <`fehler` der Antwort> (409).“. Der Kandidat behält „Ersetzen“, und der Fokus bleibt auf dem Knopf. Der Satz steht in einer Live-Region (`role="status"`), die schon vor dem Satz im Dokument steht.
   - Bei defekter Aufgabendatei steht die allgemeine Form mit (423). Die Datei bleibt byte-gleich, und der Fokus bleibt auf dem Knopf. Für „Verwaisten Verweis entfernen“ lautet die Form „Der Verweis ließ sich nicht entfernen: <`fehler` der Antwort> (<Status>).“
@@ -151,7 +151,7 @@ Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu 
   - **Grenze an `.rv-abs-rumpf`:** Bei 640 px steht die schmale Form aus R00205, bei 1099 px die mittlere, bei 1100 px die Tabelle mit sichtbaren Spaltenköpfen.
   - Bei grobem Zeiger und 768 px ist jedes Bedienziel der Ansicht („+n weitere“, „Neu lesen“, „Erneut versuchen“, „Alle Änderungen ansehen“, der Kurz-Hash-Verweis) mindestens 48 × 48 px groß.
   - **Regression R00205:** Bei 320, 414 und 1280 px bleibt das Verhalten aus R00205 unverändert. Die Proben in `e2e/tests/r00205-ansicht-commits.spec.js` laufen ohne Änderung an ihren Erwartungen grün.
-- [ ] **13. Fokus und Ansage.** Gegeben die Suche an `kd:<K>` von #1, Antworten per `page.route` gehalten, und ein Beobachter (`MutationObserver`), der jeden Text in `[role=status]`, `[role=alert]` und `[aria-live]` der Ansicht mitschreibt, dann gilt:
+- [x] **13. Fokus und Ansage.** Gegeben die Suche an `kd:<K>` von #1, Antworten per `page.route` gehalten, und ein Beobachter (`MutationObserver`), der jeden Text in `[role=status]`, `[role=alert]` und `[aria-live]` der Ansicht mitschreibt, dann gilt:
   - **Fokus nur vom Auslöser:** Bleibt der Fokus während der Suche auf „Nachfolger suchen“, steht er nach der Antwort auf der Gruppe „Nachfolger von kd:<K:7>“. Setzt `sh` den Fokus vor der Antwort auf „Neu lesen“, steht er nach der Antwort weiter dort. Dasselbe gilt für Ersetzen und Entfernen (AK 9, 10): Der Fokus springt nur, wenn er auf dem Auslöser oder auf `body` liegt.
   - **Keine Live-Region am Fokusziel:** Sobald die Gruppe den Fokus hat, enthält sie kein Element mit `role="status"`, `role="alert"` oder `aria-live`. Der erste Satz der Gruppe (Kopf bzw. Satz des Zustands, auch beim 503) hängt als `aria-describedby` an der Gruppe. Ebenso hat der Knopf „Verwaisten Verweis entfernen“ nach dem 409-Wechsel keine Live-Region in seinem Kandidaten.
   - **Live-Regionen nur hier:** „Sucht Commits mit gleichem Patch …“ (Fokus auf dem Auslöser), das Ergebnis der Suche bei gewandertem Fokus, die Fehler beim Schreiben mit Fokus auf dem Auslöser (409 allgemein, 423) und die Erfolgsmeldung im Kopf der Liste.

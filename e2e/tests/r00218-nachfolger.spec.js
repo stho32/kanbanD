@@ -282,6 +282,7 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     expect(await gruppe(page).evaluate(g => g.querySelectorAll('[role=status],[role=alert],[aria-live]').length)).toBe(0);
     await expect(gruppe(page)).toHaveAttribute('aria-describedby', 'nf-erster');
     expect(await ansagen()).toEqual([LAEDT]);
+    await expect(page.locator('#commits-status'), 'nach der Antwort steht nie mehr „Sucht …“ im Statusbereich (FA 13)').toHaveText('');
     expect(h.aufrufe.length).toBe(1);
   });
 
@@ -464,7 +465,7 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
 
   /* ── AK 13: Fokus nur vom Auslöser (Sollte A der UX-Vorprüfung: stille Ankunft ohne Fokusraub) ── */
 
-  test('AK 13: setzt sh den Fokus vor der Antwort auf „Neu lesen“, bleibt er dort; das Ergebnis kommt still an (keine weitere Ansage)', async ({ page }) => {
+  test('AK 13 (PO Z. 487): setzt sh den Fokus vor der Antwort auf „Neu lesen“, bleibt er dort; angesagt werden Start und Ergebnis, der erste Satz der Gruppe steht im Statusbereich', async ({ page }) => {
     await commitsOeffnen(page, 1, 2);
     const ansagen = await ansagenBeobachten(page);
     const h = await nachfolgerHalten(page, 1);
@@ -473,7 +474,36 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     h.frei();
     await expect(page.locator(`${GRUPPE} .nf-k`)).toHaveCount(1);
     await expect(page.locator('#commits-neu')).toBeFocused();
-    expect(await ansagen()).toEqual([LAEDT]);
+    await expect(page.locator('#commits-status')).toHaveText('1 Commit mit gleichem Patch');
+    expect(await ansagen()).toEqual([LAEDT, '1 Commit mit gleichem Patch']);
+  });
+
+  test('AK 13 (PO Z. 487): dasselbe beim 503 — der Satz der Störung wird angesagt, der Fokus bleibt auf „Neu lesen“', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    const ansagen = await ansagenBeobachten(page);
+    const h = await nachfolgerHalten(page, 1, { status: 503, contentType: 'application/json', body: JSON.stringify({ fehler: 'Git hängt' }) });
+    await suchKnopf(page, rep.k).click();
+    await page.locator('#commits-neu').focus();
+    h.frei();
+    const satz = 'Der Nachfolger ließ sich nicht suchen: Git hängt (503).';
+    await expect(page.locator(`${GRUPPE} #nf-erster`)).toHaveText(satz);
+    await expect(page.locator('#commits-neu')).toBeFocused();
+    await expect(page.locator('#commits-status')).toHaveText(satz);
+    expect(await ansagen()).toEqual([LAEDT, satz]);
+  });
+
+  test('AK 13 (PO Z. 487): eine durch Ansichtswechsel verworfene Suche schreibt nichts — nur „Sucht …“ wird angesagt', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    const ansagen = await ansagenBeobachten(page);
+    const h = await nachfolgerHalten(page, 1);
+    await suchKnopf(page, rep.k).click();
+    await expect(page.getByText(LAEDT, { exact: true }).first()).toBeVisible();
+    await reiter(page, 'Inhalt');
+    h.frei();
+    await reiter(page, 'Commits');
+    await expect(page.locator(ZEILEN)).toHaveCount(2);
+    await expect(page.locator('#commits-status')).toHaveText('2 Commits gelesen');
+    expect((await ansagen()).filter(t => t !== '2 Commits gelesen' && !t.startsWith('Liest'))).toEqual([LAEDT]);
   });
 
   /* ── AK 9 Ersetzen und Entfernen, AK 10 Fehler und Sperre, AK 13 Ansage beim Erfolg (jeder Test mit eigenem R, er schreibt an der Karte) ── */
@@ -482,7 +512,7 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
   const datei = nr => k.lies(`aufgaben/000${nr}-karte-${nr}.md`);
   const ersetzenKnopf = page => page.locator(`${GRUPPE} .nf-k`).first().getByRole('button', { name: /^Ersetzen/ });
   const entfernenKnopf = page => page.locator(GRUPPE).getByRole('button', { name: 'Verwaisten Verweis entfernen', exact: true });
-  /** Die Verweise der Aufgabendatei in ihrer Reihenfolge: „an Platz 1“ heißt an der Stelle des alten Verweises (R00203 FA 3). */
+  /** Die Verweise der Aufgabendatei in ihrer Reihenfolge (AK 9, 10 nach PO Z. 488: K′ an der Stelle des ersetzten K, ohne Annahme über den Listenplatz). */
   const verweiseDerDatei = nr => [...datei(nr).matchAll(/^  - (.+)$/gm)].map(m => m[1].replace(/"/g, ''));
   /** Hält `methode` auf `muster`, bis `frei()`; zählt die Anfragen samt Rumpf. */
   async function schreibenHalten(page, methode, muster) {
@@ -496,7 +526,7 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     return { aufrufe, frei: () => { const f = freigaben; freigaben = []; f.forEach(r => r()); } };
   }
 
-  test('AK 9, AK 13: „Ersetzen“ — genau ein POST mit dem Paar, ein Commit von sh, Liste neu mit K′ an Platz 1, „Ersetzt durch …“ als einzige Ansage, danach Fokus auf dem Kurz-Hash von K′', async ({ page }) => {
+  test('AK 9, AK 13: „Ersetzen“ — genau ein POST mit dem Paar, ein Commit von sh, in der Datei an der Stelle von K, in der Liste auf main, „Ersetzt durch …“ als einzige Ansage, danach Fokus auf dem Kurz-Hash von K′', async ({ page }) => {
     await commitsOeffnen(page, 1, 2);
     const vorher = zahl();
     const dialoge = []; page.on('dialog', d => { dialoge.push(d.message()); d.dismiss(); });
@@ -519,7 +549,7 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     await expect(ziel).toBeFocused();
     expect(await ziel.getAttribute('aria-label')).toMatch(new RegExp(`^Commit ${kurz(rep.k2)}`));
     expect(await fokusBeimText, 'der Fokus springt erst, wenn der Satz steht').not.toContain('cl-hash');
-    expect(verweiseDerDatei(1)[0]).toBe(`kd:${rep.k2}`);
+    expect(verweiseDerDatei(1)).toEqual([`kd:${rep.k2}`, `kd:${rep.m1}`]);
     await expect(zeileMit(page, kurz(rep.k2)).locator('.cl-br')).toHaveText(['main']);
     await expect(page.locator(`${PANEL}`).getByText('auf keinem Zweig')).toHaveCount(0);
     expect(zahl()).toBe(vorher + 1);
@@ -671,7 +701,7 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     expect(h.aufrufe.length).toBe(1);
   });
 
-  test('AK 10: Ansichtswechsel während „Ersetzen“ — genau ein Commit, zurück in „Commits“ steht K′ an Platz 1', async ({ page }) => {
+  test('AK 10: Ansichtswechsel während „Ersetzen“ — genau ein Commit, zurück in „Commits“ steht K′ auf main und in der Datei an der Stelle von K', async ({ page }) => {
     await commitsOeffnen(page, 1, 2);
     await suchKnopf(page, rep.k).click();
     const vorher = zahl();
@@ -682,8 +712,9 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     await expect.poll(zahl).toBe(vorher + 1);
     await reiter(page, 'Commits');
     await expect(page.locator(ZEILEN)).toHaveCount(2);
-    await expect(zeileMit(page, kurz(rep.k2))).toHaveCount(1);
-    expect(verweiseDerDatei(1)[0]).toBe(`kd:${rep.k2}`);
+    await expect(zeileMit(page, kurz(rep.k2)).locator('.cl-br')).toHaveText(['main']);
+    await expect(page.locator(PANEL).getByText('auf keinem Zweig')).toHaveCount(0);
+    expect(verweiseDerDatei(1)).toEqual([`kd:${rep.k2}`, `kd:${rep.m1}`]);
     expect(zahl()).toBe(vorher + 1);
   });
 });

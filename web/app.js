@@ -1227,7 +1227,16 @@ async function nachfolgerSuchen(verweis) {
   if (!nachfolgerNoch(c, nf)) return;
   nf.status = 'da';
   nf.antwort = antwort;
-  if (fokusNochAm(ausloeser)) S.ui.fokus = '#nf-gruppe';
+  // Start und Ergebnis sind zwei Ereignisse (PO Z. 487, R00218 FA 13): steht der Fokus noch am Auslöser oder auf body, wird der Statusbereich
+  // still geleert und die Gruppe bekommt den Fokus (ihr erster Satz ist ihre Beschreibung); sonst steht der erste Satz der Gruppe im
+  // Statusbereich, und der Fokus bleibt, wo der Mensch ihn hingesetzt hat
+  if (fokusNochAm(ausloeser)) {
+    c.ansage = '';
+    S.ui.fokus = '#nf-gruppe';
+  } else {
+    const d = nachfolgerDeuten(antwort, verweis, nf.gewechselt);
+    c.ansage = d.kopf || d.saetze[0];
+  }
   render();
 }
 
