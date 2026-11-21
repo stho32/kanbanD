@@ -299,3 +299,16 @@ test('Kopf-Menü des Fensters (R00144/R00145): eigene Ebene `fenstermenue` zwisc
 test('Kopf-Menü: kein fenstermenue ohne offenes Aufgabenfenster', () => {
   assert.deepStrictEqual(arten({ view: 'board', fensterMenue: 'ansicht' }), [], 'ohne Fenster kein Menü im Stapel');
 });
+
+// R00218 Nacharbeit 1 (UX Muss 1): steht der Fokus in der Ebene auf einem Element, das nicht in der Tab-Reihenfolge steht (tabindex=-1, etwa
+// eine Ergebnis-Gruppe), geht Tab zum ersten tabbaren Element danach und Umschalt+Tab zum letzten davor, in Dokumentreihenfolge
+test('fallenSchrittZwischen: vom nicht tabbaren Fokus in der Ebene zum Nachbarn in Dokumentreihenfolge', () => {
+  const { fallenSchrittZwischen } = require('../../web/fokus.js');
+  assert.strictEqual(fallenSchrittZwischen(5, 2, false), 2, 'zwei davor: vorwärts das dritte (Index 2)');
+  assert.strictEqual(fallenSchrittZwischen(5, 2, true), 1, 'rückwärts das zweite (Index 1)');
+  assert.strictEqual(fallenSchrittZwischen(5, 0, true), 4, 'keins davor: rückwärts Umlauf zum letzten');
+  assert.strictEqual(fallenSchrittZwischen(5, 0, false), 0);
+  assert.strictEqual(fallenSchrittZwischen(5, 5, false), 0, 'alle davor: vorwärts Umlauf zum ersten');
+  assert.strictEqual(fallenSchrittZwischen(5, 5, true), 4);
+  assert.strictEqual(fallenSchrittZwischen(0, 0, false), -1, 'nichts Tabbares');
+});

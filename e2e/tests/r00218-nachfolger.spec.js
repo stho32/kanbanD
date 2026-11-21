@@ -372,6 +372,26 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     expect(h.aufrufe.length).toBe(2);
   });
 
+  test('Nacharbeit 1 (UX Muss 1): von der Gruppe „Nachfolger von …“ führt Tab zu „Ersetzen durch …“ bzw. zuerst zu „+n weitere“, Umschalt+Tab zu „Nachfolger suchen“', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    await suchKnopf(page, rep.k).focus();
+    await page.keyboard.press('Enter');
+    await expect(gruppe(page)).toBeFocused();
+    await expect(gruppe(page)).toHaveAttribute('aria-label', `Nachfolger von ${kurz(rep.k)}`);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: `Ersetzen durch ${kurz(rep.k2)}`, exact: true })).toBeFocused();
+    await gruppe(page).focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(suchKnopf(page, rep.k)).toBeFocused();
+    // mit „+n weitere“ am Kandidaten ist dieser Knopf der erste nach der Gruppe
+    const echt = await (await page.request.get(`${k.adresse}api/aufgaben/1/commits/kd:${rep.k}/nachfolger`)).json();
+    await page.route(/\/nachfolger$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...echt, kandidaten: [{ ...echt.kandidaten[0], zweige: ['a', 'b', 'c', 'd', 'e'] }] }) }));
+    await page.keyboard.press('Enter');
+    await expect(gruppe(page)).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(gruppe(page).getByRole('button', { name: '2 weitere Zweige zeigen' })).toBeFocused();
+  });
+
   /* ── AK 8 ── */
 
   test('AK 8: Squash, Merge und leerer Commit — die Sätze aus ADR-0038 und der PO-Entscheidung', async ({ page }) => {

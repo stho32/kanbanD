@@ -76,6 +76,15 @@
     return (index + 1) % anzahl;
   }
 
+  /** Tab in der Falle, wenn der Fokus in der Ebene auf einem Element steht, das selbst nicht in der Tab-Reihenfolge steht (tabindex=-1, etwa die
+      Ergebnis-Gruppe der Nachfolgersuche, R00218): `davor` tabbare Elemente stehen in Dokumentreihenfolge vor ihm. Vorwärts das erste danach,
+      rückwärts das letzte davor, an den Rändern im Umlauf; -1 ohne tabbares Element. */
+  function fallenSchrittZwischen(anzahl, davor, rueckwaerts) {
+    if (anzahl < 1) return -1;
+    if (rueckwaerts) return (davor - 1 + anzahl) % anzahl;
+    return davor % anzahl;
+  }
+
   /** Tab am Rand eines nicht-modalen Pop-Fensters: 'nach-ausloeser' (Tab am letzten), 'ausloeser' (Umschalt+Tab am ersten), sonst 'weiter'. */
   function fensterRand(anzahl, index, rueckwaerts) {
     if (rueckwaerts && index <= 0 && anzahl > 0) return 'ausloeser';
@@ -131,5 +140,5 @@
     return Math.min(index, anzahl - 2);
   }
 
-  Object.assign(ziel, { ebenen, fallenSchritt, fensterRand, fokusZiel, kmenueEintrag, nachbarNachEntfernen, ohneRollen, GESICHERT });
+  Object.assign(ziel, { ebenen, fallenSchritt, fallenSchrittZwischen, fensterRand, fokusZiel, kmenueEintrag, nachbarNachEntfernen, ohneRollen, GESICHERT });
 })(typeof module !== 'undefined' ? module.exports : window);

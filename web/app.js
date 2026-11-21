@@ -2488,8 +2488,14 @@ function tabbareIn(bereich) {
 function fallenTaste(ereignis) {
   const oberste = ebenen(S.ui).at(-1);
   if (!oberste || !oberste.modal || !$(oberste.selektor)) return false;
-  const tabbare = tabbareIn($(oberste.selektor));
-  const ziel = fallenSchritt(tabbare.length, tabbare.indexOf(document.activeElement), ereignis.shiftKey);
+  const ebene = $(oberste.selektor), aktiv = document.activeElement;
+  const tabbare = tabbareIn(ebene);
+  const index = tabbare.indexOf(aktiv);
+  // Fokus in der Ebene auf einem nicht tabbaren Element (tabindex=-1): der Nachbar in Dokumentreihenfolge, nicht Anfang oder Ende (R00218 Nacharbeit 1)
+  const zwischen = index < 0 && aktiv && aktiv !== ebene && ebene.contains(aktiv);
+  // davor stehen alle tabbaren Elemente, denen der Fokus folgt — auch ein umschließendes (etwa der scrollbare Rahmen der Liste), seine Kinder nicht
+  const davor = zwischen ? tabbare.filter(t => t.compareDocumentPosition(aktiv) & Node.DOCUMENT_POSITION_FOLLOWING).length : 0;
+  const ziel = zwischen ? fallenSchrittZwischen(tabbare.length, davor, ereignis.shiftKey) : fallenSchritt(tabbare.length, index, ereignis.shiftKey);
   ereignis.preventDefault();
   if (ziel >= 0) tabbare[ziel].focus();
   return true;
