@@ -8,7 +8,7 @@ datum: 2026-11-21
 
 ## Beschreibung
 
-Karte #224, Scheibe **S2** des Rückbaus der WBS (Auftrag des Betreibers 2026-11-20). Technik nach [ADR-0034](../Dokumentation/ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) Regel 2 und 4, Nachtrag N2 Regel 4 (Ende der Übergangsform des Registers); Produktentscheidungen po-entscheidungen Z. 431 („wartet auf“, erledigt mit S4), Z. 432 (Altbestände), Z. 433 (Schnitt, Labels), Z. 435 (Hinweis am Feld „WBS“ fällt mit S2), Z. 436 (Hinweistext „Anwendungen“).
+Karte #224, Scheibe **S2** des Rückbaus der WBS (Auftrag des Betreibers 2026-11-20). Technik nach [ADR-0034](../Dokumentation/ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) Regel 2 und 4, Nachtrag N2 Regel 4 (Ende der Übergangsform des Registers); Produktentscheidungen po-entscheidungen Z. 431 („wartet auf“, erledigt mit S4), Z. 432 (Altbestände), Z. 433 (Schnitt, Labels), Z. 435 (Hinweis am Feld „WBS“ fällt mit S2), Z. 436 (Hinweistext „Anwendungen“), Z. 497–500 (erster Start, Hinweistext ohne dritten Satz, Phasen zwischen S2 und S3, Bau ohne Nachzeichnung).
 
 kanbanD liest die WBS nicht mehr, schreibt sie nicht mehr und zeigt sie nicht mehr. Es entfallen:
 
@@ -49,14 +49,17 @@ Die WBS ist ein Planungswerkzeug des Entwicklers; sobald es die Aufgaben gibt, s
 - `PUT /api/einstellungen` nimmt je Anwendung und in `quellen` die Felder `wbs` und `anforderungen` weiter an (200, nie 400) und ignoriert sie; geschrieben werden je Anwendung `{name, repository}` und `sources.repository`, nie `wbs`/`requirements` (ADR-0034 N2 Regel 4, Regel 2 Tabelle).
 - `GET /api/einstellungen` und `GET /api/anwendungen` liefern je Anwendung `kuerzel`, `name`, `repository` (gespeichert oder Startordner aus dem Rückfall) und `erreichbar: {repository}`; die Schlüssel `wbs`/`anforderungen` fehlen.
 - Der Lese-Rückfall bleibt: fehlt `repository` in der Datei, gilt der Ordner von `wbs`, sonst `requirements` als Startordner; die Dateien werden nie geöffnet.
-- „Einrichten“ zeigt je Anwendung und in den Quellen nur noch das Feld „Repository“ mit Zustandswort; das Feld „WBS“, das Feld „Anforderungen“ und der Hinweis Z. 435 entfallen; der Hinweistext „Anwendungen“ verliert seinen dritten Satz (Offene Frage 2). Der erste Start fragt weder WBS noch Anforderungen (Offene Frage 1).
+- „Einrichten“ zeigt je Anwendung und in den Quellen nur noch das Feld „Repository“ mit Zustandswort; das Feld „WBS“, das Feld „Anforderungen“ und der Hinweis Z. 435 entfallen; der Hinweistext „Anwendungen“ verliert seinen dritten Satz, der Rest bleibt wörtlich (PO Z. 498). Steht das Register in Altform (nur `wbs` oder `requirements`), zeigt das Feld „Repository“ den Startordner aus dem Lese-Rückfall mit seinem Zustandswort, nie ein leeres Feld.
+- Erster Start (PO Z. 497, wörtlich): „Der erste Start fragt weder „WBS“ noch „Anforderungen“ und zeigt an ihrer Stelle kein neues Feld; die angelegte `kanbanD.md` enthält weder `wbs` noch `requirements`. Das Repository der Standardanwendung setzt der Betreiber bei Bedarf in „Einrichten“.“ `ersteEinstellungen` liefert keine `quellen: {wbs, anforderungen}` mehr; die Vorschau „KANBAND.MD“ zeigt keine Zeile `sources:` ohne Einträge.
+- Phasen zwischen S2 und S3 (PO Z. 499, wörtlich): „Zwischen S2 und S3 gilt: Trägt das Register `wbs` noch in der Datei, liefern Board und Berichte die Phasen wie vor der Karte; nach dem ersten Speichern der Einstellungen rechnen die Berichte dieses Boards ohne Phasen, wie nach S3 (#227). `column-phases` bleibt in der Board-Datei erhalten; kein Commit, keine Warnung entsteht dadurch.“
+- Die alte Adresse `#/wbs/<kürzel>` hinterlässt keine Spur: Fenstertitel und Seitenüberschrift sind die des Boards (kein „WBS“, keine Prozentzahl); die Sonderform des Fenstertitels für die WBS-Sicht (`fenstertitelName` mit `wbsStand`/`wbsName` in `web/seitenname.js`) entfällt.
 - Die Farbvariablen `--kd-wbs-*` heißen danach ohne `wbs`; jede Farbe, die sie heute tragen (Diff-Zeichen, Bidi-Marken, Meldungen, Statuswörter), bleibt in Hell und Dunkel gleich.
 
 ## Nicht-funktionale Anforderungen
 
 - Sicherheit: kanbanD startet im Arbeits-Repository kein Git mehr außer den gehärteten, lesenden Aufrufen für Commit-Verweise (A00011); kein Dateiwächter außerhalb des Ordners.
 - Verträglichkeit (ADR-0034 Q3): die Factory ab Commit 1dd703c läuft gegen dieses Programm unverändert (`tests.test_auftrag`, `board_binden.binde` idempotent).
-- Gestaltung: nur Wegfall, keine neuen Elemente; keine Nachzeichnung (Offene Frage 4). Kein Aussehen eines verbleibenden Elements ändert sich (AK 10).
+- Gestaltung (PO Z. 500, wörtlich): „Gestaltung: nur Wegfall, kein neues Element und kein geändertes Aussehen eines verbleibenden Elements; keine Zeichnung vor dem Bau. Der gestalter zieht nach dem Bau D0001, D0002, D0003, D0009 und die Kopie `Dokumentation/Wireframes/kd-tokens.css` (neue Farbnamen) nach; ADR-0011 (Kontrastpaare) zieht der architekt nach.“ Sicherung sind AK 10 (kein Querscrollen bei 375/641/768/980 px) und AK 11 (Farben unverändert, Hell und Dunkel).
 - Altbestand (PO Z. 432): ein Altbestand öffnet ohne Fehler und ohne Warnung; kein Commit beim Start.
 
 ## Akzeptanzkriterien
@@ -70,7 +73,7 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` mit der W
 
 ### Oberfläche
 
-- [ ] **AK 3** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet, das Menü „…“ und die Kürzelhilfe (`?`) öffnet, `g` und dann `k` tippt und die Adresse `#/wbs/kd` aufruft, dann nennt kein Eintrag des Menüs „…“ und der Seitenleiste die WBS (weder „WBS“ noch „WBS · kd“), die Kürzelhilfe hat keine Zeile `g k`, `g k` ändert weder Adresse noch Ansicht, und `#/wbs/kd` zeigt das Board wie jede unbekannte Adresse; im Netzwerkmitschnitt gibt es keine Anfrage an einen Pfad mit `/api/wbs`. Heute: Eintrag „WBS“ im Menü.
+- [ ] **AK 3** Gegeben die Ausgangslage. Wenn der Betreiber das Board öffnet, das Menü „…“ und die Kürzelhilfe (`?`) öffnet, `g` und dann `k` tippt und die Adresse `#/wbs/kd` aufruft, dann nennt kein Eintrag des Menüs „…“ und der Seitenleiste die WBS (weder „WBS“ noch „WBS · kd“), die Kürzelhilfe hat keine Zeile `g k`, `g k` ändert weder Adresse noch Ansicht, und `#/wbs/kd` zeigt das Board wie jede unbekannte Adresse; im Netzwerkmitschnitt gibt es keine Anfrage an einen Pfad mit `/api/wbs`. Nach dem Laden von `#/wbs/kd` enthält `document.title` weder „WBS“ noch eine Prozentzahl (kein Muster `\d+ %`), `document.title` und die Seitenüberschrift sind dieselben wie nach dem Laden von `#/board/entwicklung`, und im Menü „…“ zählt `[aria-current]` 0. Probe: Adresse laden, `document.title` und Überschrift mit denen des Boards vergleichen, `[aria-current]` im geöffneten Menü „…“ zählen. Heute: Eintrag „WBS“ im Menü; `fenstertitelName` kennt die Sonderform „<Stand> % · WBS · <Name>“.
 - [ ] **AK 4** Gegeben die Ausgangslage. Wenn der Betreiber #1 im Aufgabenfenster öffnet, dann gibt es dort keine Zeile „Wirkungen“, keinen Knopf „+ Wirkung“, keine Ampel und keinen Eintritts-Schalter, und die Karte #1 trägt keinen Wirkungspunkt (`.wpunkt`); es geht keine Anfrage an `…/wbs-effects`. `GET /api/aufgaben/1` hat keinen Schlüssel `wirkungen`.
 
 ### Altbestand an Aufgabe und Board
@@ -86,7 +89,7 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` mit der W
 ### Register im Übergang
 
 - [ ] **AK 9** Gegeben die Ausgangslage. Wenn ein Agent `PUT /api/einstellungen` schickt mit `kd: {name: KD, repository: R, wbs: R/Dokumentation/Planung/kd.md, anforderungen: R/Anforderungen}` und `quellen: {repository: "", wbs: "x.md", anforderungen: "a/"}`, dann ist die Antwort 200 (nie 400), es entsteht genau ein Commit, `kanbanD.md` trägt danach `kd: {name: KD, repository: R}` und in `sources` weder `wbs` noch `requirements`, und `GET /api/einstellungen` sowie `GET /api/anwendungen` nennen je Anwendung keinen Schlüssel `wbs` oder `anforderungen` und unter `erreichbar` nur `repository`. Rundlauf in Altform: steht im Register nur `wbs: R/Dokumentation/Planung/kd.md`, liefert `GET` `repository: R/Dokumentation/Planung`; derselbe Inhalt unverändert mit `PUT` zurück schreibt `repository: R/Dokumentation/Planung` ohne `wbs`, und `kd:<C1>` behält seinen `zustand`. Ein Start allein schreibt nichts. Factory: `KANBAND=<build> python3 -m unittest tests.test_auftrag` (Factory ab 1dd703c) ist grün, und zweimal `board_binden.binde` hintereinander erzeugt beim zweiten Mal keinen Commit.
-- [ ] **AK 10** (Einrichten) Gegeben die Ausgangslage. Wenn der Betreiber „Einrichten“ öffnet, dann zeigt jede Anwendung Kürzel, Name und „Repository“ mit Zustandswort und die Quellen nur „Repository“; es gibt kein Feld „WBS“, kein Feld „Anforderungen“ und keinen Satz „Die Factory erkennt die Anwendung an diesem Pfad …“. Der Hinweistext über den Anwendungen lautet: „Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie `kd:<hash>`. Aufgaben nennen ihre Herkunft als `kd:I0007`; Boards binden mit `applications: [kd]`.“ Speichern schreibt ein Register in Altform auf `repository` um, ein Commit; die Vorschau zeigt danach den geschriebenen Stand. In einem leeren Ordner fragt der erste Start weder „WBS“ noch „Anforderungen“, und die angelegte `kanbanD.md` enthält weder `wbs` noch `requirements`. Bei 375, 641, 768 und 980 px gibt es kein Querscrollen der Seite.
+- [ ] **AK 10** (Einrichten) Gegeben die Ausgangslage. Wenn der Betreiber „Einrichten“ öffnet, dann zeigt jede Anwendung Kürzel, Name und „Repository“ mit Zustandswort und die Quellen nur „Repository“; es gibt kein Feld „WBS“, kein Feld „Anforderungen“ und keinen Satz „Die Factory erkennt die Anwendung an diesem Pfad …“. Der Hinweistext über den Anwendungen lautet: „Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie `kd:<hash>`. Aufgaben nennen ihre Herkunft als `kd:I0007`; Boards binden mit `applications: [kd]`.“ Register in Altform: steht in `kanbanD.md` für `kd` nur `wbs: R/Dokumentation/Planung/kd.md`, dann zeigt das Feld „Repository“ von `kd` beim Öffnen `R/Dokumentation/Planung` mit dem Zustandswort „erreichbar“ (nicht leer, nicht „ungeprüft“), und die Vorschau „KANBAND.MD“ zeigt unter `kd` die Zeile `repository: R/Dokumentation/Planung` und keine Zeile `wbs`. Speichern schreibt dieses Register auf `repository` um, ein Commit; die Vorschau zeigt danach den geschriebenen Stand. Probe: Register in Altform per Git herstellen, „Einrichten“ öffnen, Wert und Zustandswort von `getByLabel('Repository kd')` und den Vorschautext lesen, speichern, `kanbanD.md` lesen. Bei 375, 641, 768 und 980 px gibt es kein Querscrollen der Seite.
 
 ### Farben
 
@@ -102,6 +105,15 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` mit der W
   - bleibt `column-phases` nach einer Bewegung auf einem Board erhalten (Phasen sind S3), und `GET /api/boards/<slug>` liefert `phasen` wie vor der Karte, solange das Register `wbs` in der Datei trägt;
   - steht nach `GET`→`PUT /api/einstellungen` `repository` statt `wbs`/`requirements` in `kanbanD.md`.
 
+### Erster Start
+
+- [ ] **AK 14** Gegeben ein leerer Git-Ordner ohne `kanbanD.md`. Wenn der Betreiber kanbanD darin öffnet, Kürzel `sh`, Name `Stefan`, den Agenten Claude, Board `Entwicklung` und Spalten `Offen, In Arbeit, Erledigt` eingibt und „Einrichten und committen“ wählt, dann:
+  - hat die Maske genau die Beschriftungen Ich, Agenten, Board, Spalten in dieser Reihenfolge, genau die Eingabefelder Kürzel, Name, Board, Spalten und die Agenten-Schalter Claude und Codex; kein Element trägt die Beschriftung oder den zugänglichen Namen „WBS“ oder „Anforderungen“;
+  - enthält die Vorschau „KANBAND.MD“ vor dem Einrichten und die angelegte `kanbanD.md` danach weder `wbs` noch `requirements` noch eine Zeile `sources:` ohne Einträge darunter;
+  - liefert `ersteEinstellungen` für diese Eingabe kein Feld `quellen` mit `wbs` oder `anforderungen`;
+  - entstehen `kanbanD.md` und `boards/entwicklung.md` in genau einem Commit, und das Board öffnet mit den drei Spalten.
+  Probe: e2e in `r00222-ohne-wbs.spec.js` (Felder per `getByLabel` zählen, Vorschautext ohne „wbs“, „requirements“ und leeres `sources:`), Unit-Test für `ersteEinstellungen`. Heute: Felder „WBS“ und „Anforderungen“ in der Maske, `quellen: {wbs, anforderungen}` in `ersteEinstellungen`.
+
 ## Betroffene Verzeichnisstruktur
 
 - Entfällt: `src/wbs.rs`, `src/wbs_datei.rs`, `src/herkunft.rs`, `src/dienst/wbs.rs`, `src/dienst/wirkungen.rs`, `web/wbs.js` (Bindungsfunktionen ziehen um), `src/pruefungen.rs` bis auf `Warnung`.
@@ -114,12 +126,12 @@ Ausgangslage (herstellbar mit Git und der API): Arbeits-Repository `R` mit der W
 
 ### Ablauf (Vorplanung — welche Bubbles es am Ende werden, entscheidet der entwickler)
 
-1. **B1150 Abnahme-Proben rot, Farben messen**: AK 1–4, 9, 10 am heutigen Stand rot; AK 5 ist heute schon grün und bleibt Wächter gegen Rückschritt; die Farben aus AK 11 am heutigen Stand messen und als Erwartung festhalten.
+1. **B1150 Abnahme-Proben rot, Farben messen**: AK 1–4, 9, 10, 14 am heutigen Stand rot; AK 5 ist heute schon grün und bleibt Wächter gegen Rückschritt; die Farben aus AK 11 am heutigen Stand messen und als Erwartung festhalten.
 2. **B1151 Plausibilität entfernen** (AK 6): `Warnung` zieht in ein eigenes Modul, weil Grenzen, Reservierung, Erledigen und Zugregeln sie brauchen.
 3. **B1152 Wirkungen entfernen** (AK 4, 5): `WIRKUNGEN` aus `BEKANNT`, die Einträge laufen über `weitere`.
 4. **B1153 Wächter und Git-Hilfen entfernen** (AK 7).
-5. **B1154 WBS-Sicht, Endpunkte und Menü entfernen** (AK 2, 3), nach 2–4, weil diese `dienst/wbs.rs` nutzen.
-6. **B1155 Register ohne `wbs`/`anforderungen`** (AK 9, 10): `Anwendung.wbs`/`.anforderungen` bleiben nur als intern gelesene Felder für den Startordner und für `phasenstand` (S3), nicht in der API und nicht beim Schreiben.
+5. **B1154 WBS-Sicht, Endpunkte und Menü entfernen** (AK 2, 3), nach 2–4, weil diese `dienst/wbs.rs` nutzen. Räumt `web/` auf (Bauhinweis ux-reviewer): Beschriftungen `wbs`, `requirements`, `wbs-effects` in `web/kultur.js:68`, `'wbs'` in `AUSSERHALB_EINES_BOARDS` (`web/ansicht.js:673`), „WBS-Knoten“ in `web/sichtzustand.js`, `fenstertitelName`-Sonderform in `web/seitenname.js`, Kopfkommentar und Zeile 65 in `web/adresse.js`, der Hinweis-Div `WBS_HINWEIS` (`web/ansicht.js:2291`) samt `aria-describedby`. Durchsetzung bleibt `rg -i wbs web` (ADR-0034): danach nur Lese-Rückfall und Kommentare.
+6. **B1155 Register ohne `wbs`/`anforderungen`** (AK 9, 10, 14): `Anwendung.wbs`/`.anforderungen` bleiben nur als intern gelesene Felder für den Startordner und für `phasenstand` (S3), nicht in der API und nicht beim Schreiben.
 7. **B1156 Farbvariablen umbenennen** (AK 11).
 8. **B1157 README, Endpunktliste, OpenAPI** (AK 2, AK 12).
 9. **B1158 Legacy-Probe, Factory-Rundlauf, Probe im echten Programm, Gate, Anforderung abschließen** (AK 8, AK 13).
@@ -130,15 +142,15 @@ B1151, B1152, B1153, B1155 und B1156 sind nach B1150 unabhängig voneinander.
 
 - **Grenze zu S3 (#227):** `src/phasen.rs`, `src/dienst/phasen.rs` (bis auf den Aufruf `unbekannte`), `column-phases`, `phases` an der Aufgabe, `PATCH phasen`, Phasen in Berichten und Verlauf bleiben unberührt. `phasenstand` prüft nur, ob die WBS-Datei existiert (`is_file`), und liest die Phasen-Datei daneben; mit `chmod 000` ändert sich nichts.
 - **Grenze zu #216:** `web/statisch.rs` und `web/index.html` ändert auch #216 (Mergekonflikt möglich, Kartenkommentar 2026-11-21 03:30).
-- **Farbnamen:** Vorschlag `--kd-status-ok`, `--kd-status-warn`, `--kd-status-error`, `--kd-status-neutral`, je mit `-bg` und `-ink`; `--kd-warn` gibt es schon und bleibt. Die Kopie `Dokumentation/Wireframes/kd-tokens.css`, die Artboards D0002, D0003, D0009 und ADR-0011 (Absatz Kontrastpaare) zieht nicht der entwickler nach, sondern gestalter bzw. architekt.
+- **Farbnamen:** Vorschlag `--kd-status-ok`, `--kd-status-warn`, `--kd-status-error`, `--kd-status-neutral`, je mit `-bg` und `-ink`; `--kd-warn` gibt es schon und bleibt. Die Kopie `Dokumentation/Wireframes/kd-tokens.css`, die Artboards D0001, D0002, D0003, D0009 (PO Z. 500) und ADR-0011 (Absatz Kontrastpaare) zieht nicht der entwickler nach, sondern gestalter bzw. architekt.
 - **Herkunft:** Der Hinweis zur Schreibweise „WBS-Knoten I0001, Anforderung R00014 …“ bleibt (R00212 FA „HERKUNFT_HILFE bleibt“); er beschreibt die Form einer ID und ist kein Menüeintrag.
 - Kopien von Board-Ordnern nur in der eigenen Ablage, nie im Board-Ordner selbst.
 
 ## Tests
 
-- **Unit:** Format der Aufgabe: Fluss- → Blockform von `wbs-effects` inhaltlich gleich (mit `executed`, leere Liste); Format des Boards: `column-checks` überlesen und nicht geschrieben; Register schreiben ohne `wbs`/`requirements`, Startordner aus dem Rückfall; `Warnung` im neuen Modul.
+- **Unit:** `ersteEinstellungen` ohne `quellen.wbs`/`quellen.anforderungen` (AK 14); Format der Aufgabe: Fluss- → Blockform von `wbs-effects` inhaltlich gleich (mit `executed`, leere Liste); Format des Boards: `column-checks` überlesen und nicht geschrieben; Register schreiben ohne `wbs`/`requirements`, Startordner aus dem Rückfall; `Warnung` im neuen Modul.
 - **Integration:** `tests/akzeptanz_r00222.rs`: AK 1 (mit `chmod 000`, ohne Root), AK 2, AK 5, AK 6 (API-Teil), AK 7, AK 8, AK 9 (ohne Factory-Teil), AK 13 (`#[ignore]`, wenn die Kopie fehlt; in B1158 einmal gefahren und belegt). Factory-Teil von AK 9 als Integrationsprobe gegen den Build.
-- **E2E:** `e2e/tests/r00222-ohne-wbs.spec.js`: AK 3, AK 4, AK 6 (Spalten-Dialog), AK 10, AK 11.
+- **E2E:** `e2e/tests/r00222-ohne-wbs.spec.js`: AK 3, AK 4, AK 6 (Spalten-Dialog), AK 10, AK 11, AK 14.
 
 ## Abhängigkeiten
 
@@ -147,12 +159,12 @@ B1151, B1152, B1153, B1155 und B1156 sind nach B1150 unabhängig voneinander.
 
 ## Offene Fragen
 
-An den product-owner; bis zur Antwort gilt die Empfehlung, der Bau beginnt mit B1150–B1154, die keine der Fragen berühren.
+Alle vier entschieden wie empfohlen (po-entscheidungen Z. 497–500); die Wortlaute stehen in FA und NFA.
 
-1. **Erster Start:** Die Felder „WBS“ und „Anforderungen“ ersatzlos streichen (Empfehlung: in allen 6 Ordnern mit `sources` sind `sources.wbs`/`requirements` leer, Inventur §5; das Repository lässt sich später in „Einrichten“ setzen; keine neue Gestaltung) — oder an ihrer Stelle ein Feld „Repository“ zeigen (neues Element, Zeichnung nötig).
-2. **Hinweistext „Anwendungen“ (Z. 436):** den dritten Satz „WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist.“ streichen, den Rest wörtlich lassen (Empfehlung, AK 10).
-3. **Phasen zwischen S2 und S3:** Nach dem ersten Speichern der Einstellungen fehlt `wbs` in der Datei; dann findet kanbanD die Phasen-Datei nicht mehr, und die Berichte des Boards rechnen ohne Phasen, also so wie nach S3. Empfehlung: hinnehmen (ADR-0034 N2 Regel 4 und Regel 3; S3 folgt direkt; die Boards behalten `column-phases`; alle 5 Boards bilden je Spalte genau eine Phase ab, ADR-0034 „Negativ“). Alternative: `wbs` bis S3 beim Schreiben durchreichen (widerspricht N2 Regel 4, bräuchte einen Nachtrag des architekt).
-4. **Zeichnung:** Das Entfernen von Menüeintrag, Feldern und Wirkungen ohne Nachzeichnung bauen; der gestalter zieht D0001, D0002, D0003 und die Farbnamen in D0009 und `Dokumentation/Wireframes/kd-tokens.css` danach nach (Empfehlung, wie Z. 446).
+1. **Erster Start** — entschieden, PO Z. 497 (FA „Erster Start“, AK 14): Die Felder „WBS“ und „Anforderungen“ ersatzlos streichen (Empfehlung: in allen 6 Ordnern mit `sources` sind `sources.wbs`/`requirements` leer, Inventur §5; das Repository lässt sich später in „Einrichten“ setzen; keine neue Gestaltung) — oder an ihrer Stelle ein Feld „Repository“ zeigen (neues Element, Zeichnung nötig).
+2. **Hinweistext „Anwendungen“ (Z. 436)** — entschieden, PO Z. 498 (AK 10): den dritten Satz „WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist.“ streichen, den Rest wörtlich lassen (Empfehlung, AK 10).
+3. **Phasen zwischen S2 und S3** — entschieden, PO Z. 499 (FA „Phasen zwischen S2 und S3“, AK 13): Nach dem ersten Speichern der Einstellungen fehlt `wbs` in der Datei; dann findet kanbanD die Phasen-Datei nicht mehr, und die Berichte des Boards rechnen ohne Phasen, also so wie nach S3. Empfehlung: hinnehmen (ADR-0034 N2 Regel 4 und Regel 3; S3 folgt direkt; die Boards behalten `column-phases`; alle 5 Boards bilden je Spalte genau eine Phase ab, ADR-0034 „Negativ“). Alternative: `wbs` bis S3 beim Schreiben durchreichen (widerspricht N2 Regel 4, bräuchte einen Nachtrag des architekt).
+4. **Zeichnung** — entschieden, PO Z. 500 (NFA „Gestaltung“): Das Entfernen von Menüeintrag, Feldern und Wirkungen ohne Nachzeichnung bauen; der gestalter zieht D0001, D0002, D0003 und die Farbnamen in D0009 und `Dokumentation/Wireframes/kd-tokens.css` danach nach (Empfehlung, wie Z. 446).
 
 ## Manuelle Vorbereitungstätigkeiten
 
