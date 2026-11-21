@@ -1540,3 +1540,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #217 | Detailplanung | planer | bestanden | 8 min | I0209 B1125–B1131, R00219 · claude · opus · Lauf 217-planer-1 · 3,08 $ · Karte gesamt 5,50 $ |
 | 2026-11-21 | #217 | Detailplanung | gestalter | bestanden | 14 min | D0009 #laeufe, #laufansicht, #transkripte-schalter · claude · sonnet · Lauf 217-gestalter-1 · 5,35 $ · Karte gesamt 10,85 $ |
 | 2026-11-21 | #217 | Detailplanung | product-owner | bestanden | 3 min | D1/D2/C2 freigegeben mit Änderung, Z. 471–477 · claude · opus · Lauf 217-product-owner-2 · 1,39 $ · Karte gesamt 12,24 $ |
+| 2026-11-21 | #217 | Detailplanung | gestalter | bestanden | 2 min | Wortlaute 9, 15, 19, 21, 23 nachgezogen · claude · sonnet · Lauf 217-gestalter-2 · 0,92 $ · Karte gesamt 13,16 $ |
