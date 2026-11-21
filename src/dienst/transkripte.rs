@@ -18,11 +18,15 @@ use std::path::{Path, PathBuf};
 /// Inhalt von `transkripte/.gitignore`: der Ordner ignoriert sich selbst, die `.gitignore` des Menschen bleibt unberührt.
 const GITIGNORE: &str = "*\n";
 
+/// Je Stelle eine Handlung, die dort einmal läuft.
+#[cfg(test)]
+type Haken = std::collections::HashMap<&'static str, Box<dyn FnOnce()>>;
+
 #[cfg(test)]
 thread_local! {
     /// Haken zwischen Prüfen und Handeln (Lehre „Prüfen-dann-Handeln“): ein Test legt je Stelle eine Handlung ab, die
     /// genau dort einmal läuft — deterministisch statt mit Threads, die die Lücke nur zufällig treffen.
-    static HAKEN: std::cell::RefCell<std::collections::HashMap<&'static str, Box<dyn FnOnce()>>> = std::cell::RefCell::default();
+    static HAKEN: std::cell::RefCell<Haken> = std::cell::RefCell::default();
 }
 
 #[cfg(test)]
