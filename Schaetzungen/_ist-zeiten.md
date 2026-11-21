@@ -1039,3 +1039,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #234 R00225 | B1173 Abnahme-Proben N, N+F, M, F (API) und Seite N, N+F, F rot am heutigen Stand | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-21 | Karte #234 R00225 | B1174 Einteilung: Folge nur belastet oder aus verworfenem Netto-Eintrag, ganz als Folge jeder Kartenpfad | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #234 R00225 | B1175 fremd_dazwischen nur mit mindestens einem fremden Commit | Standard | 0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-21 | Karte #234 R00225 | B1176 404-Text für netto unveränderte Pfade (PO Z. 509), README und Endpunktbeschreibung | Standard | 0,5h | 0,3h | 0,3h | autonom |

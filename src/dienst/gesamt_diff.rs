@@ -329,7 +329,9 @@ impl Gesamtlauf<'_> {
         if let Some(name) = datei {
             dateien.retain(|d| d.name() == name);
             if dateien.is_empty() {
-                return Err(datei_fehlt(nr));
+                // in Kartencommits, aber ohne Eintrag: netto unverändert oder Zwischenname (N8.3 Punkt 4, PO Z. 509); hinter
+                // einer abgeschnittenen Liste ist das nicht sicher, dort bleibt der allgemeine Text
+                return Err(if abgeschnitten || !namen_vollstaendig { datei_fehlt(nr) } else { datei_ohne_aenderung(nr) });
             }
         } else {
             dateien.truncate(KAPPE_DATEIEN);
@@ -651,6 +653,11 @@ fn gestartet<T>(lauf: Result<T, Arbeitsrepofehler>) -> Result<Option<T>, Arbeits
 /// 404 nach N7.3, wenn auch der Rückfall die Datei nicht liefern kann: auf den Diff je Commit verweisen.
 fn zu_gross_fuer_datei(nr: u32) -> Fehler {
     Fehler::NichtGefunden(format!("die Namen der Kartencommits von #{nr} sind länger als {} MB — die Datei mit commit= und datei= laden", crate::modell::GRENZE_NAMEN >> 20))
+}
+
+/// 404 für einen Pfad, der in Kartencommits steht, im Gesamtbild aber keinen Eintrag hat (Wortlaut PO Z. 509).
+fn datei_ohne_aenderung(nr: u32) -> Fehler {
+    Fehler::NichtGefunden(format!("die Datei steht in Kartencommits von #{nr}, hat im Gesamtbild aber keine Änderung (die Aufgabe nimmt sie selbst zurück oder benennt sie weiter) — die Schritte mit commit= und datei= laden"))
 }
 
 fn datei_fehlt(nr: u32) -> Fehler {

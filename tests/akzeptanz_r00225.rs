@@ -363,4 +363,28 @@ async fn ak06_abgeschnittene_netto_liste_unbelastete_netto_und_gezaehlt() {
     assert_eq!(kappe["gezeigt"].as_u64(), Some(dateien(&d).len() as u64));
     assert!(kappe["gesamt"].as_u64().unwrap() > VIELE as u64, "gesamt zählt alle netto geänderten Dateien (a.txt und {VIELE} neue): {kappe}");
     assert!(dateien(&d).len() <= 2000);
+    // hinter dem Schnitt ist „keine Änderung“ nicht sicher: 404, aber nicht mit dem Text für netto unveränderte Pfade
+    let hinten = holen(&lauf.adresse, NR, &format!("datei={}", kodiert(&format!("v/{:05}.txt", VIELE - 1)))).await;
+    assert_eq!(hinten.status, 404, "{}", hinten.text);
+    assert!(hinten.json()["fehler"].is_string() && hinten.json()["fehler"] != json!(ohne_aenderung(NR)), "{}", hinten.text);
+}
+
+// ---- AK 8: README „Für Agenten“ und Endpunktbeschreibung ---------------------------------------------------------------
+
+#[tokio::test]
+async fn ak08_readme_und_beschreibung_nennen_netto_unveraendert() {
+    let readme = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md")).unwrap();
+    let abschnitt = readme.split("### Alle Änderungen der Karte lesen").nth(1).expect("README-Abschnitt").split("\n## ").next().unwrap();
+    let satz = abschnitt.split("\n- ").find(|s| s.starts_with("**Netto unverändert**")).unwrap_or_else(|| panic!("kein Punkt „Netto unverändert“: {abschnitt}"));
+    for wort in ["selbst wieder zurücknimmt", "erscheint nicht", "`datei=` auf sie ergibt 404", "`fremd_dazwischen` steht nur, wenn mindestens ein fremder Commit", "`commits` ≥ 1"] {
+        assert!(satz.contains(wort), "README nennt „{wort}“: {satz}");
+    }
+    let datei = abschnitt.split("\n- ").find(|s| s.starts_with("`&datei=<pfad>`")).unwrap();
+    assert!(datei.contains("in keinem Kartencommit") && datei.contains("keine Änderung"), "beide 404-Fälle: {datei}");
+    let l = Lage::neu();
+    fall_f(&l);
+    let lauf = l.starten();
+    let liste: Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
+    let zweck = liste.as_array().unwrap().iter().find(|e| e["methode"] == "GET" && e["pfad"] == "/api/aufgaben/{nr}/diff").unwrap()["zweck"].as_str().unwrap().to_string();
+    assert!(zweck.contains("netto unverändert") && zweck.contains("fremd_dazwischen nur mit commits ≥ 1"), "{zweck}");
 }
