@@ -914,6 +914,20 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     expect(h.anzahl()).toBe(1);
   });
 
+  test('ADR-0039 N1 (Code-Review Sollte 1): weicht der Pfad zur Insel ab, wird die Tabelle mit ihrem Text neu eingesetzt, nie als leerer Platzhalter', async ({ page }) => {
+    await gehaltenOeffnen(page);
+    await expect(page.locator(ZEILEN)).toHaveCount(6);
+    // den Pfad im Dokument verbiegen: die Tabelle steckt eine Stufe tiefer, der neue Text sieht sie eine Stufe höher
+    await page.locator(`${ANSICHT_LAEUFE} .lf-rahmen`).evaluate(el => { const huelle = document.createElement('section'); el.replaceWith(huelle); huelle.append(el); });
+    await lauf.kommentieren(k.adresse, 1, 'Ein Kommentar');
+    await page.waitForFunction(() => window.kdTest.kommentare(1) === 1 && window.kdTest.gezeichnet());
+    await expect(page.locator(ZEILEN)).toHaveCount(6);
+    await lauf.kommentieren(k.adresse, 1, 'Noch einer');
+    await page.waitForFunction(() => window.kdTest.kommentare(1) === 2 && window.kdTest.gezeichnet());
+    await expect(page.locator(ZEILEN)).toHaveCount(6);
+    await expect(page.locator(`${ANSICHT_LAEUFE} .lf-rahmen`)).toHaveCount(1);
+  });
+
   /* ── AK 1 Messprobe, Teil Zeichnen (Tag-Kriterium, kein Zeittest im Gate): nur mit KD_MESSPROBE=1 ── */
 
   test('AK 1 Messprobe Zeichnen: „Läufe“ mit 1.000 Zeilen 20-mal neu gezeichnet, jedes render() < 100 ms', async ({ page }) => {

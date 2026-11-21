@@ -995,9 +995,10 @@ async function laeufeLesen(nr) {
     der alte Knoten im Dokument, und `#over` wird entlang des Pfads zu ihm abgeglichen statt neu geschrieben. Der Text ist der
     Schlüssel und liegt in `S.ui.laeufe.insel` — so kann kein Eingang (Antwort, Kosten, Zustandswort) vergessen werden. */
 const LAEUFE_INSEL_PLATZHALTER = '<div class="lf-rahmen" id="lf-insel"></div>';
-let laeufeInsel = { text: null, gehalten: null };
 
-function laeufeInselPruefen() {
+/** Baut den Text der Tabelle, vergleicht ihn mit dem zuletzt eingesetzten und merkt den neuen als Schlüssel in `S.ui.laeufe.insel`.
+    Liefert `{text, gehalten}`: `gehalten` ist die alte Tabelle, wenn sie stehen bleibt, sonst `null`; ohne Ansicht beides `null`. */
+function laeufeInselVergleichenUndMerken() {
   const l = S.ui.laeufe, a = S.ui.offen && !S.ui.setup && aufgabe(S.ui.offen);
   if (!l || !a || ansichtDerAufgabe(a) !== 'laeufe') return { text: null, gehalten: null };
   const text = laeufeTabelleHtml(l, a.kosteneintraege || [], esc);
@@ -1005,6 +1006,15 @@ function laeufeInselPruefen() {
   const gleich = Boolean(alt && text && l.insel === text);
   l.insel = text;
   return { text, gehalten: gleich ? alt : null };
+}
+
+/** `#over` neu zeichnen: steht die Insel, auf dem Weg von `hauptbereichErsetzen` (sie bleibt im Dokument); weicht dabei der Pfad
+    ab, steht nach dem Ersetzen der leere Platzhalter — an seine Stelle kommt der Text der Tabelle (Code-Review #217 Sollte 1). */
+function ueberErsetzen(html, insel) {
+  const ueber = $('#over');
+  if (!insel.gehalten) { ueber.innerHTML = html; return; }
+  if (hauptbereichErsetzen(ueber, html, null, insel.gehalten)) return;
+  document.getElementById('lf-insel').outerHTML = insel.text;
 }
 
 /** Statusbereich, „Neu lesen“ und „Erneut versuchen“ bleiben beim Neuzeichnen dieselben Knoten (R00219 AK 10): sie übernehmen
@@ -1726,7 +1736,7 @@ function reviewOeffnen(verweis) {
     Liste schon, wenn der Knoten nur verschoben wird (auch mit `moveBefore`, geprobt in Chromium 159): er darf seinen Platz im
     Dokument nicht verlassen. Darum bleibt der Pfad von #main bis zur Liste stehen; ersetzt werden die Geschwister auf jeder Stufe,
     an der Liste die Einträge und die Wahl. Zeichnet die neue Ansicht den Pfad anders, wird wie sonst alles ersetzt.
-    Die Wurzel ist `#main` oder `#over` (Insel der Ansicht „Läufe“, ADR-0039 N1). */
+    Die Wurzel ist `#main` oder `#over` (Insel der Ansicht „Läufe“, ADR-0039 N1). Liefert, ob der bleibende Knoten stehen blieb. */
 function hauptbereichErsetzen(hauptbereich, html, personenwahlVorher, inselVorher = null) {
   const vorlage = document.createElement('template');
   vorlage.innerHTML = html;
@@ -1738,7 +1748,7 @@ function hauptbereichErsetzen(hauptbereich, html, personenwahlVorher, inselVorhe
   const neuPfad = pfadZu(personenwahlNeu, vorlage.content);
   if (!pfadeGleichenSich(altPfad, neuPfad)) {
     hauptbereich.replaceChildren(vorlage.content);
-    return;
+    return false;
   }
   let altEltern = hauptbereich;
   let neuEltern = vorlage.content;
@@ -1751,6 +1761,7 @@ function hauptbereichErsetzen(hauptbereich, html, personenwahlVorher, inselVorhe
   });
   if (!inselVorher) personenwahlAbgleichen(personenwahlVorher, personenwahlNeu);
   geschwisterErsetzen(altEltern, bleibend, neuEltern, personenwahlNeu);
+  return true;
 }
 
 /** Elemente von der Wurzel (ausgeschlossen) bis `knoten`; leer, wenn `knoten` fehlt oder nicht unter der Wurzel liegt. */
@@ -2212,11 +2223,10 @@ function render() {
     $('#kopf').innerHTML = vKopf();
     hauptbereichErsetzen($('#main'), vMain(), personenwahlVorher, inselGehalten);
     $('#main').dataset.sicht = sicht;
-    laeufeInsel = laeufeInselPruefen();
-    const ueber = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
+    const laeufeInsel = laeufeInselVergleichenUndMerken();
+    const ueber = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster(laeufeInsel) : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
     // Steht die Insel der Ansicht „Läufe“, wird `#over` auf demselben Weg wie `#main` abgeglichen: sie bleibt im Dokument (ADR-0039 N1)
-    if (laeufeInsel.gehalten) hauptbereichErsetzen($('#over'), ueber, null, laeufeInsel.gehalten);
-    else $('#over').innerHTML = ueber;
+    ueberErsetzen(ueber, laeufeInsel);
     $('#over').dataset.offen = String(S.ui.offen || '');
     meldungsknotenBehalten(meldungVorher);
     datumsknotenBehalten(tagVorher);
@@ -2226,7 +2236,6 @@ function render() {
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
   } finally {
     inselGehalten = null;
-    laeufeInsel = { text: null, gehalten: null };
     S.neuzeichnen = false;
   }
   hinweisEinpassen();

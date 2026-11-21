@@ -380,7 +380,8 @@ const SPALTE_FELDER = ['spalte', 'klasse', 'labels', 'faellig'];
 function vInhaltSpalte(a) {
   return `<aside class="mod-spalte" id="inhalt-spalte" role="group" aria-label="Angaben zur Aufgabe" tabindex="-1"><div class="felder felder-schmal">${SPALTE_FELDER.map(feld => vFeldZeile(feld, a, true)).join('')}${vZustaendigLesen(a)}</div></aside>`;
 }
-function vFenster() {
+/** `laeufeInsel` = `{text, gehalten}` aus render (ADR-0039 N1): der Text der Tabelle „Läufe“ und ob die alte stehen bleibt. */
+function vFenster(laeufeInsel = { text: null, gehalten: null }) {
   const a = aufgabe(S.ui.offen);
   if (!a) return '';
   const u = S.ui, cl = klasse(a.klasse, a);
@@ -396,7 +397,7 @@ function vFenster() {
   const panel = tab === 'datei' ? `<div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div>`
     : tab === 'kosten' ? vKostenPanel(a)
     : tab === 'commits' ? vCommitsPanel()
-    : tab === 'laeufe' ? vLaeufePanel(a)
+    : tab === 'laeufe' ? vLaeufePanel(a, laeufeInsel)
     : tab === 'verlauf' ? vVerlaufPanel()
     : tab === 'zeiten' ? `<div class="mod-main">${vFensterSeite(a)}</div>`
     : tab === 'details' ? `<div class="mod-main">${vFensterDetails(a)}</div>`
@@ -468,9 +469,9 @@ function vCommitsPanel() {
 }
 /** Die Ansicht „Läufe“ (R00219): nur lesend; Zusammenführen und Zeichnen in web/laeufe.js, gelesen wird in app.js (laeufeLesen).
     Die Kosten kommen aus dem aktuellen Stand der Aufgabe, der Zustand der Transkripte aus der letzten Antwort. */
-function vLaeufePanel(a) {
+function vLaeufePanel(a, laeufeInsel) {
   const l = S.ui.laeufe || { laedt: true, ergebnis: null };
-  // Die Insel (ADR-0039 N1, app.js laeufeInselPruefen): bleibt die alte Tabelle stehen, kommt nur ihr Platzhalter in den Text
+  // Die Insel (ADR-0039 N1, app.js laeufeInselVergleichenUndMerken): bleibt die alte Tabelle stehen, kommt nur ihr Platzhalter in den Text
   const tabelle = laeufeInsel.gehalten ? LAEUFE_INSEL_PLATZHALTER : laeufeInsel.text;
   return laeufeAnsichtHtml(l, a.kosteneintraege || [], esc, tabelle === null ? undefined : tabelle);
 }
