@@ -133,7 +133,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
             let (schemas, pfade, methoden) = routes!(transkripte_liste, transkript_ablegen);
             (schemas, pfade, methoden.layer(axum::extract::DefaultBodyLimit::max(crate::dienst::transkripte::KOERPERGRENZE)))
         })
-        .routes(routes!(transkript_herunterladen))
+        .routes(routes!(transkript_herunterladen, transkript_entfernen))
         .routes(routes!(kosteneintrag_anlegen))
         .routes(routes!(kosteneintrag_aendern, kosteneintrag_loeschen))
         .routes(routes!(commits_lesen, commits_hinterlegen))
@@ -1403,6 +1403,18 @@ async fn transkript_herunterladen(State(app): State<App>, Pfad((nr, kennung)): P
         kopf.insert(axum::http::header::CONTENT_DISPOSITION, wert);
     }
     Ok(antwort)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/aufgaben/{nr}/transkripte/{kennung}",
+    tag = "Aufgaben",
+    description = "Transkript löschen (R00216): Eintrag entfernen (ein Commit), danach die Datei — auch wenn sie fehlt oder record-transcripts aus ist; unbekannte Kennung → 404 ohne Commit; Antwort der entfernte Eintrag",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("kennung" = String, Path, description = "Kennung des Transkripts"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    responses((status = 200, description = "Erfolg", body = crate::modell::Transkripteintrag), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn transkript_entfernen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, kennung)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
+    als_person(&app, wer, move |k, p| k.transkript_loeschen(p, nr, &kennung)).await
 }
 
 /// Liest die Felder und schreibt die Datei Stück für Stück in den Empfang — nie den ganzen Körper in den Speicher.

@@ -66,6 +66,10 @@ impl Kanban {
         let nachricht = loeschnachricht(nr, anzahl, boardzahl);
         self.aktion(wer, &nachricht, &schritte)?;
         let _ = std::fs::remove_dir(self.ordner().wurzel().join(pfad.strip_suffix(".md").unwrap_or(&pfad)));
+        // R00216, ADR-0036 Regel 9: eine neue Aufgabe mit derselben Nummer erbt nie ein fremdes Transkript
+        if let Err(grund) = super::transkripte::ordner_raeumen(self.ordner().wurzel(), nr) {
+            eprintln!("Warnung: #{nr} gelöscht, aber {grund} — die Reste haben keinen Eintrag und werden beim nächsten gleichnamigen Upload überschrieben");
+        }
         self.timer_beginn.lock().unwrap_or_else(|e| e.into_inner()).retain(|(n, _), _| *n != nr);
         Ok(nr)
     }

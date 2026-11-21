@@ -498,3 +498,78 @@ async fn ak15_lesen_ohne_dateisystem() {
     assert_eq!(sz, 200, "{z}");
     assert_eq!(zustaende(&l), [(json!(K), json!("unlesbar"))]);
 }
+
+async fn senden_als(adresse: &str, methode: reqwest::Method, pfad: &str, wer: &str) -> (u16, Value) {
+    gemeinsam::senden(methode, adresse, pfad, wer, json!({})).await
+}
+
+fn kennung_in_adresse(k: &str) -> String {
+    k.replace('+', "%2B")
+}
+
+// AK 13a · US-7: DELETE entfernt Eintrag (ein Commit) und Datei; unbekannt → 404 ohne Commit; fehlende Datei und „aus“ gehen
+#[tokio::test]
+async fn ak13a_loeschen() {
+    let o = an();
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+    let n = o.commits();
+    let (s, e) = senden_als(o.adresse(), reqwest::Method::DELETE, &format!("api/aufgaben/1/transkripte/{}", kennung_in_adresse(K)), "sh").await;
+    assert_eq!(s, 200, "{e}");
+    assert_eq!(o.commits(), n + 1);
+    assert!(!o.pfad.join(N).exists());
+    assert_eq!(holen(o.adresse(), "api/aufgaben/1/transkripte").await.1["transkripte"], json!([]));
+    assert!(!o.aufgabe(1).contains("transcripts"), "{}", o.aufgabe(1));
+    let (s, _) = senden_als(o.adresse(), reqwest::Method::DELETE, &format!("api/aufgaben/1/transkripte/{}", kennung_in_adresse(K)), "sh").await;
+    assert_eq!((s, o.commits()), (404, n + 1), "unbekannte Kennung ohne Commit");
+
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+    std::fs::remove_file(o.pfad.join(N)).unwrap();
+    std::fs::write(o.pfad.join("kanbanD.md"), lies(&o.pfad, "kanbanD.md").replace("record-transcripts: true", "record-transcripts: false")).unwrap();
+    let n = o.commits();
+    let (s, e) = senden_als(o.adresse(), reqwest::Method::DELETE, &format!("api/aufgaben/1/transkripte/{}", kennung_in_adresse(K)), "entwickler").await;
+    assert_eq!((s, o.commits()), (200, n + 1), "Datei fehlt, Schalter aus: {e}");
+}
+
+// AK 13b, 13c · US-7: Archivieren und Zurückholen lassen alles stehen; endgültig löschen räumt transkripte/<nr>/, eine neue #1 erbt nichts
+#[tokio::test]
+async fn ak13bc_archivieren_und_endgueltig_loeschen() {
+    let o = an();
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+    let adresse = format!("api/aufgaben/1/transkripte/{}", kennung_in_adresse(K));
+    let vorher = herunterladen(o.adresse(), &adresse).await.2;
+    assert_eq!(senden_als(o.adresse(), reqwest::Method::POST, "api/aufgaben/1/archivieren", "sh").await.0, 200);
+    assert_eq!(herunterladen(o.adresse(), &adresse).await.2, vorher);
+    assert_eq!(senden_als(o.adresse(), reqwest::Method::POST, "api/aufgaben/1/zurueckholen", "sh").await.0, 200);
+    assert_eq!(herunterladen(o.adresse(), &adresse).await.2, vorher);
+    assert!(o.aufgabe(1).contains("transcripts:"));
+
+    for nr in [4, 3, 2, 1] {
+        let (s, e) = senden_als(o.adresse(), reqwest::Method::DELETE, &format!("api/aufgaben/{nr}"), "sh").await;
+        assert_eq!(s, 200, "#{nr}: {e}");
+    }
+    assert!(!o.pfad.join("transkripte/0001").exists(), "transkripte/0001/ geräumt");
+    let (s, a) = gemeinsam::senden(reqwest::Method::POST, o.adresse(), "api/aufgaben", "sh", json!({ "titel": "neu", "board": "fabrik", "spalte": "Entwicklung" })).await;
+    assert_eq!((s, &a["nummer"]), (201, &json!(1)), "{a}");
+    assert_eq!(holen(o.adresse(), "api/aufgaben/1/transkripte").await.1["transkripte"], json!([]));
+    assert_eq!(o.status(), "");
+}
+
+// AK 9c (Löschen): transkripte/0001 ist ein Symlink nach außen — DELETE entfernt nur den Eintrag, endgültig löschen gelingt, außen bleibt
+#[cfg(unix)]
+#[tokio::test]
+async fn ak09c_loeschen_ueber_einen_symlink() {
+    let o = an();
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", "2026-11-13 10:35+01:00", G1.to_vec()).await.0, 201);
+    let aussen = o.pfad.parent().unwrap().join("aussen");
+    std::fs::rename(o.pfad.join("transkripte/0001"), &aussen).unwrap();
+    std::os::unix::fs::symlink(&aussen, o.pfad.join("transkripte/0001")).unwrap();
+    let vorher = umgebung(&o).into_iter().filter(|(p, _)| p.starts_with("aussen")).collect::<Vec<_>>();
+    assert_eq!(vorher.len(), 2);
+    let n = o.commits();
+    let (s, e) = senden_als(o.adresse(), reqwest::Method::DELETE, &format!("api/aufgaben/1/transkripte/{}", kennung_in_adresse(K)), "sh").await;
+    assert_eq!((s, o.commits()), (200, n + 1), "{e}");
+    let (s, e) = senden_als(o.adresse(), reqwest::Method::DELETE, "api/aufgaben/1", "sh").await;
+    assert_eq!(s, 200, "{e}");
+    assert_eq!(umgebung(&o).into_iter().filter(|(p, _)| p.starts_with("aussen")).collect::<Vec<_>>(), vorher, "außen unverändert");
+}

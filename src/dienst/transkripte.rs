@@ -295,6 +295,37 @@ impl Kanban {
     }
 }
 
+impl Kanban {
+    /// `DELETE …/transkripte/{kennung}` (ADR-0036 Regel 5): erst den Eintrag entfernen und committen, danach die Datei
+    /// löschen — fehlt sie oder ist ihr Pfad nicht sicher (Symlink), bleibt es beim Eintrag. Geht auch bei „aus“.
+    pub fn transkript_loeschen(&self, wer: &Person, nr: u32, kennung: &str) -> Result<Transkripteintrag, Fehler> {
+        let mut weg = None;
+        self.aufgabe_schreiben(wer, nr, |a| {
+            let i = a.transkripte.iter().position(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung))))?;
+            let Transkriptzeile::Lesbar(e) = a.transkripte.remove(i) else { unreachable!("als lesbar gefunden") };
+            let nachricht = format!("#{nr} Transkript entfernt: {}", crate::nachricht::wert(&e.kennung()));
+            weg = Some(e);
+            Ok(Some(nachricht))
+        })?;
+        let e = weg.expect("nach dem Commit gesetzt");
+        if let Ok(pfad) = datei(self.ordner().wurzel(), nr, &e) {
+            let _ = std::fs::remove_file(pfad);
+        }
+        Ok(e)
+    }
+}
+
+/// Endgültig löschen (ADR-0036 Regel 9): `transkripte/<nr4>/` ganz entfernen, ohne einem Symlink zu folgen. Ist eine
+/// Ebene ein Symlink, bleibt alles stehen; der Grund geht als Warnzeile ins Protokoll (X00002).
+pub(crate) fn ordner_raeumen(wurzel: &Path, nr: u32) -> Result<(), String> {
+    let ordner = aufgabenordner(wurzel, nr).map_err(|f| f.meldung().to_string())?;
+    match std::fs::remove_dir_all(&ordner) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(format!("{ORDNER}/{nr:04}/ ließ sich nicht entfernen: {e}")),
+    }
+}
+
 fn nicht_lieferbar(nr: u32, kennung: &str, zustand: Transkriptzustand) -> Fehler {
     let wie = match zustand {
         Transkriptzustand::Fehlt => "liegt nicht auf diesem Rechner",
