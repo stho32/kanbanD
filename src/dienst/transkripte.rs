@@ -263,23 +263,23 @@ impl Transkriptstand {
     }
 }
 
-/// Der Zustand eines Eintrags aus einem `symlink_metadata` und drei Byte — ohne Entpacken (ADR-0036 Regel 5).
+/// Der Zustand eines Eintrags aus den Metadaten der geöffneten Datei und drei Byte — ohne Entpacken (ADR-0036 Regel 5).
 fn zustand(wurzel: &Path, nr: u32, z: &Transkriptzeile) -> Transkriptzustand {
     let Some(e) = z.lesbar() else { return Transkriptzustand::Unlesbar };
     let Ok(pfad) = datei(wurzel, nr, e) else { return Transkriptzustand::Unlesbar };
-    let m = match std::fs::symlink_metadata(&pfad) {
-        Ok(m) => m,
+    let (mut f, m) = match lesend_oeffnen(&pfad) {
+        Ok(offen) => offen,
         Err(f) if f.kind() == std::io::ErrorKind::NotFound => return Transkriptzustand::Fehlt,
         Err(_) => return Transkriptzustand::Unlesbar,
     };
-    if !m.is_file() || m.len() > TRANSKRIPT_HOECHSTENS {
+    if m.len() > TRANSKRIPT_HOECHSTENS {
         return Transkriptzustand::Unlesbar;
     }
     if m.len() != e.bytes {
         return Transkriptzustand::Abweichend;
     }
     let mut kopf = [0u8; 3];
-    match lesend_oeffnen(&pfad).and_then(|mut f| f.read_exact(&mut kopf)) {
+    match f.read_exact(&mut kopf) {
         Ok(()) if kopf == GZIP_KENNBYTES => Transkriptzustand::Vorhanden,
         _ => Transkriptzustand::Unlesbar,
     }
@@ -316,7 +316,11 @@ impl Kanban {
         let platz = self.antwortbudget.platz(e.bytes as usize).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Transkript in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
         let pfad = datei(wurzel, nr, e).map_err(|_| nicht_lieferbar(nr, kennung, Transkriptzustand::Unlesbar))?;
         let mut bytes = Vec::with_capacity(e.bytes as usize);
-        lesend_oeffnen(&pfad)?.take(e.bytes).read_to_end(&mut bytes)?;
+        let (f, m) = lesend_oeffnen(&pfad).map_err(|_| nicht_lieferbar(nr, kennung, Transkriptzustand::Unlesbar))?;
+        if m.len() != e.bytes {
+            return Err(nicht_lieferbar(nr, kennung, Transkriptzustand::Abweichend));
+        }
+        f.take(e.bytes).read_to_end(&mut bytes)?;
         #[cfg(test)]
         GELESEN.with(|g| g.set(g.get() + bytes.len() as u64));
         if bytes.len() as u64 != e.bytes {
@@ -356,10 +360,33 @@ pub(crate) fn ordner_raeumen(wurzel: &Path, nr: u32) -> Result<(), String> {
     }
 }
 
-/// Öffnet die Datei eines Eintrags zum Lesen.
-fn lesend_oeffnen(pfad: &Path) -> std::io::Result<std::fs::File> {
+/// Öffnet die Datei eines Eintrags zum Lesen, ohne einem Symlink zu folgen, der nach der Prüfung an ihre Stelle trat
+/// (TOCTOU): vor dem Öffnen eine gewöhnliche Datei laut `symlink_metadata`, danach dieselbe Datei (Gerät und Inode) laut
+/// Metadaten am Handle — sonst ein Fehler. Gelesen wird nur über das Handle, die Metadaten sind die des Handles.
+fn lesend_oeffnen(pfad: &Path) -> std::io::Result<(std::fs::File, std::fs::Metadata)> {
+    let vorher = std::fs::symlink_metadata(pfad)?;
+    if !vorher.is_file() {
+        return Err(std::io::Error::other("keine gewöhnliche Datei"));
+    }
     haken("lesen: geprüft, noch nicht geöffnet");
-    std::fs::File::open(pfad)
+    let f = std::fs::File::open(pfad)?;
+    let m = f.metadata()?;
+    if !m.is_file() || !dieselbe_datei(&vorher, &m) {
+        return Err(std::io::Error::other("zwischen Prüfen und Öffnen ersetzt"));
+    }
+    Ok((f, m))
+}
+
+#[cfg(unix)]
+fn dieselbe_datei(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    a.dev() == b.dev() && a.ino() == b.ino()
+}
+
+/// Ohne Inode bleibt die Prüfung, dass das Handle eine gewöhnliche Datei der erwarteten Größe zeigt.
+#[cfg(not(unix))]
+fn dieselbe_datei(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
+    a.len() == b.len()
 }
 
 fn nicht_lieferbar(nr: u32, kennung: &str, zustand: Transkriptzustand) -> Fehler {
@@ -653,6 +680,32 @@ mod tests {
         assert_eq!(k.ordner().aufgabe(1).unwrap().transkripte.len(), 1, "der Eintrag des Uploads");
         assert_eq!(dateien(w.path()), ["entwickler@2026-11-13T1034+0100.jsonl.gz"], "und seine Datei");
         assert_eq!(git_status(w.path()), "");
+    }
+
+    // Nacharbeit 1 #208 (security-reviewer Sollte 2, TOCTOU): wird die geprüfte Datei zwischen Prüfen und Öffnen durch
+    // einen Symlink nach außen ersetzt, liefert weder die Liste noch das Herunterladen den fremden Inhalt
+    #[cfg(unix)]
+    #[test]
+    fn symlink_zwischen_pruefen_und_oeffnen() {
+        for weg in ["liste", "herunterladen"] {
+            let (w, k, wer) = ordner();
+            let e = k.transkript_einhaengen(&wer, 1, &angaben(), empfangen(&k)).unwrap();
+            let aussen = tempfile::tempdir().unwrap();
+            let fremd = aussen.path().join("fremd");
+            std::fs::write(&fremd, [0x1f, 0x8b, 0x08, 9, 9, 9]).unwrap();
+            let datei = w.path().join("transkripte/0001").join(e.dateiname());
+            haken_setzen("lesen: geprüft, noch nicht geöffnet", move || {
+                std::fs::remove_file(&datei).unwrap();
+                std::os::unix::fs::symlink(&fremd, &datei).unwrap();
+            });
+            if weg == "liste" {
+                let liste = k.transkripte_liste(1).unwrap();
+                assert_eq!(liste.transkripte[0].zustand, Transkriptzustand::Unlesbar, "{weg}");
+            } else {
+                let r = k.transkript_lesen(1, &e.kennung());
+                assert!(matches!(r, Err(Fehler::Transkriptzustand { zustand: Transkriptzustand::Unlesbar, .. })), "{weg}: {:?}", r.map(|(rumpf, _)| rumpf.bytes));
+            }
+        }
     }
 
     // Prüfen-dann-Handeln (ADR-0036 Regel 5): zwei Uploads derselben Kennung haben beide die Vorprüfung und die
