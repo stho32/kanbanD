@@ -1752,3 +1752,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #238 | Architektur | architekt | bestanden | 4 min | ADR-0032 N9 · claude · opus · Lauf 238-architekt-1 · 1,42 $ · Karte gesamt 1,42 $ |
 | 2026-11-21 | #232 | Detailplanung | planer | bestanden | 1 min | AK 12 Satz, AK 6 Lage · claude · opus · Lauf 232-planer-3 · 0,34 $ · Karte gesamt 9,07 $ |
 | 2026-11-21 | #238 | Detailplanung | product-owner | bestanden | 2 min | PO Z. 512-513 · claude · opus · Lauf 238-product-owner-1 · 0,98 $ · Karte gesamt 2,40 $ |
+| 2026-11-21 | #243 | Architektur | architekt | bestanden | 1 min | keine Technikfrage, Muster ADR-0037 · claude · opus · Lauf 243-architekt-1 · 0,56 $ · Karte gesamt 0,56 $ |
+| 2026-11-21 | #238 | Detailplanung | planer | bestanden | 7 min | R00226, I0216, 5 Bubbles · claude · opus · Lauf 238-planer-1 · 2,71 $ · Karte gesamt 5,11 $ |
