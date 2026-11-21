@@ -23,6 +23,7 @@
     if (ansicht === 'wbs') return 'WBS';
     if (ansicht === 'einrichten') return 'Einrichten';
     if (ansicht === 'review') return 'Review';
+    if (ansicht === 'lauf') return 'Lauf';
     return 'Board';
   }
 

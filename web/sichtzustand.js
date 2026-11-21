@@ -64,8 +64,9 @@
   }
 
   /** Teilbäume, die selbst nie scrollen und so groß werden, dass das Lesen von `scrollTop` je Element den Hauptfaden blockiert: die
-      Blöcke einer offenen Datei der Review-Seite (bis 10.000 Zeilen × 4 Zellen, R00217 AK 1); ihr Codebereich `.df-sc` zählt weiter. */
-  const NIE_GEROLLT = '.dz-b';
+      Blöcke einer offenen Datei der Review-Seite (bis 10.000 Zeilen × 4 Zellen, R00217 AK 1); ihr Codebereich `.df-sc` zählt weiter;
+      dazu die Einträge der Laufansicht (`data-ohne-rollstand`, bis 16.000 mit `content-visibility`, R00221). */
+  const NIE_GEROLLT = '.dz-b, [data-ohne-rollstand]';
 
   /** Scrollstände aller gescrollten Flächen im Bereich, je mit Schlüssel; Flächen ohne Schlüssel fallen weg. */
   function rollstaende(bereich) {

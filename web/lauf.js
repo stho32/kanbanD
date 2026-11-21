@@ -88,7 +88,7 @@
     const schluss = grenze
       ? `<li class="lv-g meld warn" role="note">${GRENZE_SYMBOL}<p>${GRENZE_ERREICHT}</p></li>`
       : `<li class="lv-ende">${ENDE}</li>`;
-    return `<ol class="lv-l" id="lv-insel" aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(z => eintragHtml(z, esc)).join('')}${schluss}</ol>`;
+    return `<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(z => eintragHtml(z, esc)).join('')}${schluss}</ol>`;
   }
 
   function eintragHtml({ nr, eintrag }, esc) {
@@ -140,5 +140,48 @@
     return `${zwei(d.getHours())}:${zwei(d.getMinutes())}:${zwei(d.getSeconds())}`;
   }
 
-  Object.assign(ziel, { zeilenLesen, eintragPruefen, laufHtml, LAUF_GRENZEN, LAUF_ENDE: ENDE, LAUF_GRENZE_ERREICHT: GRENZE_ERREICHT });
+  /* ── Zustände der Seite (FA 7, FA 8, FA 11; Bilder 2, 4, 5): Meldungen, Ansage und Rumpf ── */
+
+  const LIEST = 'Liest das Transkript …';
+  const FEHLT = 'Das Transkript liegt nicht auf diesem Rechner.';
+  const FEHLT_ERKLAERUNG = 'Transkripte bleiben auf dem Rechner, auf dem sie abgelegt wurden; nach einem frischen Klon oder auf einem anderen Rechner fehlen sie. Der Lauf und seine Kosten stehen weiter an der Aufgabe.';
+  const NICHT_GELESEN = 'Das Transkript ließ sich nicht lesen: ';
+  const ohneBidi = text => String(text).replace(/[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+
+  /** Satz der Fehlermeldung (Wortlaut 19, PO Z. 490): Server mit `fehler` und Status; Verbindung und Frist; Entpacken und
+      unbekannte Kennung ohne Status, ohne Text des Browsers und ohne Text der Adresse. */
+  function laufFehlerText(fehler) {
+    if (fehler.art === 'unbekannt') return NICHT_GELESEN + 'An dieser Aufgabe steht kein Lauf mit dieser Kennung.';
+    if (fehler.art === 'entpacken') return NICHT_GELESEN + 'Die Datei lässt sich nicht entpacken.';
+    if (fehler.art === 'verbindung') return NICHT_GELESEN + 'keine Verbindung zum Programm.';
+    return `${NICHT_GELESEN}${ohneBidi(fehler.fehler || 'unbekannter Fehler')} (${fehler.status}).`;
+  }
+
+  /** Was der Statusbereich sagt: beim Lesen Wortlaut 14, danach den sichtbaren Satz des Ergebnisses, vorher nichts. */
+  function laufAnsage(v) {
+    if (v.laedt) return LIEST;
+    if (!v.ergebnis) return '';
+    if (v.ergebnis.art === 'eintraege') return v.ergebnis.grenze ? GRENZE_ERREICHT : ENDE;
+    if (v.ergebnis.art === 'fehlt') return FEHLT;
+    return laufFehlerText(v.ergebnis.fehler);
+  }
+
+  /** Rumpf der Seite aus dem Zustand `v = {laedt, ergebnis: null | {art: 'eintraege', html} | {art: 'fehlt'} | {art: 'fehler', fehler}}`.
+      Einzige Live-Region ist der Statusbereich (PO Z. 481 b): sichtbar nur im ersten Lesen, sonst nur vorgelesen. Beim erneuten
+      Lesen bleibt die Meldung stehen und „Erneut versuchen“ ist gesperrt (PO Z. 484 S-A). `insel` ist der Text der Einträge. */
+  function laufRumpfHtml(v, insel, esc) {
+    const sichtbar = v.laedt && !v.ergebnis;
+    const status = `<p class="${sichtbar ? 'lv-laedt' : 'vh'}" id="lv-status" role="status">${esc(laufAnsage(v))}</p>`;
+    const e = v.ergebnis;
+    let inhalt = '';
+    if (e && e.art === 'eintraege') inhalt = insel;
+    if (e && e.art === 'fehlt') inhalt = `<div class="lv-leer"><p><b>${FEHLT}</b></p><p>${FEHLT_ERKLAERUNG}</p></div>`;
+    if (e && e.art === 'fehler') {
+      const knopf = `<button type="button" class="cl-knopf" id="lv-erneut"${v.laedt ? ' aria-disabled="true"' : ' data-act="lauf-erneut"'}>Erneut versuchen</button>`;
+      inhalt = `<div class="cl-meld lv-ganz">${ACHTUNG}<p class="cl-meldtext">${esc(laufFehlerText(e.fehler))}</p>${knopf}</div>`;
+    }
+    return `<div class="lv-rumpf">${status}${inhalt}</div>`;
+  }
+
+  Object.assign(ziel, { zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufAnsage, laufRumpfHtml, LAUF_GRENZEN });
 })(typeof module !== 'undefined' ? module.exports : window);

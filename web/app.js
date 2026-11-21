@@ -200,7 +200,11 @@ function anwendungDerSeite() {
   return anwendung.name;
 }
 /** Die Review-Seite trägt ihre Überschrift erster Ebene selbst im Kopf („Review“, R00207 FA 5). */
-const vMain = () => (S.ui.view === 'review' ? vReview() : vSeitenUeberschrift() + vHaupt());
+const vMain = () => {
+  if (S.ui.view === 'review') return vReview();
+  if (S.ui.view === 'lauf') return vLauf();
+  return vSeitenUeberschrift() + vHaupt();
+};
 
 function vHaupt() {
   if (S.ui.first) return vFirst();
@@ -964,6 +968,8 @@ function commitsStatusBehalten(vorher) {
 /* ── Ansicht „Läufe“ (R00219, ADR-0039 L2): gelesen wird beim Öffnen, über „Neu lesen“ / „Erneut versuchen“ und genau einmal,
    wenn sich die Menge der Kennungen in `a.transkripte` nach einem Live-Ereignis ändert; Kosten zeichnen ohne Lesen ── */
 const LAEUFE_KNOTEN = ['laeufe-status', 'laeufe-neu', 'laeufe-erneut'];
+/** Statusbereich und „Erneut versuchen“ der Laufansicht bleiben beim Neuzeichnen dieselben Knoten (FA 8, FA 11). */
+const LAUF_KNOTEN = ['lv-status', 'lv-erneut'];
 
 /** Vor jedem Zeichnen: ist „Läufe“ die gezeigte Ansicht, liest sie, wenn für diese Aufgabe noch nichts gelesen ist oder die
     Kennungsmenge seit dem letzten Lesen eine andere ist; ist es nicht die gezeigte Ansicht, fällt der Zustand weg. */
@@ -1024,6 +1030,13 @@ async function laeufeLesen(nr) {
   S.ui.laeufe = { ...lauf, laedt: false, ergebnis };
   const aufErneut = document.activeElement && document.activeElement.id === 'laeufe-erneut';
   if (aufErneut && ergebnis.art === 'liste') S.ui.fokus = '#laeufe-neu';
+  // Zurück aus der Laufansicht (FA 3): Fokus auf „Ansehen“ derselben Kennung, sonst auf die Überschrift von „Läufe“
+  const zurueck = S.ui.fokusNachLaeufe;
+  if (zurueck && zurueck.nr === nr) {
+    S.ui.fokusNachLaeufe = null;
+    const ansehen = ergebnis.art === 'liste' && zurueck.kennung && ergebnis.antwort.transkripte.some(t => t.kennung === zurueck.kennung && t.zustand === 'vorhanden');
+    S.ui.fokus = ansehen ? `#fenster a.lf-an[data-arg="${CSS.escape(zurueck.kennung)}"]` : '#laeufe-kopf';
+  }
   render();
 }
 
@@ -1037,7 +1050,9 @@ const LAEUFE_INSEL_PLATZHALTER = '<div class="lf-rahmen" id="lf-insel"></div>';
 function laeufeInselVergleichenUndMerken() {
   const l = S.ui.laeufe, a = S.ui.offen && !S.ui.setup && aufgabe(S.ui.offen);
   if (!l || !a || ansichtDerAufgabe(a) !== 'laeufe') return { text: null, gehalten: null };
-  const text = laeufeTabelleHtml(l, a.kosteneintraege || [], esc);
+  const basis = S.ui.view === 'aufgaben' ? 'aufgaben' : 'board';
+  const ansehen = kennung => laufAdresseBilden({ basis, slug: S.ui.slug, nummer: S.ui.offen, kennung });
+  const text = laeufeTabelleHtml(l, a.kosteneintraege || [], esc, ansehen);
   const alt = $('#over').dataset.offen === String(S.ui.offen) ? document.getElementById('lf-insel') : null;
   const gleich = Boolean(alt && text && l.insel === text);
   l.insel = text;
@@ -1129,28 +1144,43 @@ const reviewSchmal = () => matchMedia('(max-width:640px)').matches;
     `daten`); eine abgelaufene Frist zählt als Zeitgrenze (503). Ein Abbruch durch den Browser gibt das Budget des Servers frei;
     `abbruchSignal` bricht von außen ab (Adresswechsel), die Antwort wird dann ohnehin verworfen. */
 async function diffHolen(pfad, abbruchSignal = null) {
+  return mitFristen(pfad, abbruchSignal, async (r, netzFehler) => {
+    if (!r.ok) await antwortFehler(r, netzFehler);
+    let text;
+    try { text = await r.text(); } catch (_) { throw netzFehler(); }
+    try { return text ? JSON.parse(text) : null; } catch (_) { return null; }
+  });
+}
+
+/** Die Frist-Mechanik des Diffs, geteilt mit der Laufansicht (ADR-0041 Punkt 4): 15 s bis zum Kopf, dann 60 s für `rumpf(r,
+    netzFehler, abbruch)`. `netzFehler()` ist der Fehler eines gescheiterten Lesens — nach Ablauf der Frist die Zeitgrenze (503,
+    `frist`), sonst keine Verbindung (0). */
+async function mitFristen(pfad, abbruchSignal, rumpf) {
   const abbruch = new AbortController();
   if (abbruchSignal) abbruchSignal.addEventListener('abort', () => abbruch.abort(), { once: true });
   let frist = setTimeout(() => abbruch.abort(), DIFF_FRIST_KOPF_MS);
-  const fristFehler = () => Object.assign(new Error('Das Programm antwortete nicht innerhalb der Frist'), { status: 503, daten: null });
+  const netzFehler = () => {
+    if (abbruch.signal.aborted) return Object.assign(new Error('Das Programm antwortete nicht innerhalb der Frist'), { status: 503, daten: null, frist: true });
+    return Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null });
+  };
   try {
     let r;
-    try {
-      r = await fetch(pfad, { signal: abbruch.signal });
-    } catch (_) {
-      throw abbruch.signal.aborted ? fristFehler() : Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null });
-    }
+    try { r = await fetch(pfad, { signal: abbruch.signal }); } catch (_) { throw netzFehler(); }
     clearTimeout(frist);
     frist = setTimeout(() => abbruch.abort(), DIFF_FRIST_RUMPF_MS);
-    let text;
-    try { text = await r.text(); } catch (_) { throw abbruch.signal.aborted ? fristFehler() : Object.assign(new Error(NETZ_FEHLER), { status: 0, daten: null }); }
-    let json = null;
-    try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
-    if (!r.ok) throw Object.assign(new Error((json && json.fehler) || r.statusText), { status: r.status, daten: json });
-    return json;
+    return await rumpf(r, netzFehler, abbruch);
   } finally {
     clearTimeout(frist);
   }
+}
+
+/** Wirft den Fehler einer Antwort ohne Erfolg in der Form von `api` (`status`, `message` aus `fehler`, `daten`). */
+async function antwortFehler(r, netzFehler) {
+  let text;
+  try { text = await r.text(); } catch (_) { throw netzFehler(); }
+  let json = null;
+  try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+  throw Object.assign(new Error((json && json.fehler) || r.statusText), { status: r.status, daten: json });
 }
 
 const fehlerVon = g => ({ status: g.status || 0, fehler: g.message, daten: g.daten || null });
@@ -1877,6 +1907,197 @@ function reviewOeffnen(verweis) {
   adresseGewechselt();
 }
 
+/* ── Laufansicht (R00221, ADR-0041): eigene Adresse hinter `/aufgabe/<nr>`, ein Lesen im Strom mit Grenze, Einträge als Insel ── */
+
+/** Marke am Verlaufseintrag einer Laufansicht, die über „Ansehen“ geöffnet wurde: der Eintrag davor ist das Fenster mit „Läufe“. */
+const LAUF_AUS_DER_LISTE = { kdLaufAusListe: true };
+const laufAusDerListe = () => Boolean(history.state) && history.state.kdLaufAusListe === true;
+
+/** Die gespeicherte Kennung, die die Adresse sucht (FA 2): nur ein Textvergleich mit `a.transkripte`; ohne Treffer null. */
+function laufTreffer(v) {
+  const a = aufgabe(v.nr);
+  if (!a || v.gesucht === null) return null;
+  return (a.transkripte || []).find(t => t.kennung === v.gesucht) || null;
+}
+
+/** Die Zeile von `laeufe()` zum Treffer — Kopf und Leiste kommen aus dem Stand der Aufgabe, ohne eigenes Lesen (FA 4). */
+function laufZeile(v) {
+  const treffer = laufTreffer(v), a = aufgabe(v.nr);
+  if (!treffer) return null;
+  return laeufe(a.transkripte || [], a.kosteneintraege || []).find(z => z.transkript && z.kennung === treffer.kennung) || null;
+}
+
+/** Vor jedem Zeichnen: ist die Laufansicht gezeigt und ihre Adresse neu, beginnt das Lesen jetzt (einmal je Adresse). Ist sie
+    nicht gezeigt, bricht die laufende Anfrage ab, der Zustand fällt weg, und der Fokus soll zurück auf „Ansehen“ (FA 3). */
+function laufAnstossen() {
+  const v = S.ui.lauf;
+  if (S.ui.view !== 'lauf') {
+    if (v) {
+      laufAbbrechen(v);
+      const treffer = laufTreffer(v);
+      S.ui.fokusNachLaeufe = { nr: v.nr, kennung: treffer ? treffer.kennung : null };
+    }
+    S.ui.lauf = null;
+    return;
+  }
+  const hash = location.hash, adresse = adresseLesen(hash);
+  if (!adresse.lauf || (v && v.adresse === hash)) return;
+  if (v) laufAbbrechen(v);
+  const l = adresse.lauf;
+  S.ui.lauf = { adresse: hash, nr: l.nummer, basis: l.basis, slug: adresse.slug, gesucht: l.kennung, laedt: false, ergebnis: null, anfrage: null, erneut: false, insel: null };
+  S.ui.fokus = '#lv-h1';
+  laufLesen(S.ui.lauf);
+}
+
+/** Bricht die laufende Anfrage ab: Verlassen, ein Wechsel der Kennung oder ein neues Lesen (ADR-0041 Punkt 4). */
+function laufAbbrechen(v) {
+  if (v.anfrage) v.anfrage.abbruch.abort();
+  v.anfrage = null;
+}
+
+/** Liest das Transkript des Treffers einmal und zeichnet einmal: nach sauberem Ende oder an der Grenze (FA 5). Die Antwort gilt nur,
+    solange dieselbe Seite mit derselben Anfrage steht (ADR-0014). Ohne Treffer geht keine Anfrage hinaus; das Ergebnis kommt dann
+    erst im nächsten Schritt, damit der Statusbereich vorher stand und die Meldung genau einmal sagt (FA 11, UX N1). */
+async function laufLesen(v) {
+  laufAbbrechen(v);
+  const anfrage = v.anfrage = { abbruch: new AbortController() };
+  const treffer = laufTreffer(v);
+  v.laedt = Boolean(treffer) || v.erneut;
+  let ergebnis;
+  if (!treffer) {
+    await new Promise(weiter => setTimeout(weiter, 0));
+    ergebnis = { art: 'fehler', fehler: { art: 'unbekannt' } };
+  } else {
+    ergebnis = await transkriptLesen(`/api/aufgaben/${v.nr}/transkripte/${encodeURIComponent(treffer.kennung)}`, anfrage.abbruch.signal);
+  }
+  if (S.ui.lauf !== v || v.anfrage !== anfrage) return;
+  v.anfrage = null;
+  v.laedt = false;
+  v.ergebnis = ergebnis;
+  const nachOben = v.erneut;
+  if (v.erneut) S.ui.fokus = ergebnis.art === 'fehler' ? '#lv-erneut' : '#lv-h1';
+  v.erneut = false;
+  render();
+  const seite = document.getElementById('lauf');
+  if (nachOben && seite) seite.scrollTop = 0;
+}
+
+/** `GET …/transkripte/{kennung}` mit den Fristen des Diffs → `{art: 'eintraege', html, grenze}`, `{art: 'fehlt'}` oder
+    `{art: 'fehler', fehler}`. Entpackt im Strom; an der Grenze bricht das Lesen ab und gibt das Budget des Servers frei — das
+    ist kein Fehler. Jeder Fehler vor dem Ende verwirft das Gelesene (ADR-0041 Punkt 4). */
+async function transkriptLesen(pfad, abbruchSignal) {
+  try {
+    const gelesen = await mitFristen(pfad, abbruchSignal, async (r, netzFehler, abbruch) => {
+      if (!r.ok) await antwortFehler(r, netzFehler);
+      const quelle = { netz: false };
+      const zeilen = [];
+      let grenze = false;
+      try {
+        for await (const s of zeilenLesen(entpacktLesen(r.body, quelle), LAUF_GRENZEN)) {
+          if ('grenze' in s) grenze = s.grenze;
+          else zeilen.push(s);
+        }
+      } catch (_) {
+        if (quelle.netz || abbruch.signal.aborted) throw netzFehler();
+        throw Object.assign(new Error('entpacken'), { entpacken: true });
+      }
+      if (grenze) abbruch.abort();
+      return { zeilen, grenze };
+    });
+    return { art: 'eintraege', grenze: gelesen.grenze, html: laufHtml(gelesen.zeilen, gelesen.grenze, esc) };
+  } catch (g) {
+    if (g.entpacken) return { art: 'fehler', fehler: { art: 'entpacken' } };
+    if (g.frist || g.status === 0) return { art: 'fehler', fehler: { art: 'verbindung' } };
+    if (g.status === 404 && g.daten && g.daten.zustand === 'fehlt') return { art: 'fehlt' };
+    return { art: 'fehler', fehler: { art: 'server', status: g.status, fehler: g.message } };
+  }
+}
+
+/** Die Bytes des Rumpfs entpackt, als Folge von Stücken für `zeilenLesen`. Ein Fehler der Verbindung ist in `quelle.netz` vermerkt,
+    damit er nicht als „lässt sich nicht entpacken“ gilt; endet das Lesen vorzeitig (Grenze), wird der Strom abgebrochen. */
+async function* entpacktLesen(rumpf, quelle) {
+  const roh = rumpf.getReader();
+  const beobachtet = new ReadableStream({
+    async pull(steuerung) {
+      let stueck;
+      try { stueck = await roh.read(); } catch (g) { quelle.netz = true; steuerung.error(g); return; }
+      if (stueck.done) steuerung.close();
+      else steuerung.enqueue(stueck.value);
+    },
+    cancel: grund => roh.cancel(grund),
+  });
+  const leser = beobachtet.pipeThrough(new DecompressionStream('gzip')).getReader();
+  let fertig = false;
+  try {
+    for (;;) {
+      const { done, value } = await leser.read();
+      if (done) { fertig = true; return; }
+      yield value;
+    }
+  } finally {
+    if (!fertig) leser.cancel().catch(() => { });
+  }
+}
+
+/** Kopf der Laufansicht (Zeichnung `#laufansicht`): Rückweg „‹ #nr“, „Lauf“ als h1 mit Rolle und Zeitpunkt, „liest nur“. */
+function vLaufKopf() {
+  const v = S.ui.lauf;
+  const zeile = v && laufZeile(v);
+  const zurueck = v ? `<a class="rv-rueck" id="lv-rueckweg" href="${esc(adresseBilden({ sicht: v.basis, slug: v.slug, nummer: v.nr }))}" data-act="lauf-zurueck" aria-label="Zurück zur Aufgabe #${v.nr}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>#${v.nr}</a>` : '';
+  const titel = zeile ? `<span class="rv-titel">${laeufeTitelHtml(zeile, esc)}</span>` : '';
+  return `<header class="kz rv-kz lv-kz" data-stufe="${S.ui.stufe}"><div class="kz-reihe">${zurueck}<h1 class="rv-h1" id="lv-h1" tabindex="-1">Lauf</h1>${titel}<span class="rv-liest">liest nur</span></div></header>`;
+}
+
+/** Die Einträge des letzten Zeichnens, wenn sie zum gezeigten Ergebnis gehören: sie bleiben derselbe Knoten (ADR-0041 Punkt 5). */
+let laufInselGehalten = null;
+const LAUF_INSEL_PLATZHALTER = '<ol class="lv-l" id="lv-insel" data-ohne-rollstand></ol>';
+
+/** Die Seite (Hauptbereich): Leiste aus dem Stand der Aufgabe, darunter Statusbereich und Ergebnis. */
+function vLauf() {
+  const v = S.ui.lauf;
+  if (!v) return '<div class="lv" id="lauf"></div>';
+  const zeile = laufZeile(v);
+  const e = v.ergebnis;
+  let insel = '';
+  if (e && e.art === 'eintraege') insel = laufInselGehalten ? LAUF_INSEL_PLATZHALTER : e.html;
+  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${laufRumpfHtml(v, insel, esc)}</div>`;
+}
+
+/** Vor dem Zeichnen: steht die Insel des gezeigten Ergebnisses im Dokument, bleibt sie; der Schlüssel ist das Ergebnis selbst. */
+function laufInselVorher() {
+  const v = S.ui.lauf, alt = document.getElementById('lv-insel');
+  if (S.ui.view !== 'lauf' || !v || !v.insel || !alt) return null;
+  return v.insel.knoten === alt && v.insel.ergebnis === v.ergebnis ? alt : null;
+}
+
+/** Nach dem Zeichnen: der Knoten der Einträge und das Ergebnis, zu dem er gehört; fiel der Pfad anders aus, kommt der Text hinein. */
+function laufInselNachher(gehalten, gehaltenGeblieben) {
+  const v = S.ui.lauf;
+  if (S.ui.view !== 'lauf' || !v) return;
+  if (gehalten && !gehaltenGeblieben && v.ergebnis && v.ergebnis.html) document.getElementById('lv-insel').outerHTML = v.ergebnis.html;
+  const knoten = document.getElementById('lv-insel');
+  v.insel = knoten ? { knoten, ergebnis: v.ergebnis } : null;
+}
+
+/** Öffnet die Laufansicht aus „Läufe“ mit einem neuen Verlaufseintrag samt Marke (ADR-0041 Punkt 2). */
+function laufOeffnen(kennung) {
+  const u = S.ui;
+  if (!u.offen) return;
+  const basis = u.view === 'aufgaben' ? 'aufgaben' : 'board';
+  history.pushState(LAUF_AUS_DER_LISTE, '', laufAdresseBilden({ basis, slug: u.slug, nummer: u.offen, kennung }));
+  adresseGewechselt();
+}
+
+/** Zurück ins Aufgabenfenster mit der Ansicht „Läufe“ (FA 3): über „Ansehen“ geöffnet ein Schritt zurück, sonst ersetzt. */
+function laufZurueck() {
+  const v = S.ui.lauf;
+  if (!v) return;
+  S.ui.tab = 'laeufe';
+  if (laufAusDerListe()) { history.back(); return; }
+  history.replaceState(null, '', adresseBilden({ sicht: v.basis, slug: v.slug, nummer: v.nr }));
+  adresseGewechselt();
+}
+
 /** Zeichnet den Hauptbereich neu und lässt dabei die Personenwahl des Stundenzettels als denselben Knoten stehen, damit ein
     fremdes Live-Ereignis eine offene Liste nicht schließt und der Fokus nicht springt (R00201 AK 9). Chromium schließt die
     Liste schon, wenn der Knoten nur verschoben wird (auch mit `moveBefore`, geprobt in Chromium 159): er darf seinen Platz im
@@ -2326,6 +2547,7 @@ function render() {
   commitsAnstossen();
   laeufeAnstossen();
   reviewAnstossen();
+  laufAnstossen();
   document.title = fenstertitel();
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —
   // sonst springt das Board unter dem Kontextmenü weg und das Aufgabenfenster bei jedem Live-Ereignis nach oben.
@@ -2361,6 +2583,8 @@ function render() {
   const personenwahlVorher = document.getElementById(PERSONENWAHL);
   const inselAlt = document.getElementById('rv-insel');
   inselGehalten = inselAlt && inselAlt.dataset.insel === reviewInselSchluessel() ? inselAlt : null;
+  laufInselGehalten = laufInselVorher();
+  const laufKnotenVorher = S.ui.view === 'lauf' ? LAUF_KNOTEN.map(id => document.getElementById(id)).filter(Boolean) : [];
   const reviewPosVorher = document.getElementById('rv-pos');
   const reviewAnsageVorher = document.getElementById('rv-ansage');
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
@@ -2371,7 +2595,9 @@ function render() {
   S.neuzeichnen = true;
   try {
     $('#kopf').innerHTML = vKopf();
-    hauptbereichErsetzen($('#main'), vMain(), personenwahlVorher, inselGehalten);
+    const gehaltenGeblieben = hauptbereichErsetzen($('#main'), vMain(), personenwahlVorher, inselGehalten || laufInselGehalten);
+    laufInselNachher(laufInselGehalten, gehaltenGeblieben);
+    laeufeKnotenBehalten(laufKnotenVorher);
     $('#main').dataset.sicht = sicht;
     const laeufeInsel = laeufeInselVergleichenUndMerken();
     const ueber = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster(laeufeInsel) : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
@@ -2388,6 +2614,7 @@ function render() {
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
   } finally {
     inselGehalten = null;
+    laufInselGehalten = null;
     S.neuzeichnen = false;
   }
   hinweisEinpassen();
@@ -3193,6 +3420,16 @@ async function aktion(a, arg, wert) {
         break;
       }
       case 'review-oeffnen': reviewOeffnen(arg); return;
+      case 'lauf-oeffnen': laufOeffnen(arg); return;
+      case 'lauf-zurueck': laufZurueck(); return;
+      case 'lauf-erneut': {
+        // „Erneut versuchen“ (FA 8): derselbe Knoten, gesperrt bis zum Ergebnis; ein Klick in dieser Zeit liest nicht noch einmal
+        const v = u.lauf;
+        if (!v || v.laedt) break;
+        v.erneut = true;
+        laufLesen(v);
+        break;
+      }
       case 'review-zurueck':
       case 'review-liste': reviewZurueck(); return;
       case 'review-weg': {
@@ -4330,7 +4567,7 @@ document.addEventListener('click', e => {
     return;
   }
   // Ein Review-Verweis mit Umschalt-, Strg- oder Meta-Taste bleibt ein Link (neuer Tab, neues Fenster; ADR-0033 Punkt 2)
-  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-umschalten', 'review-alle-zeigen'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
+  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-umschalten', 'review-alle-zeigen', 'lauf-oeffnen', 'lauf-zurueck'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });

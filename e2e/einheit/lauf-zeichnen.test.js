@@ -20,7 +20,7 @@ const G = [
 
 test('AK 6: Datei G — Nachricht offen mit fett, Aufruf und Ergebnis eingeklappt, Fehlereintrag an seiner Stelle, Ende', () => {
   const html = laufHtml(G, false, esc);
-  assert.match(html, /^<ol class="lv-l" id="lv-insel" aria-label="Einträge des Transkripts der Reihe nach">/);
+  assert.match(html, /^<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">/);
   const [n1, w2, f4, w5, n6, ende] = eintraegeVon(html);
   assert.strictEqual(eintraegeVon(html).length, 6);
   assert.match(n1, /<b>entwickler<\/b><span>Agent<\/span><span class="mono">10:00:41<\/span>/);

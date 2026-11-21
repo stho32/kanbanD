@@ -48,6 +48,7 @@ function vKopf() {
   const ordnerName = z.ordner.split('/').filter(Boolean).pop();
   if (u.setup) return `<header class="kz modus" data-stufe="${u.stufe}"><div class="kz-reihe"><div class="kz-z1">${esc(S.board.titel)} <span class="mono">boards/${esc(S.board.slug)}.md</span></div><div class="kz-modus"><b>Spalten einrichten</b><span class="muted">schreibt nur die Board-Datei, Aufgaben bleiben unberührt</span>${u.setup.fehler ? `<span class="fehl-kopf" role="alert">${esc(u.setup.fehler)}</span>` : ''}<div class="rechts"><button class="kz-btn" data-act="setup-weg">Verwerfen</button><button class="kz-btn haupt" data-act="setup-ok">Fertig</button>${vIchKnopf()}</div></div></div></header>`;
   if (u.view === 'review') return vReviewKopf();
+  if (u.view === 'lauf') return vLaufKopf();
   if (!z.eingerichtet || u.first) return `<header class="kz" data-stufe="${u.stufe}"><div class="kz-reihe"><div class="kz-z1">${esc(ordnerName)} <span class="mono">${esc(z.ordner)}</span></div><div class="kz-modus"><b>Erster Start</b><span class="muted">Ordner ohne kanbanD.md</span></div></div></header>`;
   const plaetze = kopfPlaetze(u.stufe, kopfAnsicht());
   const element = kopfElemente();
