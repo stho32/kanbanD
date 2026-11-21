@@ -1537,3 +1537,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #208 | Erledigt | architekt | bestanden | 9 min | Modell nachgeführt, ADR-0036 Nachtrag Gebaut G1–G9 · claude · opus · Lauf 208-architekt-2 · 3,31 $ · Karte gesamt 38,55 $ |
 | 2026-11-21 | #217 | Architektur | architekt | bestanden | 4 min | ADR-0039 Läufe in der Seite zusammengeführt · claude · opus · Lauf 217-architekt-1 · 1,43 $ · Karte gesamt 1,43 $ |
 | 2026-11-21 | #217 | Detailplanung | product-owner | bestanden | 3 min | Z. 466–470 · claude · opus · Lauf 217-product-owner-1 · 0,99 $ · Karte gesamt 2,42 $ |
+| 2026-11-21 | #217 | Detailplanung | planer | bestanden | 8 min | I0209 B1125–B1131, R00219 · claude · opus · Lauf 217-planer-1 · 3,08 $ · Karte gesamt 5,50 $ |
+| 2026-11-21 | #217 | Detailplanung | gestalter | bestanden | 14 min | D0009 #laeufe, #laufansicht, #transkripte-schalter · claude · sonnet · Lauf 217-gestalter-1 · 5,35 $ · Karte gesamt 10,85 $ |
+| 2026-11-21 | #217 | Detailplanung | product-owner | bestanden | 3 min | D1/D2/C2 freigegeben mit Änderung, Z. 471–477 · claude · opus · Lauf 217-product-owner-2 · 1,39 $ · Karte gesamt 12,24 $ |
