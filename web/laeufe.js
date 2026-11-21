@@ -132,7 +132,7 @@
   /** Die Tabelle; die Rollen stehen ausdrücklich, damit die Blockform schmaler Breiten (CSS `display`) sie nicht nimmt. */
   function tabelleHtml(zeilen, gelesen, esc) {
     const kopf = SPALTEN.map(name => `<th scope="col" role="columnheader"${name === 'Betrag' ? ' class="r"' : ''}>${name}</th>`).join('');
-    return `<div class="lf-rahmen"><table class="lf-tab" role="table" aria-label="Läufe dieser Aufgabe, neueste zuerst"><thead role="rowgroup"><tr role="row">${kopf}</tr></thead><tbody role="rowgroup">${zeilen.map(z => zeileHtml(z, gelesen, esc)).join('')}</tbody></table></div>`;
+    return `<div class="lf-rahmen" id="lf-insel"><table class="lf-tab" role="table" aria-label="Läufe dieser Aufgabe, neueste zuerst"><thead role="rowgroup"><tr role="row">${kopf}</tr></thead><tbody role="rowgroup">${zeilen.map(z => zeileHtml(z, gelesen, esc)).join('')}</tbody></table></div>`;
   }
 
   /** Boards in „…“, mit Komma, vor dem letzten „und“ ohne Komma; alle genannt (PO Z. 480). */
@@ -166,9 +166,17 @@
     return laeufe(l.ergebnis.antwort.transkripte, kosteneintraege);
   }
 
+  /** Die Tabelle allein (ADR-0039 N1: die Insel und ihr Schlüssel); ohne Zeilen leer. */
+  function laeufeTabelleHtml(l, kosteneintraege, esc) {
+    const zeilen = sichtbareZeilen(l, kosteneintraege);
+    if (!zeilen.length) return '';
+    return tabelleHtml(zeilen, Boolean(l.ergebnis && l.ergebnis.art === 'liste'), esc);
+  }
+
   /** Die ganze Ansicht aus dem Zustand `l = {laedt, ergebnis: null | {art: 'liste', antwort, stand} | {art: 'fehler', fehler}}`
-      und den Kosteneinträgen der Aufgabe im aktuellen Stand. Einzige Live-Region ist der Statusbereich im Fuß. */
-  function laeufeAnsichtHtml(l, kosteneintraege, esc) {
+      und den Kosteneinträgen der Aufgabe im aktuellen Stand. Einzige Live-Region ist der Statusbereich im Fuß. `tabelle` ist
+      der schon gebaute Text der Tabelle oder, wenn die alte Tabelle stehen bleibt, ihr leerer Platzhalter (ADR-0039 N1). */
+  function laeufeAnsichtHtml(l, kosteneintraege, esc, tabelle = laeufeTabelleHtml(l, kosteneintraege, esc)) {
     const zeilen = sichtbareZeilen(l, kosteneintraege);
     const liste = l.ergebnis && l.ergebnis.art === 'liste';
     const kopf = `<div class="cl-kopf"><h3>LÄUFE ${l.ergebnis ? `<span class="mono">${tausender(zeilen.length)}</span>` : ''}</h3><span class="cl-hin">neueste zuerst · Kosten und Transkript eines Laufs in einer Zeile</span></div>`;
@@ -179,12 +187,12 @@
     }
     if (liste && l.ergebnis.antwort.erfassen === false) oben += `<p class="lf-hw" role="note">${esc(laeufeHinweisText(l.ergebnis.antwort.boards_aus || []))}</p>`;
     let mitte = '';
-    if (zeilen.length) mitte = tabelleHtml(zeilen, liste, esc);
+    if (zeilen.length) mitte = tabelle;
     else if (liste) mitte = '<div class="cl-leer">An dieser Aufgabe stehen keine Läufe mehr.</div>';
     const neu = `<button type="button" class="cl-textknopf" id="laeufe-neu"${l.laedt ? ' aria-disabled="true"' : ' data-act="laeufe-lesen"'}>${NEU_SYMBOL}Neu lesen</button>`;
     const fuss = `<div class="cl-fuss"><span class="lf-stand" id="laeufe-status" role="status">${esc(statusText(l, zeilen.length))}</span>${neu}</div>`;
     return `<div class="mod-main lf-panel">${kopf}${oben}${mitte}${fuss}</div>`;
   }
 
-  Object.assign(ziel, { laeufe, kennungsmengeGeaendert, laeufeAnsichtHtml, laeufeHinweisText, laeufeFehlerText });
+  Object.assign(ziel, { laeufe, kennungsmengeGeaendert, laeufeTabelleHtml, laeufeAnsichtHtml, laeufeHinweisText, laeufeFehlerText });
 })(typeof module !== 'undefined' ? module.exports : window);

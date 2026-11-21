@@ -121,7 +121,7 @@ test('Hinweis bei erfassen: false — ein, zwei, drei Boards in Reihenfolge der 
 
 test('Hinweis steht als role="note" über der Liste nur bei erfassen: false', () => {
   const html = laeufeAnsichtHtml(liste({ erfassen: false, boards_aus: ['zweit'] }), KOSTEN, esc);
-  assert.match(html, /<p class="lf-hw" role="note">Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript\.<\/p><div class="lf-rahmen">/);
+  assert.match(html, /<p class="lf-hw" role="note">Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript\.<\/p><div class="lf-rahmen" id="lf-insel">/);
   assert.doesNotMatch(laeufeAnsichtHtml(liste(), KOSTEN, esc), /role="note"/);
 });
 
@@ -132,4 +132,26 @@ test('fremder Text: Rolle, Spalte und Board maskiert, Bidi-Steuerzeichen entfern
   assert.match(html, /Kosten gebucht in &lt;img src=x onerror=window\.pwn=1&gt; &quot;x&quot;/);
   assert.match(html, /„bo&lt;b&gt;“/);
   assert.match(html, /&lt;i&gt;r/);
+});
+
+const { laeufeTabelleHtml } = require('../../web/laeufe.js');
+
+test('ADR-0039 N1: laeufeTabelleHtml ist der Schlüssel der Insel — gleich bei gleichen Daten, anders bei jedem Eingang, leer ohne Zeilen', () => {
+  const basis = laeufeTabelleHtml(liste(), KOSTEN, esc);
+  assert.match(basis, /^<div class="lf-rahmen" id="lf-insel"><table/);
+  assert.strictEqual(laeufeTabelleHtml(liste(), KOSTEN, esc), basis, 'gleich');
+  assert.strictEqual(laeufeTabelleHtml({ ...liste(), laedt: true }, KOSTEN, esc), basis, 'Laden ändert die Tabelle nicht');
+  assert.notStrictEqual(laeufeTabelleHtml(liste(), [...KOSTEN.slice(1), k(L1, 'Detailplanung', 0.43)], esc), basis, 'Betrag');
+  assert.notStrictEqual(laeufeTabelleHtml(liste(), KOSTEN.map(e => e.kennung === L2 ? { ...e, column: 'Entwicklung' } : e), esc), basis, 'Spalte der Kosten');
+  assert.notStrictEqual(laeufeTabelleHtml(liste({ transkripte: TRANSKRIPTE.map(e => e.kennung === L1 ? { ...e, zustand: 'fehlt' } : e) }), KOSTEN, esc), basis, 'Zustand');
+  assert.notStrictEqual(laeufeTabelleHtml(fehler(503, 'x'), KOSTEN, esc), laeufeTabelleHtml(liste({ transkripte: [] }), KOSTEN, esc), 'gelesen oder nicht gelesen');
+  assert.strictEqual(laeufeTabelleHtml(liste({ transkripte: [] }), [], esc), '');
+});
+
+test('ADR-0039 N1: laeufeAnsichtHtml setzt den übergebenen Text der Tabelle ein (Platzhalter der Insel), Kopf und Fuß rechnet sie selbst', () => {
+  const html = laeufeAnsichtHtml(liste(), KOSTEN, esc, '<div class="lf-rahmen" id="lf-insel"></div>');
+  assert.match(html, /<div class="lf-rahmen" id="lf-insel"><\/div><div class="cl-fuss">/);
+  assert.match(html, /LÄUFE <span class="mono">6<\/span>/);
+  assert.strictEqual(status(html), '6 Läufe · Stand 09:14:07');
+  assert.strictEqual(laeufeAnsichtHtml(liste(), KOSTEN, esc), laeufeAnsichtHtml(liste(), KOSTEN, esc, laeufeTabelleHtml(liste(), KOSTEN, esc)));
 });

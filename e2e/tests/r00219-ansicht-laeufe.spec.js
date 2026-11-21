@@ -841,6 +841,29 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     expect(alle[0]).toBe('status: Liest die Läufe …');
   });
 
+  /* ── ADR-0039 N1: die Tabelle ist eine Insel, die im Dokument bleibt, solange ihr HTML gleich ist ── */
+
+  test('ADR-0039 N1: Kommentar und Änderung an einer anderen Karte lassen die Tabelle als denselben Knoten stehen; ein gebuchter Kosteneintrag ersetzt sie', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await expect(page.locator(ZEILEN)).toHaveCount(6);
+    const tabelle = `${ANSICHT_LAEUFE} .lf-rahmen`;
+    await page.locator(tabelle).evaluate(el => { el.__probe = 1; window.kdInselAusgehaengt = 0; new MutationObserver(e => { for (const m of e) for (const n of m.removedNodes) if (n === el) window.kdInselAusgehaengt++; }).observe(document.body, { subtree: true, childList: true }); });
+    const vorher = await page.evaluate(() => window.kdTest.renders());
+    await lauf.kommentieren(k.adresse, 1, 'Ein Kommentar');
+    await page.waitForFunction(() => window.kdTest.kommentare(1) === 1 && window.kdTest.gezeichnet());
+    const titel = await fetch(`${k.adresse}api/aufgaben/2`, { method: 'PATCH', headers: { 'X-KanbanD-Wer': lauf.MENSCH, 'Content-Type': 'application/json' }, body: JSON.stringify({ titel: 'Nur Kosten, umbenannt' }) });
+    expect(titel.ok).toBe(true);
+    await page.waitForFunction(() => window.kdTest.titel(2) === 'Nur Kosten, umbenannt' && window.kdTest.gezeichnet());
+    expect(await page.evaluate(() => window.kdTest.renders())).toBeGreaterThan(vorher);
+    expect(await page.locator(tabelle).evaluate(el => el.__probe), 'dieselbe Tabelle').toBe(1);
+    expect(await page.evaluate(() => window.kdInselAusgehaengt), 'nie aus- und wieder eingehängt').toBe(0);
+    expect(h.anzahl()).toBe(1);
+    await lauf.buchen(k.adresse, 1, lauf.L.L3, 'Reviews', 0.25);
+    await expect(zeileVon(page, 'code-reviewer').locator('.lf-be')).toHaveText('0,25 $');
+    expect(await page.locator(tabelle).evaluate(el => el.__probe), 'neue Tabelle').toBeUndefined();
+    expect(h.anzahl()).toBe(1);
+  });
+
   /* ── AK 1 Messprobe, Teil Zeichnen (Tag-Kriterium, kein Zeittest im Gate): nur mit KD_MESSPROBE=1 ── */
 
   test('AK 1 Messprobe Zeichnen: „Läufe“ mit 1.000 Zeilen 20-mal neu gezeichnet, jedes render() < 100 ms', async ({ page }) => {
@@ -862,6 +885,15 @@ test.describe('R00219 Ansicht „Läufe“', () => {
       return aus;
     });
     expect(await page.locator(ZEILEN).count()).toBe(1000);
+    // Beobachtung ohne Grenze (ADR-0039 N1 Punkt 5): das erste Zeichnen — ohne gehaltene Insel wird die Tabelle neu eingesetzt
+    const erstes = await page.evaluate(() => Array.from({ length: 5 }, () => {
+      S.ui.laeufe.insel = null;
+      const beginn = performance.now();
+      render();
+      void document.body.offsetHeight;
+      return performance.now() - beginn;
+    }));
+    console.log(`MESSPROBE erstes Zeichnen ms (Beobachtung): ${erstes.map(w => w.toFixed(1)).join(' ')}`);
     console.log(`MESSPROBE Zeichnen ms render: ${werte.map(w => w.render.toFixed(1)).join(' ')}`);
     console.log(`MESSPROBE Zeichnen ms mit Layout: ${werte.map(w => w.mitLayout.toFixed(1)).join(' ')}`);
     console.log(`MESSPROBE Zeichnen größter Wert render ${Math.max(...werte.map(w => w.render)).toFixed(1)} ms, mit Layout ${Math.max(...werte.map(w => w.mitLayout)).toFixed(1)} ms`);

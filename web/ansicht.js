@@ -469,7 +469,10 @@ function vCommitsPanel() {
 /** Die Ansicht „Läufe“ (R00219): nur lesend; Zusammenführen und Zeichnen in web/laeufe.js, gelesen wird in app.js (laeufeLesen).
     Die Kosten kommen aus dem aktuellen Stand der Aufgabe, der Zustand der Transkripte aus der letzten Antwort. */
 function vLaeufePanel(a) {
-  return laeufeAnsichtHtml(S.ui.laeufe || { laedt: true, ergebnis: null }, a.kosteneintraege || [], esc);
+  const l = S.ui.laeufe || { laedt: true, ergebnis: null };
+  // Die Insel (ADR-0039 N1, app.js laeufeInselPruefen): bleibt die alte Tabelle stehen, kommt nur ihr Platzhalter in den Text
+  const tabelle = laeufeInsel.gehalten ? LAEUFE_INSEL_PLATZHALTER : laeufeInsel.text;
+  return laeufeAnsichtHtml(l, a.kosteneintraege || [], esc, tabelle === null ? undefined : tabelle);
 }
 function vVerlaufPanel() {
   const u = S.ui;

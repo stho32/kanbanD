@@ -972,3 +972,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #217 R00219 | B1129 Lesen: Öffnen, „Neu lesen“, einmal bei geänderter Kennungsmenge, späte Antwort verworfen | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #217 R00219 | B1130 Breite, Ziele, Themen, Kontrast, Tastatur, Fokus und Ansage | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-21 | Karte #217 R00219 | B1125 Messprobe am Server: 1000 Transkripte und 1000 Kosteneinträge | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #217 R00219 | B1128 Liste zeichnen, Insel nach ADR-0039 N1 und Messprobe Zeichnen | Standard | 1-2h | 0,9h | 0,9h | autonom |

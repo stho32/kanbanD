@@ -976,7 +976,7 @@ function laeufeAnstossen() {
 async function laeufeLesen(nr) {
   const vorher = S.ui.laeufe && S.ui.laeufe.nr === nr ? S.ui.laeufe : null;
   const kennungen = (aufgabe(nr).transkripte || []).map(t => t.kennung);
-  const lauf = S.ui.laeufe = { nr, laedt: true, kennungen, ergebnis: vorher ? vorher.ergebnis : null };
+  const lauf = S.ui.laeufe = { nr, laedt: true, kennungen, ergebnis: vorher ? vorher.ergebnis : null, insel: vorher ? vorher.insel : null };
   let ergebnis;
   try {
     ergebnis = { art: 'liste', antwort: await api('GET', `/api/aufgaben/${nr}/transkripte`), stand: uhr(Date.now()) };
@@ -989,6 +989,22 @@ async function laeufeLesen(nr) {
   const aufErneut = document.activeElement && document.activeElement.id === 'laeufe-erneut';
   if (aufErneut && ergebnis.art === 'liste') S.ui.fokus = '#laeufe-neu';
   render();
+}
+
+/** Die Tabelle der Ansicht als Insel (ADR-0039 N1): ist ihr HTML-Text gleich dem zuletzt eingesetzten derselben Aufgabe, bleibt
+    der alte Knoten im Dokument, und `#over` wird entlang des Pfads zu ihm abgeglichen statt neu geschrieben. Der Text ist der
+    Schlüssel und liegt in `S.ui.laeufe.insel` — so kann kein Eingang (Antwort, Kosten, Zustandswort) vergessen werden. */
+const LAEUFE_INSEL_PLATZHALTER = '<div class="lf-rahmen" id="lf-insel"></div>';
+let laeufeInsel = { text: null, gehalten: null };
+
+function laeufeInselPruefen() {
+  const l = S.ui.laeufe, a = S.ui.offen && !S.ui.setup && aufgabe(S.ui.offen);
+  if (!l || !a || ansichtDerAufgabe(a) !== 'laeufe') return { text: null, gehalten: null };
+  const text = laeufeTabelleHtml(l, a.kosteneintraege || [], esc);
+  const alt = $('#over').dataset.offen === String(S.ui.offen) ? document.getElementById('lf-insel') : null;
+  const gleich = Boolean(alt && text && l.insel === text);
+  l.insel = text;
+  return { text, gehalten: gleich ? alt : null };
 }
 
 /** Statusbereich, „Neu lesen“ und „Erneut versuchen“ bleiben beim Neuzeichnen dieselben Knoten (R00219 AK 10): sie übernehmen
@@ -1709,9 +1725,9 @@ function reviewOeffnen(verweis) {
     fremdes Live-Ereignis eine offene Liste nicht schließt und der Fokus nicht springt (R00201 AK 9). Chromium schließt die
     Liste schon, wenn der Knoten nur verschoben wird (auch mit `moveBefore`, geprobt in Chromium 159): er darf seinen Platz im
     Dokument nicht verlassen. Darum bleibt der Pfad von #main bis zur Liste stehen; ersetzt werden die Geschwister auf jeder Stufe,
-    an der Liste die Einträge und die Wahl. Zeichnet die neue Ansicht den Pfad anders, wird wie sonst alles ersetzt. */
-function hauptbereichErsetzen(html, personenwahlVorher, inselVorher = null) {
-  const hauptbereich = $('#main');
+    an der Liste die Einträge und die Wahl. Zeichnet die neue Ansicht den Pfad anders, wird wie sonst alles ersetzt.
+    Die Wurzel ist `#main` oder `#over` (Insel der Ansicht „Läufe“, ADR-0039 N1). */
+function hauptbereichErsetzen(hauptbereich, html, personenwahlVorher, inselVorher = null) {
   const vorlage = document.createElement('template');
   vorlage.innerHTML = html;
   // Die Insel der Review-Seite (ADR-0033 Punkt 4) bleibt auf demselben Weg stehen wie die Personenwahl: ihr Pfad bleibt, der
@@ -2194,9 +2210,13 @@ function render() {
   S.neuzeichnen = true;
   try {
     $('#kopf').innerHTML = vKopf();
-    hauptbereichErsetzen(vMain(), personenwahlVorher, inselGehalten);
+    hauptbereichErsetzen($('#main'), vMain(), personenwahlVorher, inselGehalten);
     $('#main').dataset.sicht = sicht;
-    $('#over').innerHTML = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
+    laeufeInsel = laeufeInselPruefen();
+    const ueber = (S.ui.neu ? vNeu() : '') + (S.ui.offen && !S.ui.setup ? vFenster() : '') + (S.ui.offenDefekt ? vDefektFenster() : '') + vPop() + vAlDialog() + vHinweis() + (S.ui.hilfe ? vHilfe() : '') + (S.ui.zuweisen ? vZuweisen() : '') + vMenue() + vTipp();
+    // Steht die Insel der Ansicht „Läufe“, wird `#over` auf demselben Weg wie `#main` abgeglichen: sie bleibt im Dokument (ADR-0039 N1)
+    if (laeufeInsel.gehalten) hauptbereichErsetzen($('#over'), ueber, null, laeufeInsel.gehalten);
+    else $('#over').innerHTML = ueber;
     $('#over').dataset.offen = String(S.ui.offen || '');
     meldungsknotenBehalten(meldungVorher);
     datumsknotenBehalten(tagVorher);
@@ -2206,6 +2226,7 @@ function render() {
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
   } finally {
     inselGehalten = null;
+    laeufeInsel = { text: null, gehalten: null };
     S.neuzeichnen = false;
   }
   hinweisEinpassen();
