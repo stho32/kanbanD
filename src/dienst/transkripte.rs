@@ -557,6 +557,27 @@ mod tests {
         d
     }
 
+    fn git_status(w: &Path) -> String {
+        let a = std::process::Command::new("git").arg("-C").arg(w).args(["status", "--porcelain", "--untracked-files=all"]).output().unwrap();
+        String::from_utf8_lossy(&a.stdout).into_owned()
+    }
+
+    fn zwischendateien(w: &Path) -> usize {
+        dateien(w).iter().filter(|d| d.ends_with(".kanbanD-tmp")).count()
+    }
+
+    // Nacharbeit 1 #208 (code-reviewer, Testlücke): bricht der Client ab, fällt der Empfang ohne Einhängen — er löscht
+    // seine Zwischendatei; was bleibt, ist ignoriert
+    #[test]
+    fn abbruch_durch_den_client_raeumt_die_zwischendatei() {
+        let (w, k, _) = ordner();
+        let e = empfangen(&k);
+        assert_eq!(zwischendateien(w.path()), 1);
+        drop(e);
+        assert_eq!(zwischendateien(w.path()), 0);
+        assert_eq!(git_status(w.path()), "");
+    }
+
     // Prüfen-dann-Handeln (ADR-0036 Regel 5): zwei Uploads derselben Kennung haben beide die Vorprüfung und die
     // Zwischendatei hinter sich; unter der Sperre gewinnt genau einer, der zweite räumt seine Zwischendatei
     #[test]
