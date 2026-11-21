@@ -106,3 +106,7 @@ test('auflegen: Zeilen ohne Stück bleiben unberührt; ist die Datei nicht mehr 
   assert.strictEqual(aufgaben.length, 0);
   assert.strictEqual(fertig, 0);
 });
+
+test('TK_KLASSEN der Seite ist dieselbe Rollenliste wie ROLLEN des Workers (Code-Review Kann 6)', () => {
+  assert.deepStrictEqual(d.TK_KLASSEN, require('../../web/faerben.js').ROLLEN);
+});
