@@ -840,4 +840,31 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     expect(alle).toHaveLength(2);
     expect(alle[0]).toBe('status: Liest die Läufe …');
   });
+
+  /* ── AK 1 Messprobe, Teil Zeichnen (Tag-Kriterium, kein Zeittest im Gate): nur mit KD_MESSPROBE=1 ── */
+
+  test('AK 1 Messprobe Zeichnen: „Läufe“ mit 1.000 Zeilen 20-mal neu gezeichnet, jedes render() < 100 ms', async ({ page }) => {
+    test.skip(!process.env.KD_MESSPROBE, 'Messprobe nur ausdrücklich und tagsüber (R00219 AK 1)');
+    await k.stoppen();
+    k = await kanbanStarten(lauf.ausgangslage({ tausend: true }));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await laeufeOeffnen(page, 7);
+    await expect(page.locator(ZEILEN)).toHaveCount(1000);
+    const werte = await page.evaluate(() => {
+      const aus = [];
+      for (let i = 0; i < 20; i++) {
+        const beginn = performance.now();
+        render();
+        const nachRender = performance.now();
+        void document.body.offsetHeight;
+        aus.push({ render: nachRender - beginn, mitLayout: performance.now() - beginn });
+      }
+      return aus;
+    });
+    expect(await page.locator(ZEILEN).count()).toBe(1000);
+    console.log(`MESSPROBE Zeichnen ms render: ${werte.map(w => w.render.toFixed(1)).join(' ')}`);
+    console.log(`MESSPROBE Zeichnen ms mit Layout: ${werte.map(w => w.mitLayout.toFixed(1)).join(' ')}`);
+    console.log(`MESSPROBE Zeichnen größter Wert render ${Math.max(...werte.map(w => w.render)).toFixed(1)} ms, mit Layout ${Math.max(...werte.map(w => w.mitLayout)).toFixed(1)} ms`);
+    for (const w of werte) expect(w.mitLayout).toBeLessThan(100);
+  });
 });
