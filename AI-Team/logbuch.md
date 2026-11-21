@@ -1496,3 +1496,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #216 | Detailplanung | planer | bestanden | 7 min | I0207 B1105–B1111, R00217 · claude · opus · Lauf 216-planer-1 · 2,30 $ · Karte gesamt 3,97 $ |
 | 2026-11-21 | #208 | Auto-Reviews | architektur-reviewer | befund | 2 min | Muss: Zyklus Wächter → dienst::transkripte::ORDNER · claude · sonnet · Lauf 208-architektur-reviewer-1 · 0,53 $ · Karte gesamt 24,95 $ |
 | 2026-11-21 | #220 | Architektur | architekt | bestanden | 6 min | ADR-0038 vorgeschlagen bis Sondierung · claude · opus · Lauf 220-architekt-1 · 1,83 $ · Karte gesamt 1,83 $ |
+| 2026-11-21 | #220 | Detailplanung | product-owner | bestanden | 3 min | Z. 455–457: Oberfläche gehört dazu, keine ähnlichen, kein Hinweis (#216) · claude · opus · Lauf 220-product-owner-1 · 1,16 $ · Karte gesamt 2,99 $ |
