@@ -977,3 +977,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #217 R00219 | Nacharbeit 1: UX Muss 1, Sollte 2/3, Code-Review Sollte 1–3, Kann 4 | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-21 | Karte #216 R00217 | B1106 Prism einbetten, nur im Worker | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #216 R00217 | B1107 Sprache nach Endung und Grenze je Datei | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #216 R00217 | B1108 Tokens je Hunk und Seite als Int32Array | Standard | 1-2h | 0,4h | 0,4h | autonom |

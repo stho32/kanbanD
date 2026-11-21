@@ -51,4 +51,31 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     expect(await page.locator('#fenster [class*="token"], #fenster [class*="tk-"]').count()).toBe(0);
     expect(await code.evaluate(e => e.innerHTML)).toBe('fn m() {}');
   });
+
+  /* ── AK 10 Worker ── */
+
+  test('AK 10: der Worker beantwortet JSON-Text nicht mit HTML, die erste Antwort ist das Int32Array zum Auftrag', async ({ page }) => {
+    await page.goto(reviewAdresse(k, 2));
+    await expect(page.locator('#rv-insel .df')).toHaveCount(12);
+    const antworten = await page.evaluate(() => new Promise(fertig => {
+      const w = new Worker('/web/faerben.js');
+      const erhalten = [];
+      w.onmessage = e => {
+        const d = e.data;
+        erhalten.push(d instanceof Int32Array ? { art: 'Int32Array', werte: Array.from(d) } : { art: typeof d, text: typeof d === 'string' ? d : JSON.stringify(d) });
+        if (d instanceof Int32Array) { w.terminate(); fertig(erhalten); }
+      };
+      w.onerror = () => fertig([{ art: 'onerror' }]);
+      w.postMessage(JSON.stringify({ language: 'rust', code: 'fn x(){}' }));
+      w.postMessage({ sprache: 'rust', zeilen: patchZeilen('@@ -0,0 +1 @@\n+fn main() {}\n') });
+    }));
+    expect(antworten[0].art, `erste Antwort: ${JSON.stringify(antworten[0])}`).toBe('Int32Array');
+    expect(antworten.some(a => /<span|token/.test(a.text || '')), 'keine HTML-Antwort').toBe(false);
+    const werte = antworten[0].werte;
+    expect(werte.length % 4).toBe(0);
+    expect(werte.length).toBeGreaterThan(0);
+    expect(werte.filter((_, i) => i % 4 === 3).every(r => r >= 0 && r <= 6)).toBe(true);
+    // `fn` steht in Zeile 1 an 0–2 mit Rolle 0 (Schlüsselwort)
+    expect(werte.slice(0, 4)).toEqual([1, 0, 2, 0]);
+  });
 });
