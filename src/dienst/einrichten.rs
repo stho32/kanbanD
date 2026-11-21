@@ -53,7 +53,7 @@ impl Einrichtung {
             klassen: vec![],
             signale: vec![],
             quellen: Quellen { repository: self.quellen.repository.trim().into(), wbs: self.quellen.wbs.trim().into(), anforderungen: self.quellen.anforderungen.trim().into(), anwendungen: vec![] },
-transkripte_erfassen: None,
+            transkripte_erfassen: None,
         };
         e.repository_ergaenzen();
         e

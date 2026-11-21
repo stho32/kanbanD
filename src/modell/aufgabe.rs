@@ -524,7 +524,7 @@ fn braucht_schema() -> utoipa::openapi::schema::Array {
         .build()
 }
 
-/// Ein nur lesbares Feld: was immer ankommt, wird überlesen.
+/// `transkripte` in der API: nur die lesbaren Einträge.
 fn nur_lesbare<S: serde::Serializer>(zeilen: &[super::Transkriptzeile], s: S) -> Result<S::Ok, S::Error> {
     s.collect_seq(zeilen.iter().filter_map(super::Transkriptzeile::lesbar))
 }
@@ -534,6 +534,7 @@ fn nie_gelesen_liste<'de, D: serde::Deserializer<'de>, T>(d: D) -> Result<Vec<T>
     serde::de::IgnoredAny::deserialize(d).map(|_| vec![])
 }
 
+/// Ein nur lesbares Feld: was immer ankommt, wird überlesen.
 fn nie_gelesen<'de, D: serde::Deserializer<'de>, T>(d: D) -> Result<Option<T>, D::Error> {
     serde::de::IgnoredAny::deserialize(d).map(|_| None)
 }
