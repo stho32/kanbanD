@@ -1,7 +1,7 @@
 // R00220 B1136: Wahl und Wirkung je Board und die Sätze an der Zeile — reine Rechnung aus web/transkripte-schalter.js.
 const test = require('node:test');
 const assert = require('node:assert');
-const { schalterWahl, schalterWirkung, schalterRumpf, schalterErfolgsSatz, schalterFehlerSatz, schalterWirkungText } = require('../../web/transkripte-schalter.js');
+const { schalterBoardName, schalterWahl, schalterWirkung, schalterRumpf, schalterErfolgsSatz, schalterFehlerSatz, schalterWirkungText } = require('../../web/transkripte-schalter.js');
 
 test('Vorgabe des Ordners: fehlt der Schlüssel, ist „aus“ gewählt', () => {
   assert.strictEqual(schalterWahl(null, null), 'aus');
@@ -41,6 +41,10 @@ test('Erfolgssatz nach der wirksamen Lage (Wortlaut 23), am Board und an der Vor
 
 test('Fremder Boardname: Bidi-Steuerzeichen fallen weg', () => {
   assert.strictEqual(schalterErfolgsSatz('a‮b⁦c', true), 'Auf „abc“ werden jetzt Transkripte erfasst.');
+});
+
+test('Boardname zum Zeichnen ohne Bidi-Steuerzeichen, sonst unverändert', () => {
+  assert.strictEqual(schalterBoardName('<b>\u2067x\u202Ay'), '<b>xy');
 });
 
 test('Fehlersatz (Wortlaut 24): mit Status und Meldung der Antwort, ohne Verbindung eigener Satz', () => {

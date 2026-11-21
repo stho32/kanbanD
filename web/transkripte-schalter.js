@@ -40,5 +40,8 @@
     return `Der Schalter ließ sich nicht umstellen: ${ohneSteuerzeichen(fehler) || 'unbekannter Fehler'} (${status}).`;
   }
 
-  Object.assign(ziel, { schalterWahl, schalterWirkung, schalterWirkungText, schalterRumpf, schalterErfolgsSatz, schalterFehlerSatz });
+  /** Der Name eines Boards zum Zeichnen: ohne Bidi-Steuerzeichen (FA 11, ADR-0030); maskiert wird beim Einsetzen. */
+  const schalterBoardName = titel => ohneSteuerzeichen(String(titel ?? ''));
+
+  Object.assign(ziel, { schalterBoardName, schalterWahl, schalterWirkung, schalterWirkungText, schalterRumpf, schalterErfolgsSatz, schalterFehlerSatz });
 })(typeof module !== 'undefined' ? module.exports : window);

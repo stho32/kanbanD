@@ -239,7 +239,7 @@ function gewaehltesBoard(zustand) {
 let geladenerStand = null;
 /** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
 const defekterGrund = (slug, zustand) => ((zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
-const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
+const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.transkripteVorgabe, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
 /** Nur die neueste Antwort wird übernommen (R00110, ADR-0014): jedes Laden zieht beim Start eine Nummer aus dem Takt; übernommen
     wird nur, was neuer ist als das zuletzt übernommene desselben Ziels — Hauptstand oder Fenster — und als die Marke der Schlange. */
@@ -310,14 +310,17 @@ async function sichtLaden(zustand) {
   // Erreichbarkeit der registrierten Anwendungen zeigt nur die Einstellungsseite (R00053)
   const anwendungen = view === 'einrichten' ? await api('GET', '/api/anwendungen') : S.anwendungen;
   // dazu das Repository der Quellen, wie es gespeichert ist, mit Erreichbarkeit (R00209 AK 10)
-  const quellenStand = view === 'einrichten' ? quellenStandAus(await api('GET', '/api/einstellungen')) : S.quellenStand;
+  const einstellungen = view === 'einrichten' ? await api('GET', '/api/einstellungen') : null;
+  const quellenStand = einstellungen ? quellenStandAus(einstellungen) : S.quellenStand;
+  // die Vorgabe „Transkripte erfassen“, wie sie in kanbanD.md steht — /api/zustand trägt sie nicht (R00220 FA 6, ADR-0036 G8)
+  const transkripteVorgabe = einstellungen ? einstellungen.transkripte_erfassen ?? null : S.transkripteVorgabe;
   let wbs = null, wbsFehler = null;
   if (view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
   // Ausrufezeichen der Prüfungen (R00059): die WBS jeder Anwendung, auf die Karten des Boards wirken — live nach jedem Ereignis
   const pruefWbs = {};
   // dazu die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
   if (view === 'board') await Promise.all([...new Set([...pruefWbsAnwendungen(board, aufgaben.aufgaben), ...wirkungsAnwendungen(board, aufgaben.aufgaben)])].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
-  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, wbs, wbsFehler, pruefWbs } };
+  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, transkripteVorgabe, wbs, wbsFehler, pruefWbs } };
 }
 
 /** Aus `GET /api/einstellungen`: das gespeicherte Repository der Quellen und ob sein Ordner da ist. */
@@ -331,7 +334,7 @@ async function sichtFolgen({ view, slug, hash, fbFehler }, start) {
   const vorher = S.ui.view;
   S.ui.view = view;
   if (view !== vorher && S.ui.vollbild) vollbildSetzen(false);
-  if (view !== 'einrichten') S.ui.einr = null;
+  if (view !== 'einrichten') { S.ui.einr = null; S.ui.ts = null; }
   else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
   S.ui.slug = slug;
   try { if (slug) localStorage.setItem('kanbanD.board', slug); } catch (_) { }
@@ -974,6 +977,37 @@ function laeufeAnstossen() {
 /** Liest `GET /api/aufgaben/{nr}/transkripte`. Bis zur Antwort bleibt das letzte Ergebnis stehen; die Antwort gilt nur, wenn
     dieses Lesen das neueste ist, die Aufgabe noch dieselbe offen und „Läufe“ noch die gezeigte Ansicht (ADR-0014). Der Fokus
     wandert nur von „Erneut versuchen“ nach einem Erfolg auf „Neu lesen“ — und nur, wenn er beim Eintreffen noch dort liegt. */
+/* ── Schalter „Transkripte erfassen“ (R00220, ADR-0036 Nachtrag „Umschalten“): nicht Teil des Entwurfs von „Einrichten“ ── */
+/** Der geschriebene Wert: an der Vorgabe aus GET /api/einstellungen, am Board aus GET /api/boards. */
+function schalterGespeichert(slug) {
+  if (slug === null) return S.transkripteVorgabe ?? null;
+  const b = (S.boards || []).find(x => x.slug === slug);
+  return b ? b.transkripte_erfassen ?? null : null;
+}
+
+/** Ein Umschalten: sofort ein PUT durch den Schreibweg; bis zur Antwort ist nur diese Gruppe gesperrt und zeigt die neue Wahl.
+    Erfolg: der geschriebene Wert gilt sofort (auch für Boards „wie Vorgabe“ und die Vorschau), der Satz nach der wirksamen Lage.
+    Fehler: die Wahl springt zurück, der Satz nennt Meldung und Status; nur ohne Verbindung mit „Erneut versuchen“. */
+function schalterUmstellen(slug, wahl) {
+  const schluessel = slug === null ? '' : slug;
+  const pfad = slug === null ? '/api/einstellungen/transkripte' : `/api/boards/${encodeURIComponent(slug)}/transkripte`;
+  const titel = slug === null ? null : ((S.boards || []).find(b => b.slug === slug) || { titel: slug }).titel;
+  const tsVorher = S.ui.ts = S.ui.ts || {};
+  tsVorher[schluessel] = { ...(tsVorher[schluessel] || {}), laeuft: wahl };
+  durchDieSchlange(() => api('PUT', pfad, schalterRumpf(slug, wahl))).then(antwort => {
+    if (slug === null) S.transkripteVorgabe = antwort.erfassen;
+    else (S.boards || []).filter(b => b.slug === slug).forEach(b => { b.transkripte_erfassen = antwort.erfassen; });
+    return { art: 'ok', text: schalterErfolgsSatz(titel, antwort.wirksam) };
+  }, f => ({ art: 'fehler', text: schalterFehlerSatz({ status: f.status || 0, fehler: f.message }), erneut: f.status ? null : wahl })).then(satz => {
+    // Ansicht inzwischen verlassen: nichts zu zeichnen
+    if (S.ui.ts !== tsVorher) return;
+    const aufErneut = document.activeElement && document.activeElement.matches('.ts-erneut');
+    tsVorher[schluessel] = { laeuft: null, satz };
+    if (aufErneut) S.ui.fokus = `[data-ts="${CSS.escape(schluessel)}"] [role="radio"][aria-checked="true"]`;
+    render();
+  });
+}
+
 async function laeufeLesen(nr) {
   const vorher = S.ui.laeufe && S.ui.laeufe.nr === nr ? S.ui.laeufe : null;
   const kennungen = (aufgabe(nr).transkripte || []).map(t => t.kennung);
@@ -2321,6 +2355,8 @@ function render() {
   const laeufeKnotenVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? LAEUFE_KNOTEN.map(id => document.getElementById(id)).filter(Boolean) : [];
   // die Live-Region am Kandidaten, der gerade schreibt (R00218 AK 10): sie steht vor dem Satz im Dokument und bleibt derselbe Knoten
   const nfMeldungVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById('nf-meld') : null;
+  // je Zeile des Schalters bleibt der Statusbereich derselbe Knoten: angesagt wird nur ein neuer Satz (R00220 AK 10)
+  const schalterStatusVorher = $('#main').dataset.sicht === sicht ? [...document.querySelectorAll('#transkripte [role="status"][id]')] : [];
   const personenwahlVorher = document.getElementById(PERSONENWAHL);
   const inselAlt = document.getElementById('rv-insel');
   inselGehalten = inselAlt && inselAlt.dataset.insel === reviewInselSchluessel() ? inselAlt : null;
@@ -2346,6 +2382,7 @@ function render() {
     commitsStatusBehalten(commitsStatusVorher);
     laeufeKnotenBehalten(laeufeKnotenVorher);
     ansageBehalten(nfMeldungVorher, 'nf-meld');
+    laeufeKnotenBehalten(schalterStatusVorher);
     ansageBehalten(reviewPosVorher, 'rv-pos');
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
   } finally {
@@ -2401,6 +2438,12 @@ function radioTaste(ereignis) {
   const jetzt = ereignis.target;
   const gruppe = jetzt.closest && jetzt.getAttribute('role') === 'radio' && jetzt.closest('[role="radiogroup"]');
   if (!gruppe || ereignis.ctrlKey || ereignis.metaKey || ereignis.altKey) return false;
+  // Gesperrte Gruppe (R00220 AK 10): Pfeile, Leertaste und Enter ändern weder Wahl noch Fokus und schicken nichts
+  if (gruppe.getAttribute('aria-disabled') === 'true') {
+    const verbraucht = ereignis.key === ' ' || ereignis.key === 'Enter' || radioSchritt(1, 0, ereignis.key) !== null;
+    if (verbraucht) ereignis.preventDefault();
+    return verbraucht;
+  }
   if (ereignis.key === ' ') { ereignis.preventDefault(); jetzt.click(); return true; }
   const radios = [...gruppe.querySelectorAll('[role="radio"]')];
   const ziel = radioSchritt(radios.length, radios.indexOf(jetzt), ereignis.key);
@@ -3108,6 +3151,23 @@ async function aktion(a, arg, wert) {
         // `geschlossen.rueckgabe` trägt den Auslöser, der das Menü geöffnet hat (ADR-0010, R00145 FA 7).
         // Verlauf (R00123): beim Öffnen leeren und laden — nie Zeilen der vorigen Aufgabe
         if (arg === 'verlauf') { u.verlauf = null; u.verlaufFehler = null; render(); await dateiLaden(); }
+        break;
+      }
+      case 'ts-wahl': {
+        // R00220 FA 8: gesperrte Gruppe und gleiche Wahl schicken nichts (AK 6); ohne gewählte Person „Ich bin …“
+        const trenner = arg.indexOf(':'), wahl = arg.slice(0, trenner), schluessel = arg.slice(trenner + 1);
+        const slug = schluessel === '' ? null : schluessel;
+        if (((u.ts || {})[schluessel] || {}).laeuft) break;
+        if (wahl === schalterWahl(slug, schalterGespeichert(slug))) break;
+        if (!S.ich) { ichNoetig(); break; }
+        schalterUmstellen(slug, wahl);
+        break;
+      }
+      case 'ts-erneut': {
+        // „Erneut versuchen“ nur ohne Verbindung (Wortlaut 24): dasselbe PUT noch einmal
+        const zustand = (u.ts || {})[arg] || {};
+        if (zustand.laeuft || !zustand.satz || !zustand.satz.erneut) break;
+        schalterUmstellen(arg === '' ? null : arg, zustand.satz.erneut);
         break;
       }
       case 'laeufe-lesen': {
@@ -4246,6 +4306,10 @@ document.addEventListener('click', e => {
     S.ui.pop = null; S.ui.ichNoetig = false;
     if (!el) { render(); return; }
   }
+  // Eine Wahl des Schalters „Transkripte erfassen“ (R00220): ohne data-act, damit die allgemeine Sperre ihr aria-disabled nicht
+  // anfasst — gesperrt ist die ganze Gruppe bis zur Antwort, nicht nur der gedrückte Knopf
+  const schalterKnopf = e.target.closest('[data-ts-wahl]');
+  if (schalterKnopf) { act('ts-wahl', schalterKnopf.dataset.tsWahl, undefined, null, e.detail); return; }
   if (!el || el.disabled) { if (aufheben) render(); return; }
   if (['schliessen-bg', 'nf-zu-bg', 'zuweisen-bg'].includes(el.dataset.act) && e.target !== el) return;
   if (el.dataset.act === 'oeffnen' && (e.target.closest('[data-leiste]') || e.target.closest('#umbenennen'))) return;

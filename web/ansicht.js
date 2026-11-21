@@ -17,11 +17,14 @@ function yamlSkalar(s) {
 function klassenText(klassen) {
   return 'classes:' + (klassen.length ? '' : ' {}') + klassen.map(k => `\n  ${yamlSkalar(k.schluessel)}: {label: ${yamlSkalar(k.bezeichnung)}, color: ${yamlSkalar(k.farbe)}}`).join('');
 }
-function einstellungenText(e) {
+/** `schalter`: `record-transcripts`, wie er in kanbanD.md geschrieben ist (R00220 FA 9) — nie aus dem Entwurf, der ihn nicht kennt;
+    `null`/fehlend heißt: keine Zeile. Die Stelle folgt src/format/einstellungen.rs `schreiben` (hinter `signals`, vor `sources`). */
+function einstellungenText(e, schalter = null) {
   let s = '---\npeople:' + (e.personen.length ? '' : ' {}');
   for (const p of e.personen) s += `\n  ${yamlSkalar(p.kuerzel)}: {name: ${yamlSkalar(p.name)}, kind: ${p.art === 'agent' ? 'agent' : 'human'}${p.aktiv === false ? ', active: false' : ''}}`;
   s += '\n' + klassenText(ungestrichen(e.klassen));
   if ((e.signale || []).length) s += '\nsignals:' + e.signale.map(g => `\n  ${yamlSkalar(g.schluessel)}: {label: ${yamlSkalar(g.bezeichnung)}, color: ${yamlSkalar(g.farbe)}}`).join('');
+  if (typeof schalter === 'boolean') s += `\nrecord-transcripts: ${schalter}`;
   const pfade = q => pfadeZurDatei(q).map(([schluessel, wert]) => `${schluessel}: ${yamlSkalar(wert)}`);
   s += '\nsources:' + pfade(e.quellen).map(zeile => `\n  ${zeile}`).join('');
   const register = [...(e.quellen.anwendungen || [])].sort((a, b) => (a.kuerzel < b.kuerzel ? -1 : a.kuerzel > b.kuerzel ? 1 : 0));
@@ -2336,8 +2339,43 @@ function vEinrichten() {
 ${vSignaleEinrichten(d)}
 <h2 class="einr-kopf">QUELLEN <span class="mono">sources:</span></h2>${vQuellen(d)}
 <h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie <span class="mono">kd:&lt;hash&gt;</span>. WBS und Anforderungen braucht nur noch die Factory; die Felder entfallen, sobald sie umgestellt ist. Aufgaben nennen ihre Herkunft als <span class="mono">kd:I0007</span>; Boards binden mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
-${d.fehler ? `<div class="warnh" id="einr-fehler" role="alert" tabindex="-1">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted" id="einr-gespeichert">gespeichert</span>' : ''}</div></div>
-<aside class="einr"><h2 class="einr-kopf">KANBAND.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d))}</pre></aside></div>`;
+${d.fehler ? `<div class="warnh" id="einr-fehler" role="alert" tabindex="-1">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted" id="einr-gespeichert">gespeichert</span>' : ''}</div>${vTranskripte()}</div>
+<aside class="einr"><h2 class="einr-kopf">KANBAND.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d, S.transkripteVorgabe))}</pre></aside></div>`;
+}
+
+/* ── Transkripte erfassen (R00220, D0009 #transkripte-schalter): nicht Teil des Entwurfs, jeder Klick schreibt sofort ── */
+const TRANSKRIPTE_ERKLAERT = 'Ein Transkript hält den ganzen Lauf eines Agenten fest, auch die Ausgaben seiner Werkzeuge. Es liegt gezippt im Board-Ordner, bleibt auf diesem Rechner und reist nicht mit dem Repository; Löschen löscht es wirklich. Ausschalten gilt nur für neue Läufe; abgelegte Transkripte bleiben. Umschalten können nur Menschen. Jeder Klick gilt sofort, ohne „Speichern“.';
+const HAKEN_SYMBOL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const WARN_SYMBOL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg>';
+/** Kennung des Statusbereichs einer Zeile; derselbe Knoten übersteht jedes Neuzeichnen, damit nur Textänderungen ansagen. Die Wahlen
+    tragen ebenso eine Kennung — über sie findet die Fokusführung die gedrückte Wahl nach jedem Neuzeichnen wieder (R00103). */
+const schalterStatusId = slug => (slug === null ? 'ts-status-vorgabe' : `ts-status-b-${slug}`);
+
+function vTranskripte() {
+  const vorgabe = S.transkripteVorgabe ?? null;
+  const boards = (S.boards || []).filter(b => !b.archiviert);
+  const zeilen = [vSchalterZeile(null, 'Vorgabe des Ordners', vorgabe, vorgabe), ...boards.map(b => vSchalterZeile(b.slug, b.titel, vorgabe, b.transkripte_erfassen ?? null))];
+  return `<section id="transkripte"><h2 class="einr-kopf" id="transkripte-kopf" tabindex="-1">TRANSKRIPTE <span class="mono">record-transcripts:</span></h2><div class="hin">${esc(TRANSKRIPTE_ERKLAERT)}</div>${zeilen.join('')}</section>`;
+}
+
+/** Eine Zeile: Name, Wahl (Radiogruppe, bis zur Antwort gesperrt und mit der neuen Wahl), Wirkung bzw. „stellt um …“ und der
+    eine Statusbereich mit dem Satz des letzten Umschaltens (Wortlaut 23/24); „Erneut versuchen“ nur ohne Verbindung. */
+function vSchalterZeile(slug, name, vorgabe, wert) {
+  const schluessel = slug === null ? '' : slug;
+  const zustand = (S.ui.ts || {})[schluessel] || {};
+  const gewaehlt = zustand.laeuft || schalterWahl(slug, wert);
+  const gesperrt = zustand.laeuft ? ' aria-disabled="true"' : '';
+  const anzeige = schalterBoardName(name);
+  const gruppenName = slug === null ? 'Vorgabe: Transkripte erfassen' : `Transkripte erfassen auf ${anzeige}`;
+  const wahlen = slug === null ? [['an', 'an'], ['aus', 'aus']] : [['vorgabe', 'wie Vorgabe'], ['an', 'an'], ['aus', 'aus']];
+  const knoepfe = wahlen.map(([w, text]) => `<button type="button" role="radio" id="${esc(`ts-wahl-${w}-${slug === null ? 'vorgabe' : 'b-' + slug}`)}" aria-checked="${w === gewaehlt}" data-ts-wahl="${esc(`${w}:${schluessel}`)}" data-arg="${esc(`${w}:${schluessel}`)}"${gesperrt}>${text}</button>`).join('');
+  const wirkt = slug === null ? null : schalterWirkung(vorgabe, wert);
+  const wk = zustand.laeuft ? 'stellt um …' : wirkt === null ? '' : schalterWirkungText(wirkt);
+  const satz = zustand.satz;
+  const symbol = satz ? (satz.art === 'ok' ? HAKEN_SYMBOL : WARN_SYMBOL) : '';
+  const erneut = satz && satz.erneut ? `<button type="button" class="btn ts-erneut" data-act="ts-erneut" data-arg="${esc(schluessel)}">Erneut versuchen</button>` : '';
+  const kopf = slug === null ? '<b>Vorgabe des Ordners</b><span class="mono">für Boards ohne eigenen Wert</span>' : `<b>${esc(anzeige)}</b>`;
+  return `<div class="ts-z${slug === null ? ' vorgabe' : ''}" data-ts="${esc(schluessel)}"><span class="nm">${kopf}</span><span class="ts-seg" role="radiogroup" aria-label="${esc(gruppenName)}"${gesperrt}>${knoepfe}</span><span class="wk${!zustand.laeuft && wirkt ? ' an' : ''}">${wk}</span><div class="ts-ms${satz ? ' ' + satz.art : ''}">${symbol}<p id="${esc(schalterStatusId(slug))}" role="status">${satz ? esc(satz.text) : ''}</p>${erneut}</div></div>`;
 }
 
 /** Signale einrichten (R00076): wie Klassen — Schlüssel, Bedeutung, Farbe; `due` ist die Fälligkeit und gerechnet. */
