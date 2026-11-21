@@ -974,3 +974,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #217 R00219 | B1125 Messprobe am Server: 1000 Transkripte und 1000 Kosteneinträge | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #217 R00219 | B1128 Liste zeichnen, Insel nach ADR-0039 N1 und Messprobe Zeichnen | Standard | 1-2h | 0,9h | 0,9h | autonom |
 | 2026-11-21 | Karte #217 R00219 | B1131 Probe im echten Programm, Messprobe Zeichnen, Gate (ohne Abschluss von R00219) | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-21 | Karte #217 R00219 | Nacharbeit 1: UX Muss 1, Sollte 2/3, Code-Review Sollte 1–3, Kann 4 | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
