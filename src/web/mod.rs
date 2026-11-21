@@ -139,6 +139,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(commits_lesen, commits_hinterlegen))
         .routes(routes!(commits_ersetzen))
         .routes(routes!(commit_entfernen))
+        .routes(routes!(nachfolger_suchen))
         .routes(routes!(diff_lesen))
         .routes(routes!(teilaufgabe_aendern, teilaufgabe_entfernen))
         .routes(routes!(openapi_json))
@@ -1297,6 +1298,31 @@ async fn commits_ersetzen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<
 )]
 async fn commit_entfernen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, verweis)): Pfad<(u32, String)>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.commit_entfernen(p, nr, &verweis)).await
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/aufgaben/{nr}/commits/{verweis}/nachfolger",
+    tag = "Aufgaben",
+    description = endpunkte::NACHFOLGER_SUCHEN,
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("verweis" = String, Path, description = "Commit-Verweis der Karte <kürzel>:<hash> oder <hash>, voller Hash oder an der Karte eindeutiger Präfix ab 7 Zeichen; sein Zustand muss verwaist sein"), ("If-None-Match" = Option<String>, Header, description = "ETag einer früheren Antwort 200 — gleich → 304")),
+    responses((status = 200, description = "Kandidaten mit gleicher patch-id (auch keiner: kandidaten []); ETag bei Verweisen mit vollem Hash", body = crate::dienst::nachfolger::Nachfolger), (status = 304, description = "unverändert zum ETag aus If-None-Match — ohne Rumpf"), (status = 400, description = "Form des Verweises falsch oder Präfix an der Karte mehrdeutig (Verweisfehler)", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden; Verweis nicht an der Karte (Verweisfehler); Zustand nicht verwaist (Zustandsfehler: auf_zweig, fehlt, repository_fehlt, anwendung_unbekannt, unlesbar)", body = crate::web::openapi::Zustandsfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git im Arbeits-Repository über der Gesamtgrenze von 10 s — keine Kandidaten, nie eine Teilliste", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn nachfolger_suchen(State(app): State<App>, Pfad((nr, verweis)): Pfad<(u32, String)>, kopf: axum::http::HeaderMap) -> Result<Response, Fehler> {
+    use axum::http::header;
+    use crate::dienst::nachfolger::Nachfolgerantwort;
+    // die Gesamtgrenze zählt ab Eintritt in den Handler, vor dem Warten auf den Blocking-Pool (ADR-0038 Punkt 2)
+    let frist = std::time::Instant::now() + crate::dienst::GESAMTGRENZE;
+    let bekannt = kopf.get(header::IF_NONE_MATCH).and_then(|w| w.to_str().ok()).map(str::to_string);
+    let antwort = blockierend(&app, move |k| k.nachfolger_suchen(nr, &verweis, bekannt.as_deref(), frist)).await?;
+    let (etag, mut r) = match antwort {
+        Nachfolgerantwort::Unveraendert(etag) => (Some(etag), StatusCode::NOT_MODIFIED.into_response()),
+        Nachfolgerantwort::Ergebnis { etag, nachfolger } => (etag, Json(nachfolger).into_response()),
+    };
+    if let Some(e) = etag.and_then(|e| header::HeaderValue::from_str(&e).ok()) {
+        r.headers_mut().insert(header::ETAG, e);
+    }
+    Ok(r)
 }
 
 #[utoipa::path(

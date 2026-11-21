@@ -708,3 +708,140 @@ impl R204 {
         git(&self.board, &["rev-list", "--count", "HEAD"])
     }
 }
+
+/// R00218 „Ausgangslage“: Arbeits-Repository R mit M0 „Grundstand“ (`a.txt`, `b.txt`, `bild.png`) und M1 „Drittes
+/// anlegen“ auf `main`; K auf `karte/1`, gerebased (K' auf `main`, `karte/1` gelöscht); G auf `fremd` (dieselbe Datei
+/// wie K, anderer Inhalt); C auf losgelöstem HEAD, per Cherry-pick auf `x` (C1, später) und `y` (C2, früher); S1–S3 auf
+/// `karte/3`, als Squash S auf `main`; Mg (Merge, Zweig gelöscht); E leer; B „Bild tauschen“ auf losgelöstem HEAD, B2
+/// auf `z` (gleiche Datei, anderer Inhalt), B3 = B per Cherry-pick auf `w`. Board-Ordner mit #1 `kd:K`, `kd:M1` · #2
+/// `kd:C` · #3 `kd:K`, `kd:K'` · #4 `kd:S1`, `kd:Mg`, `kd:E`, `kd:B`; Mensch `sh`, Agent `entw1`.
+pub struct R218 {
+    pub _tmp: tempfile::TempDir,
+    pub r: PathBuf,
+    pub board: PathBuf,
+    pub m0: String,
+    pub m1: String,
+    pub k: String,
+    pub k2: String,
+    pub g: String,
+    pub c: String,
+    pub c1: String,
+    pub c2: String,
+    pub s1: String,
+    pub mg: String,
+    pub e: String,
+    pub b: String,
+    pub b2: String,
+    pub b3: String,
+}
+
+/// Git in R mit festem Commit-Datum; das Autordatum bleibt bei Rebase und Cherry-pick das des Originals.
+fn git_um(r: &Path, datum: &str, args: &[&str]) -> String {
+    let a = Command::new("git").arg("-C").arg(r).args(["-c", "user.name=Ada Autorin", "-c", "user.email=ada@example.org"]).args(args).env("GIT_COMMITTER_DATE", datum).output().unwrap();
+    assert!(a.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&a.stderr));
+    String::from_utf8_lossy(&a.stdout).trim().to_string()
+}
+
+pub fn ausgangslage_r00218() -> R218 {
+    let tmp = tempfile::tempdir().unwrap();
+    let basis = tmp.path().canonicalize().unwrap();
+    let (r, board) = (basis.join("R"), basis.join("board"));
+    std::fs::create_dir_all(r.join("Dokumentation/Planung")).unwrap();
+    std::fs::write(r.join("Dokumentation/Planung/app.md"), "# App\n").unwrap();
+    let schreiben = |datei: &str, inhalt: &[u8]| std::fs::write(r.join(datei), inhalt).unwrap();
+    let commit = |datum: &str, nachricht: &str| {
+        git_am(&r, ADA, datum, &["add", "-A"]);
+        git_am(&r, ADA, datum, &["commit", "-q", "--allow-empty", "-m", nachricht]);
+        git_am(&r, ADA, datum, &["rev-parse", "HEAD"])
+    };
+    git_am(&r, ADA, "2026-05-01T09:00:00+00:00", &["init", "-q", "-b", "main"]);
+    schreiben("a.txt", b"eins\nzwei\ndrei\n");
+    schreiben("b.txt", b"Hallo\n");
+    schreiben("bild.png", b"\x89PNG\0alt\0");
+    let m0 = commit("2026-05-01T09:00:00+00:00", "Grundstand");
+    git_am(&r, ADA, "2026-05-02T09:00:00+00:00", &["checkout", "-q", "-b", "karte/1"]);
+    schreiben("a.txt", b"eins\nZWEI\ndrei\n");
+    let k = commit("2026-05-02T09:00:00+00:00", "Zeile zwei ändern");
+    git_am(&r, ADA, "2026-05-03T09:00:00+00:00", &["checkout", "-q", "main"]);
+    schreiben("c.txt", b"drei\n");
+    let m1 = commit("2026-05-03T09:00:00+00:00", "Drittes anlegen");
+    git_am(&r, ADA, "2026-05-04T09:00:00+00:00", &["checkout", "-q", "karte/1"]);
+    git_um(&r, "2026-05-04T09:00:00+00:00", &["rebase", "-q", "main"]);
+    let k2 = git(&r, &["rev-parse", "HEAD"]);
+    git(&r, &["checkout", "-q", "main"]);
+    git(&r, &["merge", "-q", "--ff-only", "karte/1"]);
+    git(&r, &["branch", "-q", "-D", "karte/1"]);
+    git(&r, &["checkout", "-q", "-b", "fremd", &m1]);
+    schreiben("a.txt", b"eins\nzwei anders\ndrei\n");
+    let g = commit("2026-05-05T09:00:00+00:00", "Zeile zwei anders ändern");
+    git(&r, &["checkout", "-q", "--detach", &m1]);
+    schreiben("b.txt", b"Servus\n");
+    let c = commit("2026-05-06T09:00:00+00:00", "Gruß ändern");
+    git(&r, &["checkout", "-q", "-b", "x", &m1]);
+    git_um(&r, "2026-05-08T09:00:00+00:00", &["cherry-pick", &c]);
+    let c1 = git(&r, &["rev-parse", "HEAD"]);
+    git(&r, &["checkout", "-q", "-b", "y", &m0]);
+    git_um(&r, "2026-05-07T09:00:00+00:00", &["cherry-pick", &c]);
+    let c2 = git(&r, &["rev-parse", "HEAD"]);
+    git(&r, &["checkout", "-q", "-b", "karte/3", "main"]);
+    let mut s = vec![];
+    for (i, inhalt) in ["eins\n", "eins\nzwei\n", "eins\nzwei\ndrei\n"].iter().enumerate() {
+        schreiben("s.txt", inhalt.as_bytes());
+        s.push(commit(&format!("2026-05-09T09:0{i}:00+00:00"), &format!("Schritt {}", i + 1)));
+    }
+    git(&r, &["checkout", "-q", "main"]);
+    git_am(&r, ADA, "2026-05-10T09:00:00+00:00", &["merge", "-q", "--squash", "karte/3"]);
+    commit("2026-05-10T09:00:00+00:00", "Schritte zusammen");
+    git(&r, &["branch", "-q", "-D", "karte/3"]);
+    git(&r, &["checkout", "-q", "-b", "seite", "main"]);
+    schreiben("d.txt", b"d\n");
+    commit("2026-05-11T09:00:00+00:00", "Seitenarbeit");
+    git(&r, &["checkout", "-q", "-b", "karte/4", "main"]);
+    git_am(&r, ADA, "2026-05-11T10:00:00+00:00", &["merge", "-q", "--no-ff", "-m", "Seitenarbeit zusammenführen", "seite"]);
+    let mg = git(&r, &["rev-parse", "HEAD"]);
+    git(&r, &["checkout", "-q", "--detach", "main"]);
+    git(&r, &["branch", "-q", "-D", "karte/4", "seite"]);
+    let e = commit("2026-05-12T09:00:00+00:00", "Nichts ändern");
+    git(&r, &["checkout", "-q", "--detach", &m0]);
+    schreiben("bild.png", b"\x89PNG\0X\0");
+    let b = commit("2026-05-13T09:00:00+00:00", "Bild tauschen");
+    git(&r, &["checkout", "-q", "-b", "z", &m0]);
+    schreiben("bild.png", b"\x89PNG\0Y\0");
+    let b2 = commit("2026-05-14T09:00:00+00:00", "Bild anders tauschen");
+    git(&r, &["checkout", "-q", "-b", "w", &m1]);
+    git_um(&r, "2026-05-15T09:00:00+00:00", &["cherry-pick", &b]);
+    let b3 = git(&r, &["rev-parse", "HEAD"]);
+    git(&r, &["checkout", "-q", "main"]);
+    std::fs::create_dir_all(board.join("aufgaben")).unwrap();
+    std::fs::create_dir_all(board.join("boards")).unwrap();
+    std::fs::write(board.join("kanbanD.md"), format!("---\npeople:\n  sh: {{name: Stefan, kind: human}}\n  entw1: {{name: Entwickler, kind: agent}}\nclasses: {{}}\nsources:\n  wbs: \"\"\n  requirements: \"\"\n  applications:\n    kd: {{name: KD, wbs: {}/Dokumentation/Planung/app.md, requirements: \"\"}}\n---\n", r.display())).unwrap();
+    let karten = [(1, vec![&k, &m1]), (2, vec![&c]), (3, vec![&k, &k2]), (4, vec![&s[0], &mg, &e, &b])];
+    let mut liste = String::new();
+    for (nr, verweise) in &karten {
+        let commits: String = verweise.iter().map(|h| format!("  - kd:{h}\n")).collect();
+        std::fs::write(board.join(format!("aufgaben/000{nr}-karte.md")), format!("---\nid: {nr}\ntitle: Karte {nr}\ncommits:\n{commits}---\n")).unwrap();
+        liste.push_str(&format!("- [#{nr}](../aufgaben/000{nr}-karte.md)\n"));
+    }
+    std::fs::write(board.join("boards/fabrik.md"), format!("# fabrik\n\n## Entwicklung\n\n{liste}")).unwrap();
+    git(&board, &["init", "-q"]);
+    git(&board, &["add", "-A"]);
+    git(&board, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "fabrik"]);
+    let s1 = s[0].clone();
+    R218 { _tmp: tmp, r, board, m0, m1, k, k2, g, c, c1, c2, s1, mg, e, b, b2, b3 }
+}
+
+impl R218 {
+    /// Commit-Zahl des Board-Ordners und `git status --porcelain` in R und im Board-Ordner — bleibt bei jeder Suche gleich.
+    pub fn stand(&self) -> (String, String, String) {
+        (git(&self.board, &["rev-list", "--count", "HEAD"]), git(&self.r, &["status", "--porcelain"]), git(&self.board, &["status", "--porcelain"]))
+    }
+
+    /// C per Cherry-pick auf `n` weitere Zweige `c03`… übertragen, je mit eigenem, späterem Commit-Datum.
+    pub fn c_auf_weitere_zweige(&self, von: usize, bis: usize) {
+        for i in von..=bis {
+            git(&self.r, &["checkout", "-q", "-b", &format!("c{i:02}"), &self.m0]);
+            git_um(&self.r, &format!("2026-06-{i:02}T09:00:00+00:00"), &["cherry-pick", &self.c]);
+        }
+        git(&self.r, &["checkout", "-q", "main"]);
+    }
+}

@@ -170,9 +170,32 @@ GET /api/aufgaben/1/commits
 ```
 
 - Zustände: `auf_zweig` (ein lokaler oder entfernter Zweig erreicht den Commit; je Liste höchstens 10 Namen, der Rest steht in `zweige_weitere`), `verwaist` (der Commit existiert, aber kein Zweig erreicht ihn), `fehlt` (kein Commit-Objekt), `repository_fehlt` und `unlesbar` (mit `grund`), `anwendung_unbekannt`.
-- **`verwaist` heißt nach einem Rebase oder Squash: die Verweise sind nachzuziehen** — mit `POST /api/aufgaben/{nr}/commits/ersetzen` den alten Hash durch den neuen ersetzen.
+- **`verwaist` heißt nach einem Rebase oder Squash: die Verweise sind nachzuziehen** — mit `POST /api/aufgaben/{nr}/commits/ersetzen` den alten Hash durch den neuen ersetzen; den neuen nennt `GET …/commits/{verweis}/nachfolger` (nächster Abschnitt).
 - Reihenfolge: älteste zuerst nach dem Commit-Datum, Einträge ohne Datum (`fehlt`, `unlesbar`, …) danach. `titel` ist die erste Zeile der Nachricht (höchstens 500 Zeichen), `autor` nur der Name, `plus`/`minus`/`dateien` zählen gegen den ersten Elternteil.
 - Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einer halben Liste; Schreibvorgänge an der Karte warten nie auf ihn.
+
+### Nachfolger eines verwaisten Commits suchen
+
+`GET /api/aufgaben/{nr}/commits/{verweis}/nachfolger` sucht zu einem Verweis „auf keinem Zweig“ (`verwaist`) die Commits auf den lokalen und entfernten Zweigen, die denselben Patch tragen (gleiche `git patch-id --stable`) — die Kandidaten für den Commit, den ein Rebase oder Cherry-pick daraus gemacht hat. Nur auf Anfrage, live und nur lesend, ohne `X-KanbanD-Wer`. kanbanD ersetzt nie selbst, auch nicht bei genau einem Kandidaten.
+
+Beispiel „Nachfolger suchen, dann ersetzen“:
+
+```bash
+curl http://localhost:7420/api/aufgaben/42/commits/kd:3f2a9c1/nachfolger
+# → 200 {"verweis": "kd:3f2a9c1…", "hash": "3f2a9c1…", "durchsucht": 37,
+#        "kandidaten": [{"verweis": "kd:8e20ad9…", "hash": "8e20ad9…", "titel": "Zeile zwei ändern", "autor": "Ada",
+#                        "datum": "2026-11-21T09:12:00+01:00", "zweige": ["main"], "entfernte_zweige": [], "an_der_karte": false}],
+#        "hinweise": []}
+curl -X POST http://localhost:7420/api/aufgaben/42/commits/ersetzen -H 'X-KanbanD-Wer: entw1' \
+     -H 'Content-Type: application/json' \
+     -d '{"ersetzungen": [{"alt": "kd:3f2a9c1", "neu": "kd:8e20ad9…"}]}'
+```
+
+- `verweis` des Kandidaten passt wörtlich als `neu` in `ersetzen`. Steht er schon an der Karte (`an_der_karte: true`), gäbe `ersetzen` 409 — dann den verwaisten Verweis mit `DELETE /api/aufgaben/42/commits/kd:3f2a9c1` entfernen.
+- Gesucht wird unter höchstens 1.000 Commits ab einem Tag vor dem Autordatum des verwaisten, Commit-Datum absteigend, dann Hash; höchstens 10 Kandidaten, der Rest steht in `kandidaten_weitere`. Kein Kandidat ist kein Fehler (`kandidaten: []`) — nach Squash oder einem anders gelösten Konflikt gibt es keinen.
+- `hinweise`: `suche_gekappt` (`durchsucht`, `grund`: `fenster`, `vorfilter` oder `patch` — ein Nachfolger kann fehlen), `merge` (für einen Merge-Commit wird nicht gesucht), `leer` (der Commit ändert keine Datei). Eine unbekannte `art` überspringen.
+- Die Antwort nennt nie Patch-Text, Dateinamen oder Zeilen; ein Kandidat ist kein Verweis der Karte — sein Diff bleibt gesperrt, bis er ersetzt ist.
+- Statuscodes: 200, 304 (`If-None-Match` gleich dem `ETag`), 400 (Form, mehrdeutiger Präfix), 404 (Aufgabe; Verweis nicht an der Karte `{fehler, verweis}`; Zustand nicht `verwaist` `{fehler, zustand, grund?}`), 423 (defekte Datei), 503 (Git über 10 s, nie eine Teilliste).
 
 ### Diff eines Commits lesen
 
