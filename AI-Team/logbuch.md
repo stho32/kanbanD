@@ -1476,3 +1476,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - **Sollte (e), A00004 und A00006 nachführen:** Es fehlen `dienst::braucht`, der Filter `wartet`, `erledigen` über `in_letzter_spalte` und die Signaturen mit `&HashSet`. Das übernimmt der architekt auf main.
   - **Anmerkung für den PO:** Die Antworten von POST und PATCH tragen `braucht` nicht, nur GET; so verlangt es die Anforderung.
   - **Optional:** `ablage.rs:119` ist quadratisch, gehört zu #241.
+| 2026-11-21 | #228 | Erledigt | architekt | bestanden | 2 min | A00004/A00006 nachgeführt · claude · opus · Lauf 228-architekt-2 · 0,72 $ · Karte gesamt 29,69 $ |
