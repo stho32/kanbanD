@@ -156,3 +156,28 @@ Die Schlange ordnet Anfragen, nicht ihren Inhalt: `fb-setzen` und `fb-vorschlag`
 ## Nachtrag N4 2026-11-16: Frist je Anfrage — die Restlücke aus N1 (Karte #148, Paket #149)
 
 Jede Anfrage über `api()` trägt eine **Frist von 15 s** ab dem Absenden bis zum gelesenen Antworttext, durchgesetzt mit `AbortController` (ADR-0014 Option B, hier als Frist, nicht als Abbruch durch ein neueres Laden); 15 s ist eine Hypothese mit weitem Abstand zu den Antwortzeiten des lokalen Servers (Schreibwege mit Git-Commit, bis zu zehn Agenten) und kurz genug, dass der Mensch den Stillstand nicht für einen Absturz hält. **Fehlerpfad:** Läuft die Frist ab, wirft `api()` einen Fehler in der Form des Netzfehlers (`status: 0`, `daten: null`) mit eigenem Text („Keine Antwort vom Server …“, nie „nichts geändert“ — der Server kann die Änderung noch gespeichert haben); er läuft durch die vorhandenen Wege (Regel 3: das Glied endet, der Zähler geht herunter, eine Meldung am Auslöser, danach Nachladen), und die Oberfläche sendet nichts von selbst erneut. Außerhalb bleiben das Hoch- und Herunterladen von Anhängen (eigene `fetch`, große Dateien dürfen länger dauern — ein hängendes Hochladen bleibt benannte Restlücke) und die Live-Verbindung mit ihrem eigenen Wächter; Anforderung R00186.
+
+## Nachtrag N5 2026-11-21: Die Sperrform der Leseknöpfe hängt am Komponentenselektor, nicht an der Ansicht (Karte #247)
+
+**Anlass.** PO Z. 491: gesperrte Knöpfe tragen in der ganzen Anwendung die Schrift `--kd-faint` (Z. 216, Z. 484 S-A). Die Leseknöpfe ohne `data-act` (`.cl-textknopf` „Neu lesen“, `.cl-knopf` „Erneut versuchen“) bekommen ihre Sperre sofort über `aria-disabled` (keine Frist nach R00190, `sperrenMarkieren` sieht sie nicht). Ihre Form steht heute an drei Stellen und ist zweimal auseinandergelaufen (Stand `a72576bc`):
+
+| Stelle (`web/kd-app.css`) | Schrift | Kontur / Hover | Zeiger |
+|---|---|---|---|
+| Z. 1311 `.cl-textknopf[aria-disabled="true"]`: „Neu lesen“ in Commits (`commits.js:345`) **und** Läufe (`laeufe.js:205`) | `--kd-muted` | – / – | `progress` |
+| Z. 1362 `.lf-panel .cl-knopf[aria-disabled="true"]`: „Erneut versuchen“ in Läufe (`laeufe.js:197`) | `--kd-muted` | `--kd-line-strong` bleibt, Hover färbt `--kd-sunken` | `progress` |
+| Z. 1728 `.lv-ganz .cl-knopf[aria-disabled="true"]`: „Erneut versuchen“ der Laufansicht (`lauf.js:253`) | `--kd-faint` | `--kd-line`, Hover neutral | `default` |
+
+**Varianten.**
+
+| | Form | Schwäche |
+|---|---|---|
+| A | die zwei Regeln an Ort und Stelle auf `--kd-faint` umstellen | die nächste Ansicht mit `.cl-knopf` legt die vierte Regel an; Kontur und Hover von Z. 1362 bleiben abweichend |
+| **B (gewählt)** | je Komponente **eine** Regel ohne Ansichtspräfix: `.cl-textknopf[aria-disabled="true"]` und `.cl-knopf[aria-disabled="true"]` (samt `:hover`) in der Form nach Z. 216; Z. 1362 und Z. 1728 entfallen | wirkt auch auf „Neu lesen“ in Commits (R00205); das ist nach Z. 491 gewollt, die Abnahme muss es aber nennen |
+| C | ein globaler Selektor `[aria-disabled="true"]` | trifft Elemente, die keine gesperrten Auslöser sind (aktueller Menüeintrag `.km-e.km-aktuell`, `.iz.aus`, `.zw-p`, `.ts-seg`), und gäbe Auslösern mit `data-act` die Form vor Ablauf der 200 ms (R00190, Kommentar Z. 14) |
+| D | die Leseknöpfe tragen zusätzlich `data-sperrform` (wie `commits.js:253`), die Form hängt dann überall an einem Merkmal | Änderung in drei Ansichten statt im Stil; lohnt erst, wenn eine weitere Knopffamilie sofort sperrt |
+
+**Entscheidung: B.** Die Sperrform eines Knopfs gehört zu seiner Komponente, nicht zur Ansicht, in der er steht. Ansichtsgebundene Regeln mit `[aria-disabled="true"]` oder `[data-sperrform]` an `.cl-knopf` oder `.cl-textknopf` sind ein Befund. Wie die Form aussieht, bleibt nach Regel 2 eine Sache von UX (Z. 216: Schrift `--kd-faint`, Kontur `--kd-line`, Fläche bleibt, Fokusring ungedämpft). Beim Zusammenlegen ist zu entscheiden, welcher Zeiger gilt: heute `progress` (Läufe, geprüft in `e2e/tests/r00219-ansicht-laeufe.spec.js:516`) gegen `default` (Laufansicht). Das prüft der ux-reviewer gegen R00148 AK 19, die Regel übernimmt sein Urteil.
+
+**Kontrast, gerechnet aus `web/kd-tokens.css` (OKLCH → sRGB, WCAG-Leuchtdichte):** `--kd-faint` erreicht hell 3,59 auf `--kd-surface`, 3,29 auf `--kd-bg` und 3,05 auf `--kd-sunken`; dunkel 4,40, 4,98 und 5,26. Damit ist ≥ 3:1 (Z. 483) in beiden Themen erfüllt. Hell auf `--kd-sunken` ist die Reserve aber gering: ein gesperrter Knopf soll beim Hover nicht auf `--kd-sunken` wechseln, sonst steht die schwächste Paarung im Bild.
+
+**Nicht betroffen:** `.btn[data-sperrform]` und die anderen Familien aus Z. 15–26, `.ts-seg[aria-disabled]` (Z. 1665–1668, schon `--kd-faint`), `.km-e.km-aktuell` (aktueller Eintrag, kein gesperrter Auslöser) und `commits-erneut` (`commits.js:358`, sperrt nie).
