@@ -3,7 +3,7 @@
 
 use super::{Aufgabe, Board};
 use serde::Serialize;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Meldung, wenn `braucht` im Rumpf eines Schreibaufrufs steht — geschrieben wird nur über `labels` (ADR-0035 Punkt 4).
 pub const BRAUCHT_UEBER_LABELS: &str = "braucht über labels setzen (braucht:<nr>)";
@@ -127,10 +127,93 @@ pub fn kreis_meldung(ziel: u32, kreis: &[u32]) -> String {
 }
 
 /// Der erste Kreis, den eine neue Kante schließt. `kanten` ist der Stand nach dem Schreiben (je Aufgabe die gedeuteten
-/// Nummern, in Label-Reihenfolge), `neue` sind die neuen Kanten `a → b` in Prüfreihenfolge. Gesucht wird je neuer Kante
-/// der kürzeste Weg von `b` zurück zu `a`; Kreise im Bestand ohne neue Kante stören nicht. Liefert `(a, b, [a, b, …, a])`.
+/// Nummern, in Label-Reihenfolge) und enthält die neuen Kanten `a → b` aus `neue` (in Prüfreihenfolge). Eine neue Kante
+/// schließt einen Kreis genau dann, wenn `a` und `b` in derselben starken Zusammenhangskomponente liegen — die rechnet
+/// eine Suche über den ganzen Stand, nicht eine je Kante (linear, AK 16). Für die erste solche Kante dann der kürzeste
+/// Weg von `b` zurück zu `a`. Kreise im Bestand ohne neue Kante stören nicht. Liefert `(a, b, [a, b, …, a])`.
 pub fn kreis_suchen(kanten: &BTreeMap<u32, Vec<u32>>, neue: &[(u32, u32)]) -> Option<(u32, u32, Vec<u32>)> {
-    neue.iter().find_map(|&(a, b)| weg(kanten, b, a).map(|w| (a, b, std::iter::once(a).chain(w).collect())))
+    if neue.is_empty() {
+        return None;
+    }
+    let komponente = Komponenten::rechnen(kanten);
+    let gemeinsam = |&&(a, b): &&(u32, u32)| komponente.get(&a).is_some_and(|k| komponente.get(&b) == Some(k));
+    neue.iter().filter(gemeinsam).find_map(|&(a, b)| weg(kanten, b, a).map(|w| (a, b, std::iter::once(a).chain(w).collect())))
+}
+
+/// Starke Zusammenhangskomponenten nach Tarjan, ohne Rekursion (eine lange Kette darf den Stapel nicht sprengen).
+struct Komponenten<'k> {
+    kanten: &'k BTreeMap<u32, Vec<u32>>,
+    /// Reihenfolge des Betretens je Knoten
+    index: HashMap<u32, usize>,
+    /// kleinster Index, den der Knoten über Baum- und Rückkanten erreicht
+    tiefst: HashMap<u32, usize>,
+    stapel: Vec<u32>,
+    auf_stapel: HashSet<u32>,
+    /// Ergebnis: je Knoten die Nummer seiner Komponente
+    komponente: HashMap<u32, usize>,
+}
+
+impl<'k> Komponenten<'k> {
+    fn rechnen(kanten: &'k BTreeMap<u32, Vec<u32>>) -> HashMap<u32, usize> {
+        let mut t = Komponenten { kanten, index: HashMap::new(), tiefst: HashMap::new(), stapel: vec![], auf_stapel: HashSet::new(), komponente: HashMap::new() };
+        for &start in kanten.keys() {
+            if !t.index.contains_key(&start) {
+                t.von(start);
+            }
+        }
+        t.komponente
+    }
+
+    /// Tiefensuche ab `start` mit eigenem Pfad aus (Knoten, nächster Nachfolger).
+    fn von(&mut self, start: u32) {
+        self.betreten(start);
+        let mut pfad: Vec<(u32, usize)> = vec![(start, 0)];
+        while let Some(&mut (knoten, ref mut naechster)) = pfad.last_mut() {
+            let nachfolger = self.kanten.get(&knoten).and_then(|n| n.get(*naechster)).copied();
+            if let Some(n) = nachfolger {
+                *naechster += 1;
+                if !self.index.contains_key(&n) {
+                    self.betreten(n);
+                    pfad.push((n, 0));
+                } else if self.auf_stapel.contains(&n) {
+                    self.senken(knoten, self.index[&n]);
+                }
+                continue;
+            }
+            pfad.pop();
+            if let Some(&(eltern, _)) = pfad.last() {
+                self.senken(eltern, self.tiefst[&knoten]);
+            }
+            if self.tiefst[&knoten] == self.index[&knoten] {
+                self.abschliessen(knoten);
+            }
+        }
+    }
+
+    fn betreten(&mut self, knoten: u32) {
+        let i = self.index.len();
+        self.index.insert(knoten, i);
+        self.tiefst.insert(knoten, i);
+        self.stapel.push(knoten);
+        self.auf_stapel.insert(knoten);
+    }
+
+    fn senken(&mut self, knoten: u32, wert: usize) {
+        let t = self.tiefst.get_mut(&knoten).expect("betreten");
+        *t = (*t).min(wert);
+    }
+
+    /// `wurzel` ist Wurzel einer Komponente: alles auf dem Stapel bis zu ihr gehört dazu.
+    fn abschliessen(&mut self, wurzel: u32) {
+        let nummer = self.komponente.len(); // eindeutig: die Zahl der schon zugeordneten Knoten
+        while let Some(k) = self.stapel.pop() {
+            self.auf_stapel.remove(&k);
+            self.komponente.insert(k, nummer);
+            if k == wurzel {
+                break;
+            }
+        }
+    }
 }
 
 /// Kürzester Weg `von → … → nach` (Breitensuche in Label-Reihenfolge), beide Enden eingeschlossen.
@@ -177,6 +260,63 @@ mod tests {
         assert_eq!(kreis_suchen(&zwei_wege, &[(1, 2)]), Some((1, 2, vec![1, 2, 1])), "der kürzeste Weg");
         assert_eq!(kreis_suchen(&graph(&[(1, &[2]), (2, &[3]), (3, &[4]), (4, &[2])]), &[(1, 2)]), None, "Kreis hinter der neuen Kante, nicht durch sie");
         assert_eq!(kreis_suchen(&graph(&[(1, &[2])]), &[]), None);
+    }
+
+    // R00214 B1095 (Sollte des security- und architektur-reviewers): eine Suche je Aufruf, nicht je neuer Kante — Kette
+    // aus 20.000 Aufgaben, jede Kante neu; der Kreis schließt erst an der letzten Kante der Prüfreihenfolge
+    #[test]
+    fn kreis_suche_linear_in_den_neuen_kanten() {
+        const N: u32 = 20_000;
+        let kette = |rueck: bool| -> (BTreeMap<u32, Vec<u32>>, Vec<(u32, u32)>) {
+            let mut kanten: BTreeMap<u32, Vec<u32>> = (1..N).map(|i| (i, vec![i + 1])).collect();
+            let mut neue: Vec<(u32, u32)> = (1..N).map(|i| (i, i + 1)).collect();
+            if rueck {
+                kanten.insert(N, vec![N - 1]);
+                neue.push((N, N - 1));
+            }
+            (kanten, neue)
+        };
+        let ohne = binnen("Kette ohne Kreis", GRENZE, move || {
+            let (k, n) = kette(false);
+            kreis_suchen(&k, &n)
+        });
+        assert_eq!(ohne, None);
+        let mit = binnen("Kreis an der letzten Kante", GRENZE, move || {
+            let (k, n) = kette(true);
+            kreis_suchen(&k, &n)
+        });
+        assert_eq!(mit, Some((N - 1, N, vec![N - 1, N, N - 1])), "die erste Kante der Prüfreihenfolge, die ihn schließt");
+    }
+
+    // B1095: dasselbe Ergebnis wie die Suche je neuer Kante (Referenz) — 2.000 Zufallsgraphen mit 2–12 Knoten
+    #[test]
+    fn kreis_suche_gleich_der_suche_je_kante() {
+        let referenz = |k: &BTreeMap<u32, Vec<u32>>, neue: &[(u32, u32)]| neue.iter().find_map(|&(a, b)| weg(k, b, a).map(|w| (a, b, std::iter::once(a).chain(w).collect::<Vec<_>>())));
+        let mut zufall: u64 = 0x2280_0214;
+        let mut naechste = |grenze: u64| {
+            zufall = zufall.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            (zufall >> 33) % grenze
+        };
+        let mut mit_kreis = 0;
+        for _ in 0..2_000 {
+            let knoten = 2 + naechste(11) as u32;
+            let mut kanten: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+            let mut neue = vec![];
+            for _ in 0..naechste(3 * knoten as u64) {
+                let (a, b) = (1 + naechste(knoten as u64) as u32, 1 + naechste(knoten as u64 + 1) as u32);
+                let liste = kanten.entry(a).or_default();
+                if a != b && !liste.iter().any(|&x| x == b) {
+                    liste.push(b);
+                    if naechste(2) == 0 {
+                        neue.push((a, b));
+                    }
+                }
+            }
+            let erwartet = referenz(&kanten, &neue);
+            mit_kreis += usize::from(erwartet.is_some());
+            assert_eq!(kreis_suchen(&kanten, &neue), erwartet, "{kanten:?} neu {neue:?}");
+        }
+        assert!(mit_kreis > 200, "die Stichprobe enthält Kreise: {mit_kreis}");
     }
 
     #[test]
