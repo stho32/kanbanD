@@ -35,11 +35,11 @@ const bewK = () => ({
 const bewZwilling = () => ({ spalten: [...SPALTEN], jetzt: '2026-11-06 12:00', aufgaben: aufgaben() });
 
 /* ── Treiber: die Berichte, verdrahtet wie in web/ansicht.js (vBurndown, vPrognose, vFieber). Nur diese Schicht folgt der
-      Schnittstelle von web/berichte.js; am Stand vor der Karte reicht die Oberfläche `S.bew.phasen` durch und das Ergebnis
-      der Prognose heißt `phasen` (B1159), danach entfällt das Argument (B1163). ── */
+      Schnittstelle von web/berichte.js: am Stand vor der Karte reichte die Oberfläche `S.bew.phasen` durch, und das Ergebnis
+      der Prognose hieß `phasen` (B1159); seit B1163 entfällt das Argument, und es heißt `bloecke`. ── */
 const block = (bew, f, wahl) => { const ziel = B.zielblock(bew, f, wahl); return ziel.block && ziel.block.schluessel; };
-const fieberTag = (bew, f, datum, wahl = null) => B.fieberTag(bew, f, mitDatei, datum, bew.phasen, START, block(bew, f, wahl));
-const prognose = (bew, f) => { const p = B.prognose(bew, f, mitDatei, JETZT, bew.phasen, { start: START }); return { ...p, bloecke: p.phasen }; };
+const fieberTag = (bew, f, datum, wahl = null) => B.fieberTag(bew, f, mitDatei, datum, START, block(bew, f, wahl));
+const prognose = (bew, f) => B.prognose(bew, f, mitDatei, JETZT, { start: START });
 function berichte(bew) {
   const f = filter({}), ziel = B.zielblock(bew, f, null), p = prognose(bew, f);
   return {
@@ -91,7 +91,7 @@ const JOPU = process.env.R00223_JOPU;
 test('AK 16: fieberTag ohne Wahl an 2026-11-10, -15, -20 gleich wie mit dem Programm vor der Karte', { skip: !JOPU && 'R00223_JOPU fehlt (Legacy-Probe von Hand)' }, () => {
   const lies = n => JSON.parse(fs.readFileSync(path.join(JOPU, n), 'utf8'));
   const bew = lies('bewegungen-neu.json'), vorher = lies('fieber-alt.json');
-  const nachher = vorher.map(t => B.fieberTag(bew, filter({}), mitDatei, t.datum, bew.phasen, t.start, null));
+  const nachher = vorher.map(t => B.fieberTag(bew, filter({}), mitDatei, t.datum, t.start, null));
   assert.deepStrictEqual(nachher.map(t => [t.datum, t.erledigt, t.umfang, t.ende7, t.ende5]), vorher.map(t => [t.datum, t.erledigt, t.umfang, t.ende7, t.ende5]));
 });
 
@@ -123,7 +123,7 @@ function erlaubt(z) {
   if (z.datei === 'src/dienst/durchlaeufe.rs' || z.text.includes('ADR-0034') || /durchlauf|durchl[äa]ufe|kanbanD-runs/i.test(z.text)) return true;
   if (z.datei === 'src/git/arbeitsrepo.rs' && /[Ss]peicherphase/.test(z.text)) return true;
   // was danach bleibt, gehört zur Zeile `kanbanD-runs`, zu `Durchlauf` oder zur Tabelle „DURCHLÄUFE“ (d.phase)
-  if (['src/format/aufgabe.rs', 'src/modell/aufgabe.rs'].includes(z.datei)) return /\bphase\b/.test(z.text) && !/phasen/i.test(z.text);
+  if (['src/format/aufgabe.rs', 'src/modell/aufgabe.rs'].includes(z.datei)) return /\bphase\b/i.test(z.text) && !/phasen/i.test(z.text);
   return z.datei === 'web/ansicht.js' && z.text.includes('d.phase');
 }
 

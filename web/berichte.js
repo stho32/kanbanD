@@ -151,11 +151,11 @@
       return zustandAm;
     };
   }
-  /** Erledigt-Spalten je Aufgabe, wenn der Block `schluessel` (Spalte oder Phase, wie in `prognoseStufen`) das Ziel ist: ohne
-      Phasen die Spalte und alle rechts davon, mit Phasen die Spalten, in denen die Aufgabe die Phase durchlaufen hat. `null`
-      ohne Block und für einen Block, den das Board nicht hat — dann gilt die Vorgabe von `bestandLeser`. */
+  /** Erledigt-Spalten je Aufgabe, wenn der Block `schluessel` (eine Spalte, wie in `prognoseStufen`) das Ziel ist: die Spalte
+      und alle rechts davon. `null` ohne Block und für einen Block, den das Board nicht hat — dann gilt die Vorgabe von
+      `bestandLeser`. */
   function erledigtAb(bew, schluessel) {
-    const stufe = prognoseStufen(bew, bew.spalten, bew.phasen).find(st => st.schluessel === schluessel);
+    const stufe = prognoseStufen(bew, bew.spalten).find(st => st.schluessel === schluessel);
     if (!stufe) return null;
     return a => bew.spalten.filter(s => stufe.durch(a, s));
   }
@@ -384,29 +384,17 @@
     return { jahr, woche: 1 + Math.round((donnerstag - erster) / (7 * TAG)) };
   }
 
-  /** Ziel des Durchsatzes: die Abschlussspalte (Index und Name) oder bei gebundenem Board die letzte Phase samt Stufe.
-      `zielblock` (R00166, ADR-0027 N2 Punkt 6) wählt stattdessen diese Spalte bzw. Phase; gibt es sie nicht, gilt die Vorgabe. */
-  function durchsatzZiel(bew, phasen, zielblock = null) {
-    if (phasen && phasen.folge && phasen.folge.length) {
-      const stufen = phasenStufen(phasen, bew.spalten), letzte = stufen[stufen.length - 1];
-      const stufe = stufen.find(st => st.phase === zielblock) || letzte;
-      return { art: 'phase', name: stufe.phase, i: -1, stufe };
-    }
+  /** Ziel des Durchsatzes: die Abschlussspalte (Index und Name). `zielblock` (R00166, ADR-0027 N2 Punkt 6) wählt stattdessen
+      diese Spalte; gibt es sie nicht, gilt die Vorgabe. */
+  function durchsatzZiel(bew, zielblock = null) {
     const gewaehlt = bew.spalten.indexOf(zielblock);
     let i = bew.spalten.length - 1;
     if (gewaehlt >= 0) i = gewaehlt;
-    return { art: 'spalte', name: bew.spalten[i], i, stufe: null };
+    return { name: bew.spalten[i], i };
   }
 
-  /** Die Spalten, die das Ziel ausmachen: seine Spalte oder alle Spalten der letzten Phase (samt Abschlussspalte). */
-  function zielSpalten(bew, ziel) {
-    if (ziel.art === 'spalte') return [ziel.name];
-    const letzte = bew.spalten[bew.spalten.length - 1];
-    return bew.spalten.filter(s => s === letzte || bew.phasen.spaltenphasen[s] === ziel.name);
-  }
-
-  /** Ankunft einer Aufgabe im Ziel: erstes Erreichen der Zielspalte bzw. erstes Durchlaufen der letzten Phase. */
-  const ankunftIm = (a, bew, ziel) => ziel.art === 'phase' ? ersterDurchlauf(a, ziel.stufe) : erreicht(a.wechsel, bew.spalten, ziel.i);
+  /** Ankunft einer Aufgabe im Ziel: erstes Erreichen der Zielspalte. */
+  const ankunftIm = (a, bew, ziel) => erreicht(a.wechsel, bew.spalten, ziel.i);
 
   /** Datumsbereich einer Periode: `TT.MM.–TT.MM.JJJJ` (gleicher Monat) bzw. `TT.MM.JJJJ–TT.MM.JJJJ`. */
   function periodeSpanne(von, bis) {
@@ -451,8 +439,8 @@
     return { paar, luecke, breite: balkenbreite, zugangVoll: balkenbreite < 10 };
   }
 
-  /** Durchsatz je Kalenderperiode (R00122): je Aufgabe das erste Erreichen des Ziels (Abschlussspalte bzw. letzte
-      Phase, mit `zielblock` der gewählte Block oder rechts davon, R00166) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
+  /** Durchsatz je Kalenderperiode (R00122): je Aufgabe das erste Erreichen des Ziels (Abschlussspalte, mit `zielblock`
+      der gewählte Block oder rechts davon, R00166) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
       [von, bis) des Filters — „Rechnen ab“ schneidet den Anfang, die Messbasis wirkt nicht, die angebrochene letzte
       Periode zählt bis heute. `reporting.forecast: false` nimmt aus (zählt in `ausgenommen`); ist das Ziel ganz
       ausgeschlossen, gibt es keine Aussage (`zielAusgeschlossen`, keine Perioden). Ø = Gesamt ÷ dargestellte Perioden.
@@ -461,10 +449,10 @@
       `vonspalte` (Vorgabe: die erste Spalte) oder eine Spalte rechts davon erstmals erreicht — Rückläufer zählen nicht erneut;
       Zeitfenster, Filter und `reporting.forecast` wirken auf beide gleich. */
   function durchsatz(bew, f, aufgabeZu, jetzt, start = null, einheit = DURCHSATZ_STANDARD, zielblock = null, vonspalte = null) {
-    const ziel = durchsatzZiel(bew, bew.phasen, zielblock);
+    const ziel = durchsatzZiel(bew, zielblock);
     const leer = { einheit, perioden: [], gesamt: 0, durchschnitt: null, zugangGesamt: 0, zugangDurchschnitt: null, ausgenommen: 0, zielAusgeschlossen: false, ziel };
     if (!bew.spalten.length) return leer;
-    if (zielSpalten(bew, ziel).every(s => f.ohneSpalten.includes(s))) return { ...leer, zielAusgeschlossen: true };
+    if (f.ohneSpalten.includes(ziel.name)) return { ...leer, zielAusgeschlossen: true };
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
     if (erste === Infinity) return leer;
     const g = grenzenAb(f, jetzt, start);
@@ -515,9 +503,8 @@
     return { liste, anzahl: w.length, gueltig: true, mittel: runden1(w.reduce((s, x) => s + x, 0) / w.length), median: runden1(w.length % 2 ? w[Math.floor(m)] : (w[m - 1] + w[m]) / 2), p85: perzentil(w, 85) };
   }
 
-  /** Vorgabe von „von“ und „bis“ der Durchlaufzeit (R00169, ADR-0027 N5 Punkte 3, 4): von der ersten Spalte bis zur ersten
-      Spalte des Zielblocks `zielSchluessel` (`gewaehlt` aus `zielblock`) — mit Phasen die erste Spalte, die die Stufe des Blocks
-      für eine Aufgabe ohne Labels als durchlaufen meldet. Ohne Zielblock bis zur letzten Spalte. */
+  /** Vorgabe von „von“ und „bis“ der Durchlaufzeit (R00169, ADR-0027 N5 Punkte 3, 4): von der ersten Spalte bis zur Spalte
+      des Zielblocks `zielSchluessel` (`gewaehlt` aus `zielblock`). Ohne Zielblock bis zur letzten Spalte. */
   function durchlaufVorgabe(bew, zielSchluessel) {
     const von = bew.spalten[0], letzte = bew.spalten[bew.spalten.length - 1], erledigtBei = erledigtAb(bew, zielSchluessel);
     if (!erledigtBei) return { von, bis: letzte };
@@ -544,30 +531,7 @@
     return gemerkt;
   }
 
-  /* ── Phasen als Spalten (R00058) ── */
-  /** Rang einer Spalte in der Phasenfolge: Stelle ihrer Phase, die Abschlussspalte hinter allen, ungebundene −1. */
-  function phasenRang(phasen, spalten) {
-    const letzte = spalten[spalten.length - 1], stelle = Object.fromEntries(phasen.folge.map((p, k) => [p.name, k]));
-    return s => s === letzte ? phasen.folge.length : (stelle[phasen.spaltenphasen[s]] ?? -1);
-  }
-  /** Phase k ist durchlaufen ab einem Rang über dieser Schwelle; „gleich wie“ nimmt die der genannten Phase,
-      „eingebettet in“ bei passendem Label die der Vorphase. */
-  function phasenSchwelle(folge, k, labels) {
-    const p = folge[k], j = p.gleich ? folge.findIndex(q => q.name === p.gleich) : -1;
-    if (j >= 0 && j < k) return phasenSchwelle(folge, j, labels);
-    if (k > 0 && p.eingebettet && labels.includes(p.eingebettet)) return phasenSchwelle(folge, k - 1, labels);
-    return k;
-  }
-  /** Je Phase: durch(aufgabe, spalte) und entfaellt(aufgabe); `aufgabe` ist ein Eintrag aus bew.aufgaben. */
-  function phasenStufen(phasen, spalten) {
-    const rang = phasenRang(phasen, spalten);
-    return phasen.folge.map((p, k) => ({
-      phase: p.name,
-      durch: (a, s) => s != null && rang(s) > phasenSchwelle(phasen.folge, k, a.labels || []),
-      entfaellt: a => (a.uebersprungen || []).includes(p.name),
-    }));
-  }
-  /** Erstes Durchlaufen einer Stufe in ms; null = nie. */
+  /** Erstes Erreichen eines Blocks in ms; null = nie. */
   function ersterDurchlauf(a, stufe) {
     const w = a.wechsel.find(x => stufe.durch(a, x.spalte));
     return w ? zeitMs(w.zeitpunkt) : null;
@@ -672,16 +636,14 @@
     return reihe5;
   }
 
-  /** Was die Prognose je Block zählt: ohne Phasen je Spalte (außer der ersten gezählten) „erreicht = dort oder rechts davon“,
-      mit Phasen je Phase „durchlaufen“ (R00058). */
-  function prognoseStufen(bew, spalten, phasen) {
-    if (phasen) return phasenStufen(phasen, bew.spalten).map(s => ({ ...s, schluessel: s.phase, titel: s.phase + ' durchlaufen' }));
+  /** Was die Prognose je Block zählt: je Spalte (außer der ersten gezählten) „erreicht = dort oder rechts davon“. */
+  function prognoseStufen(bew, spalten) {
     const idx = s => bew.spalten.indexOf(s);
     return spalten.slice(1).map(spalte => ({ spalte, schluessel: spalte, titel: `Spalte „${spalte}“`, durch: (a, s) => s != null && idx(s) >= idx(spalte), entfaellt: () => false }));
   }
 
   /** Je Block: Nenner, erreicht, offen, Tagesreihe, Perzentile; dazu der Verlauf je Tag. Offen zählt nach dem aktuellen Stand,
-      der Durchsatz nach dem ersten Erreichen. `phasen` aus bew.phasen; ohne sie je Spalte wie in R00046.
+      der Durchsatz nach dem ersten Erreichen, je Spalte wie in R00046.
       Messbasis (R00083): die letzten `f.messbasisTage` Tage bis `jetzt`, gleitend — frühestens ab `start` („Rechnen ab“)
       und frühestens am Tag der ersten Aufgabe auf dem Board; der Kalenderzeitraum des Filters wirkt hier nicht.
       Der Verlauf beginnt mit der ersten Aufgabe, frühestens bei `start`.
@@ -689,20 +651,20 @@
       `block` (R00079) statt des letzten nur den Block mit diesem Schlüssel (gibt es ihn nicht, den letzten).
       `zugang` (R00168): je Block mit Prognose die Aufgaben, die in der Messbasis offen wurden, abzüglich der entfernten —
       sonst und mit `nurLetzter` null. */
-  function prognose(bew, f, aufgabeZu, jetzt, phasen, optionen = {}) {
+  function prognose(bew, f, aufgabeZu, jetzt, optionen = {}) {
     // Gemerkt nach Inhalt — Bewegungen, was der Filter an den Aufgaben liest, Filter, Optionen, Tag: Neuzeichnen ohne neue
     // Daten rechnet nicht neu; die Monte-Carlo-Ziehungen kosten auf großen Boards Sekunden. Nach Inhalt, nicht nach Objekt,
     // weil jedes Live-Ereignis die Bewegungen neu lädt, auch wenn sich nichts geändert hat.
     const merkmale = bew.aufgaben.map(a => { const x = aufgabeZu(a.nummer); return x ? [x.klasse, x.zustaendige, x.labels, x.archiviert] : null; });
-    const schluessel = JSON.stringify([bew.spalten, bew.aufgaben, merkmale, phasen || null, f, optionen.start || null, !!optionen.nurLetzter, optionen.block || null, tag(jetzt)]);
+    const schluessel = JSON.stringify([bew.spalten, bew.aufgaben, merkmale, f, optionen.start || null, !!optionen.nurLetzter, optionen.block || null, tag(jetzt)]);
     if (!gemerkt.has(schluessel)) {
-      gemerkt.set(schluessel, prognoseRechnen(bew, f, aufgabeZu, jetzt, phasen, optionen));
+      gemerkt.set(schluessel, prognoseRechnen(bew, f, aufgabeZu, jetzt, optionen));
       if (gemerkt.size > 64) gemerkt.delete(gemerkt.keys().next().value);
     }
     return gemerkt.get(schluessel);
   }
   const gemerkt = new Map();
-  function prognoseRechnen(bew, f, aufgabeListe, jetzt, phasen, { start = null, nurLetzter = false, block = null } = {}) {
+  function prognoseRechnen(bew, f, aufgabeListe, jetzt, { start = null, nurLetzter = false, block = null } = {}) {
     if (block) nurLetzter = true;
     const aufgabeZu = einmalJeAufgabe(aufgabeListe);
     const heute = tag(jetzt), morgen = tag(jetzt, 1);
@@ -745,14 +707,13 @@
       });
     };
     let vorige = null;
-    const alle = prognoseStufen(bew, spalten, phasen), gewaehlt = alle.filter(st => st.schluessel === block);
+    const alle = prognoseStufen(bew, spalten), gewaehlt = alle.filter(st => st.schluessel === block);
     const stufen = gewaehlt.length ? gewaehlt : nurLetzter ? alle.slice(-1) : alle;
     const bloecke = stufen.map(st => {
       const dabei = jetztDa.filter(x => !st.entfaellt(x.a));
       const offen = dabei.filter(x => !st.durch(x.a, x.s)).length;
       const daten = dabei.map(x => ersterDurchlauf(x.a, st)).filter(d => d != null && d >= fenster && d <= jetzt);
-      const ph = { schluessel: st.schluessel, titel: st.titel, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null, zugang: null, mitZugang: null };
-      if (st.spalte) ph.spalte = st.spalte; else ph.phase = st.phase;
+      const ph = { schluessel: st.schluessel, titel: st.titel, spalte: st.spalte, nenner: dabei.length, erreicht: dabei.length - offen, offen, laeufe: daten.length, zeilen: null, reihe7: [], reihe5: [], durchsatz: null, zugang: null, mitZugang: null };
       if (daten.length) {
         Object.assign(ph, tagesreihen(daten, fenster, morgen));
         ph.durchsatz = ph.reihe7.length ? daten.length / ph.reihe7.length : null;
@@ -771,7 +732,7 @@
         ph.zugang = zugang.summe;
         if (zugang.summe > 0) Object.assign(ph, { mitZugang: zeilenMitZugang(ph, zugang), zugangReihe7: zugang.reihe7, zugangReihe5: zugang.reihe5 });
       }
-      // nie früher als der Block davor (Spalte links, Vorphase): dessen Datum als Untergrenze nennen, nicht verrechnen
+      // nie früher als der Block davor (Spalte links): dessen Datum als Untergrenze nennen, nicht verrechnen
       if (ph.zeilen && vorige && vorige.zeilen) ph.zeilen.forEach((z, k) => {
         const v = vorige.zeilen[k];
         for (const n of ['7', '5']) {
@@ -791,7 +752,7 @@
     }
     const verworfen = gezaehlt.map(x => x.zustandAm(jetzt)).filter(zustand => zustand.art === 'entfernt' && inSpalten(zustand)).length;
     const weg = nichtGezaehlt.filter(x => imUmfang(x.zustandAm(jetzt))).length;
-    return { umfang, heute, phasen: bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer), nachPhasen: !!phasen };
+    return { umfang, heute, bloecke, tage, verworfen, ausgenommen: weg, gezaehlt: jetztDa.map(x => x.a.nummer) };
   }
 
   /** Zugang gegen Abgang eines Blocks mit Prognose (R00168): beide Mittel je Kalendertag der Messbasis — der Abgang ist der
@@ -819,81 +780,74 @@
     return erste === Infinity ? null : isoD(erste);
   }
   /** Die Blöcke aus „Wie lange noch“ unter dem Filter, von links nach rechts — zur Wahl der Zielspalte (R00079). */
-  const fieberBloecke = (bew, f, phasen) => prognoseStufen(bew, bew.spalten.filter(s => !f.ohneSpalten.includes(s)), phasen).map(st => ({ schluessel: st.schluessel, titel: st.titel }));
+  const fieberBloecke = (bew, f) => prognoseStufen(bew, bew.spalten.filter(s => !f.ohneSpalten.includes(s))).map(st => ({ schluessel: st.schluessel, titel: st.titel }));
   /** Der Block, der auf dem Board als erledigt zählt (R00166, ADR-0027 N2 Punkt 2) — die eine Auflösung der gespeicherten
       Zielspalte für Fever Chart, Burndown, Durchsatz, Kumulativen Fluss und die Vorgabe „bis“ der Durchlaufzeit: `block` ist
       der gespeicherte Block unter dem Filter (sonst null), `zaehlt` er oder der letzte Block, `verschwunden` der Name einer
       Wahl, die es nicht mehr gibt. `gewaehlt` ist der Schlüssel nur dann, wenn der zählende Block von der Abschlussspalte
-      bzw. der letzten Phase abweicht — dem Ziel, bis zu dem die Berichte ohne Zielblock rechnen; nur dann gibt es `worte`
-      (`zielWorte`), sonst bleiben die Texte der Berichte wie ohne Wahl.
-      Schließt der Berichtsfilter die Abschlussspalte aus (R00169, ADR-0027 N5 Punkt 5; nicht auf Boards mit Phasen), zählt
+      abweicht — dem Ziel, bis zu dem die Berichte ohne Zielblock rechnen; nur dann gibt es `worte` (`zielWorte`), sonst
+      bleiben die Texte der Berichte wie ohne Wahl. Eine Wahl, die keine Spalte nennt, gilt als Vorgabe (ADR-0034 N4).
+      Schließt der Berichtsfilter die Abschlussspalte aus (R00169, ADR-0027 N5 Punkt 5), zählt
       ohne Wahl der letzte sichtbare Block, als wäre er gewählt: `gewaehlt`, `standard` und `worte` nennen ihn, und
       `ausgeschlossen` nennt die Abschlussspalte — nur, wenn nichts gespeichert ist. `block` bleibt die gespeicherte Wahl. */
   function zielblock(bew, f, zielspalte) {
-    const bloecke = fieberBloecke(bew, f, bew.phasen), vorgabe = durchsatzZiel(bew, bew.phasen), abschluss = vorgabe.name;
+    const bloecke = fieberBloecke(bew, f), abschluss = durchsatzZiel(bew).name;
     const block = bloecke.find(x => x.schluessel === zielspalte) || null, letzter = bloecke[bloecke.length - 1] || null;
-    const zaehlt = block || letzter, abschlussFehlt = vorgabe.art === 'spalte' && letzter !== null && f.ohneSpalten.includes(abschluss);
+    const zaehlt = block || letzter, abschlussFehlt = letzter !== null && f.ohneSpalten.includes(abschluss);
     let verschwunden = null, gewaehlt = null, worte = null, standard = abschluss, ausgeschlossen = null;
     if (zielspalte && !block) verschwunden = zielspalte;
     if (abschlussFehlt) standard = letzter.schluessel;
     if (abschlussFehlt && !zielspalte) ausgeschlossen = abschluss;
-    if (zaehlt && zaehlt.schluessel !== abschluss) { gewaehlt = zaehlt.schluessel; worte = zielWorte(gewaehlt, vorgabe.art === 'phase'); }
+    if (zaehlt && zaehlt.schluessel !== abschluss) { gewaehlt = zaehlt.schluessel; worte = zielWorte(gewaehlt); }
     return { bloecke, block, zaehlt, verschwunden, gewaehlt, standard, worte, ausgeschlossen };
   }
   /** Wie Burndown und Durchsatz einen gewählten Zielblock nennen (Zeichnung D0006 #erledigt-heisst): `lang` im Kopftext und im
       Satz unter der Legende des Burndowns, `kurz` hinter „− erledigt“, `bis` im Durchsatz. */
-  function zielWorte(name, istPhase) {
+  function zielWorte(name) {
     const genannt = `„${name}“`, bis = `bis ${genannt}`;
-    if (istPhase) return { lang: `${genannt} durchlaufen`, kurz: `nach ${genannt}`, bis };
     return { lang: `in ${genannt} oder rechts davon`, kurz: `ab ${genannt}`, bis };
   }
   /** Der Block, ab dem der Durchsatz den Zugang zählt (R00167, ADR-0027 N3 Punkt 4) — die eine Auflösung der gespeicherten
       Von-Spalte, getrennt von `zielblock`: nur der Durchsatz ruft sie. `eintraege` sind die der Auswahl „Zugang ab“: die erste
       Spalte unter dem Filter mit leerem Wert (die Vorgabe), dann die Blöcke von „Erledigt heißt“. `ab` ist der Index der Spalte,
-      deren erstes Erreichen zählt, `name` ihr Name bzw. der der Phase. `gewaehlt` ist der Schlüssel nur bei einer Wahl, die von
-      der Vorgabe abweicht; `verschwunden` der Name einer Wahl, die es nicht mehr gibt — dann zählt die Vorgabe. `gueltig` ist
-      falsch, wenn die Wahl nicht links vom Block `zielSchluessel` liegt; eine Phase darf ihr eigenes Ziel sein (von ihrer
-      ersten Spalte bis „durchlaufen“). */
+      deren erstes Erreichen zählt, `name` ihr Name. `gewaehlt` ist der Schlüssel nur bei einer Wahl, die von der Vorgabe
+      abweicht; `verschwunden` der Name einer Wahl, die es nicht mehr gibt — dann zählt die Vorgabe. `gueltig` ist falsch, wenn
+      die Wahl nicht links vom Block `zielSchluessel` liegt. */
   function vonblock(bew, f, vonspalte, zielSchluessel = null) {
-    const istPhase = durchsatzZiel(bew, bew.phasen).art === 'phase', zielbloecke = fieberBloecke(bew, f, bew.phasen);
+    const zielbloecke = fieberBloecke(bew, f);
     const erste = ersterVonBlock(bew, f);
-    const bloecke = zielbloecke.map((b, stelle) => vonBlockAus(bew, b, stelle, istPhase)).filter(b => b.ab >= 0);
+    const bloecke = zielbloecke.map((b, stelle) => vonBlockAus(bew, b, stelle)).filter(b => b.ab >= 0);
     const block = bloecke.find(b => b.schluessel === vonspalte) || null;
     let verschwunden = null, zaehlt = erste, gueltig = true;
     if (vonspalte && !block && vonspalte !== erste.name) verschwunden = vonspalte;
     if (block) {
       const zielStelle = zielbloecke.findIndex(b => b.schluessel === zielSchluessel);
       zaehlt = block;
-      gueltig = block.stelle < zielStelle || (istPhase && block.stelle === zielStelle);
+      gueltig = block.stelle < zielStelle;
     }
     return {
       eintraege: [erste, ...bloecke].map(b => ({ wert: b.schluessel, titel: b.titel })),
       gewaehlt: block && block.schluessel, name: zaehlt.name, ab: zaehlt.ab, verschwunden, gueltig, worte: vonWorte(zaehlt, block !== null),
     };
   }
-  /** Die Vorgabe von „Zugang ab“: die erste Spalte des Boards unter dem Berichtsfilter (auch auf einem Board mit Phasen). */
+  /** Die Vorgabe von „Zugang ab“: die erste Spalte des Boards unter dem Berichtsfilter. */
   function ersterVonBlock(bew, f) {
     let ab = bew.spalten.findIndex(s => !f.ohneSpalten.includes(s));
     if (ab < 0) ab = 0;
     const name = bew.spalten[ab] || '';
-    return { schluessel: '', name, titel: `Spalte „${name}“`, ab, stelle: -1, istPhase: false };
+    return { schluessel: '', name, titel: `Spalte „${name}“`, ab, stelle: -1 };
   }
-  /** Ein Block von „Erledigt heißt“ als Von-Block: eine Spalte zählt ab sich selbst, eine Phase ab ihrer ersten Spalte
-      (ohne eigene Spalte −1) und heißt „Phase „…““ statt „… durchlaufen“. */
-  function vonBlockAus(bew, block, stelle, istPhase) {
+  /** Ein Block von „Erledigt heißt“ als Von-Block: eine Spalte zählt ab sich selbst. */
+  function vonBlockAus(bew, block, stelle) {
     const name = block.schluessel;
-    if (!istPhase) return { schluessel: name, name, titel: block.titel, ab: bew.spalten.indexOf(name), stelle, istPhase };
-    const ab = bew.spalten.findIndex(s => bew.phasen.spaltenphasen[s] === name);
-    return { schluessel: name, name, titel: `Phase „${name}“`, ab, stelle, istPhase };
+    return { schluessel: name, name, titel: block.titel, ab: bew.spalten.indexOf(name), stelle };
   }
   /** Wie der Durchsatz den Von-Block nennt (Zeichnung D0006 #durchsatz-von): `ab` als Zusatz in Kopftext, Kennzahl und Tooltip
       nur bei einer Wahl, `genannt` in Legende und dem Satz darunter immer. */
   function vonWorte(block, gewaehlt) {
     const name = `„${block.name}“`;
-    let ab = '', genannt = name;
-    if (gewaehlt) ab = `ab ${name}`;
-    if (block.istPhase) genannt = `die Phase ${name}`;
-    return { ab, genannt };
+    const ab = gewaehlt ? `ab ${name}` : '';
+    return { ab, genannt: name };
   }
   /** Schlüssel des Caches: Projektstart, Berichtsfilter (Listen sortiert, damit dieselbe Auswahl denselben Schlüssel gibt)
       und eine gewählte Zielspalte — ohne sie gilt der Schlüssel aus R00078 weiter. */
@@ -907,9 +861,9 @@
   /** Ein Tag des Fever Charts aus der Sicht seines Tagesendes: erledigt und Umfang des letzten Blocks, prognostiziertes Ende
       je Perzentil in 7- und 5-Tage-Woche (null = keine Aussage); nichts offen → Ende ist der Tag selbst. Ohne Umfang ein
       leerer Tag — auch er kommt in den Cache, damit er nicht jedes Mal neu gerechnet wird. */
-  function fieberTag(bew, f, aufgabeZu, datum, phasen, start, block = null) {
-    const t = isoTag(datum), p = prognose(bew, f, aufgabeZu, tag(t, 1) - 1, phasen, { start, nurLetzter: true, block });
-    const b = p.phasen[0], leer = [null, null, null, null];
+  function fieberTag(bew, f, aufgabeZu, datum, start, block = null) {
+    const t = isoTag(datum), p = prognose(bew, f, aufgabeZu, tag(t, 1) - 1, { start, nurLetzter: true, block });
+    const b = p.bloecke[0], leer = [null, null, null, null];
     if (!b || !b.nenner) return { datum, erledigt: 0, umfang: 0, ende7: leer, ende5: leer };
     const ende = n => PERZENTILE.map(q => !b.offen ? datum : b.zeilen ? isoD(b.zeilen.find(z => z.p === q)['datum' + n]) : null);
     return { datum, erledigt: b.erreicht, umfang: b.nenner, ende7: ende(7), ende5: ende(5) };
@@ -1213,5 +1167,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, letzterTag, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, phasenRang, phasenStufen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, simuliereMitZugang, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, letzterTag, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, simuliereMitZugang, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);

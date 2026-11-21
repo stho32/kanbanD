@@ -16,8 +16,6 @@ const beispiel = () => ({ spalten: ['Backlog', 'Arbeit', 'Erledigt'], aufgaben: 
   { nummer: 2, wechsel: [z(2, 'Backlog'), z(3, 'Arbeit'), { zeitpunkt: '2026-11-04 08:00', spalte: 'Backlog' }, z(4, 'Arbeit')] },
   { nummer: 3, wechsel: [z(2, 'Backlog')] },
 ] });
-const PHASEN = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Entwicklertest' }, { nr: 3, name: 'Abnahme' }], spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
-const mitPhasen = () => ({ spalten: ['Eingang', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'], phasen: PHASEN, aufgaben: [] });
 
 /* ── B0816 Test an der Trennstelle (ADR-0027 N3 Punkt 6) ── */
 /** Alle Berichte eines Boards, verdrahtet wie in web/ansicht.js: Zielblock und Von-Block aus `board.fieber`, die Von-Wahl geht
@@ -26,7 +24,7 @@ function berichteDesBoards(board, bew = beispiel()) {
   const f = filter({}), ziel = B.zielblock(bew, f, board.fieber.zielspalte), zielSchluessel = ziel.block && ziel.block.schluessel;
   const von = B.vonblock(bew, f, board.fieber.vonspalte, ziel.zaehlt.schluessel);
   const d = B.durchsatz(bew, f, mitDatei, JETZT, null, 'tag', ziel.gewaehlt, von.gewaehlt);
-  const p = B.prognose(bew, f, mitDatei, JETZT, null);
+  const p = B.prognose(bew, f, mitDatei, JETZT);
   return {
     zugang: { jePeriode: d.perioden.map(x => x.zugang), gesamt: d.zugangGesamt, durchschnitt: d.zugangDurchschnitt },
     bestand: {
@@ -34,8 +32,8 @@ function berichteDesBoards(board, bew = beispiel()) {
       burndown: B.burndown(bew, f, mitDatei, JETZT, null, ziel.gewaehlt).map(x => [x.hinzugekommen, x.erledigt, x.entfernt, x.offen, x.umfang]),
       fluss: B.fluss(bew, f, mitDatei, JETZT, null, ziel.gewaehlt).tage.map(x => [x.jeSpalte, x.offen, x.gesamt, x.angekommen, x.fertig]),
       durchlaufzeit: B.durchlaufzeiten(bew, f, mitDatei, JETZT, 'Backlog', 'Erledigt'),
-      prognose: [p.umfang, p.phasen.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
-      fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', null, '2026-11-02', zielSchluessel),
+      prognose: [p.umfang, p.bloecke.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
+      fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', '2026-11-02', zielSchluessel),
       fieberSchluessel: B.fieberSchluessel('2026-11-02', f, zielSchluessel),
       ausgenommen: B.ausgenommen(bew, 'burndown', f, mitDatei, JETZT, ziel.gewaehlt),
       zielblock: { gewaehlt: ziel.gewaehlt, zaehlt: ziel.zaehlt.schluessel, verschwunden: ziel.verschwunden, standard: ziel.standard },
@@ -78,7 +76,7 @@ test('R00167 B0816 (ADR-0027 N3 Punkt 4): zielblock(), durchsatzZiel() ohne Para
   for (const vonspalte of ['Arbeit', 'Erledigt', 'Abnahme']) {
     assert.deepStrictEqual(berichteDesBoards(board({ vonspalte })).bestand, VOR_DER_KARTE, `Von-Spalte ${vonspalte}`);
   }
-  assert.deepStrictEqual(B.durchsatzZiel(beispiel(), undefined), { art: 'spalte', name: 'Erledigt', i: 2, stufe: null });
+  assert.deepStrictEqual(B.durchsatzZiel(beispiel(), undefined), { name: 'Erledigt', i: 2 });
 });
 
 /* ── B0817 durchsatz() rechnet den Zugang je Periode (ADR-0027 N3 Punkt 5) ── */
@@ -133,17 +131,6 @@ test('R00167 B0817 (AK 6): eine Von-Spalte, die es nicht gibt, rechnet ab der er
   assert.deepStrictEqual([leer.perioden, leer.gesamt, leer.durchschnitt, leer.zugangGesamt, leer.zugangDurchschnitt], [[], 0, null, 0, null]);
 });
 
-test('R00167 B0817: mit Phasen zählt das erste Erreichen der ersten Spalte der Phase oder einer Spalte rechts davon; ohne Wahl die erste Spalte des Boards', () => {
-  const bew = { ...mitPhasen(), aufgaben: [
-    { nummer: 1, wechsel: [z(2, 'Eingang'), z(3, 'Entwicklertest'), z(4, 'Erledigt')] },
-    { nummer: 2, wechsel: [z(2, 'Eingang'), z(4, 'Abnahme')] },
-    { nummer: 3, wechsel: [z(3, 'Entwicklung')] },
-  ] };
-  assert.deepStrictEqual(zahlen(durchsatz('Entwicklertest', bew)), { zugang: [0, 1, 1], abgang: [0, 0, 1], summen: [2, 1] });
-  assert.deepStrictEqual(zahlen(durchsatz('Entwicklung', bew)).zugang, [0, 2, 1]);
-  assert.deepStrictEqual(zahlen(durchsatz(null, bew)).zugang, [2, 1, 0]);
-});
-
 /* ── B0818 Balkenpaar je Periode (Zeichnung D0006 #durchsatz-von, „Balken“) ── */
 const rund = x => Math.round(x * 100) / 100;
 const paar = n => { const p = B.durchsatzPaar(636, n); return [rund(p.paar), p.luecke, rund(p.breite), p.zugangVoll]; };
@@ -175,7 +162,7 @@ test('R00167 B0814: ohne Wahl zählt die erste Spalte — sie steht mit leerem W
     assert.deepStrictEqual(kern(vonblock(vonspalte)), { gewaehlt: null, name: 'Backlog', ab: 0, verschwunden: null, gueltig: true }, `Von-Spalte ${vonspalte}`);
   }
   assert.deepStrictEqual(vonblock(null).eintraege, [{ wert: '', titel: 'Spalte „Backlog“' }, { wert: 'Arbeit', titel: 'Spalte „Arbeit“' }, { wert: 'Erledigt', titel: 'Spalte „Erledigt“' }]);
-  assert.deepStrictEqual(vonblock(null).eintraege.slice(1).map(e => e.wert), B.fieberBloecke(beispiel(), filter({}), undefined).map(b => b.schluessel));
+  assert.deepStrictEqual(vonblock(null).eintraege.slice(1).map(e => e.wert), B.fieberBloecke(beispiel(), filter({})).map(b => b.schluessel));
 });
 
 test('R00167 B0814 (AK 2): die gespeicherte Von-Spalte „Arbeit“ ist gewählt, gezählt wird ab ihrem Index, die Texte nennen sie', () => {
@@ -211,21 +198,3 @@ test('R00167 B0814 (AK 5): eine Von-Spalte, die nicht links vom Zielblock liegt,
   assert.strictEqual(vonblock('Abnahme', 'Arbeit').gueltig, true, 'eine verschwundene Wahl rechnet ab der ersten Spalte');
 });
 
-test('R00167 B0814: auf einem Board mit Phasen ist die Vorgabe die erste Spalte des Boards, die Blöcke heißen „Phase „…““, gezählt wird ab der ersten Spalte der Phase', () => {
-  const von = (vonspalte, ziel = 'Abnahme') => B.vonblock(mitPhasen(), filter({}), vonspalte, ziel);
-  assert.deepStrictEqual(von(null).eintraege.map(e => [e.wert, e.titel]), [['', 'Spalte „Eingang“'], ['Entwicklung', 'Phase „Entwicklung“'], ['Entwicklertest', 'Phase „Entwicklertest“'], ['Abnahme', 'Phase „Abnahme“']]);
-  assert.deepStrictEqual(kern(von(null)), { gewaehlt: null, name: 'Eingang', ab: 0, verschwunden: null, gueltig: true });
-  const v = von('Entwicklertest');
-  assert.deepStrictEqual(kern(v), { gewaehlt: 'Entwicklertest', name: 'Entwicklertest', ab: 2, verschwunden: null, gueltig: true });
-  assert.deepStrictEqual(v.worte, { ab: 'ab „Entwicklertest“', genannt: 'die Phase „Entwicklertest“' });
-  assert.strictEqual(von('Abnahme', 'Abnahme').gueltig, true, 'dieselbe Phase ist eine Strecke: von ihrer ersten Spalte bis „durchlaufen“');
-  assert.strictEqual(von('Abnahme', 'Entwicklung').gueltig, false, 'eine Phase rechts vom Ziel');
-  assert.strictEqual(von('Erledigt').verschwunden, 'Erledigt', 'eine Spalte ist auf einem Board mit Phasen kein Block');
-});
-
-test('R00167 B0814: eine Phase ohne eigene Spalte ist kein Eintrag von „Zugang ab“ — es gibt keine erste Spalte, die erreicht werden könnte', () => {
-  const ohneSpalte = { ...mitPhasen(), phasen: { ...PHASEN, spaltenphasen: { Entwicklung: 'Entwicklung', Abnahme: 'Abnahme' } } };
-  const v = B.vonblock(ohneSpalte, filter({}), 'Entwicklertest', 'Abnahme');
-  assert.deepStrictEqual(v.eintraege.map(e => e.wert), ['', 'Entwicklung', 'Abnahme']);
-  assert.deepStrictEqual(kern(v), { gewaehlt: null, name: 'Eingang', ab: 0, verschwunden: 'Entwicklertest', gueltig: true });
-});

@@ -157,23 +157,23 @@ test('Prognose je Spalte, Untergrenze, Ausschlüsse', () => {
   const zu7 = n => ({ klasse: n === 6 ? 'doku' : null, zustaendige: [], labels: [] });
   const p = prognose(bew, f({}), zu7, jetzt);
   assert.strictEqual(p.umfang, 6, '#7 ist vom Board genommen');
-  assert.deepStrictEqual(p.phasen.map(x => [x.spalte, x.erreicht, x.offen, x.laeufe]), [['B', 5, 1, 5], ['Z', 4, 2, 4]]);
-  const z = p.phasen[1];
+  assert.deepStrictEqual(p.bloecke.map(x => [x.spalte, x.erreicht, x.offen, x.laeufe]), [['B', 5, 1, 5], ['Z', 4, 2, 4]]);
+  const z = p.bloecke[1];
   assert.deepStrictEqual(z.reihe7, [0, 1, 0, 1, 1, 0, 0, 1, 0, 0], 'seit R00083 ab der ersten Aufgabe 12.10. bis heute 21.10., Nulltage eingeschlossen');
   assert.deepStrictEqual(z.reihe5, [0, 1, 0, 1, 1, 1, 0, 0], 'Sa und So fallen weg');
   assert.deepStrictEqual(z.zeilen.map(x => x.p), [50, 70, 85, 95]);
   assert.ok(z.zeilen.every(x => x.datum7 >= d(2026, 10, 22) && werktag5(x.datum5)));
-  assert.ok(p.phasen[0].zeilen, 'B gemessen');
+  assert.ok(p.bloecke[0].zeilen, 'B gemessen');
   assert.ok(z.zeilen.every(x => !x.untergrenze7 || x.untergrenze7 > x.datum7));
   assert.deepStrictEqual(p.tage.map(x => x.offen.Z), [7, 5, 5, 4, 3, 3, 3, 2, 2, 2]);
   assert.deepStrictEqual(p.tage.map(x => x.umfang), [7, 6, 6, 6, 6, 6, 6, 6, 6, 6]);
   const ohneB = prognose(bew, f({ ohneSpalten: ['B'] }), zu7, jetzt);
-  assert.deepStrictEqual(ohneB.phasen.map(x => [x.spalte, x.erreicht, x.offen]), [['Z', 4, 1]], '#5 liegt in B und zählt nicht');
+  assert.deepStrictEqual(ohneB.bloecke.map(x => [x.spalte, x.erreicht, x.offen]), [['Z', 4, 1]], '#5 liegt in B und zählt nicht');
   const ohneDoku = prognose(bew, f({ ohneFarben: ['doku'] }), zu7, jetzt);
-  assert.deepStrictEqual(ohneDoku.phasen.map(x => x.offen), [0, 1]);
-  assert.strictEqual(ohneDoku.phasen[0].zeilen, null, 'nichts offen → keine Perzentile');
+  assert.deepStrictEqual(ohneDoku.bloecke.map(x => x.offen), [0, 1]);
+  assert.strictEqual(ohneDoku.bloecke[0].zeilen, null, 'nichts offen → keine Perzentile');
   const kurz = prognose(bew, f({ messbasisTage: 3 }), zu7, jetzt);
-  assert.deepStrictEqual([kurz.phasen[1].laeufe, kurz.phasen[1].zeilen, kurz.phasen[1].reihe7], [1, null, [1, 0, 0]], 'letzte drei Tage 19.–21.10.: unter drei Läufen ungemessen');
+  assert.deepStrictEqual([kurz.bloecke[1].laeufe, kurz.bloecke[1].zeilen, kurz.bloecke[1].reihe7], [1, null, [1, 0, 0]], 'letzte drei Tage 19.–21.10.: unter drei Läufen ungemessen');
   assert.strictEqual(kurz.tage.length, 10, 'der Verlauf zeigt trotzdem alles ab der ersten Aufgabe');
 });
 
@@ -190,7 +190,7 @@ test('Prognose: Spalte rechts nie früher als die links davon', () => {
     w(4, ['2026-09-22 09:00', 'A']), w(5, ['2026-09-22 09:00', 'A']), w(6, ['2026-09-22 09:00', 'A']),
   ] };
   const p = prognose(bew, f({}), () => undefined, jetzt);
-  const [b, z] = p.phasen;
+  const [b, z] = p.bloecke;
   assert.ok(b.zeilen[1].datum7 > z.zeilen[1].datum7, 'B bei P70 später');
   assert.ok(z.zeilen.every((x, k) => x.untergrenze7 === Math.max(b.zeilen[k].datum7, b.zeilen[k].untergrenze7 || 0) || x.datum7 >= b.zeilen[k].datum7));
   assert.strictEqual(z.zeilen[1].untergrenze7, b.zeilen[1].datum7);
@@ -206,7 +206,7 @@ test('Prognose: archiviert außerhalb der Abschlussspalte ist verworfen', () => 
   const zu = n => ({ 1: { archiviert: '2026-10-20' }, 2: { archiviert: '2026-10-21' }, 3: {} })[n];
   const voll = n => ({ klasse: null, zustaendige: [], labels: [], ...zu(n) });
   const p = prognose(bew, f({}), voll, jetzt);
-  assert.deepStrictEqual([p.umfang, p.phasen[0].erreicht, p.phasen[0].offen, p.verworfen], [2, 1, 1, 1]);
+  assert.deepStrictEqual([p.umfang, p.bloecke[0].erreicht, p.bloecke[0].offen, p.verworfen], [2, 1, 1, 1]);
   assert.deepStrictEqual(p.tage.map(x => x.umfang), [3, 2, 2]);
 });
 
@@ -226,44 +226,11 @@ test('Termine: Anteil der Ziehungen, Werktage, Chance je Spalte', () => {
   assert.deepStrictEqual(terminChance(ph, '2026-10-21', jetzt), { art: 'chance', p7: 0, p5: 0 }, 'heute: noch nichts gezogen');
 });
 
-/* ── R00058 Phasen als Spalten ── */
-const { phasenStufen, ersterDurchlauf } = require('../../web/berichte.js');
+/* ── Blöcke von Wie lange noch je Spalte (R00046; die Rechnung je Phase aus R00058 ist mit R00223 entfallen) ── */
+const zug = (n, ...st) => ({ nummer: n, labels: [], wechsel: st.map(([z, s]) => ({ zeitpunkt: z, spalte: s })) });
 
-const STANDARD = [{ nr: 1, name: 'Entwicklung', eingebettet: '', gleich: '' }, { nr: 2, name: 'Entwicklertest', eingebettet: '', gleich: '' }, { nr: 3, name: 'Abnahme', eingebettet: '', gleich: '' }];
-const PHASEN = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', 'Abnahme Stefan': 'Abnahme', 'Abnahme Mia': 'Abnahme' } };
-const PSPALTEN = ['Backlog', 'Entwicklung', 'Entwicklertest', 'Abnahme Stefan', 'Abnahme Mia', 'Erledigt'];
-const zug = (n, ...st) => ({ nummer: n, labels: [], uebersprungen: [], wechsel: st.map(([z, s]) => ({ zeitpunkt: z, spalte: s })) });
-const tagIso = ms => { const x = new Date(ms); return `${String(x.getDate()).padStart(2, '0')}.${String(x.getMonth() + 1).padStart(2, '0')}.`; };
-
-test('Durchlaufen nach Phasen: spätere Phase oder Abschlussspalte, zwei Queues derselben Phase gleich weit', () => {
-  const [e, t, a] = phasenStufen(PHASEN, PSPALTEN);
-  const eins = zug(1, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-03 09:00', 'Abnahme Stefan']);
-  const zwei = zug(2, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-04 09:00', 'Abnahme Mia'], ['2026-10-05 09:00', 'Entwicklertest']);
-  assert.deepStrictEqual([eins, zwei].map(x => tagIso(ersterDurchlauf(x, t))), ['03.10.', '04.10.'], 'Entwicklertest durchlaufen beim Sprung in die Abnahme');
-  assert.deepStrictEqual([e, t, a].map(s => s.phase), ['Entwicklung', 'Entwicklertest', 'Abnahme']);
-  assert.ok(!t.durch(zwei, 'Entwicklertest'), '#2 ist ab 05.10. in Entwicklertest wieder offen');
-  assert.ok(!a.durch(zwei, 'Abnahme Mia') && !a.durch(zwei, 'Abnahme Stefan'), '„Abnahme Mia“ rechts von „Abnahme Stefan“ zählt nicht als weiter');
-  assert.ok(a.durch(zwei, 'Erledigt') && e.durch(zwei, 'Entwicklertest'));
-  assert.ok(!e.durch(zwei, 'Backlog') && !e.durch(zwei, null), 'ungebunden und vom Board genommen ist in keiner Phase');
-  assert.strictEqual(ersterDurchlauf(zug(3, ['2026-10-01 09:00', 'Backlog']), e), null);
-});
-
-test('Durchlaufen nach Phasen: entfällt, eingebettet in im-pair, gleich wie', () => {
-  const [, t, a] = phasenStufen(PHASEN, PSPALTEN);
-  const drei = { ...zug(3, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-02 09:00', 'Abnahme Stefan']), uebersprungen: ['Entwicklertest'] };
-  assert.ok(t.entfaellt(drei) && !a.entfaellt(drei));
-  const folge = [STANDARD[0], { ...STANDARD[1], eingebettet: 'im-pair' }, { ...STANDARD[2], gleich: 'Entwicklertest' }];
-  const [e2, t2, a2] = phasenStufen({ ...PHASEN, folge, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest' } }, ['Entwicklung', 'Entwicklertest', 'Erledigt']);
-  const pair = { ...zug(4, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-02 09:00', 'Entwicklertest']), labels: ['im-pair'] };
-  assert.strictEqual(tagIso(ersterDurchlauf(pair, t2)), '02.10.', 'im-pair: mit der Vorphase durchlaufen');
-  assert.strictEqual(tagIso(ersterDurchlauf(pair, a2)), '02.10.', 'gleich wie Entwicklertest');
-  const ohne = zug(5, ['2026-10-01 09:00', 'Entwicklung'], ['2026-10-02 09:00', 'Entwicklertest'], ['2026-10-06 09:00', 'Erledigt']);
-  assert.deepStrictEqual([e2, t2, a2].map(s => tagIso(ersterDurchlauf(ohne, s))), ['02.10.', '06.10.', '06.10.']);
-});
-
-test('Prognose je Phase: dieselben Perzentile wie je Spalte, wenn jede Phase eine Spalte hat', () => {
+test('Prognose je Spalte: Blöcke heißen „Spalte „X““, jeder gemessen, Verlauf je Block (R00223: die Gegenprobe je Phase entfällt)', () => {
   const sp = ['Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'];
-  const phasen = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
   const aufgaben = [];
   for (let n = 1; n <= 8; n++) {
     const st = [[`2026-10-0${1 + (n % 3)} 09:00`, 'Entwicklung']];
@@ -272,36 +239,11 @@ test('Prognose je Phase: dieselben Perzentile wie je Spalte, wenn jede Phase ein
     if (n <= 4) st.push([`2026-10-${String(12 + n).padStart(2, '0')} 11:00`, 'Erledigt']);
     aufgaben.push(zug(n, ...st));
   }
-  const bew = { spalten: sp, aufgaben };
-  const je = prognose(bew, f({}), () => undefined, jetzt), nach = prognose(bew, f({}), () => undefined, jetzt, phasen);
-  assert.deepStrictEqual(nach.phasen.map(x => x.phase), ['Entwicklung', 'Entwicklertest', 'Abnahme']);
-  assert.deepStrictEqual(nach.phasen.map(x => x.titel), ['Entwicklung durchlaufen', 'Entwicklertest durchlaufen', 'Abnahme durchlaufen']);
-  assert.deepStrictEqual(je.phasen.map(x => x.titel), ['Spalte „Entwicklertest“', 'Spalte „Abnahme“', 'Spalte „Erledigt“']);
-  const kern = p => p.phasen.map(x => [x.erreicht, x.offen, x.nenner, x.laeufe, x.reihe7, x.zeilen]);
-  assert.deepStrictEqual(kern(nach), kern(je));
-  assert.ok(nach.phasen.every(x => x.zeilen), 'alle drei gemessen');
-  assert.deepStrictEqual(nach.tage.map(x => x.offen.Abnahme), je.tage.map(x => x.offen.Erledigt));
-});
-
-test('Prognose je Phase: entfällt nimmt aus Nenner und Durchsatz, ohne Markierung zählt der Sprung', () => {
-  const sp = ['Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'];
-  const phasen = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
-  const drei = { ...zug(3, ['2026-10-12 09:00', 'Entwicklung'], ['2026-10-14 09:00', 'Abnahme']), uebersprungen: ['Entwicklertest'] };
-  const vier = zug(4, ['2026-10-12 09:00', 'Entwicklung'], ['2026-10-15 09:00', 'Abnahme']);
-  const fuenf = zug(5, ['2026-10-12 09:00', 'Entwicklung']);
-  const p = prognose({ spalten: sp, aufgaben: [drei, vier, fuenf] }, f({}), () => undefined, jetzt, phasen);
-  const t = p.phasen[1];
-  assert.deepStrictEqual([t.nenner, t.erreicht, t.offen, t.laeufe], [2, 1, 1, 1], '#3 fehlt im Entwicklertest, #4 hat ihn am Tag des Sprungs durchlaufen');
-  assert.deepStrictEqual([p.phasen[0].nenner, p.phasen[0].erreicht], [3, 2]);
-  assert.strictEqual(p.umfang, 3);
-  assert.deepStrictEqual(p.tage.map(x => x.offen.Entwicklertest).slice(-2), [1, 1]);
-});
-
-test('Durchlaufen nach Phasen: freie Spalte zwischen Phasen ist in keiner Phase, das erste Durchlaufen bleibt', () => {
-  const [e] = phasenStufen({ anwendung: 'kd', folge: STANDARD, spaltenphasen: { Bau: 'Entwicklung', Test: 'Entwicklertest' } }, ['Bau', 'Blockiert', 'Test', 'Erledigt']);
-  const x = zug(1, ['2026-10-01 09:00', 'Bau'], ['2026-10-02 09:00', 'Test'], ['2026-10-03 09:00', 'Blockiert']);
-  assert.ok(!e.durch(x, 'Blockiert'), 'heute offen');
-  assert.strictEqual(tagIso(ersterDurchlauf(x, e)), '02.10.', 'im Durchsatz zählt der Zug nach „Test“');
+  const je = prognose({ spalten: sp, aufgaben }, f({}), () => undefined, jetzt);
+  assert.deepStrictEqual(je.bloecke.map(x => x.titel), ['Spalte „Entwicklertest“', 'Spalte „Abnahme“', 'Spalte „Erledigt“']);
+  assert.deepStrictEqual(je.bloecke.map(x => [x.erreicht, x.nenner]), [[6, 8], [5, 8], [4, 8]]);
+  assert.ok(je.bloecke.every(x => x.zeilen), 'alle drei gemessen');
+  assert.deepStrictEqual(je.tage[je.tage.length - 1].offen, { Entwicklertest: 2, Abnahme: 3, Erledigt: 4 });
 });
 
 /* ── Zählen in Berichten je Aufgabe (R00060) ── */
@@ -327,23 +269,20 @@ test('Burndown ohne Aufgaben mit reporting.burndown false; der Filter wirkt zus�
   assert.strictEqual(ausgenommen(mitZaehlung(3, { burndown: false }), 'burndown', f({}), zu, jetzt), 0, 'nicht mehr auf dem Board');
 });
 
-test('Wie lange noch ohne Aufgaben mit reporting.forecast false — Umfang, Nenner, Durchsatz, je Spalte und je Phase', () => {
+test('Wie lange noch ohne Aufgaben mit reporting.forecast false — Umfang, Nenner, Durchsatz je Spalte', () => {
   const sp = ['Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'];
-  const phasen = { anwendung: 'kd', folge: STANDARD, spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
   const eins = zug(1, ['2026-10-12 09:00', 'Entwicklung']);
   const zwei = { ...zug(2, ['2026-10-12 09:00', 'Entwicklung']), reporting: { forecast: false } };
   const bew = { spalten: sp, aufgaben: [eins, zwei] };
-  for (const ph of [undefined, phasen]) {
-    const p = prognose(bew, f({}), () => undefined, jetzt, ph);
-    assert.strictEqual(p.umfang, 1, 'nur #1');
-    assert.strictEqual(p.ausgenommen, 1);
-    assert.deepStrictEqual(p.phasen.map(x => x.nenner), [1, 1, 1]);
-    assert.deepStrictEqual(p.gezaehlt, [1]);
-    assert.ok(p.tage.every(x => x.umfang === 1));
-  }
+  const je = prognose(bew, f({}), () => undefined, jetzt);
+  assert.strictEqual(je.umfang, 1, 'nur #1');
+  assert.strictEqual(je.ausgenommen, 1);
+  assert.deepStrictEqual(je.bloecke.map(x => x.nenner), [1, 1, 1]);
+  assert.deepStrictEqual(je.gezaehlt, [1]);
+  assert.ok(je.tage.every(x => x.umfang === 1));
   const weg = { ...zug(3, ['2026-10-12 09:00', 'Entwicklung'], ['2026-10-13 09:00', 'Entwicklertest']), reporting: { forecast: false } };
-  const p = prognose({ spalten: sp, aufgaben: [eins, weg] }, f({}), () => undefined, jetzt, phasen);
-  assert.strictEqual(p.phasen[0].laeufe, 0, 'auch nicht im Durchsatz');
+  const p = prognose({ spalten: sp, aufgaben: [eins, weg] }, f({}), () => undefined, jetzt);
+  assert.strictEqual(p.bloecke[0].laeufe, 0, 'auch nicht im Durchsatz');
   const zuX = n => ({ klasse: n === 2 ? 'doku' : null, zustaendige: [], labels: [] });
   assert.strictEqual(prognose(bew, f({ ohneFarben: ['doku'] }), zuX, jetzt).ausgenommen, 0, 'der Filter wirkt zusätzlich; schon ausgeschlossen zählt nicht doppelt');
   assert.strictEqual(prognose({ spalten: sp, aufgaben: [eins, { ...zwei, reporting: { burndown: false } }] }, f({}), () => undefined, jetzt).umfang, 2, 'burndown betrifft Wie lange noch nicht');
@@ -393,29 +332,29 @@ const ohne = () => undefined;
 test('Fever Chart: Projektstart ist Messbasis und Beginn des Verlaufs in der Prognose', () => {
   const bew = fieberBew();
   assert.strictEqual(ersterTag(bew), '2026-10-12');
-  const mit = prognose(bew, f({}), ohne, jetzt, undefined, { start: '2026-10-16' });
-  assert.deepStrictEqual([mit.phasen[1].laeufe, mit.phasen[1].zeilen], [2, null], 'nur #3 und #4 ab dem 16.10. — unter drei Läufen');
+  const mit = prognose(bew, f({}), ohne, jetzt, { start: '2026-10-16' });
+  assert.deepStrictEqual([mit.bloecke[1].laeufe, mit.bloecke[1].zeilen], [2, null], 'nur #3 und #4 ab dem 16.10. — unter drei Läufen');
   assert.strictEqual(mit.tage[0].t, d(2026, 10, 16));
   assert.strictEqual(mit.tage.length, 6);
-  const zeitraum = prognose(bew, f({ zeitraum: 'eigen', von: '2026-10-12', bis: '2026-10-21' }), ohne, jetzt, undefined, { start: '2026-10-16' });
-  assert.strictEqual(zeitraum.phasen[1].laeufe, 2, 'seit R00083 wirkt der Kalenderzeitraum nicht auf die Prognose');
+  const zeitraum = prognose(bew, f({ zeitraum: 'eigen', von: '2026-10-12', bis: '2026-10-21' }), ohne, jetzt, { start: '2026-10-16' });
+  assert.strictEqual(zeitraum.bloecke[1].laeufe, 2, 'seit R00083 wirkt der Kalenderzeitraum nicht auf die Prognose');
   const kurz = prognose(bew, f({ messbasisTage: 2 }), ohne, jetzt);
-  assert.deepStrictEqual([kurz.phasen[1].laeufe, kurz.phasen[1].zeilen], [0, null], 'letzte zwei Tage 20. und 21.10.: kein Lauf');
+  assert.deepStrictEqual([kurz.bloecke[1].laeufe, kurz.bloecke[1].zeilen], [0, null], 'letzte zwei Tage 20. und 21.10.: kein Lauf');
   const lang = prognose(bew, f({ messbasisTage: 365 }), ohne, jetzt);
-  assert.strictEqual(lang.phasen[1].reihe7.length, 10, 'nie vor der ersten Aufgabe (12.10.)');
-  const letzter = prognose(bew, f({}), ohne, jetzt, undefined, { nurLetzter: true });
-  assert.deepStrictEqual([letzter.phasen.length, letzter.phasen[0].spalte, letzter.tage], [1, 'Z', []]);
+  assert.strictEqual(lang.bloecke[1].reihe7.length, 10, 'nie vor der ersten Aufgabe (12.10.)');
+  const letzter = prognose(bew, f({}), ohne, jetzt, { nurLetzter: true });
+  assert.deepStrictEqual([letzter.bloecke.length, letzter.bloecke[0].spalte, letzter.tage], [1, 'Z', []]);
 });
 
 test('Fever Chart: ein Tag aus der Sicht seines Tagesendes', () => {
-  const bew = fieberBew(), voll = prognose(bew, f({}), ohne, jetzt).phasen[1];
-  const heute = fieberTag(bew, f({}), ohne, '2026-10-21', undefined, null);
+  const bew = fieberBew(), voll = prognose(bew, f({}), ohne, jetzt).bloecke[1];
+  const heute = fieberTag(bew, f({}), ohne, '2026-10-21', null);
   const iso = ms => fieberTag.length && new Date(ms).toLocaleDateString('sv-SE');
   assert.deepStrictEqual(heute, { datum: '2026-10-21', erledigt: 4, umfang: 6, ende7: voll.zeilen.map(z => iso(z.datum7)), ende5: voll.zeilen.map(z => iso(z.datum5)) });
-  assert.deepStrictEqual(fieberTag(bew, f({}), ohne, '2026-10-14', undefined, null), { datum: '2026-10-14', erledigt: 1, umfang: 6, ende7: [null, null, null, null], ende5: [null, null, null, null] }, 'ein Lauf: keine Aussage');
-  assert.deepStrictEqual(fieberTag(bew, f({}), ohne, '2026-10-11', undefined, null), { datum: '2026-10-11', erledigt: 0, umfang: 0, ende7: [null, null, null, null], ende5: [null, null, null, null] }, 'vor der ersten Aufgabe ein leerer Tag');
+  assert.deepStrictEqual(fieberTag(bew, f({}), ohne, '2026-10-14', null), { datum: '2026-10-14', erledigt: 1, umfang: 6, ende7: [null, null, null, null], ende5: [null, null, null, null] }, 'ein Lauf: keine Aussage');
+  assert.deepStrictEqual(fieberTag(bew, f({}), ohne, '2026-10-11', null), { datum: '2026-10-11', erledigt: 0, umfang: 0, ende7: [null, null, null, null], ende5: [null, null, null, null] }, 'vor der ersten Aufgabe ein leerer Tag');
   const fertig = { spalten: ['A', 'Z'], aufgaben: [{ nummer: 1, wechsel: [{ zeitpunkt: '2026-10-12 09:00', spalte: 'Z' }] }] };
-  assert.deepStrictEqual(fieberTag(fertig, f({}), ohne, '2026-10-13', undefined, null).ende7, Array(4).fill('2026-10-13'), 'nichts offen: Ende ist der Tag');
+  assert.deepStrictEqual(fieberTag(fertig, f({}), ohne, '2026-10-13', null).ende7, Array(4).fill('2026-10-13'), 'nichts offen: Ende ist der Tag');
   assert.deepStrictEqual(fehlendeTage('2026-10-18', ['2026-10-19'], jetzt), ['2026-10-18', '2026-10-20'], 'bis gestern, ohne Vorhandenes');
 });
 
@@ -466,10 +405,10 @@ test('Fever Chart: Zielspalte — Prognose eines benannten Blocks, Tag und Schl�
   const bew = fieberBew();
   assert.deepStrictEqual(fieberBloecke(bew, f({}), undefined).map(x => x.schluessel), ['B', 'Z']);
   assert.deepStrictEqual(fieberBloecke(bew, f({ ohneSpalten: ['B'] }), undefined).map(x => x.schluessel), ['Z']);
-  const b = prognose(bew, f({}), ohne, jetzt, undefined, { block: 'B' });
-  assert.deepStrictEqual(b.phasen.map(x => [x.spalte, x.erreicht, x.nenner]), [['B', 5, 6]]);
-  assert.deepStrictEqual(prognose(bew, f({}), ohne, jetzt, undefined, { block: 'weg' }).phasen.map(x => x.spalte), ['Z'], 'unbekannt: der letzte');
-  const tagB = fieberTag(bew, f({}), ohne, '2026-10-21', undefined, null, 'B');
+  const b = prognose(bew, f({}), ohne, jetzt, { block: 'B' });
+  assert.deepStrictEqual(b.bloecke.map(x => [x.spalte, x.erreicht, x.nenner]), [['B', 5, 6]]);
+  assert.deepStrictEqual(prognose(bew, f({}), ohne, jetzt, { block: 'weg' }).bloecke.map(x => x.spalte), ['Z'], 'unbekannt: der letzte');
+  const tagB = fieberTag(bew, f({}), ohne, '2026-10-21', null, 'B');
   assert.deepStrictEqual([tagB.erledigt, tagB.umfang], [5, 6]);
   assert.ok(tagB.ende7.every(Boolean), 'B ist gemessen');
   assert.strictEqual(fieberSchluessel('2026-10-01', f({})), fieberSchluessel('2026-10-01', f({}), null), 'ohne Zielspalte der Schlüssel aus R00078');
@@ -513,7 +452,7 @@ test('Prognose wird gemerkt, solange Bewegungen, Aufgaben, Filter, Optionen und 
   const mehr = fieberBew(); mehr.aufgaben.push({ nummer: 9, wechsel: [{ zeitpunkt: '2026-10-20 09:00', spalte: 'A' }] });
   assert.notStrictEqual(prognose(mehr, f({}), ohne, jetzt), a, 'neue Bewegungen');
   assert.notStrictEqual(prognose(bew, f({}), n => n === 6 ? { klasse: 'doku', zustaendige: [], labels: [] } : undefined, jetzt), a, 'andere Klasse an einer Aufgabe');
-  assert.notStrictEqual(prognose(bew, f({}), ohne, jetzt, undefined, { block: 'B' }), a, 'andere Optionen');
+  assert.notStrictEqual(prognose(bew, f({}), ohne, jetzt, { block: 'B' }), a, 'andere Optionen');
 });
 
 test('Diagramm von „Wie lange noch“: die drei rechten Blöcke mit Prognose, ungemessene rechts davon genannt', () => {
@@ -693,23 +632,11 @@ test('Durchsatz: das erste Erreichen des Ziels zählt (R00122 B0562)', () => {
   assert.deepStrictEqual(durch('woche').perioden.map(p => p.anzahl), [2, 2], '#3 zählt am 09.11. (Fertig), nicht am 06.11. (In Arbeit)');
 });
 
-test('Durchsatz-Ziel: Abschlussspalte, bei gebundenem Board die letzte Phase (R00122 B0562)', () => {
-  const ohne = durchsatzZiel(DURCH, null);
-  assert.deepStrictEqual([ohne.art, ohne.name, ohne.i], ['spalte', 'Fertig', 2]);
-  const phasen = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Auslieferung' }], spaltenphasen: { Eingang: 'Entwicklung', 'In Arbeit': 'Entwicklung', Fertig: 'Auslieferung' } };
-  const mitPhasen = { ...DURCH, phasen };
-  assert.deepStrictEqual([durchsatzZiel(mitPhasen, phasen).art, durchsatzZiel(mitPhasen, phasen).name], ['phase', 'Auslieferung']);
-  assert.deepStrictEqual(durchsatz(mitPhasen, AK_FILTER, zuDurch, DURCH_JETZT, null, 'woche').perioden.map(p => p.anzahl), [2, 2], 'dieselbe Bedeutung je letzter Phase');
-});
-
-test('Durchsatz je letzter Phase: „durchlaufen“ heißt über die letzte Phase hinaus (R00122 B0562)', () => {
-  const phasen = { anwendung: 'kd', folge: [{ nr: 1, name: 'P1' }, { nr: 2, name: 'P2' }], spaltenphasen: { Bau: 'P1', Test: 'P2' } };
-  const bew = { spalten: ['Bau', 'Test', 'Erledigt'], phasen, aufgaben: [
-    { nummer: 1, wechsel: [{ zeitpunkt: '2026-11-02 09:00', spalte: 'Bau' }, { zeitpunkt: '2026-11-03 09:00', spalte: 'Test' }, { zeitpunkt: '2026-11-05 09:00', spalte: 'Erledigt' }] },
-    { nummer: 2, wechsel: [{ zeitpunkt: '2026-11-02 09:00', spalte: 'Bau' }, { zeitpunkt: '2026-11-03 09:00', spalte: 'Test' }] },
-  ] };
-  const d = durchsatz(bew, AK_FILTER, zuDurch, DURCH_JETZT, null, 'tag');
-  assert.deepStrictEqual([d.gesamt, d.perioden[3].anzahl], [1, 1], '#1 zählt beim Verlassen der letzten Phase (05.11.); #2 bleibt in ihr und zählt nicht');
+test('Durchsatz-Ziel: die Abschlussspalte, mit Zielblock dessen Spalte (R00122 B0562, R00166)', () => {
+  const ohne = durchsatzZiel(DURCH);
+  assert.deepStrictEqual([ohne.name, ohne.i], ['Fertig', 2]);
+  assert.deepStrictEqual(durchsatzZiel(DURCH, 'In Arbeit'), { name: 'In Arbeit', i: 1 });
+  assert.deepStrictEqual(durchsatzZiel(DURCH, 'weg'), ohne, 'eine Wahl, die keine Spalte nennt, gilt als Vorgabe');
 });
 
 test('Durchsatz: Zeitraum, Ausschlüsse und Messbasis (R00122 B0569)', () => {
@@ -810,7 +737,7 @@ const isoDatum = ms => new Date(ms).toLocaleDateString('sv-SE');
 
 test('R00168 AK 3: die Prognose bleibt am Datensatz mit Zugang, Verworfenem und Rückläufer wie vor der Karte', () => {
   const p = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt);
-  const gelesen = p.phasen.map(b => ({ spalte: b.spalte, offen: b.offen, laeufe: b.laeufe, durchsatz: b.durchsatz, reihe7: b.reihe7, reihe5: b.reihe5, zeilen: b.zeilen.map(z => [z.p, z.kalendertage, isoDatum(z.datum7), z.arbeitstage, isoDatum(z.datum5)]) }));
+  const gelesen = p.bloecke.map(b => ({ spalte: b.spalte, offen: b.offen, laeufe: b.laeufe, durchsatz: b.durchsatz, reihe7: b.reihe7, reihe5: b.reihe5, zeilen: b.zeilen.map(z => [z.p, z.kalendertage, isoDatum(z.datum7), z.arbeitstage, isoDatum(z.datum5)]) }));
   // Werte von main (e819a47), vor dem Umbau gerechnet
   assert.deepStrictEqual(gelesen, [
     { spalte: 'Arbeit', offen: 1, laeufe: 4, durchsatz: 0.4, reihe7: [0, 1, 0, 1, 1, 0, 0, 1, 0, 0], reihe5: [0, 1, 0, 1, 1, 1, 0, 0], zeilen: [[50, 2, '2026-10-23', 2, '2026-10-23'], [70, 3, '2026-10-24', 2, '2026-10-23'], [85, 4, '2026-10-25', 3, '2026-10-26'], [95, 6, '2026-10-27', 5, '2026-10-28']] },
@@ -824,7 +751,7 @@ test('R00168 AK 5: Zugangssumme je Block — hinzugekommen und zurückgeholt, ab
   const p = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt);
   // „Erledigt“: #4–#8 hinzugekommen (5) + #5 zurückgeholt (1) − #6 und #8 entfernt (2) = 4
   // „Arbeit“: #4–#8 hinzugekommen (5) − #6 und #8 entfernt (2) = 3; #5 liegt in „Arbeit“ und bleibt für diesen Block durch
-  assert.deepStrictEqual(p.phasen.map(b => [b.spalte, b.zugang]), [['Arbeit', 3], ['Erledigt', 4]]);
+  assert.deepStrictEqual(p.bloecke.map(b => [b.spalte, b.zugang]), [['Arbeit', 3], ['Erledigt', 4]]);
 });
 
 /** Rechenbeispiele der Anforderung: `vorher` vor der Messbasis offen, `hinzu` in ihr hinzugekommen, davon `entfernt` vom Board
@@ -838,7 +765,7 @@ function rechenbeispiel168({ vorher, hinzu, entfernt, erledigt }) {
   [...davor, ...neu.slice(entfernt)].slice(0, erledigt).forEach((a, i) => a.wechsel.push({ zeitpunkt: tagImOktober(17 + i), spalte: 'Erledigt' }));
   return { spalten: ['Backlog', 'Arbeit', 'Erledigt'], aufgaben: [alt, ...davor, ...neu] };
 }
-const abschlussblock = (bew, tage) => prognose(bew, f({ messbasisTage: tage }), ohne, jetzt).phasen[1];
+const abschlussblock = (bew, tage) => prognose(bew, f({ messbasisTage: tage }), ohne, jetzt).bloecke[1];
 const BEISPIEL_A = { vorher: 0, hinzu: 10, entfernt: 0, erledigt: 4 }, BEISPIEL_B = { vorher: 5, hinzu: 2, entfernt: 0, erledigt: 4 }, BEISPIEL_C = { vorher: 4, hinzu: 5, entfernt: 3, erledigt: 3 };
 
 test('R00168 Rechenbeispiele A, B, C und A mit 20 Tagen (AK 6): Summen und Tage der Messbasis', () => {
@@ -856,10 +783,10 @@ test('R00168: Zugang nie unter 0, ohne Prognose nicht gerechnet, im Fever Chart 
   assert.deepStrictEqual([abschlussblock(bew, 10).zugang, abschlussblock(bew, 10).offen], [0, 2]);
   const zweiLaeufe = abschlussblock(rechenbeispiel168({ vorher: 4, hinzu: 2, entfernt: 0, erledigt: 2 }), 10);
   assert.deepStrictEqual([zweiLaeufe.zeilen, zweiLaeufe.zugang], [null, null], 'unter drei Läufen keine Prognose, kein Zugang');
-  const fieber = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true });
-  assert.deepStrictEqual([fieber.phasen.length, fieber.phasen[0].zugang, fieber.phasen[0].laeufe], [1, null, 4], 'nurLetzter rechnet den Zugang nicht');
+  const fieber = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, { nurLetzter: true });
+  assert.deepStrictEqual([fieber.bloecke.length, fieber.bloecke[0].zugang, fieber.bloecke[0].laeufe], [1, null, 4], 'nurLetzter rechnet den Zugang nicht');
   // Werte von main (e819a47): das Fever Chart zeigt dieselben Zahlen
-  assert.deepStrictEqual(fieberTag(zugangBew(), zehnTage, zugangAufgabe, '2026-10-21', undefined, null), { datum: '2026-10-21', erledigt: 4, umfang: 6, ende7: ['2026-10-25', '2026-10-27', '2026-10-29', '2026-10-31'], ende5: ['2026-10-27', '2026-10-28', '2026-10-29', '2026-11-02'] });
+  assert.deepStrictEqual(fieberTag(zugangBew(), zehnTage, zugangAufgabe, '2026-10-21', null), { datum: '2026-10-21', erledigt: 4, umfang: 6, ende7: ['2026-10-25', '2026-10-27', '2026-10-29', '2026-10-31'], ende5: ['2026-10-27', '2026-10-28', '2026-10-29', '2026-11-02'] });
   assert.strictEqual(fieberSchluessel('2026-10-12', zehnTage), '{"v":2,"start":"2026-10-12","filter":{"ohneFarben":[],"ohneSpalten":[],"personen":[],"labels":[],"messbasisTage":10}}', 'der Schlüssel des Caches bleibt');
 });
 
@@ -871,7 +798,7 @@ test('R00168 AK 1, AK 2, AK 4: „kein Ende absehbar“ genau dann, wenn die Zug
   assert.deepStrictEqual(hinweis(BEISPIEL_B), { zugangJeTag: 0.2, abgangJeTag: 0.4, keinEndeAbsehbar: false });
   assert.deepStrictEqual(hinweis(BEISPIEL_C), { zugangJeTag: 0.2, abgangJeTag: 0.3, keinEndeAbsehbar: false });
   assert.deepStrictEqual(hinweis(BEISPIEL_A, 20), { zugangJeTag: 0.5, abgangJeTag: 0.2, keinEndeAbsehbar: true });
-  const [arbeit, erledigt] = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt).phasen;
+  const [arbeit, erledigt] = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt).bloecke;
   assert.strictEqual(zugangGegenAbgang(erledigt).keinEndeAbsehbar, true, 'Gleichstand 4 gegen 4');
   assert.strictEqual(zugangGegenAbgang(arbeit).keinEndeAbsehbar, false, '3 gegen 4');
   assert.strictEqual(zugangGegenAbgang(erledigt).abgangJeTag, erledigt.durchsatz, 'Abgang ist der Durchsatz des Blocks');
@@ -882,7 +809,7 @@ test('R00168 AK 1, AK 2, AK 4: „kein Ende absehbar“ genau dann, wenn die Zug
   // ohne Prognose: unter drei Läufen, nichts offen, Fever Chart
   assert.strictEqual(zugangGegenAbgang(abschlussblock(rechenbeispiel168({ vorher: 4, hinzu: 2, entfernt: 0, erledigt: 2 }), 10)), null);
   assert.strictEqual(zugangGegenAbgang(abschlussblock(rechenbeispiel168({ vorher: 2, hinzu: 2, entfernt: 0, erledigt: 4 }), 10)), null, 'nichts offen');
-  assert.strictEqual(zugangGegenAbgang(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true }).phasen[0]), null);
+  assert.strictEqual(zugangGegenAbgang(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, { nurLetzter: true }).bloecke[0]), null);
 });
 
 test('R00171 B0837: der gespeicherte Filter trägt den Spaltenabschnitt der Kosten als Text — fehlt er, gilt „alle“; eine falsche Form wird verworfen', () => {
@@ -924,7 +851,7 @@ test('R00193 AK 4: mit Zugang nie vor ohne Zugang — zufällige Reihen mit fest
 
 test('R00193 AK 1, AK 5: mitZugang je Block mit Zugang > 0; erste Tabelle, Durchsatz und Fever Chart wie vor der Karte', () => {
   const p = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt);
-  const [arbeit, erledigt] = p.phasen;
+  const [arbeit, erledigt] = p.bloecke;
   // erste Tabelle: dieselben Werte wie im Test zu R00168 AK 3 (Stand vor der Karte)
   assert.deepStrictEqual(erledigt.zeilen.map(z => [z.p, z.kalendertage, z.arbeitstage]), [[50, 4, 4], [70, 6, 5], [85, 8, 6], [95, 10, 8]]);
   assert.strictEqual(erledigt.durchsatz, 0.4);
@@ -945,11 +872,11 @@ test('R00193 AK 1, AK 5: mitZugang je Block mit Zugang > 0; erste Tabelle, Durch
   assert.deepStrictEqual([null0.zugang, !!null0.zeilen, null0.mitZugang], [0, true, null]);
   // ohne Prognose und im Fever Chart nicht gerechnet
   assert.strictEqual(abschlussblock(rechenbeispiel168({ vorher: 4, hinzu: 2, entfernt: 0, erledigt: 2 }), 10).mitZugang, null);
-  assert.strictEqual(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, undefined, { nurLetzter: true }).phasen[0].mitZugang, null);
+  assert.strictEqual(prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt, { nurLetzter: true }).bloecke[0].mitZugang, null);
 });
 
 test('R00193 B0950: Zugangsreihe je Tag aus den Ereignissen der Messbasis — je Tag nie unter 0, daher Summe über dem Zugang aus R00168', () => {
-  const [arbeit, erledigt] = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt).phasen;
+  const [arbeit, erledigt] = prognose(zugangBew(), zehnTage, zugangAufgabe, jetzt).bloecke;
   // „Erledigt“ ab 12.10.: +#4 · +#5 · +#6 · +#7 · +#8 · −#6 entfernt (17.) · +#5 zurückgeholt (18.) · −#8 archiviert (19.) · – · –
   assert.deepStrictEqual(erledigt.zugangReihe7, [1, 1, 1, 1, 1, 0, 1, 0, 0, 0]);
   // „Arbeit“: der Rückläufer #5 bleibt für diesen Block durch, kein zweites „hinzugekommen“ am 18.
@@ -959,6 +886,6 @@ test('R00193 B0950: Zugangsreihe je Tag aus den Ereignissen der Messbasis — je
   assert.deepStrictEqual([summe(arbeit.zugangReihe7), arbeit.zugang], [5, 3]);
   assert.deepStrictEqual([erledigt.zugangReihe7.length, erledigt.zugangReihe5], [erledigt.reihe7.length, [1, 1, 1, 1, 1, 1, 0, 0]], "dieselben Tage wie die Abgangsreihe; Sa 17. (0) und So 18. (1) zählen zum Montag 19. (0)");
   // Messbasis 20 Tage: beide Reihen über dieselben 20 Tage
-  const lang = prognose(zugangBew(), f({ messbasisTage: 20 }), zugangAufgabe, jetzt).phasen[1];
+  const lang = prognose(zugangBew(), f({ messbasisTage: 20 }), zugangAufgabe, jetzt).bloecke[1];
   assert.deepStrictEqual([lang.reihe7.length, lang.zugangReihe7.length, summe(lang.zugangReihe7)], [20, 20, 8], '#2 und #3 am 5.10. kommen hinzu');
 });

@@ -52,23 +52,12 @@ function zufall(saat) {
 }
 const zwei = n => String(n).padStart(2, '0');
 const JETZT_ZUFALL = new Date(2026, 10, 10, 12, 0).getTime();
-/** Phasen über die mittleren Spalten, mal mit „eingebettet in“ an der zweiten Phase. */
-function zufallsPhasen(w, spalten) {
-  const mitte = spalten.slice(1, -1);
-  const folge = mitte.map((name, k) => {
-    const phase = { nr: k + 1, name };
-    if (k === 1 && w.trifft(0.5)) phase.eingebettet = 'klein';
-    return phase;
-  });
-  return { anwendung: 'kd', folge, spaltenphasen: Object.fromEntries(mitte.map(name => [name, name])) };
-}
 /** Ein Zufallsbestand: 3–6 Spalten, bis zu 12 Aufgaben mit Zügen vom 01.11. bis 09.11. — auch nach links (Rückläufer), vom
-    Board genommen und wieder da —, Archivtage, Labels, `reporting.burndown: false`; jeder dritte mit Phasen. Dazu ein Filter,
+    Board genommen und wieder da —, Archivtage, Labels, `reporting.burndown: false`. Dazu ein Filter,
     der mal Spalten ausschließt (auch die Abschlussspalte), mal „Rechnen ab“ setzt, und eine gespeicherte Zielspalte. */
 function zufallsbestand(saat) {
   const w = zufall(saat), spalten = ['Eingang', 'Analyse', 'Bau', 'Test', 'Abnahme', 'Erledigt'].slice(0, 2 + w.bis(4)).concat('Fertig');
   const bew = { spalten, aufgaben: [] }, dateien = new Map();
-  if (saat % 3 === 0 && spalten.length >= 4) bew.phasen = zufallsPhasen(w, spalten);
   for (let nummer = 1, n = 1 + w.bis(12); nummer <= n; nummer++) {
     const wechsel = [];
     let t = 1 + w.bis(5), spalte = spalten[w.bis(2)];
@@ -94,8 +83,8 @@ function zufallsbestand(saat) {
   return { bew, f, start, zielspalte, aufgabeZu: nr => dateien.get(nr) };
 }
 
-test('R00169 B0823 (AK 2, AK 9): an jedem Tag von 500 Zufallsbeständen — mit Rückläufern, Archivtagen, ausgeschlossenen Spalten, jeder dritte mit Phasen — ist Burndown „offen“ = Fluss „offen“ und Burndown „Umfang“ = Fluss „gesamt“; ohne Phasen ist „offen“ die Summe der Bänder links vom Zielblock', () => {
-  const gesehen = { tage: 0, mitWahl: 0, mitPhasenUndWahl: 0, offenAndersAlsOhneWahl: 0 };
+test('R00169 B0823 (AK 2, AK 9): an jedem Tag von 500 Zufallsbeständen — mit Rückläufern, Archivtagen, ausgeschlossenen Spalten — ist Burndown „offen“ = Fluss „offen“ und Burndown „Umfang“ = Fluss „gesamt“; „offen“ ist die Summe der Bänder links vom Zielblock', () => {
+  const gesehen = { tage: 0, mitWahl: 0, offenAndersAlsOhneWahl: 0 };
   for (let saat = 1; saat <= 500; saat++) {
     const { bew, f, start, zielspalte, aufgabeZu } = zufallsbestand(saat);
     const { ziel, burndown, fluss } = beideBerichte(bew, f, zielspalte, aufgabeZu, JETZT_ZUFALL, start);
@@ -105,7 +94,7 @@ test('R00169 B0823 (AK 2, AK 9): an jedem Tag von 500 Zufallsbeständen — mit 
       const wo = `Bestand ${saat} (Zielspalte ${zielspalte}, zählt ${ziel.gewaehlt}) am ${tag.datum}`;
       assert.strictEqual(tag.offen, burndown[i].offen, `offen — ${wo}`);
       assert.strictEqual(tag.gesamt, burndown[i].umfang, `gesamt — ${wo}`);
-      if (ziel.gewaehlt && !bew.phasen) {
+      if (ziel.gewaehlt) {
         const links = bew.spalten.slice(0, bew.spalten.indexOf(ziel.gewaehlt));
         assert.strictEqual(tag.offen, links.reduce((summe, s) => summe + tag.jeSpalte[s], 0), `Bänder links — ${wo}`);
       }
@@ -113,9 +102,8 @@ test('R00169 B0823 (AK 2, AK 9): an jedem Tag von 500 Zufallsbeständen — mit 
     });
     gesehen.tage += fluss.length;
     if (ziel.gewaehlt) gesehen.mitWahl++;
-    if (ziel.gewaehlt && bew.phasen) gesehen.mitPhasenUndWahl++;
   }
-  assert.ok(gesehen.tage > 2000 && gesehen.mitWahl > 150 && gesehen.mitPhasenUndWahl > 30 && gesehen.offenAndersAlsOhneWahl > 300, `die Bestände decken die Fälle ab: ${JSON.stringify(gesehen)}`);
+  assert.ok(gesehen.tage > 2000 && gesehen.mitWahl > 150 && gesehen.offenAndersAlsOhneWahl > 300, `die Bestände decken die Fälle ab: ${JSON.stringify(gesehen)}`);
 });
 
 /* ── B0824 `fluss()` rechnet „offen“ und „fertig“ bis zum Zielblock (ADR-0027 N5 Punkte 2, 4) ── */
@@ -154,32 +142,13 @@ test('R00169 (Code-Review B1, AK 2 vor AK 4): #1 am 03.11. nach C, am 04.11. arc
   assert.deepStrictEqual(am0411(null), { bandC: 0, gesamt: 0, umfang: 0 });
 });
 
-const PHASEN = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Entwicklertest' }, { nr: 3, name: 'Abnahme' }], spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
-const mitPhasen = () => ({ spalten: ['Eingang', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'], phasen: PHASEN, aufgaben: [
-  { nummer: 1, labels: ['klein'], wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest')] },
-  { nummer: 2, wechsel: [z(2, 'Entwicklung')] },
-  { nummer: 3, wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest'), z(4, 'Abnahme')] },
-] });
-
-test('R00169 B0824 (AK 9): mit Phasen zählen „offen“ und „fertig“ je Aufgabe über die Stufe des Blocks — wie im Burndown; „eingebettet in“ gilt nur für die Aufgabe mit dem Label', () => {
-  const bew = mitPhasen();
-  const eingebettet = { ...bew, phasen: { ...PHASEN, folge: [PHASEN.folge[0], { nr: 2, name: 'Entwicklertest', eingebettet: 'klein' }, PHASEN.folge[2]] } };
-  assert.deepStrictEqual(rand(bew, 'Entwicklung'), [[3, 0, 3], [1, 2, 3], [1, 2, 3]]);
-  assert.deepStrictEqual(rand(bew, 'Entwicklertest'), [[3, 0, 3], [3, 0, 3], [2, 1, 3]], 'in der Spalte der Phase ist sie noch nicht durchlaufen');
-  assert.deepStrictEqual(rand(eingebettet, 'Entwicklertest'), [[3, 0, 3], [2, 1, 3], [1, 2, 3]], '#1 trägt das Label und hat den Entwicklertest in dessen Spalte durchlaufen');
-  for (const b of [bew, eingebettet]) for (const zielblock of ['Entwicklung', 'Entwicklertest', 'Abnahme', null]) {
-    const burndown = B.burndown(b, filter({}), mitDatei, JETZT, null, zielblock).map(x => [x.offen, x.umfang]);
-    assert.deepStrictEqual(rand(b, zielblock).map(([offen, , gesamt]) => [offen, gesamt]), burndown, `Zielblock ${zielblock}`);
-  }
-});
-
 /* ── B0825 Randfall: ausgeschlossene Abschlussspalte ohne Wahl — es zählt der letzte sichtbare Block (ADR-0027 N5 Punkte 5, 6) ── */
 const OHNE_ERLEDIGT = { ohneSpalten: ['Erledigt'] };
 const kern = zb => ({ gewaehlt: zb.gewaehlt, zaehlt: zb.zaehlt && zb.zaehlt.schluessel, verschwunden: zb.verschwunden, standard: zb.standard, ausgeschlossen: zb.ausgeschlossen });
 /** Die Berichte des Rechenbeispiels unter diesem Filter und dieser gespeicherten Zielspalte, verdrahtet wie in web/ansicht.js. */
 function randfall(f, zielspalte = null) {
   const bew = beispiel(), { ziel, burndown, fluss } = beideBerichte(bew, f, zielspalte), gespeichert = ziel.block && ziel.block.schluessel;
-  const d = B.durchsatz(bew, f, mitDatei, JETZT, null, 'tag', ziel.gewaehlt), p = B.prognose(bew, f, mitDatei, JETZT, null);
+  const d = B.durchsatz(bew, f, mitDatei, JETZT, null, 'tag', ziel.gewaehlt), p = B.prognose(bew, f, mitDatei, JETZT);
   return {
     folgen: {
       burndown: burndown.map(x => [x.hinzugekommen, x.erledigt, x.entfernt, x.offen, x.umfang]),
@@ -188,8 +157,8 @@ function randfall(f, zielspalte = null) {
     },
     bleiben: {
       baender: fluss.map(x => [Object.values(x.jeSpalte), x.angekommen]),
-      prognose: [p.umfang, p.phasen.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
-      fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', null, '2026-11-02', gespeichert),
+      prognose: [p.umfang, p.bloecke.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
+      fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', '2026-11-02', gespeichert),
       fieberSchluessel: B.fieberSchluessel('2026-11-02', f, gespeichert),
     },
   };
@@ -259,9 +228,8 @@ test('R00169 B0825 (ADR-0027 N5 Punkt 5): eine Wahl, die es nicht mehr gibt, fä
   }
 });
 
-test('R00169 B0825: auf einem Board mit Phasen wirkt der Filter nicht auf die Blöcke — die ausgeschlossene Abschlussspalte ändert Ziel und Texte nicht; ohne sichtbaren Block (zwei Spalten) bleibt es beim Stand vor der Karte', () => {
+test('R00169 B0825: ohne sichtbaren Block (zwei Spalten) bleibt es beim Stand vor der Karte', () => {
   const f = filter(OHNE_ERLEDIGT);
-  assert.deepStrictEqual(kern(B.zielblock(mitPhasen(), f, null)), { gewaehlt: null, zaehlt: 'Abnahme', verschwunden: null, standard: 'Abnahme', ausgeschlossen: null });
   const zweiSpalten = { spalten: ['A', 'Erledigt'], aufgaben: [{ nummer: 1, wechsel: [z(2, 'A'), z(3, 'Erledigt')] }] };
   assert.deepStrictEqual(kern(B.zielblock(zweiSpalten, f, null)), { gewaehlt: null, zaehlt: null, verschwunden: null, standard: 'Erledigt', ausgeschlossen: null });
   assert.strictEqual(B.durchsatz(zweiSpalten, f, mitDatei, JETZT, null, 'tag', null).zielAusgeschlossen, true);

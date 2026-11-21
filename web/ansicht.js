@@ -1955,7 +1955,7 @@ function chanceText(c) {
 }
 function vTermine(p) {
   const u = S.ui, termine = (S.board && S.board.termine) || [], f = u.tf;
-  const fertig = p.phasen[p.phasen.length - 1];
+  const fertig = p.bloecke[p.bloecke.length - 1];
   const zielKnopf = (t, i) => `<button class="btn btn-sym tm-ziel${t.ziel ? ' an' : ''}" data-act="tf-ziel" data-arg="${i}" aria-pressed="${!!t.ziel}" aria-label="Termin ${esc(t.name)} ist Zieltermin" title="${t.ziel ? 'Zieltermin des Fever Charts — Klick nimmt die Markierung zurück' : 'als Zieltermin des Fever Charts markieren'}">${t.ziel ? '◉' : '○'}</button>`;
   const zeilen = termine.map((t, i) => `<tr data-termin="${esc(t.name)}"><td>${zielKnopf(t, i)}</td><td><svg class="tm-vorschau" viewBox="0 0 44 10" aria-hidden="true"><line x1="2" x2="42" y1="5" y2="5" style="${terminStil(t)}"></line></svg></td><td>${esc(t.name)}</td><td class="mono">${datumMitWochentag(isoTag(t.datum))}</td><td>${fertig ? esc(chanceText(terminChance(fertig, t.datum, Date.now()))) : '—'}</td><td class="r"><button class="btn btn-sym" data-act="tf-bearbeiten" data-arg="${i}" aria-label="Termin ${esc(t.name)} ändern" title="ändern">✎</button><button class="btn btn-sym" data-act="tf-entfernen" data-arg="${i}" aria-label="Termin ${esc(t.name)} entfernen" title="entfernen">✕</button></td></tr>`).join('');
   const wahl = (feld, werte, titel) => `<select class="mini-inp" data-tf="${feld}" aria-label="${titel}">${werte.map(([k, t]) => `<option value="${k}"${f[feld] === k ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
@@ -1970,14 +1970,14 @@ const blockOffen = ph => ph.phase ? `„${ph.phase}“ noch nicht durchlaufen` :
 const blockStand = ph => ph.phase ? `${ph.phase} durchlaufen ${ph.erreicht} von ${ph.nenner}` : `„${ph.spalte}“ ${ph.erreicht} von ${ph.nenner} erreicht`;
 function vPrognose() {
   if (!S.bew) return '<div class="leer">lädt …</div>';
-  const jetzt = Date.now(), p = prognose(S.bew, S.ui.bf, aufgabe, jetzt, S.bew.phasen, { start: S.board && S.board.start }), u = S.ui;
+  const jetzt = Date.now(), p = prognose(S.bew, S.ui.bf, aufgabe, jetzt, { start: S.board && S.board.start }), u = S.ui;
   const stand = new Date(jetzt).toTimeString().slice(0, 8);
   const kopf = `<div class="leiste"><b>Wie lange noch</b><span class="muted">${esc(S.board ? S.board.titel : '')} · Stand ${datumMitWochentag(jetzt)} ${stand} · <span class="live-punkt" title="rechnet neu, sobald sich das Board ändert"></span>live</span></div>${vBerichtsfilter('wieLangeNoch')}`;
-  if (!p.phasen.length) return `${kopf}<div class="body bericht"><div class="leer">Es braucht mindestens zwei gezählte Spalten.</div></div>`;
-  const fertig = p.phasen[p.phasen.length - 1];
-  const zahlen = `<p class="wl-kopf" id="wl-kopf"><strong>${fertig.erreicht} von ${fertig.nenner} fertig</strong>${p.phasen.slice(0, -1).map(ph => ` · ${esc(blockStand(ph))}`).join('')}</p>`;
+  if (!p.bloecke.length) return `${kopf}<div class="body bericht"><div class="leer">Es braucht mindestens zwei gezählte Spalten.</div></div>`;
+  const fertig = p.bloecke[p.bloecke.length - 1];
+  const zahlen = `<p class="wl-kopf" id="wl-kopf"><strong>${fertig.erreicht} von ${fertig.nenner} fertig</strong>${p.bloecke.slice(0, -1).map(ph => ` · ${esc(blockStand(ph))}`).join('')}</p>`;
   // Diagramm: höchstens drei Serien, die rechten Spalten (nahe „fertig“)
-  const auswahl = diagrammBloecke(p.phasen), serien = auswahl.gezeigt.map((ph, i) => ({ ph, k: 'wl-s' + (i + 1) }));
+  const auswahl = diagrammBloecke(p.bloecke), serien = auswahl.gezeigt.map((ph, i) => ({ ph, k: 'wl-s' + (i + 1) }));
   const W = 960, H = 412, L = 48, R = 24, O = 24, U = 52, pw = W - L - R, ph_ = H - O - U;
   const t0 = p.tage.length ? p.tage[0].t : p.heute;
   const enden = serien.flatMap(s => s.ph.zeilen ? [s.ph.zeilen[3].datum7] : []);
@@ -2009,9 +2009,9 @@ function vPrognose() {
   S.diagrammTip = tg => {
     const d = p.tage.find(x => x.t === tg), kopf = `<b>${datumMitWochentag(tg)}${tg === p.heute ? ' (heute)' : ''}</b>`;
     const amTag = termine.filter(t => isoTag(t.datum) === tg).map(t => `<span>Termin: ${esc(t.name)}</span>`).join('');
-    if (d) return kopf + [`Umfang ${d.umfang}`, ...p.phasen.map(ph => `${blockOffen(ph)}: ${d.offen[ph.schluessel]}`)].map(z => `<span>${esc(z)}</span>`).join('') + amTag;
+    if (d) return kopf + [`Umfang ${d.umfang}`, ...p.bloecke.map(ph => `${blockOffen(ph)}: ${d.offen[ph.schluessel]}`)].map(z => `<span>${esc(z)}</span>`).join('') + amTag;
     if (tg < p.heute) return kopf + amTag;
-    return kopf + p.phasen.map(ph => `<span>${esc(bisDahin(ph))}: ${esc(chanceText(terminChance(ph, isoD(tg), jetzt)))}</span>`).join('') + amTag;
+    return kopf + p.bloecke.map(ph => `<span>${esc(bisDahin(ph))}: ${esc(chanceText(terminChance(ph, isoD(tg), jetzt)))}</span>`).join('') + amTag;
   };
   const svg = `<svg class="diagramm wl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Noch nicht erreichte Aufgaben je Spalte mit Prognose" ${achsAttribut(L, pw, t0, t1)}>
 ${yt.map(v => `<line class="gitter" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"></line><text class="achse" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
@@ -2023,8 +2023,8 @@ ${termine.filter(t => isoTag(t.datum) >= t0 && isoTag(t.datum) <= t1).map((t, i)
 ${fadenkreuz(O, H - U)}
 </svg>`;
   const legende = `<div class="dlegende wl-legende"><span><i class="k-umfang"></i>Umfang</span>${serien.map(s => `<span><i class="wl-k ${s.k}"></i>${esc(blockOffen(s.ph))} — ${s.ph.zeilen ? 'Prognose P50 · P85 gestrichelt · P95 gepunktet' : 'keine Prognose'}</span>`).join('')}${auswahl.ohnePrognose.length ? `<span class="muted" id="wl-ohne">ohne Prognose (unter ${MIN_LAEUFE} Läufen in der Messbasis): ${esc(auswahl.ohnePrognose.map(ph => ph.schluessel).join(', '))}</span>` : ''}</div>`;
-  const tabelle = `<details class="tabellenansicht"><summary data-halt="klappe:tabelle-prognose">Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">Umfang</th>${p.phasen.map(ph => `<th class="r">${esc(blockOffen(ph))}</th>`).join('')}</tr></thead><tbody>${p.tage.map(d => `<tr><td class="mono">${datumAusMs(d.t)}</td><td class="r num">${d.umfang}</td>${p.phasen.map(ph => `<td class="r num">${d.offen[ph.schluessel]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
-  const bloecke = p.phasen.map(ph => {
+  const tabelle = `<details class="tabellenansicht"><summary data-halt="klappe:tabelle-prognose">Tabellenansicht</summary><table class="pt dicht"><thead><tr><th>Tag</th><th class="r">Umfang</th>${p.bloecke.map(ph => `<th class="r">${esc(blockOffen(ph))}</th>`).join('')}</tr></thead><tbody>${p.tage.map(d => `<tr><td class="mono">${datumAusMs(d.t)}</td><td class="r num">${d.umfang}</td>${p.bloecke.map(ph => `<td class="r num">${d.offen[ph.schluessel]}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`;
+  const bloecke = p.bloecke.map(ph => {
     const anteil = ph.nenner ? ph.erreicht / ph.nenner : 1, wort = ph.phase ? 'DURCHLAUFEN' : 'ERREICHT';
     const kopfzeile = `<div class="wl-phase-kopf"><h3>${esc(ph.titel)} <span class="wl-badge">${ph.erreicht} VON ${ph.nenner} ${wort}</span></h3><div class="wl-fortschritt" role="img" aria-label="${Math.round(100 * anteil)} Prozent ${wort.toLowerCase()}"><i style="width:${Math.round(100 * anteil)}%"></i></div></div>`;
     const reihe = ph.reihe7.length > 60 ? '… ' + ph.reihe7.slice(-60).join(' ') : ph.reihe7.join(' ');
@@ -2075,7 +2075,7 @@ function fieberStand() {
   const neu = S.ui.fieberNeu && S.ui.fieberNeu.schluessel === schluessel ? Object.values(S.ui.fieberNeu.tage) : [];
   const tage = new Map([...cache, ...neu].map(t => [t.datum, t]));
   const heute = isoD(Date.now());
-  if (start <= heute) tage.set(heute, fieberTag(S.bew, S.ui.bf, aufgabe, heute, S.bew.phasen, start, block && block.schluessel));
+  if (start <= heute) tage.set(heute, fieberTag(S.bew, S.ui.bf, aufgabe, heute, start, block && block.schluessel));
   const e = { start, ziel: zielTermin && zielTermin.datum, puffer: f.puffer, woche: f.woche, perzentil: f.perzentil, gelb: f.gelb, rot: f.rot };
   return { start, schluessel, zielTermin, e, cache, tage: [...tage.values()], heute, bloecke, block, zaehlt, verschwunden, ausgeschlossen };
 }
@@ -2109,7 +2109,7 @@ function vFieberDiagramm(st, plan, einheit) {
   const e = st.e, punkte = fieberAusduennen(fieberPunkte(st.tage, e), S.board.fieber.aufloesung || 1), titel = S.board.titel;
   const kennzahl = `<div class="kennzahlen" id="fb-kennzahl"><span>erledigt = <b>${esc(st.zaehlt ? st.zaehlt.titel : '')}</b></span><span>Gesamtdauer <b>${plan.gesamt}</b> ${einheit}</span><span>Arbeitsbereich <b>${plan.arbeit}</b> bis ${datumMitWochentag(isoTag(plan.planende))}</span><span>Puffer <b>${plan.puffer}</b></span><span>Zieltermin <b>${datumAusMs(isoTag(e.ziel))}</b></span></div>`;
   if (!punkte.length) {
-    const b = prognose(S.bew, S.ui.bf, aufgabe, Date.now(), S.bew.phasen, { start: e.start, nurLetzter: true, block: st.block && st.block.schluessel }).phasen[0];
+    const b = prognose(S.bew, S.ui.bf, aufgabe, Date.now(), { start: e.start, nurLetzter: true, block: st.block && st.block.schluessel }).bloecke[0];
     return `${kennzahl}<div class="leer" id="fb-hinweis">Noch keine Prognose — sie braucht ${MIN_LAEUFE} erledigte Aufgaben in der Messbasis${b ? `, bisher ${b.laeufe}` : ''}.</div>`;
   }
   const W = 960, H = 500, L = 56, R = 24, O = 16, U = 44, pw = W - L - R, ph = H - O - U;

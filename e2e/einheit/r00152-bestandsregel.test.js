@@ -144,7 +144,7 @@ test('R00152 B0707 (AK 3): Burndown, Kumulativer Fluss und „Wie lange noch“ 
 test('R00152 B0707 (AK 9): „Wie lange noch“ im Grundbestand A am 10.11. — Umfang 3, offen 1, verworfen 1, ausgenommen 0', () => {
   const p = prognoseA();
   assert.strictEqual(p.umfang, 3);
-  assert.deepStrictEqual(p.phasen.map(ph => [ph.schluessel, ph.nenner, ph.offen]), [['In Arbeit', 3, 1], ['Fertig', 3, 1]]);
+  assert.deepStrictEqual(p.bloecke.map(b => [b.schluessel, b.nenner, b.offen]), [['In Arbeit', 3, 1], ['Fertig', 3, 1]]);
   assert.strictEqual(p.verworfen, 1);
   assert.strictEqual(p.ausgenommen, 0);
   assert.deepStrictEqual(p.gezaehlt, [1, 2, 4]);
@@ -240,7 +240,7 @@ const dreiBerichteB = aufgabeZu => ({
 test('R00152 B0709 (AK 4): Grundbestand B — alle drei Berichte 10/10, 5/10, 5/10 und ab dem Archivtag 4/9; „Wie lange noch“ 5 von 9 fertig', () => {
   const aufgabeZu = nr => mitDatei(nr === 6 ? { archiviert: '2026-11-05' } : {});
   assert.deepStrictEqual(dreiBerichteB(aufgabeZu), alleDrei(['10/10', '5/10', '5/10', '4/9', '4/9']));
-  const fertig = B.prognose(bewegungenB, filter({}), aufgabeZu, ms(6)).phasen.at(-1);
+  const fertig = B.prognose(bewegungenB, filter({}), aufgabeZu, ms(6)).bloecke.at(-1);
   assert.deepStrictEqual([fertig.erreicht, fertig.nenner, fertig.offen], [5, 9, 4]);
 });
 

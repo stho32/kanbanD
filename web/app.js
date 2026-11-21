@@ -455,7 +455,7 @@ async function fieberNachtragen() {
   const lauf = S.ui.fieberLauf = { schluessel: st.schluessel, n: 0, von: fehlt.length };
   const weiter = () => { const jetzt = S.ui.fieberLauf === lauf && S.ui.view === 'berichte/fieber' && fieberStand(); return !!jetzt && jetzt.schluessel === st.schluessel; };
   for (const [i, datum] of fehlt.entries()) {
-    neu.tage[datum] = fieberTag(S.bew, S.ui.bf, aufgabe, datum, S.bew.phasen, st.start, st.block && st.block.schluessel);
+    neu.tage[datum] = fieberTag(S.bew, S.ui.bf, aufgabe, datum, st.start, st.block && st.block.schluessel);
     if (i === 0 || i % 4 === 3) {
       lauf.n = i + 1;
       const el = $('#fieber-lauf');

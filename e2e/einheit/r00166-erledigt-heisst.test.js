@@ -25,15 +25,15 @@ const durchsatz = zielblock => B.durchsatz(beispiel(), filter({}), mitDatei, JET
     rechnet von „A“ bis „Erledigt“, „Wie lange noch“ bekommt kein Ziel, Fever Chart und Cache-Schlüssel die gespeicherte Wahl. */
 function berichteDesBoards(zielspalte) {
   const bew = beispiel(), f = filter({}), ziel = B.zielblock(bew, f, zielspalte), gespeichert = ziel.block && ziel.block.schluessel;
-  const p = B.prognose(bew, f, mitDatei, JETZT, null), fluss = B.fluss(bew, f, mitDatei, JETZT, null, ziel.gewaehlt).tage;
+  const p = B.prognose(bew, f, mitDatei, JETZT), fluss = B.fluss(bew, f, mitDatei, JETZT, null, ziel.gewaehlt).tage;
   return {
     burndown: jeTag(B.burndown(bew, f, mitDatei, JETZT, null, ziel.gewaehlt)),
     durchsatz: B.durchsatz(bew, f, mitDatei, JETZT, null, 'tag', ziel.gewaehlt).perioden.map(x => x.anzahl),
     flussOffenFertig: fluss.map(x => [x.offen, x.fertig]),
     flussRest: fluss.map(x => [x.jeSpalte, x.gesamt, x.angekommen]),
     durchlaufzeit: B.durchlaufzeiten(bew, f, mitDatei, JETZT, 'A', 'Erledigt'),
-    prognose: [p.umfang, p.phasen.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
-    fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', null, '2026-11-02', gespeichert),
+    prognose: [p.umfang, p.bloecke.map(x => [x.schluessel, x.nenner, x.erreicht, x.offen, x.laeufe])],
+    fieberTag: B.fieberTag(bew, f, mitDatei, '2026-11-04', '2026-11-02', gespeichert),
     fieberSchluessel: B.fieberSchluessel('2026-11-02', f, gespeichert),
     ausgenommen: B.ausgenommen(bew, 'burndown', f, mitDatei, JETZT, ziel.gewaehlt),
   };
@@ -87,14 +87,12 @@ test('R00169 B0823: eine Zielspalte, die es nicht gibt, ändert nichts — auch 
 });
 
 /* ── B0804 Zielblock des Boards an einer Stelle auflösen (ADR-0027 N2 Punkt 2) ── */
-const PHASEN = { anwendung: 'kd', folge: [{ nr: 1, name: 'Entwicklung' }, { nr: 2, name: 'Entwicklertest' }, { nr: 3, name: 'Abnahme' }], spaltenphasen: { Entwicklung: 'Entwicklung', Entwicklertest: 'Entwicklertest', Abnahme: 'Abnahme' } };
-const mitPhasen = () => ({ spalten: ['Eingang', 'Entwicklung', 'Entwicklertest', 'Abnahme', 'Erledigt'], phasen: PHASEN, aufgaben: [] });
 const kern = zb => ({ gewaehlt: zb.gewaehlt, zaehlt: zb.zaehlt.schluessel, verschwunden: zb.verschwunden, standard: zb.standard });
 
 test('R00166 B0804 (AK 6): die gespeicherte Zielspalte B ist der Block, der zählt — die Blöcke sind die des Fever Charts', () => {
   const zb = B.zielblock(beispiel(), filter({}), 'B');
   assert.deepStrictEqual(kern(zb), { gewaehlt: 'B', zaehlt: 'B', verschwunden: null, standard: 'Erledigt' });
-  assert.deepStrictEqual(zb.bloecke, B.fieberBloecke(beispiel(), filter({}), undefined));
+  assert.deepStrictEqual(zb.bloecke, B.fieberBloecke(beispiel(), filter({})));
   assert.deepStrictEqual(zb.bloecke.map(x => x.titel), ['Spalte „B“', 'Spalte „C“', 'Spalte „Erledigt“']);
 });
 
@@ -107,13 +105,6 @@ test('R00166 B0804 (AK 7): ohne Wahl und mit der Abschlussspalte als Wahl ist ni
 test('R00166 B0804 (AK 9): eine Spalte, die es nicht gibt oder die der Berichtsfilter ausschließt, ist verschwunden — es zählt der letzte Block', () => {
   assert.deepStrictEqual(kern(B.zielblock(beispiel(), filter({}), 'Abnahme')), { gewaehlt: null, zaehlt: 'Erledigt', verschwunden: 'Abnahme', standard: 'Erledigt' });
   assert.deepStrictEqual(kern(B.zielblock(beispiel(), filter({ ohneSpalten: ['B'] }), 'B')), { gewaehlt: null, zaehlt: 'Erledigt', verschwunden: 'B', standard: 'Erledigt' });
-});
-
-test('R00166 B0804 (AK 4): auf einem Board mit Phasen sind die Blöcke die Phasen, Standard ist die letzte Phase', () => {
-  const zb = B.zielblock(mitPhasen(), filter({}), 'Entwicklertest');
-  assert.deepStrictEqual(kern(zb), { gewaehlt: 'Entwicklertest', zaehlt: 'Entwicklertest', verschwunden: null, standard: 'Abnahme' });
-  assert.deepStrictEqual(zb.bloecke.map(x => x.titel), ['Entwicklung durchlaufen', 'Entwicklertest durchlaufen', 'Abnahme durchlaufen']);
-  assert.strictEqual(B.zielblock(mitPhasen(), filter({}), 'Abnahme').gewaehlt, null);
 });
 
 /* ── B0805 Burndown rechnet „offen“ und „− erledigt“ bis zum Zielblock (ADR-0027 N2 Punkte 3–5) ── */
@@ -144,19 +135,6 @@ test('R00166 B0805 (ADR-0027 N2 Punkt 5): archiviert im Zielblock bleibt erledig
   assert.deepStrictEqual(groessen(undefined), [[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 0, 1]]);
 });
 
-test('R00166 B0805: mit Phasen zählt je Aufgabe die Stufe des Blocks — „Entwicklung durchlaufen“ ist erreicht ab der Spalte der nächsten Phase', () => {
-  const bew = { ...mitPhasen(), aufgaben: [
-    { nummer: 1, labels: ['klein'], wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest')] },
-    { nummer: 2, wechsel: [z(2, 'Entwicklung')] },
-    { nummer: 3, wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest')] },
-  ] };
-  const eingebettet = { ...PHASEN, folge: [PHASEN.folge[0], { nr: 2, name: 'Entwicklertest', eingebettet: 'klein' }, PHASEN.folge[2]] };
-  const groessen = (b, zielblock) => jeTag(B.burndown(b, filter({}), mitDatei, JETZT, null, zielblock));
-  assert.deepStrictEqual(groessen(bew, 'Entwicklung'), [[3, 0, 3], [0, 2, 1], [0, 0, 1]]);
-  assert.deepStrictEqual(groessen(bew, 'Entwicklertest'), [[3, 0, 3], [0, 0, 3], [0, 0, 3]], 'in der Spalte der Phase ist sie noch nicht durchlaufen');
-  assert.deepStrictEqual(groessen({ ...bew, phasen: eingebettet }, 'Entwicklertest'), [[3, 0, 3], [0, 1, 2], [0, 0, 2]], '„eingebettet in“ gilt nur für die Aufgabe mit dem Label: #1 hat den Entwicklertest in dessen Spalte durchlaufen, #3 nicht');
-});
-
 test('R00166 B0805: „Ausgenommen“ zählt mit dem Zielblock — archiviert in B gehört mit Zielspalte B zum Bestand, ohne Wahl nicht', () => {
   const bew = { spalten: ['A', 'B', 'C', 'Erledigt'], aufgaben: [{ nummer: 1, reporting: { burndown: false }, wechsel: [z(2, 'B')] }] };
   const archiviert = () => ({ ...mitDatei(), archiviert: '2026-11-03' });
@@ -168,7 +146,7 @@ test('R00166 B0805: „Ausgenommen“ zählt mit dem Zielblock — archiviert in
 test('R00166 B0806 (AK 2, AK 3): Zielspalte B — Ankunft am 03.11. für #1, #2 und #3 (direkt nach Erledigt); Weiterzug und Rückzug am 04.11. ändern nichts', () => {
   const d = B.durchsatz(beispiel(), filter({}), mitDatei, JETZT, null, 'tag', 'B');
   assert.deepStrictEqual(d.perioden.map(p => p.anzahl), MIT_B.durchsatz);
-  assert.deepStrictEqual([d.gesamt, d.ziel.art, d.ziel.name, d.zielAusgeschlossen], [3, 'spalte', 'B', false]);
+  assert.deepStrictEqual([d.gesamt, d.ziel.name, d.zielAusgeschlossen], [3, 'B', false]);
 });
 
 test('R00166 B0806 (AK 9): ein Zielblock, den es nicht gibt, zählt wie ohne Wahl bis zur Abschlussspalte', () => {
@@ -176,29 +154,11 @@ test('R00166 B0806 (AK 9): ein Zielblock, den es nicht gibt, zählt wie ohne Wah
   assert.deepStrictEqual([d.perioden.map(p => p.anzahl), d.ziel.name], [OHNE_WAHL.durchsatz, 'Erledigt']);
 });
 
-test('R00166 B0806: mit Phasen zählt das erste Durchlaufen der gewählten Phase, ohne Wahl das der letzten', () => {
-  const bew = { ...mitPhasen(), aufgaben: [
-    { nummer: 1, wechsel: [z(2, 'Entwicklung'), z(3, 'Entwicklertest'), z(4, 'Abnahme')] },
-    { nummer: 2, wechsel: [z(2, 'Entwicklung'), z(4, 'Erledigt')] },
-  ] };
-  const jePeriode = zielblock => B.durchsatz(bew, filter({}), mitDatei, JETZT, null, 'tag', zielblock).perioden.map(p => p.anzahl);
-  assert.deepStrictEqual(jePeriode('Entwicklung'), [0, 1, 1]);
-  assert.deepStrictEqual(jePeriode('Entwicklertest'), [0, 0, 2]);
-  assert.deepStrictEqual(jePeriode(undefined), [0, 0, 1]);
-  assert.deepStrictEqual(B.durchsatzZiel(bew, bew.phasen, 'Entwicklertest').name, 'Entwicklertest');
-  assert.deepStrictEqual(B.durchsatzZiel(bew, bew.phasen).name, 'Abnahme');
-});
-
 /* ── B0810 Wie die Berichte den Zielblock nennen (Zeichnung D0006 #erledigt-heisst) ── */
 test('R00166 B0810 (AK 10): eine gewählte Spalte heißt lang „in „B“ oder rechts davon“, kurz „ab „B““, im Durchsatz „bis „B““', () => {
   assert.deepStrictEqual(B.zielblock(beispiel(), filter({}), 'B').worte, { lang: 'in „B“ oder rechts davon', kurz: 'ab „B“', bis: 'bis „B“' });
 });
 
-test('R00166 B0810 (AK 10): eine gewählte Phase heißt lang „„Entwicklertest“ durchlaufen“, kurz „nach „Entwicklertest““, im Durchsatz „bis „Entwicklertest““', () => {
-  assert.deepStrictEqual(B.zielblock(mitPhasen(), filter({}), 'Entwicklertest').worte, { lang: '„Entwicklertest“ durchlaufen', kurz: 'nach „Entwicklertest“', bis: 'bis „Entwicklertest“' });
-});
-
 test('R00166 B0810 (AK 10): ohne Wahl, mit dem Standardblock und mit einer verschwundenen Wahl gibt es keine Worte — die Texte bleiben wie heute', () => {
   for (const zielspalte of [null, 'Erledigt', 'Abnahme']) assert.strictEqual(B.zielblock(beispiel(), filter({}), zielspalte).worte, null, `Zielspalte ${zielspalte}`);
-  assert.strictEqual(B.zielblock(mitPhasen(), filter({}), 'Abnahme').worte, null);
 });

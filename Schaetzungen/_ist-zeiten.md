@@ -1026,3 +1026,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #227 R00223 | B1160 Board lesen ohne Phasen: src/phasen.rs, dienst/phasen.rs, Spalte.phase, Bewegungen.phasen weg, column-phases überlesen | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1161 Aufgabe ohne phases: Phasenangaben/Phasenaenderung weg, phases als unbekannter Schlüssel, PATCH phasen überlesen, Bewegung.uebersprungen weg | Standard | 1h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1162 Warnung ohne knoten/details, Endpunktliste und OpenAPI ohne phasen, phase, uebersprungen, Nachtragen | Standard | 1h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #227 R00223 | B1163 Berichte rechnen nur je Spalte: phasenRang/-Schwelle/-Stufen, Parameter phasen, nachPhasen weg, Ergebnis heißt bloecke; Node-Tests je Fall geprüft | Standard | 1-2h | 0,4h | 0,4h | autonom |
