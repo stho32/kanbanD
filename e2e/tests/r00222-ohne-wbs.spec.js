@@ -78,8 +78,14 @@ async function seitenKopf(page) {
 
 /** Die gemessenen Eigenschaften eines Elements: Schrift, Fläche, Rahmen (oben und links, die Statuswörter tragen links). */
 async function farbeVon(locator) {
-  await locator.first().waitFor({ state: 'attached' });
-  return locator.first().evaluate(e => { const s = getComputedStyle(e); return { color: s.color, background: s.backgroundColor, borderTop: s.borderTopColor, borderLeft: s.borderLeftColor }; });
+  await expect(locator.first()).toBeVisible();
+  // Wird die Ansicht zwischen Warten und Messen neu gezeichnet, ist das Element abgehängt und liefert leere Werte: dann erneut messen.
+  let farben = null;
+  await expect.poll(async () => {
+    farben = await locator.first().evaluate(e => { if (!e.isConnected) return null; const s = getComputedStyle(e); return { color: s.color, background: s.backgroundColor, borderTop: s.borderTopColor, borderLeft: s.borderLeftColor }; });
+    return farben !== null && farben.color !== '';
+  }, { message: 'Element nicht messbar (abgehängt)' }).toBe(true);
+  return farben;
 }
 
 /** `--kd-fehler-text` aufgelöst an einem Probe-Element. */
