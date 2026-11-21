@@ -171,3 +171,39 @@ test('die Frist beginnt mit der Übergabe an den bereiten Worker, nicht beim Anl
   w.antworten(Int32Array.of(1, 0, 2, 0));
   assert.deepStrictEqual(aus, [[1, 0, 2, 0]]);
 });
+
+/* ── Nacharbeit 1 (Code-Review #216 Sollte 1 und 2) ── */
+
+test('in einem Zug gestellte Aufträge laufen in Leserichtung; danach gestellte ziehen vor (Code-Review Sollte 1, UX S1)', () => {
+  const a = aufbau();
+  a.schlange.stellen(a.auftrag('erste'), a.auftrag('zweite'), a.auftrag('dritte'));
+  a.schlange.stellen(a.auftrag('spaeter'));
+  for (let i = 0; i < 4; i++) a.worker[0].antworten(new Int32Array(0));
+  assert.deepStrictEqual(a.ergebnisse.map(e => e[0]), ['erste', 'spaeter', 'zweite', 'dritte']);
+});
+
+test('aufraeumen: ist die laufende Datei nicht mehr gezeigt, endet ihr Auftrag sofort mit terminate, der nächste bekommt einen neuen Worker (Sollte 2)', () => {
+  const a = aufbau();
+  let gezeigt = true;
+  a.schlange.stellen(a.auftrag('geschlossen', { aktuell: () => gezeigt }));
+  a.schlange.stellen(a.auftrag('naechster'));
+  a.schlange.aufraeumen();
+  assert.strictEqual(a.worker[0].beendet, false, 'solange gezeigt, bleibt der Auftrag');
+  gezeigt = false;
+  a.schlange.aufraeumen();
+  assert.strictEqual(a.worker[0].beendet, true);
+  assert.strictEqual(a.uhr.offen(), 1, 'nur noch die Frist des nächsten Auftrags');
+  a.worker[1].antworten(Int32Array.of(1, 0, 2, 0));
+  assert.deepStrictEqual(a.ergebnisse, [['naechster', [1, 0, 2, 0]]], 'der geschlossene bekommt nichts');
+});
+
+test('wirft fertig, läuft die Schlange trotzdem weiter (Sollte 2)', () => {
+  const a = aufbau();
+  const wirft = { sprache: 'rust', zeilen: [], aktuell: () => true, fertig: () => { throw new Error('kaputt'); } };
+  a.schlange.stellen(wirft);
+  a.schlange.stellen(a.auftrag('danach'));
+  assert.throws(() => a.worker[0].antworten(new Int32Array(0)), /kaputt/);
+  assert.strictEqual(a.worker[0].auftraege.length, 2, 'der nächste Auftrag ist übergeben');
+  a.worker[0].antworten(Int32Array.of(1, 0, 2, 0));
+  assert.deepStrictEqual(a.ergebnisse, [['danach', [1, 0, 2, 0]]]);
+});

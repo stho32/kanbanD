@@ -28,8 +28,12 @@
       laufend = null;
       uhr.clearTimeout(wecker);
       wecker = null;
-      if (auftrag && auftrag.aktuell()) auftrag.fertig(stuecke);
-      naechster();
+      try {
+        if (auftrag && auftrag.aktuell()) auftrag.fertig(stuecke);
+      } finally {
+        // ein Fehler beim Übernehmen bleibt sichtbar, hält die Schlange aber nicht an (Code-Review #216 Sollte 2)
+        naechster();
+      }
     }
 
     function anlegen() {
@@ -64,7 +68,7 @@
 
     function naechster() {
       if (laufend) return;
-      // der zuletzt gestellte zuerst (UX-Vorprüfung #216 S1); Aufträge geschlossener Dateien fallen heraus
+      // der zuletzt gestellte zuerst (UX-Vorprüfung #216 S1), ein Zug in Leserichtung; Aufträge geschlossener Dateien fallen heraus
       let auftrag = wartend.pop();
       while (auftrag && !auftrag.aktuell()) auftrag = wartend.pop();
       if (!auftrag) return;
@@ -80,9 +84,17 @@
     }
 
     return {
-      stellen(auftrag) {
-        wartend.push(auftrag);
+      /** Aufträge eines Zugs (etwa der erste Aufbau mit mehreren offenen Dateien) laufen in ihrer Reihenfolge, ein späterer Zug
+          zieht vor die wartenden (Code-Review #216 Sollte 1). */
+      stellen(...auftraege) {
+        wartend.push(...auftraege.reverse());
         naechster();
+      },
+      /** Wird die laufende Datei nicht mehr gezeigt, endet ihr Auftrag sofort statt erst mit der Frist (Code-Review #216 Sollte 2). */
+      aufraeumen() {
+        if (!laufend || laufend.aktuell()) return;
+        verwerfen();
+        beenden(null);
       },
     };
   }
@@ -181,8 +193,9 @@
         // `esc` ist die eine Maskierung der Oberfläche (web/ansicht.js), zur Laufzeit geladen
         auflegen({ zellen, zeilen: auftrag.zeilen, stuecke, esc, planen: f => setTimeout(f, 0), aktuell, fertig: () => { bereich.dataset.farbe = 'ja'; }, vorher: auswahlMerken, nachher: auswahlSetzen });
       };
-      schlange.stellen({ sprache: auftrag.sprache, zeilen: auftrag.zeilen, aktuell, fertig });
+      zug.push({ sprache: auftrag.sprache, zeilen: auftrag.zeilen, aktuell, fertig });
     };
+    let zug = [];
     const laeuft = el => el.dataset.farbe === 'laeuft';
     // über die Klassenliste statt eines Selektors: ein Abschnitt mit 10.000 Zeilen hat 50.000 Elemente (R00217 AK 1)
     const pruefen = knoten => {
@@ -190,8 +203,16 @@
       if (knoten.classList.contains('df-sc') && laeuft(knoten)) anstossen(knoten);
       for (const bereich of Array.from(knoten.getElementsByClassName('df-sc'))) if (laeuft(bereich)) anstossen(bereich);
     };
-    new MutationObserver(eintraege => eintraege.forEach(e => e.addedNodes.forEach(pruefen))).observe(wurzel, { childList: true, subtree: true });
+    const beobachtet = eintraege => {
+      if (eintraege.some(e => e.removedNodes.length)) schlange.aufraeumen();
+      eintraege.forEach(e => e.addedNodes.forEach(pruefen));
+      const auftraege = zug;
+      zug = [];
+      if (auftraege.length) schlange.stellen(...auftraege);
+    };
+    new MutationObserver(beobachtet).observe(wurzel, { childList: true, subtree: true });
     pruefen(wurzel);
+    if (zug.length) schlange.stellen(...zug.splice(0));
   }
 
   Object.assign(ziel, { farbschlange, FRIST_MS, auflegen, AUFLAGE_ZEILEN });
