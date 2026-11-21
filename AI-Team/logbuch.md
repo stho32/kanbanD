@@ -1507,3 +1507,30 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #220 | Detailplanung | ux-reviewer | befund | 4 min | Muss: Zwischenbreiten 641–980 px, Titel 0–32 px · claude · sonnet · Lauf 220-ux-reviewer-1 · 0,73 $ · Karte gesamt 13,42 $ |
 | 2026-11-21 | #220 | Detailplanung | gestalter | bestanden | 7 min | Nachzeichnung: mittlere Form 641–1099 px, 409-Wechsel, Knopfrand · claude · sonnet · Lauf 220-gestalter-2 · 1,98 $ · Karte gesamt 15,40 $ |
 | 2026-11-21 | #220 | Detailplanung | product-owner | bestanden | 2 min | Nachzeichnung freigegeben mit Änderung, Z. 463–465 · claude · opus · Lauf 220-product-owner-3 · 0,91 $ · Karte gesamt 16,31 $ |
+| 2026-11-21 | #220 | Detailplanung | planer | bestanden | 8 min | R00218 AK 1–13, B1123 mittlere Form · claude · opus · Lauf 220-planer-3 · 2,72 $ · Karte gesamt 19,03 $ |
+| 2026-11-21 | #208 | Nacharbeit | entwickler | bestanden | 38 min | Nacharbeit 1: Muss Importzyklus, Sollte a–h behoben · claude · Lauf 208-entwickler-2 · 7,08 $ · Karte gesamt 33,96 $ |
+| 2026-11-21 | #220 | Detailplanung | ux-reviewer | bestanden | 4 min | Nachprüfung: Muss 1 behoben; Sollte A–C für den Bau · claude · sonnet · Lauf 220-ux-reviewer-2 · 0,56 $ · Karte gesamt 19,59 $ |
+| 2026-11-21 | #208 | Auto-Reviews | architektur-reviewer | bestanden | 1 min | Muss behoben; Sollte: ADR-0036 Regel 5, Fitness-Test super:: · claude · sonnet · Lauf 208-architektur-reviewer-2 · 0,24 $ · Karte gesamt 34,20 $ |
+| 2026-11-21 | #208 | Entwicklertest | entwicklertester | bestanden | 8 min | US-1..US-8 bestanden, echter Lauf byte-gleich · claude · sonnet · Lauf 208-entwicklertester-1 · 1,04 $ · Karte gesamt 35,24 $ |
+
+**Retrospektive #208** (Transkripte der Agentenläufe ablegen, Scheibe C1, R00216 und ADR-0036; 2026-11-21, 35,24 $; ausgeliefert c37b74cc)
+- **Gut:**
+  - **Planung:** architekt, PO und planer haben die Scheibe in einer Nacht geschnitten: ADR-0036, keine Plattengrenze (PO Z. 453), 8 Bubbles mit 15 AKs.
+  - **Prüfung:** Fünf Auto-Reviews mit je eigener Probe. Security fand keinen Weg aus `transkripte/` heraus. Legacy prüfte echte Bestände, den Rundlauf über die Vorversion und die Factory als Client.
+  - **Nacharbeit 1:** Sie behob das eine Muss (Importzyklus Wächter → Dienst) mit einem dauerhaften Fitness-Test, dazu alle acht Sollte. Jeder Punkt hat einen Test, der vorher rot war.
+  - **Entwicklertest:** Ein echtes Transkript als Kopie kam byte-gleich zurück. Das Gate auf main war beim ersten Lauf grün.
+- **Lehre (Härtung bündeln):** Code- und Security-Review fanden die leere `.gitignore` unabhängig voneinander. Weil es ein Muss gab, konnte die Nacharbeit die kleinen Sollte gleich mitnehmen. Das war billiger als eine spätere Härtungskarte. Gibt es eine Nacharbeit, nimmt sie Sollte, die zwei Rollen finden, mit Empfehlung des Director mit.
+- **Lehre (WBS-Nummern über Zweige):** Die Nacharbeit vergab B1123, das #220 auf main schon belegt hatte. Ich habe es mechanisch zu B1124 umbenannt. Neue Bubble-Nummern immer gegen main *und* alle offenen Kartenzweige zählen. Der planer tut das schon, der entwickler nicht.
+- **Neue Karten:**
+  - #243: OFL-Lizenz der Schriften ausliefern, ein Fund des architekt.
+  - #244: Die Rücknahme nach einem gescheiterten Commit lässt den Arbeitsbaum schmutzig.
+- **Offen für den architekt, nach dem Merge:**
+  - Modell-Drift in A00003–A00006 und A00008 sowie in X00002 (acht `eprintln!`).
+  - ADR-0036 Regel 5 (Prüfreihenfolge), mit Halbsatz zur Ortszeit.
+  - Grund für `modell::TRANSKRIPTE_ORDNER`.
+- **Verworfen, Sollte ohne Nacharbeit:**
+  - Fitness-Test für `super::` und verschachtelte Klammern.
+  - Logging aller 500er und eine Mengenangabe zu `transkripte/`, beides gehört nach #239.
+  - `multer` puffert halbe Header (Bestand wie bei `anhang_ablegen`).
+  - Aufräumen von Zwischendateien nach SIGKILL.
+- **Wackler, neu gesehen:** `transkripte_api::ak03_wirksamer_schalter` war 1 von etwa 22 Läufen rot: `send()` scheitert, wenn der Server früh mit 409 antwortet.
