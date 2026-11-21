@@ -63,9 +63,15 @@
     return treffer[0];
   }
 
+  /** Teilbäume, die selbst nie scrollen und so groß werden, dass das Lesen von `scrollTop` je Element den Hauptfaden blockiert: die
+      Blöcke einer offenen Datei der Review-Seite (bis 10.000 Zeilen × 4 Zellen, R00217 AK 1); ihr Codebereich `.df-sc` zählt weiter. */
+  const NIE_GEROLLT = '.dz-b';
+
   /** Scrollstände aller gescrollten Flächen im Bereich, je mit Schlüssel; Flächen ohne Schlüssel fallen weg. */
   function rollstaende(bereich) {
-    const gerollt = [...bereich.querySelectorAll('*')].filter(element => element.scrollTop || element.scrollLeft);
+    const gerollt = [];
+    const gang = document.createTreeWalker(bereich, NodeFilter.SHOW_ELEMENT, { acceptNode: e => (e.matches(NIE_GEROLLT) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+    for (let element = gang.nextNode(); element; element = gang.nextNode()) if (element.scrollTop || element.scrollLeft) gerollt.push(element);
     return gerollt
       .map(element => ({ bereich, schluessel: schluesselIm(element, bereich), links: element.scrollLeft, oben: element.scrollTop }))
       .filter(stand => stand.schluessel);
