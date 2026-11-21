@@ -216,6 +216,9 @@ async fn ak06_groesse() {
     assert_eq!(o.transkriptdateien(), ["transkripte/.gitignore", N]);
 }
 
+/// Ein Fall der Probe AK 7: Name, Felder, Datei.
+type Fall<'a> = (&'a str, Vec<(&'a str, &'a str)>, Option<Vec<u8>>);
+
 // AK 7: Form der Anfrage — jede Abweisung 400 (404, 423), nie 422; nichts geschrieben, auch kein Ordner transkripte/
 #[tokio::test]
 async fn ak07_form_der_anfrage() {
@@ -225,7 +228,7 @@ async fn ak07_form_der_anfrage() {
     let ohne = |k: &str| felder.iter().filter(|(f, _)| *f != k).copied().collect::<Vec<_>>();
     let mit = |k: &'static str, v: &'static str| felder.iter().map(|(f, w)| if *f == k { (*f, v) } else { (*f, *w) }).collect::<Vec<_>>();
     let lang = "r".repeat(61);
-    let faelle: Vec<(&str, Vec<(&str, &str)>, Option<Vec<u8>>)> = vec![
+    let faelle: Vec<Fall> = vec![
         ("Zip statt gzip", felder.to_vec(), Some(vec![0x50, 0x4b, 0x03])),
         ("leere Datei", felder.to_vec(), Some(vec![])),
         ("zwei Byte", felder.to_vec(), Some(vec![0x1f, 0x8b])),
