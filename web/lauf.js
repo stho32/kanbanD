@@ -2,6 +2,8 @@
    im Browser und in Node (Unit-Tests) nutzbar wie laeufe.js. Fremder Text geht hier unverändert durch; maskiert wird beim Zeichnen. */
 (function (ziel) {
   'use strict';
+  const { markdownHtml } = typeof module !== 'undefined' ? require('./markdown.js') : window;
+  const { sichtbarHtml, sichtbarText } = typeof module !== 'undefined' ? require('./diff.js') : window;
 
   /** Grenze des Lesens (ADR-0041 Punkt 4): 16 MiB entpackt, gezählt vor dem Dekodieren, und 20.000 Zeilen — 10-mal der größte
       echte Lauf. Die Zahlen stehen nie in der Oberfläche (PO Z. 468). */
@@ -65,5 +67,78 @@
     return { art: o.art, wer: o.wer, text: o.text, zeit: 'zeit' in o ? o.zeit : null, name: 'name' in o ? o.name : null };
   }
 
-  Object.assign(ziel, { zeilenLesen, eintragPruefen, LAUF_GRENZEN });
+  /* ── Zeichnen (FA 6, FA 10, Zeichnung D0009 `#laufansicht`): HTML-Text der Einträge, einmal je erfolgreichem Lesen. ── */
+
+  const ENDE = 'Ende des Transkripts';
+  const GRENZE_ERREICHT = 'Grenze erreicht: Der Rest des Transkripts wird nicht angezeigt.';
+  const nichtLesbar = nr => `Zeile ${nr} des Transkripts ist nicht lesbar.`;
+  const WER_WORT = { agent: 'Agent', mensch: 'Mensch', werkzeug: 'Werkzeug' };
+  const ART_WORT = { werkzeugaufruf: 'Aufruf', werkzeugergebnis: 'Ergebnis' };
+  const ERSTE_ZEILE_ZEICHEN = 200;
+  const ACHTUNG = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg>';
+  const GRENZE_SYMBOL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16"/><path d="M4 15h3M10 15h4M17 15h3M4 20h3M10 20h4M17 20h3"/></svg>';
+  const PFEIL = '<span class="pf"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span>';
+  const ART_SYMBOL = {
+    werkzeugaufruf: '<span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6l6 6-6 6M12 18h8"/></svg></span>',
+    werkzeugergebnis: '<span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v9h12M14 9l4 4-4 4"/></svg></span>',
+  };
+
+  /** Die Liste der Einträge `[{nr, eintrag}]` samt Schluss: „Ende des Transkripts“ oder, an der Grenze, Wortlaut 15. */
+  function laufHtml(zeilen, grenze, esc) {
+    const schluss = grenze
+      ? `<li class="lv-g meld warn" role="note">${GRENZE_SYMBOL}<p>${GRENZE_ERREICHT}</p></li>`
+      : `<li class="lv-ende">${ENDE}</li>`;
+    return `<ol class="lv-l" id="lv-insel" aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(z => eintragHtml(z, esc)).join('')}${schluss}</ol>`;
+  }
+
+  function eintragHtml({ nr, eintrag }, esc) {
+    if (!eintrag) return `<li class="lv-f meld fehl" role="note">${ACHTUNG}<p>${nichtLesbar(nr)}</p></li>`;
+    if (eintrag.art === 'nachricht') return nachrichtHtml(eintrag, esc);
+    return werkzeugHtml(eintrag, esc);
+  }
+
+  /** Nachricht offen: Kürzel, Name, Wer, Uhrzeit; der Text je Zeile sichtbar gemacht, dann Markdown (maskiert, ADR-0030). */
+  function nachrichtHtml(e, esc) {
+    const uhrzeit = uhrzeitText(e.zeit);
+    const name = e.name === null ? '' : `<b>${sichtbarHtml(e.name, esc)}</b>`;
+    const zeit = uhrzeit === null ? '' : `<span class="mono">${uhrzeit}</span>`;
+    const text = markdownHtml(e.text.split('\n').map(sichtbarText).join('\n'), 1);
+    return `<li class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}</div><div class="lv-text">${text}</div></li>`;
+  }
+
+  const PK_KLASSE = { agent: 'pk-a', mensch: 'pk-m', werkzeug: 'pk-0' };
+  /** Zwei Buchstaben aus dem Namen (zwei Wörter: je der erste), ohne Namen aus dem Wort für „wer“; nur Zierde, nie vorgelesen. */
+  function kuerzel(e) {
+    const woerter = sichtbarText(e.name === null ? WER_WORT[e.wer] : e.name).split(/\s+/).filter(Boolean);
+    if (woerter.length > 1) return (Array.from(woerter[0])[0] + Array.from(woerter[1])[0]).toUpperCase();
+    return Array.from(woerter[0] || '').slice(0, 2).join('').toUpperCase();
+  }
+
+  /** Werkzeugaufruf und -ergebnis eingeklappt: Name, Art, erste Zeile gekürzt, Uhrzeit; aufgeklappt der ganze Text, nie Markdown. */
+  function werkzeugHtml(e, esc) {
+    const uhrzeit = uhrzeitText(e.zeit);
+    const name = e.name === null ? '' : sichtbarHtml(e.name, esc);
+    const zeilen = e.text.split('\n');
+    const zeit = uhrzeit === null ? '' : `<span class="zt">${uhrzeit}</span>`;
+    const summary = `<summary>${PFEIL}${ART_SYMBOL[e.art]}<span class="nm">${name}<span>${ART_WORT[e.art]}</span></span><span class="z1">${sichtbarHtml(gekuerzt(zeilen[0]), esc)}</span>${zeit}</summary>`;
+    return `<li class="lv-e"><details class="lv-w">${summary}<pre>${zeilen.map(z => sichtbarHtml(z, esc)).join('\n')}</pre></details></li>`;
+  }
+
+  function gekuerzt(zeile) {
+    const zeichen = Array.from(zeile);
+    if (zeichen.length <= ERSTE_ZEILE_ZEICHEN) return zeile;
+    return zeichen.slice(0, ERSTE_ZEILE_ZEICHEN).join('') + '…';
+  }
+
+  const ISO_MIT_VERSATZ = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+  const zwei = n => String(n).padStart(2, '0');
+  /** `zeit` nach ISO 8601 mit Versatz oder `Z` → `hh:mm:ss` in Ortszeit; jede andere Form ergibt null (die Angabe entfällt). */
+  function uhrzeitText(zeit) {
+    if (zeit === null || !ISO_MIT_VERSATZ.test(zeit)) return null;
+    const d = new Date(zeit);
+    if (Number.isNaN(d.getTime())) return null;
+    return `${zwei(d.getHours())}:${zwei(d.getMinutes())}:${zwei(d.getSeconds())}`;
+  }
+
+  Object.assign(ziel, { zeilenLesen, eintragPruefen, laufHtml, LAUF_GRENZEN, LAUF_ENDE: ENDE, LAUF_GRENZE_ERREICHT: GRENZE_ERREICHT });
 })(typeof module !== 'undefined' ? module.exports : window);
