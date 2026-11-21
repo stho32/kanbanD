@@ -1585,3 +1585,41 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Neue Karten:** #246 Wackler unter Last (`ak03_wirksamer_schalter`, r00124:46, r00148:535). Alle drei waren im Gate auf main rot und einzeln je 3 von 3 grün.
 - **Verworfen (Kann ohne Nacharbeit):** Wortlaut beim Timeout (Status 0) ist eine Produktfrage. Doppelte Kennungen lehnt die API mit 409 ab.
 - **Offen:** A00009 nachführen (ADR-0039 Folgeaufgabe) und D0009 `#laeufe` `.ohnek` beim nächsten Zeichnen nachziehen (PO Z. 484). Freigeschaltet sind #210 (D2) und #218 (C2).
+| 2026-11-21 | #218 | Architektur | architekt | bestanden | 4 min | ADR-0036 Nachtrag Umschalten (611dab20): eigene Routen, nur Menschen · claude · opus · Lauf 218-architekt-1 |
+| 2026-11-21 | #216 | Entwicklung | entwickler | bestanden | 1 h 14 min | B1106–B1111, B1132 grün, Gate im Worktree grün; AK 1 lang.rs unter Last 158 ms (Frage an PO) · claude · Lauf 216-entwickler-2 |
+| 2026-11-21 | #216 | Auto-Reviews | product-owner | bestanden | 3 min | PO Z. 489 (4c6fb093): AK 1 lang.rs misst ab data-farbe=laeuft, keine Staffel-Karte · claude · opus · Lauf 216-product-owner-3 |
+| 2026-11-21 | #216 | Auto-Reviews | architekt | bestanden | 3 min | ADR-0040 N1 (bc2ecd5e): Nachfrage bereit vereinbar · claude · opus · Lauf 216-architekt-3 |
+| 2026-11-21 | #216 | Auto-Reviews | code-reviewer | bestanden | 4 min | kein Muss, fünf Sollte, zwei Kann · claude · sonnet · Lauf 216-code-reviewer-1 |
+| 2026-11-21 | #216 | Auto-Reviews | ux-reviewer | bestanden | 5 min | kein Muss, kein Sollte; S1–S4, K3 erfüllt · claude · sonnet · Lauf 216-ux-reviewer-3 |
+| 2026-11-21 | #210 | Architektur | architekt | bestanden | 11 min | ADR-0041 (24901a16): gzip im Strom mit Grenze, einmal zeichnen, Insel · claude · opus · Lauf 210-architekt-1 |
+| 2026-11-21 | #216 | Auto-Reviews | security-reviewer | bestanden | 7 min | kein Muss, kein Sollte; Probe XSS, 40 feindliche Dateien · claude · sonnet · Lauf 216-security-reviewer-1 |
+| 2026-11-21 | #210 | Detailplanung | product-owner | bestanden | 2 min | PO Z. 490 (4c343e02): Wortlaute Entpacken und unbekannte Kennung, Grenze bleibt Wortlaut 15 · claude · opus · Lauf 210-product-owner-1 |
+| 2026-11-21 | #218 | Detailplanung | planer | bestanden | 9 min | R00220 AK 1–10, I0210 F0162/F0163 B1133–B1141 (c7dcb36a, 7078d880) · claude · opus · Lauf 218-planer-1 |
+| 2026-11-21 | #216 | Nacharbeit | planer | bestanden | 1 min | R00217 AK 1 und NFA nach PO Z. 489 (52097fab), B1111 wieder offen · claude · opus · Lauf 216-planer-3 |
+| 2026-11-21 | #218 | Detailplanung | ux-reviewer | befund | 2 min | Vorprüfung: M1 AK 9 Fenster schließt, Fokus bleibt; M2 AK 10 gesperrte Gruppe · claude · sonnet · Lauf 218-ux-reviewer-1 |
+| 2026-11-21 | #218 | Detailplanung | planer | bestanden | 1 min | M1/M2/S1/S3 in R00220 (286825dd) · claude · opus · Lauf 218-planer-2 |
+| 2026-11-21 | #218 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung 1: M1, M2, S1–S3 eingearbeitet · claude · sonnet · Lauf 218-ux-reviewer-2 |
+| 2026-11-21 | #210 | Detailplanung | planer | bestanden | 7 min | R00221 AK 1–10, I0211 B1142–B1149 (2bf24bb6) · claude · opus · Lauf 210-planer-1 |
+| 2026-11-21 | #210 | Detailplanung | ux-reviewer | befund | 1 min | Vorprüfung: M1–M3 Fokus (Lesen, Ergebnis, Öffnen), S1/S2 Ansage · claude · sonnet · Lauf 210-ux-reviewer-1 |
+| 2026-11-21 | #210 | Detailplanung | gestalter | bestanden | 3 min | D0009 #laufansicht Notiz nachgezogen (e4fadb74), ohne neues Bild · claude · sonnet · Lauf 210-gestalter-1 |
+| 2026-11-21 | #216 | Nacharbeit | entwickler | bestanden | 9 min | Nacharbeit 1: AK 1 ab laeuft grün, alle Sollte behoben · claude · Lauf 216-entwickler-3 |
+| 2026-11-21 | #210 | Detailplanung | planer | bestanden | 4 min | UX-Vorprüfung eingearbeitet: M1–M3, S1/S2, K1/K2 (fa566466) · claude · opus · Lauf 210-planer-2 |
+| 2026-11-21 | #210 | Detailplanung | product-owner | bestanden | 2 min | PO Z. 491 (69d97305): Notiz D0009 freigegeben, gesperrt bleibt --kd-faint · claude · opus · Lauf 210-product-owner-2 |
+| 2026-11-21 | #210 | Detailplanung | ux-reviewer | bestanden | 0 min | Nachprüfung 1: M1–M3, S1/S2, K1/K2 eingearbeitet; Sollte N1 · claude · sonnet · Lauf 210-ux-reviewer-2 |
+| 2026-11-21 | #220 | Nacharbeit | entwickler | bestanden | 48 min | Nacharbeit 1: Fokusfalle, AK 13 neu, Sollte behoben · claude · Lauf 220-entwickler-2 |
+| 2026-11-21 | #220 | Auto-Reviews | ux-reviewer | bestanden | 2 min | Nachprüfung 1: Muss 1 behoben, Sollte A/B umgesetzt · claude · sonnet · Lauf 220-ux-reviewer-4 |
+| 2026-11-21 | #216 | Entwicklertest | entwicklertester | bestanden | 13 min | US-1 bis US-8 bestanden, keine Befunde · claude · sonnet · Lauf 216-entwicklertester-1 |
+| 2026-11-21 | #220 | Entwicklertest | entwicklertester | bestanden | 14 min | US-1 bis US-10 bestanden, keine Befunde · claude · sonnet · Lauf 220-entwicklertester-1 |
+
+**Retrospektive #216** (Syntax-Hervorhebung in der Review-Ansicht, R00217 und ADR-0040; 2026-11-21; ausgeliefert ca5c47a2; gemessene Kosten unvollständig, die fortgesetzten Läufe fehlen)
+- **Gut:**
+  - **Tag-Kriterium Sondierung:** Die Sondierung B1105 hat vor dem Bau gezeigt, dass ADR-0037 nicht trägt. Minifizierter Code brauchte 352 ms, feindlicher Inhalt innerhalb der Grenzen über 5 s, weil Prism quadratisch wächst. Gebaut wurde nichts, das man hätte wegwerfen müssen.
+  - **Neuer Entwurf:** Der architekt hat in 6 Minuten ADR-0040 (Worker mit Frist) entworfen und geprobt. Der planer hat neu geplant, der ux-reviewer vorgeprüft, und der PO hat zwei Fragen entschieden (Z. 485, 486), alles in rund einer Stunde.
+  - **Prüfung:** Drei Auto-Reviews ohne Muss. Security probte XSS über den Worker und 40 feindliche Dateien. Der Entwicklertest lief ohne Befund, auch beim Markieren und beim Themenwechsel während des Färbens.
+  - **Fund im Bestand:** `rollstaende` las bei jedem Neuzeichnen `scrollTop` aller 50.000 Elemente (760–830 ms). Der Fehler ist mitbehoben.
+- **Lehre (Grenze an feindlichem Inhalt messen):** Eine feste Längengrenze begrenzt die Laufzeit nur bei linearen Kosten. Vor dem Bau wird an der Grenze mit feindlichem Inhalt gemessen. Steht in Gelerntes.
+- **Lehre (Kriterium misst die eigene Wirkung):** AK 1 maß bei `lang.rs` das ungefärbte Zeichnen mit, ein fremder Anteil aus R00207. Der PO hat den Startpunkt auf `data-farbe="laeuft"` gelegt (Z. 489). Ein Leistungskriterium misst ab dem Zeitpunkt, an dem die eigene Arbeit beginnt.
+- **Merkposten (PO Z. 489):** Dauert das ungefärbte Zeichnen einer nachgeladenen Datei mehr als 1.000 ms, wird die Karte „Nachgeladene große Dateien gestaffelt zeichnen“ vorgeschlagen. Heute sind es 101–114 ms.
+- **Offen für den architekt:** A00009 bekommt die Ist-Notiz zu `NIE_GEROLLT`, dazu den Mutanten „`NIE_GEROLLT` entfernt“ (ADR-0040 N1).
+- **Härtung, nicht gebaut:** eine CSP mit `worker-src 'self'; script-src 'self'` (Security).
+- **Wackler:** `ak03_wirksamer_schalter` war im Gate auf main wieder rot und allein 3 von 3 grün, siehe #246.
