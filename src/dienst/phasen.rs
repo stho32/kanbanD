@@ -23,7 +23,7 @@ pub struct BoardMitPhasen {
     #[serde(flatten)]
     pub board: Board,
     pub phasen: Option<Phasenstand>,
-    /// was am Board nicht stimmt, ohne es unlesbar zu machen (unbekannte Prüfungen in `column-checks`)
+    /// was am Board nicht stimmt, ohne es unlesbar zu machen (unbekannte Eigentümer in `column-owner`)
     pub hinweise: Vec<String>,
 }
 

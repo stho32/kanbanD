@@ -1028,7 +1028,7 @@ function vBoard() {
   const leiste = imArchiv() ? `<div class="archbar">Archiv · ${archivierteDesBoards().length} Karten · Dateien bleiben im Ordner, Zeiten zählen in Berichten weiter<button class="lnk" data-act="archiv-aus">Archiv verlassen</button></div>` : '';
   return `${S.einstellungenDefekt ? `<div class="archbar warnbar" role="alert">kanbanD.md ist defekt — Personen und Klassen fehlen, bis die Datei repariert ist</div>` : ''}${vBoardHinweise(b)}${leiste}<div class="bahnen">${b.spalten.map(vLane).join('')}</div>${vLegende()}`;
 }
-/** Was an den Phasen-Spalten (R00058) und den Prüfungen (R00059) nicht stimmt: Reihenfolge gegen die Phasenfolge, abweichende Folgen gebundener Anwendungen, unbekannte Prüfungen. */
+/** Was an den Phasen-Spalten (R00058) und den Eigentümern der Spalten (R00097, R00120) nicht stimmt: Reihenfolge gegen die Phasenfolge, abweichende Folgen gebundener Anwendungen, unbekannte Eigentümer. */
 function vBoardHinweise(b) {
   const h = (b.phasen && b.phasen.hinweise) || [];
   const p = b.hinweise || [];

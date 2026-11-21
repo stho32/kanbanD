@@ -2533,7 +2533,7 @@ function render() {
   const fokus = zielGefuehrt ? null : fokusstand(aktiv, bereiche);
   // Ein Element mit inhaltsbezogenem data-halt hält nie über die Stelle: ist sein Inhalt mehrdeutig (derselbe Text
   // zweimal) oder verschwindet er unter dem Menschen (fremder Textwechsel), hält der Sicherer nichts, und der Fokus
-  // fällt auf den Ort seines Abschnitts (#teil-neu, #herkunft-neu, „+ Wirkung“) — nie auf ein fremdes ✕ oder eine
+  // fällt auf den Ort seines Abschnitts (#teil-neu, #herkunft-neu) — nie auf ein fremdes ✕ oder eine
   // fremde Zeile und nicht eigens ins Fenster (R00138, R00134, ADR-0007 N3 Regel 4, ADR-0010 N7).
   let ortDesFokus = null;
   if (!S.ui.fokus && aktiv && aktiv.dataset && aktiv.dataset.ort) ortDesFokus = aktiv.dataset.ort;
@@ -3308,7 +3308,7 @@ async function aktion(a, arg, wert) {
           if (u.offen && u.fensterFehler) meldungNachErfolgRaeumen(null, 'bewegen');
           if (r.bewegt && vorher && !bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, undo: { art: 'bewegen', nummer: bw.nummer, ...vorher }, at: Date.now() };
           if (bw.rueckgaengig) u.hinweis = { text: `#${bw.nummer} zurück nach „${bw.spalte}“`, at: Date.now() };
-          // Plausibilitätsprüfung (R00059): der Zug ist ausgeführt, die Warnung bleibt länger stehen
+          // Warnung der WIP-Grenze: der Zug ist ausgeführt, die Warnung bleibt länger stehen
           if (r.warnungen && r.warnungen.length) u.hinweis = { text: `#${bw.nummer} nach „${bw.spalte}“`, warnungen: r.warnungen, at: Date.now(), dauer: 20000 };
         });
       }
@@ -4161,7 +4161,7 @@ async function aktion(a, arg, wert) {
         return durchDieSchlange(async () => {
           try {
             // Datums-Trenner (R00124): nur senden, wenn mindestens eine Spalte vom Positions-Standard abweicht —
-            // ein bloßes Speichern ohne Änderung bleibt byte-gleich (nur Abweichendes, wie column-checks/column-colors)
+            // ein bloßes Speichern ohne Änderung bleibt byte-gleich (nur Abweichendes, wie column-notes/column-colors)
             const letzteSpalte = u.setup.spalten.length - 1;
             const trennerAbweichend = u.setup.spalten.some((sp, i) => sp.datumsTrenner !== (i === letzteSpalte));
             // Die Klassen gehen zuerst hinaus (R00195 AK 3): ein ungültiger Satz ist gemeldet, bevor die Spalten geschrieben
