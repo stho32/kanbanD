@@ -1,0 +1,213 @@
+---
+id: R00218
+status: Neu
+datum: 2026-11-21
+---
+
+# R00218: Nachfolger eines verwaisten Commits suchen und ersetzen
+
+## Beschreibung
+
+Karte #220 (Scheibe A5 des Feinschnitts; Betreiber 2026-11-19, po-entscheidungen Z. 389 Punkt 4: „patch-id-Nachfolgervorschlag für verwaiste Commits als eigene spätere Karte“). Technik: [ADR-0038](../Dokumentation/ADRs/0038-nachfolger-eines-verwaisten-commits-ueber-patch-id-mit-vorfilter.md) (Vorgeschlagen, b835fdb8). Zuschnitt der Oberfläche: po-entscheidungen Z. 455–456.
+
+**Umfang (baut auf [R00203](R00203-commit-verweise-nach-einem-rebase-ersetzen.md), [R00204](R00204-commit-liste-einer-karte-per-api-lesen.md) und [R00205](R00205-ansicht-commits-im-aufgabenfenster.md)):** Steht an einer Karte ein Commit-Verweis „auf keinem Zweig“ (Zustand `verwaist`), sucht kanbanD **auf Anfrage** Commits auf den Zweigen des Arbeits-Repositorys, die denselben Patch tragen (gleiche `git patch-id --stable`). Das sind die Kandidaten für den Nachfolger, also den Commit, den ein Rebase oder Cherry-pick aus dem verwaisten gemacht hat. Ein Agent fragt das über `GET /api/aufgaben/{nr}/commits/{verweis}/nachfolger`. Ein Mensch drückt in der Ansicht „Commits“ des [Aufgabenfensters](../Dokumentation/Domaenenwissen/D00001-aufgabenfenster.md) am Eintrag „auf keinem Zweig“ den Knopf „Nachfolger suchen“ und wählt dann selbst je Kandidat „Ersetzen“ oder „Verwaisten Verweis entfernen“. Die Antwort nennt nur Hash und Metadaten, nie Patch-Text oder Dateinamen. kanbanD ersetzt nie selbst, auch nicht bei genau einem Kandidaten.
+
+**Nicht** in A5: „ähnliche“ Commits mit gleichem Autor und Datum, aber anderem Patch (PO Z. 456); ein Knopf auf der Review-Seite (`…/review` bleibt reine Leseansicht, PO Z. 455); eine Vorschau des Kandidaten-Diffs; ein Cache im Speicher; die Nutzung der Suche durch die Factory in `_rebase` (ADR-0032 N1.8, eigene Entscheidung der Factory).
+
+**Zuerst die Sondierung** (ADR-0038 Punkt 9): höchstens 30 Minuten, tagsüber. Ihre Regel entscheidet ohne Rückfrage über die Höchstzahl von 1.000 Commits. Nur bei ungleichem Orakel oder p95 ≥ 2 s bei 200 hält die Karte an (AK 1).
+
+**Gestaltung zuerst für die Oberfläche:** Der gestalter ergänzt nach dieser Anforderung das Artboard D0009 um den Anker `#nachfolger` (hell und dunkel, 1280/414/320 px). Der product-owner gibt die Zeichnung frei. Die Suche per API (AK 1–6) darf vorher gebaut werden, die Oberfläche (AK 7–11) erst danach.
+
+Zahlt ein auf: [Vision](R00000-vision.md) — Zielbild „Die Arbeit hinter der Karte nachvollziehen“ (Z. 109–112). Ersetzen schreibt nur die Karte im Board-Repository über die vorhandene API; im Arbeits-Repository wird nur gelesen (Nicht-Ziel „Kein Git-Client“, Z. 194).
+
+### Domänenbezug
+
+- [Aufgabenfenster](../Dokumentation/Domaenenwissen/D00001-aufgabenfenster.md)
+- Die Begriffe **Commit-Verweis**, **verwaist**, **Anwendung** und **Register** wie in R00202–R00205; im Glossar fehlen sie weiterhin. **Nachfolger** und **Kandidat** sind neu, siehe Offene Fragen.
+
+## Geschäftlicher Nutzen
+
+Wer von Hand rebased oder einen Commit auf einen anderen Zweig überträgt, lässt an der Karte einen Verweis zurück, der „auf keinem Zweig“ steht. Heute muss er den neuen Hash im Log selbst suchen: nach Titel, Datum und Inhalt, und mit dem Risiko, den falschen Commit einzutragen. Mit A5 genügt ein Klick zum Suchen und einer zum Ersetzen. Die Karte zeigt danach wieder auf den Commit, der auf dem Zweig liegt. Diff und Gesamt-Diff stimmen dann wieder, denn ein verwaister Verweis fehlt im Gesamt-Diff als „nicht einbezogen“.
+
+## Funktionale Anforderungen
+
+1. **Endpunkt** `GET /api/aufgaben/{nr}/commits/{verweis}/nachfolger`. `verweis` ist der volle Hash oder ein an der Karte eindeutiger Präfix ab 7 Zeichen, wie bei `DELETE`. Er braucht kein `X-KanbanD-Wer`, setzt keine Sperre und schreibt nichts (ADR-0038 Punkt 1).
+2. **Nur für `verwaist`**: Der Zustand wird so gerechnet wie in der Liste (R00204). Jeder andere Zustand ergibt 404 `{fehler, zustand, grund?}`.
+3. **Kandidat** ist jeder Commit auf einem lokalen oder entfernten Zweig mit derselben `patch-id --stable` wie der verwaiste, im Suchraum aus ADR-0038 Punkt 2. Für jede Binärdatei, die der verwaiste ändert, muss der Kandidat denselben neuen Inhalt haben.
+4. **Antwort 200** in der Form aus ADR-0038 Punkt 4. Je Kandidat stehen `verweis` (passt wörtlich als `neu` in `ersetzen`), `hash`, `titel`, `autor`, `datum`, Zweige und `an_der_karte`. Die Kandidaten sind nach Commit-Datum absteigend geordnet, bei Gleichstand nach Hash. Gezeigt werden höchstens 10, der Rest steht als `kandidaten_weitere`. Die `hinweise` sind `suche_gekappt` (mit `durchsucht` und `grund`), `merge` und `leer`.
+5. **Kein Kandidat** ist kein Fehler: 200 mit `kandidaten: []`.
+6. **Nie Inhalt**: Die Antwort trägt keinen Patch-Text, keinen Dateinamen und keine Zeile. Titel und Autor erscheinen nur für Commits mit gleicher `patch-id`. Ein Kandidat ist kein Verweis der Karte: Diff und Review bleiben für ihn gesperrt, bis er ersetzt ist.
+7. **Grenzen**: höchstens 12 Git-Prozesse nacheinander in einem Platz der Lesegrenze, 10 s für die Suche, Antwort nach höchstens 15 s, sonst 503 `{fehler}` und nie eine Teilliste. `ETag` mit 304 (ADR-0038 Punkte 2, 6, 7).
+8. **Neuer Git-Befehl** `patch-id`, nur mit `--stable`, Eingabe nur über `stdin` (ADR-0038 Punkt 3).
+9. **Oberfläche**: In der Ansicht „Commits“ steht am Eintrag „auf keinem Zweig“ der Knopf „Nachfolger suchen“. Er sucht nur auf Klick, nie beim Laden der Liste. Das Ergebnis steht am Eintrag: je Kandidat Kurz-Hash, Titel, Autor, Datum und Zweige wie in der Liste, dazu „Ersetzen“. Ist der Kandidat schon an der Karte (`an_der_karte`), steht dort stattdessen „Verwaisten Verweis entfernen“.
+10. **Ersetzen** ruft `POST …/commits/ersetzen` mit genau dem Paar `{alt: <Verweis des verwaisten Eintrags>, neu: <verweis des Kandidaten>}` auf. **Verwaisten Verweis entfernen** ruft `DELETE …/commits/<Verweis des verwaisten Eintrags>` auf. Beides geschieht ohne Bestätigungsdialog, denn die Wahl je Kandidat ist die Bestätigung. Danach liest die Ansicht die Liste einmal neu.
+11. **Zustände der Oberfläche** mit Wortlaut, bis zur Antwort des PO wie in den Akzeptanzkriterien: lädt, Kandidaten, kein Kandidat, gekappt, weitere, Merge, leer, Fehler der Suche mit „Erneut versuchen“, Fehler beim Ersetzen oder Entfernen, gesperrt.
+
+## Nicht-funktionale Anforderungen
+
+- **Performance (Sondierung, Tag-Kriterium):** Gemessen wird kalt im Wegwerf-Repository nach B0998 (20.000 Commits, 50 Zweige, ohne `commit-graph`), mit p95 < 2 s. Gemessen nur tagsüber (8–21 Uhr), bei 1-Minuten-Last ≤ 6 beim Start. Nachts gemessene Werte gelten nicht (Lehre #230). Das ist Lastbeobachtung der Sondierung, kein Zeittest im Gate.
+- **Sicherheit:** Die Zusage aus #214 gilt: „nie fremder Code“. Nach außen gehen nur Hash und Metadaten von Commits mit gleicher `patch-id`. Eingabe von außen ist nur ein Verweis der Karte. Fenster, Datum und Commit-Liste rechnet der Dienst selbst, und Revisionen stehen hinter `--end-of-options` (ADR-0038 Punkt 5). Das ist ein Prüfpunkt für den `security-reviewer`.
+- **Barrierefreiheit:** Jedes Bedienziel ist bei grobem Zeiger mindestens 48 × 48 px groß. Der Fokus landet nie auf `body` (ADR-0010). Die gesperrte Form folgt po-entscheidungen-archiv Z. 216: `aria-disabled` und `aria-busy`, nie natives `disabled`, und der Fokusring wird nicht gedämpft.
+
+## Akzeptanzkriterien
+
+**Ausgangslage** (herstellbar mit Git und der API, wie R00203–R00205; jede Probe stellt sie selbst her). Browser headless, Mensch `sh`, Agent `entw1`. Wegwerf-Repository R (`git init -b main`), Anwendung `kd` im Register:
+
+- auf `main`: **M0** „Grundstand“ mit `a.txt`, `b.txt`, `bild.png`, danach **M1** „Drittes anlegen“ (`c.txt`);
+- **K** „Zeile zwei ändern“ (ändert `a.txt`) auf `karte/1` (von M0). Dann `git rebase main` auf `karte/1`, `main` per `merge --ff-only` nachgezogen, `karte/1` gelöscht: **K'** liegt auf `main`, K ist verwaist;
+- **G** „Zeile zwei anders ändern“ auf Zweig `fremd`: dieselbe Datei `a.txt` wie K, anderer Inhalt;
+- **C** „Gruß ändern“ (ändert `b.txt`) auf losgelöstem `HEAD`, per Cherry-pick auf die Zweige `x` (**C1**, Commit-Datum später) und `y` (**C2**, früher);
+- **S1–S3** auf `karte/3`, als Squash **S** auf `main` übernommen, `karte/3` gelöscht;
+- **Mg**, ein Merge auf `karte/4`, Zweig gelöscht; **E**, ein leerer Commit (`--allow-empty`) auf losgelöstem `HEAD`;
+- **B** „Bild tauschen“ (`bild.png`, neuer Inhalt X) auf losgelöstem `HEAD`; **B2** ändert `bild.png` auf Zweig `z` vom selben alten Inhalt auf Y; **B3** ist B, per Cherry-pick auf Zweig `w` übertragen (Inhalt X).
+
+Die Karten tragen diese Verweise: #1 `kd:<K>`, `kd:<M1>` · #2 `kd:<C>` · #3 `kd:<K>`, `kd:<K'>` · #4 `kd:<S1>`, `kd:<Mg>`, `kd:<E>`, `kd:<B>`. „Commit-Zahl“ ist `git rev-list --count HEAD` im Board-Ordner. Kein Commit-Titel enthält einen Dateinamen; nur so lässt sich AK 5 an der Antwort prüfen.
+
+### Suche per API
+
+- [ ] **1. Sondierung (Tag-Kriterium, nicht im Nachtbetrieb).** Gegeben ist der Erzeuger aus B0998 (20.000 Commits, 50 Zweige, ohne `commit-graph`) mit den Fällen (a)–(f) aus ADR-0038 Punkt 9, dazu kanbanD nur lesend. Wenn die Suche nach V2 tagsüber (8–21 Uhr, Last ≤ 6 beim Start, `nice -n 10`) je Fall 20-mal kalt läuft, dann ist ihre Kandidatenmenge je Fall gleich der des Orakels `git log -p --no-merges --no-renames --branches --remotes ^<verwaist> --since=<…> -n 1000 | git patch-id --stable`, gefiltert auf die `patch-id` des verwaisten. Einzige Ausnahme ist Fall (e), dort ist V2 strenger. Erwartet: (a) je der Nachfolger, (b) zwei, (c) keiner, (d) einer, (e) keiner, (f) wie das Orakel. Außerdem ist p95, der 19. von 20 sortierten Werten, kleiner als 2 s. Messwerte, Uhrzeit und Last stehen im Bericht. **Regel ohne Rückfrage:** Ist das Orakel gleich und p95 < 2 s, bleibt es bei 1.000. Ist p95 ≥ 2 s, wird halbiert, bis p95 < 2 s gilt, aber nie unter 200 (1.000 → 500 → 250 → 200); der Wert steht in der Commit-Nachricht. Ist das Orakel ungleich oder p95 ≥ 2 s bei 200: **Halt**, nichts weiter bauen, Rückweg `anforderung_falsch` an den architekt.
+- [ ] **2. Kandidaten.** Gegeben die Ausgangslage, dann gilt:
+  - `GET /api/aufgaben/1/commits/kd:<K:7>/nachfolger` ergibt 200 mit genau einem Kandidaten: `verweis` `kd:<K'>`, `zweige ["main"]`, `an_der_karte: false`. G kommt nicht vor.
+  - Für #2 und `kd:<C>` kommen genau C1, dann C2 (Commit-Datum absteigend).
+  - Für #3 und `kd:<K>` steht K' mit `an_der_karte: true`.
+  - Wird C auf 12 Zweige übertragen, stehen 10 Kandidaten da und `kandidaten_weitere: 2` (12 − 10). Bei genau 10 fehlt das Feld.
+  - Die Commit-Zahl im Board-Ordner bleibt bei allen Aufrufen gleich.
+- [ ] **3. Ohne Kandidat, mit Hinweis.** Gegeben die Ausgangslage, dann ergibt jeder dieser Aufrufe 200:
+  - `kd:<S1>` an #4: `kandidaten: []` ohne Hinweis (Squash);
+  - `kd:<Mg>`: `kandidaten: []` und `hinweise` mit `art: "merge"`;
+  - `kd:<E>`: `kandidaten: []` und `art: "leer"`;
+  - `kd:<B>`: nur B3, nie B2 (gleiche Datei, anderer Binärinhalt).
+  - Gegeben ein Repository R2 mit einem verwaisten Commit V und danach 1.001 Commits auf `main` (über `git fast-import`): `hinweise` enthält `{art: "suche_gekappt", durchsucht: 1000, grund: "fenster"}` (1.001 Zeilen, durchsucht 1.000).
+- [ ] **4. Zulassung und Zeitgrenze.** Gegeben die Ausgangslage, dann gilt:
+  - `/api/aufgaben/999/…/nachfolger` ergibt 404;
+  - `kd:<M1:7>` an #1 ergibt 404 `{fehler, zustand: "auf_zweig"}`;
+  - ein Verweis, der nicht an der Karte steht, ergibt 404 `{fehler, verweis}`;
+  - `kd:main` und ein Präfix mit 6 Zeichen ergeben 400;
+  - eine defekte Aufgabendatei ergibt 423.
+  - Gegeben ein `git`, das `patch-id` 60 s festhält, dann kommt nach höchstens 15 s 503 `{fehler}` ohne `kandidaten`.
+  - Kein Aufruf braucht `X-KanbanD-Wer`.
+- [ ] **5. Nur lesen, nie Inhalt.** Gegeben alle Aufrufe aus AK 2–4, dann gilt:
+  - Keine Antwort enthält einen Schlüssel `patch`, `pfad` oder `dateien`, die Texte `a.txt`, `b.txt` oder `bild.png` und den Titel von G („Zeile zwei anders ändern“).
+  - `GET /api/aufgaben/1/diff?commit=kd:<K'>` ergibt 404, bis ersetzt ist.
+  - `git status --porcelain` und die Commit-Zahl sind in R und im Board-Ordner unverändert.
+  - Bei 1, 30 und 1.000 Commits im Fenster startet eine Suche höchstens 12 Git-Prozesse (Zähler des Moduls oder `GIT_TRACE`), und die Lesegrenze ist währenddessen mit genau 1 belegt.
+- [ ] **6. ETag und Beschreibung.** Gegeben die Antwort für `kd:<K>` an #1, dann gilt:
+  - Derselbe Aufruf mit `If-None-Match` ergibt 304.
+  - Nach `git branch neu M0` in R ergibt er 200 mit neuem `ETag`. Nach dem Hinterlegen von `kd:<K'>` an #1 ebenso, und dann gilt `an_der_karte: true`.
+  - Die Endpunktliste unter `/api`, die OpenAPI-Beschreibung und die README „Für Agenten“ nennen den Endpunkt mit den Statuscodes 200, 304, 400, 404, 423, 503 und einem Beispiel „Nachfolger suchen, dann ersetzen“.
+
+### In der Ansicht „Commits“ (nach Freigabe der Zeichnung D0009 `#nachfolger`)
+
+Wortlaute: Vorschlag des planers, **bis zur Antwort des PO gilt er** (Offene Fragen). Fest ist nur, was der PO schon entschieden hat: „Nachfolger suchen“, „Ersetzen“, „Verwaisten Verweis entfernen“ und der Satz zu „kein Kandidat“.
+
+- [ ] **7. Suchen nur auf Klick am verwaisten Eintrag.** Gegeben #1 in der Ansicht „Commits“, dann gilt:
+  - Nur der Eintrag `kd:<K>` („auf keinem Zweig“) trägt „Nachfolger suchen“. `kd:<M1>` trägt den Knopf nicht, die Review-Seite von #1 auch nicht.
+  - Das Öffnen der Ansicht und „Neu lesen“ lösen kein `GET …/nachfolger` aus.
+  - Wenn `sh` den Knopf drückt, kommt genau ein Aufruf. Solange die Antwort gehalten wird, steht „Sucht Commits mit gleichem Patch …“, der Knopf ist gesperrt, und ein zweiter Klick löst keinen zweiten Aufruf aus.
+  - Danach steht am Eintrag „1 Commit mit gleichem Patch“ und darunter K' mit Kurz-Hash, Titel, Autor, Datum, dem Zweig `main` und „Ersetzen“. Für #3 steht dort „Verwaisten Verweis entfernen“.
+- [ ] **8. Zustände ohne Ersetzen.** Gegeben die Suche an diesen Einträgen, dann steht:
+  - `kd:<S1>`: „Kein Commit mit gleichem Patch auf einem Zweig gefunden. Nach Squash oder einem anders gelösten Konflikt findet die Suche keinen Nachfolger.“ (ADR-0038 Punkt 4, wörtlich);
+  - `kd:<Mg>`: „Für einen Merge-Commit sucht kanbanD keinen Nachfolger.“;
+  - `kd:<E>`: „Der Commit ändert keine Datei, darum gibt es keinen Patch zum Vergleichen.“;
+  - bei `suche_gekappt` mit `durchsucht: 1000` (Antwort per `page.route`): „Die Suche hat nach 1.000 Commits aufgehört; ein Nachfolger kann fehlen.“ (Zahl mit Tausenderpunkt);
+  - bei `kandidaten_weitere: 2`: 10 Kandidaten und „2 weitere Commits mit gleichem Patch sind nicht gezeigt.“;
+  - bei 503: „Der Nachfolger ließ sich nicht suchen: <`fehler` der Antwort> (503).“ mit „Erneut versuchen“, das genau einen weiteren Aufruf auslöst; ohne Verbindung: „…: keine Verbindung zum Programm.“ ohne Zahl (Z. 450).
+- [ ] **9. Ersetzen und Entfernen.** Gegeben `sh` ist gewählt und die Suche an `kd:<K>` von #1 zeigt K'. Wenn `sh` „Ersetzen“ drückt, dann gilt:
+  - Es gibt genau ein `POST /api/aufgaben/1/commits/ersetzen` mit `{ersetzungen: [{alt: "kd:<K>", neu: "kd:<K'>"}]}` und keinen Dialog.
+  - Die Commit-Zahl steigt um genau 1, mit `sh` als Autor.
+  - Die Liste wird einmal neu gelesen und zeigt an Platz 1 `kd:<K'>` auf `main`, ohne „auf keinem Zweig“.
+  - Der Statusbereich sagt „Ersetzt durch kd:<K':7>.“, und der Fokus steht auf dem Eintrag von K'.
+  - Für #3 ergibt „Verwaisten Verweis entfernen“ genau ein `DELETE …/commits/kd:<K>` und einen Commit. Danach steht K' allein an der Karte, und der Fokus steht auf seinem Eintrag.
+  - Ohne gewählte Person öffnet der Klick „Ich bin …“ mit Hinweis und sendet nichts (R00003).
+- [ ] **10. Fehler, Sperre und Nachbarübergänge.** Gegeben die Suche an `kd:<K>` zeigt K', dann gilt:
+  - Hat eine zweite Sitzung inzwischen `kd:<K'>` an #1 hinterlegt, ergibt „Ersetzen“ 409. Am Kandidaten steht dann „Der Verweis ließ sich nicht ersetzen: <`fehler` der Antwort> (409).“ Die Datei bleibt byte-gleich, und der Fokus bleibt auf dem Knopf.
+  - Bei defekter Aufgabendatei steht dieselbe Form mit (423). Für „Verwaisten Verweis entfernen“ lautet sie „Der Verweis ließ sich nicht entfernen: … (<Status>).“
+  - Solange „Ersetzen“ auf die Antwort wartet, sind alle „Ersetzen“ und „Verwaisten Verweis entfernen“ dieser Suche gesperrt, in der Form nach Z. 216. Ein zweiter Klick ergibt keinen zweiten Aufruf und keinen zweiten Commit.
+  - Wechselt `sh` während einer laufenden Suche in die Ansicht „Inhalt“ und zurück, erscheint keine Fehlermeldung. „Inhalt“ ändert sich nicht, und zurück in „Commits“ steht wieder „Nachfolger suchen“. „Neu lesen“ verwirft ein angezeigtes Ergebnis ebenso.
+  - Wechselt `sh` während eines laufenden „Ersetzen“ die Ansicht, entsteht genau ein Commit. Zurück in „Commits“ steht K' an Platz 1.
+- [ ] **11. Breite, Themen, Kontrast und Tastatur.** Gegeben die Suche mit 10 Kandidaten (Titel 500 Zeichen mit einem Wort aus 120 Zeichen, je 10 Zweige mit 60 Zeichen), dann gilt:
+  - Bei 320, 414 und 1280 px, hell und dunkel, ist `documentElement.scrollWidth ≤ clientWidth` und keine rechte Kante über `clientWidth`.
+  - Bei grobem Zeiger ist jedes Bedienziel mindestens 48 × 48 px groß.
+  - Text hat in Ruhe, Zeigen, Fokus und gesperrt mindestens 4,5:1 Kontrast, Kontur und Fokusring mindestens 3:1, in beiden Themen.
+  - Tab erreicht in Dokumentreihenfolge „Nachfolger suchen“, danach je Kandidat seinen Knopf. Enter und Leertaste lösen aus. Nach der Suche steht der Fokus auf dem Ergebnis (Rolle `group`, Name „Nachfolger von kd:<K:7>“), nie auf `body`.
+
+## Betroffene Verzeichnisstruktur
+
+- `src/git/arbeitsrepo.rs`: achter `Befehl::PatchId` (Zuordnung in `erzeugt_diffs`, `schalter`, `liefert_teil`, `einzige_form`). `diff_tree_viele` und `erreichbar` werden wiederverwendet.
+- neu `src/dienst/nachfolger.rs` neben `commits_lesen.rs`: Zulassung, Fenster, Vorfilter, Patch, `patch-id`, Binärschutz, Antwort. Den Zustand rechnet derselbe Helfer wie in der Liste.
+- `src/web/mod.rs` (Route neben `GET …/commits`), `src/web/endpunkte.rs`, `src/web/openapi.rs`, `README.md` „Für Agenten“.
+- `web/commits.js`: reine Funktion, die die Antwort in Zeilenwerte und Wortlaute deutet. `web/ansicht.js`: Ergebnis am Eintrag zeichnen. `web/app.js`: Aktionen „Nachfolger suchen“, „Ersetzen“, „Verwaisten Verweis entfernen“ über den einen Schreibweg (`warteschlange`, ADR-0025 Regel 6). `web/kd-app.css` nur mit Tokens.
+- Tests: neu `tests/nachfolger_dienst.rs` (echtes Git im Wegwerf-Repository), Erweiterung der Startort-Tests, `e2e/einheit/commits.test.js`, neu `e2e/tests/r00218-nachfolger.spec.js`, Erweiterung `kontrast.spec.js`.
+
+## Technische Überlegungen
+
+### Ablauf (Vorplanung — welche Bubbles es am Ende werden, entscheidet der entwickler)
+
+Interaction I0208 mit den Features F0160 (Suche per API) und F0161 (in der Ansicht „Commits“), Bubbles B1112–B1122 in `Dokumentation/Planung/kanbanD.md`:
+
+**Umfang** (gezählt, `/planung zaehlen I0208`): I0208 = 11 Bubbles bis Bubble geplant. F0160 hat 6 Bubbles mit 5–9,5 h, F0161 hat 5 mit 4–8 h, zusammen 9–17,5 h. Das sind Richtwerte der Nachbar-Interactions, für diese Bubbles ungemessen. Die Ist-Zeiten vergleichbarer Bubbles in D0009 (#228–#231, `Schaetzungen/_ist-zeiten.md`) lagen bei 0,1–1,3 h, also am unteren Rand oder darunter.
+
+1. **B1112 Sondierung** (Zeitbox 30 Minuten, tagsüber, Wegwerfcode in der Ablage): AK 1. Bei Halt endet die Karte hier.
+2. **B1113 Startort `patch-id`**: nur `--stable`, nur `stdin`.
+3. **B1114 Fenster und Vorfilter**: ein `rev-list`, ein `diff_tree_viele --raw`, die Pfadmenge und die neuen Blobs der Binärdateien je Commit.
+4. **B1115 Patch und `patch-id`**: höchstens 50 Übrige, Bytegrenze 8 MB, Binärschutz, daraus die Kandidaten.
+5. **B1116 Dienst `nachfolger`**: Zulassung, Zustand, Gesamtgrenze, Reihenfolge, 10 und `kandidaten_weitere`, `an_der_karte`, Hinweise.
+6. **B1117 Route, `ETag`, Beschreibung, API-Probe**: Zähler, Sicherheit, Zeitgrenze im gestarteten Programm.
+7. **B1118 Antwort deuten (rein)**: Zustände, Wortlaute, Zahl mit Tausenderpunkt.
+8. **B1119 Suchen am Eintrag**: Knopf, lädt, Ergebnis, Fehler, „Erneut versuchen“, Sperre, Ansichtswechsel.
+9. **B1120 Ersetzen und Entfernen**: über den Schreibweg, Fehler am Auslöser, neu lesen, Fokus.
+10. **B1121 Breite, Ziele, Themen, Kontrast, Tastatur** messen und nachziehen.
+11. **B1122 Probe im echten Programm, Gate, abschließen.**
+
+### Hinweise
+
+- **Artboard:** `Dokumentation/Wireframes/D0009.dc.html`, neuer Anker `#nachfolger`; den zeichnet der gestalter nach dieser Anforderung. Bis dahin zeigt D0009 nur „kein Nachfolger (A5)“ als Abgrenzung. Es gilt die Zeichnung, kein Kriterium aus dem Bild.
+- **Gesperrte Form**: po-entscheidungen-archiv Z. 216 (D0002/D0003 `#sperrform`), für jeden gesperrten Schreib-Auslöser.
+- **Fuß der Ansicht** „liest nur · gelesen aus dem Repository der Anwendung“ bleibt wahr: Ersetzen schreibt die Karte, nicht das Arbeits-Repository (siehe Offene Fragen).
+- **Kein Live-Nachladen** (R00205 FA 2): Ein angezeigtes Ergebnis kann veralten. Ersetzen meldet das dann über 404 bzw. 409 in der Form aus AK 10, oder antwortet als Wiederholung mit 200 ohne Commit (R00203 FA 6).
+- **Nachbarübergänge** (po-entscheidungen Z. 457, Lehre #231): Ansichtswechsel und „Neu lesen“ während der Suche oder des Ersetzens sind Kriterien (AK 10). Eine späte Antwort schreibt nur in den Zustand, der noch derselbe ist (Muster `commitsLesen`, `web/app.js:989`).
+
+## Tests
+
+Nach `~/.claude/skills/test-pyramide/SKILL.md`: Test zuerst je Bubble.
+
+- **Unit (Rust):** Pfadmengen-Vergleich und Binärregel als reine Funktionen; Zerlegung der `patch-id`-Ausgabe; Reihenfolge, 10er-Schnitt, `kandidaten_weitere`. **Unit (Node):** Deutung der Antwort in Wortlaute für alle Zustände.
+- **Modul (Rust, echtes Git im Wegwerf-Repository):** erster Test nach ADR-0038 „Durchsetzung“ (K → K'), dazu AK 2–5 und die Startort-Tests (`patch-id` ohne `stdin` oder mit anderem Argument ist ein Fehler).
+- **E2E (Playwright, headless):** AK 7–11 gegen das gestartete Programm, Antworten gehalten über `page.route`, ohne Schlafzeiten.
+- Grenzfälle wie 50/51 Übrige im Vorfilter, das Fenster ab Autordatum − 1 Tag und die Bytegrenzen bleiben Sache des entwicklers. Dazu kommen die Proben des Pre-Mortems aus ADR-0038 (a)–(d).
+
+## Abhängigkeiten
+
+- Abhängig von: [R00203](R00203-commit-verweise-nach-einem-rebase-ersetzen.md) (I0193, #219, erledigt), [R00204](R00204-commit-liste-einer-karte-per-api-lesen.md) (I0194, #211, erledigt), [R00205](R00205-ansicht-commits-im-aufgabenfenster.md) (I0195, #212, erledigt). Dazu ADR-0038 (Vorgeschlagen bis zur Sondierung), ADR-0032, ADR-0025, ADR-0010 und für F0161 die freigegebene Zeichnung D0009 `#nachfolger`.
+- Blockiert: keine. Ob die Factory die Suche in `_rebase` nutzt (ADR-0032 N1.8), entscheidet die Factory.
+
+## Offene Fragen
+
+- **An den product-owner (mit der Zeichnung):** Wortlaute für lädt, Kopf des Ergebnisses, gekappt, weitere, Merge, leer, Fehler und Erfolg (AK 7–10). **Bis zur Antwort gilt der Vorschlag** in den Kriterien; er hält den Bau der API nicht auf.
+- **An den product-owner:** Bleibt der Fuß „liest nur · gelesen aus dem Repository der Anwendung“, obwohl die Ansicht jetzt „Ersetzen“ anbietet? Empfehlung: ja, er sagt, woher gelesen wird, und das Arbeits-Repository bleibt unberührt. Bis zur Antwort gilt: unverändert.
+- **An den fachspezialist (über den Director):** **Nachfolger**, **Kandidat**, **Commit-Verweis** und **verwaist** ins Glossar.
+- **An den architekt nach der Sondierung:** Status von ADR-0038 auf „Akzeptiert“, oder bei Halt ein Nachtrag.
+
+## Manuelle Vorbereitungstätigkeiten
+
+- Die Sondierung tagsüber einplanen (8–21 Uhr), bei Last ≤ 6.
+- Die Zeichnung D0009 `#nachfolger` freigeben, bevor F0161 gebaut wird.
+
+## Manuelle Nachbereitungstätigkeiten
+
+- Keine.
+
+## Warum löst diese Anforderung das Problem? (Pflicht)
+
+Seit R00204/R00205 sieht der Mensch, dass ein Verweis „auf keinem Zweig“ steht, aber nicht, wohin der Commit gewandert ist. Er muss den Nachfolger im Log selbst finden und trägt dabei leicht den falschen ein. Sucht kanbanD auf Klick nach Commits mit gleicher `patch-id`, bekommt er nur Commits mit derselben Änderung genannt, keine bloß ähnlichen. Mit „Ersetzen“ zieht er den Verweis über die vorhandene Route an dessen Platz nach. Danach zeigen Liste, Diff und Gesamt-Diff wieder auf den Stand auf dem Zweig. Der Hebel liegt bei der Suche und nicht beim Hinterlegen: Die Factory ersetzt in der Merge-Wache schon selbst (E1). Verwaist bleiben gerade die Verweise, die ein Mensch von Hand rebased hat. Weil die Antwort nur Hash und Metadaten derselben Änderung trägt, öffnet die Suche keinen neuen Weg zu fremdem Code.
+
+## Missing-Docs
+
+- Dass `patch-id` die Kopfzeilen `---`/`+++` mitzählt und wie es Modusänderungen behandelt, beschreibt ADR-0038 aus dem Gedächtnis. Die Sondierung prüft es mit dem Orakel (AK 1, Fall f).
+
+## Notizen
+
+- **Schlank arbeiten (A):** elf Kriterien, sechs für die API und fünf für die Oberfläche, weil der PO beides in diese Karte gelegt hat (Z. 455). Mutanten und Grenzfälle gehören dem entwickler.
+- **Optionen** sind in ADR-0038 abgewogen und entschieden: V2 mit T2, statt V1 (Strom als Röhre), V3 (`patch-id` in Rust) und V4 (Autor/Datum/Titel, vom PO verworfen, Z. 456). Für die Oberfläche hat der PO zwischen „nur API“ und „API und Oberfläche“ entschieden (Z. 455).
+- **Herleitung der Zahlen:** 1.000, 50, 10, 12, 10 s, 15 s, 4 MB, 8 MB und p95 < 2 s stammen aus ADR-0038. Die 3,0 s für 1.000 Commits über den Strom wurden 2026-11-19 gemessen (ADR-0032 N1.7). 12 − 10 = 2 weitere. 1.001 Zeilen ergeben 1.000 durchsucht. Die Halbierungsfolge 1.000 → 500 → 250 → 200 ist die Lesart des planers für „nie unter 200“: nach 250 kommt 200, nicht 125. Die Lastschwelle ≤ 6 steht in ADR-0038 Punkt 9 und im Auftrag.
+- **Verworfen:** ein Zeittest im Gate für p95, denn eine Wanduhr unter Last wackelt (gemeinsam/gelerntes); ein Bestätigungsdialog (PO Z. 455); das Ergebnis über einen Ansichtswechsel zu behalten, denn die Liste wird beim Öffnen ohnehin neu gelesen und ein altes Ergebnis wäre ein zweiter Stand.
