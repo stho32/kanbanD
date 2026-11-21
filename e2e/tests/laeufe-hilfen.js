@@ -74,7 +74,7 @@ function ausgangslage({ tausend = false } = {}) {
     'aufgaben/0003-zweit.md': aufgabe(3, 'Auf zweit', { transkripte: transkriptZeile(L3_ZWEIT, 'Entwicklung', BYTES), kosten: kostenZeile(L_ZWEIT_KOSTEN, 'Entwicklung', 0.20) }),
     'aufgaben/0004-breit.md': aufgabe(4, 'Breitendaten', {
       transkripte: TRANSKRIPTE_1 + transkriptZeile(L_BREIT, 'Entwicklung', BYTES),
-      kosten: KOSTEN_1 + kostenZeile(L_BREIT, SPALTE_60, 0.70) + kostenZeile(`fremd@2026-11-20T17:00+01:00`, SPALTE_FREMD, 0.05),
+      kosten: KOSTEN_1 + kostenZeile(L_BREIT, SPALTE_60, 0.70) + kostenZeile(`fremd@2026-11-20T17:00+01:00`, SPALTE_FREMD, 0.05) + kostenZeile('breit@2026-11-20T18:00+01:00', SPALTE_60, 0.33),
     }),
     'aufgaben/0005-mit-commit.md': aufgabe(5, 'Mit Commit', { transkripte: TRANSKRIPTE_1, kosten: KOSTEN_1, zusatz: 'commits: [kd:a41e0c5]' }),
     'aufgaben/0006-einzeln.md': aufgabe(6, 'Ein Lauf', { transkripte: transkriptZeile(L_EINZEL, 'Detailplanung', BYTES) }),

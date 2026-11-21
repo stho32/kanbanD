@@ -970,3 +970,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #217 R00219 | B1126 Läufe zusammenführen und ordnen, rein | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #217 R00219 | B1127 Menüeintrag „Läufe“ nur bei Transkripten, Rückfall auf „Inhalt“ | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #217 R00219 | B1129 Lesen: Öffnen, „Neu lesen“, einmal bei geänderter Kennungsmenge, späte Antwort verworfen | Standard | 1-2h | 0,6h | 0,6h | autonom |
+| 2026-11-21 | Karte #217 R00219 | B1130 Breite, Ziele, Themen, Kontrast, Tastatur, Fokus und Ansage | Standard | 1-2h | 0,5h | 0,5h | autonom |

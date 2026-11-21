@@ -3,7 +3,7 @@
 // Zeitproben deterministisch: Antworten per `page.route` gehalten und über ein Promise freigegeben, keine Schlafzeiten;
 // jede Verneinung („kein GET“) erst nach einem sichtbaren Signal.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, liveBereit, reiter, alsPerson, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, liveBereit, reiter, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastMessen, kontrastFarben, kontrastAm } = require('./hilfen');
 const lauf = require('./laeufe-hilfen');
 
 const AUSLOESER = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
@@ -135,7 +135,7 @@ test.describe('R00219 Ansicht „Läufe“', () => {
   async function laeufeOeffnen(page, nr = 1, board = 'fabrik') {
     await oeffnen(page, nr, board);
     await reiter(page, 'Läufe');
-    await expect(page.locator(STATUS)).toHaveText(/ Läufe? · Stand /);
+    await expect(page.locator(STATUS)).toHaveText(/ (Lauf|Läufe) · Stand /);
   }
 
   test('AK 4 · US-1 · US-2: #1 zeigt L4, L3, L2, L1, L5, L6 mit Zeitpunkt, Rolle, Spalte, Betrag und Zustand', async ({ page }) => {
@@ -540,4 +540,304 @@ test.describe('R00219 Ansicht „Läufe“', () => {
       expect(await nieBody(page)).toBe(true);
     });
   }
+
+  /* ── AK 9 Breite, Tabelle und Ziele ── */
+
+  const BREITEN = [320, 414, 640, 641, 768, 980, 1099, 1100, 1280];
+  /** Stellt an #4 einen Zustand her: Liste mit Hinweis (zwei Boards, eines aus 60 Zeichen), Laden, Fehler, Fehler liest erneut. */
+  async function zustandAn4(page, zustand) {
+    const wartend = [];
+    await page.route('**/api/aufgaben/4/transkripte', async route => {
+      const wie = await new Promise(r => wartend.push(r));
+      if (wie === 503) return route.fulfill({ status: 503, json: { fehler: 'Dienst nicht verfügbar' } });
+      const antwort = await route.fetch();
+      await route.fulfill({ response: antwort, json: { ...(await antwort.json()), boards_aus: ['zweit', lauf.BOARD_60] } });
+    });
+    const gehalten = { freigeben: async wie => { await expect.poll(() => wartend.length).toBeGreaterThan(0); wartend.shift()(wie); } };
+    await oeffnen(page, 4);
+    await reiter(page, 'Läufe');
+    if (zustand === 'Laden') return expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+    if (zustand === 'Liste' || zustand === 'Hinweis') {
+      await gehalten.freigeben('weiter');
+      return expect(page.locator(HINWEIS)).toBeVisible();
+    }
+    await gehalten.freigeben(503);
+    await expect(page.locator(MELDUNG)).toBeVisible();
+    if (zustand === 'Fehler liest erneut') {
+      await page.locator(ERNEUT).click();
+      await expect(page.locator(ERNEUT)).toHaveAttribute('aria-disabled', 'true');
+    }
+  }
+  /** Im Browser: Querscrollen von Seite und Fenster und jeder lange Text in seiner eigenen Zelle bzw. seinem Block (Toleranz 1 px). */
+  const breiteImBrowser = ({ rolle, spalte, board }) => {
+    const de = document.documentElement, fenster = document.getElementById('fenster');
+    const aus = [];
+    if (de.scrollWidth > de.clientWidth) aus.push(`Seite ${de.scrollWidth} > ${de.clientWidth}`);
+    if (fenster.scrollWidth > fenster.clientWidth) aus.push(`Fenster ${fenster.scrollWidth} > ${fenster.clientWidth}`);
+    const inEigenerZelle = (knoten, zelle, was) => {
+      const r = document.createRange(); r.selectNodeContents(knoten);
+      const z = zelle.getBoundingClientRect();
+      for (const t of r.getClientRects()) if (t.left < z.left - 1 || t.right > z.right + 1 || t.top < z.top - 1 || t.bottom > z.bottom + 1) aus.push(`${was} ragt aus ${zelle.className}: ${Math.round(t.left)}–${Math.round(t.right)} statt ${Math.round(z.left)}–${Math.round(z.right)}`);
+    };
+    const textknoten = (wurzel, text) => { const w = document.createTreeWalker(wurzel, NodeFilter.SHOW_TEXT); for (let t; (t = w.nextNode());) if (t.textContent.includes(text)) return t; return null; };
+    const panel = document.querySelector('#fenster .lf-panel');
+    for (const zelle of panel.querySelectorAll('.lf-ro')) { const t = textknoten(zelle, rolle); if (t) inEigenerZelle(t, zelle, 'Rolle'); }
+    for (const zelle of panel.querySelectorAll('.lf-sp')) {
+      for (const kind of zelle.childNodes) if (kind.nodeType === 3 && kind.textContent.includes(spalte)) inEigenerZelle(kind, zelle, 'Spalte');
+      const neben = zelle.querySelector('.lf-neben'); if (neben) { inEigenerZelle(neben, zelle, 'Nebentext'); inEigenerZelle(neben, neben, 'Nebentext im Block'); }
+    }
+    const hw = panel.querySelector('.lf-hw'); if (hw) { const t = textknoten(hw, board); if (t) inEigenerZelle(t, hw, 'Boardname'); }
+    return aus;
+  };
+  const kopfSichtbar = page => page.locator(`${ANSICHT_LAEUFE} .lf-tab thead`).evaluate(kopf => { const r = kopf.getBoundingClientRect(); return r.width > 2 && r.height > 2 && getComputedStyle(kopf).clipPath === 'none'; });
+
+  for (const farbe of ['hell', 'dunkel']) {
+    for (const zustand of ['Liste', 'Laden', 'Fehler', 'Fehler liest erneut']) {
+      test(`AK 9: #4 ${zustand}, ${farbe} — bei neun Breiten kein Querscrollen, jeder lange Text in seiner Zelle, Kopfzeile nur ab 1100 px`, async ({ page }) => {
+        await zustandAn4(page, zustand);
+        await thema(page, farbe === 'hell' ? 'light' : 'dark');
+        for (const breite of BREITEN) {
+          await breiteSetzen(page, breite);
+          expect(await page.evaluate(breiteImBrowser, { rolle: lauf.ROLLE_40, spalte: lauf.SPALTE_60, board: lauf.BOARD_60 }), `${zustand} ${farbe} ${breite} px`).toEqual([]);
+          if (zustand !== 'Laden') expect(await kopfSichtbar(page), `${breite} px Kopfzeile`).toBe(breite >= 1100);
+        }
+      });
+    }
+  }
+
+  test('AK 9: #3 mit Hinweis — bei neun Breiten kein Querscrollen', async ({ page }) => {
+    await laeufeOeffnen(page, 3, 'zweit');
+    for (const breite of BREITEN) {
+      await breiteSetzen(page, breite);
+      expect(await page.evaluate(breiteImBrowser, { rolle: '—', spalte: '—', board: 'zweit' }), `${breite} px`).toEqual([]);
+    }
+  });
+
+  for (const breite of [320, 1280]) {
+    test(`AK 9: Tabelle für Vorlesende bei ${breite} px — eine table „Läufe dieser Aufgabe, neueste zuerst“ mit sechs Zeilen, fünf Spaltenköpfen, Zeitpunkt als Zeilenkopf`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 900 });
+      await laeufeOeffnen(page);
+      const tabelle = page.getByRole('table', { name: 'Läufe dieser Aufgabe, neueste zuerst' });
+      await expect(tabelle).toHaveCount(1);
+      await expect(tabelle.getByRole('columnheader')).toHaveText(['Zeitpunkt', 'Rolle', 'Spalte', 'Betrag', 'Transkript']);
+      const daten = tabelle.getByRole('row').filter({ has: page.getByRole('rowheader') });
+      await expect(daten).toHaveCount(6);
+      for (let i = 0; i < 6; i++) await expect(daten.nth(i).getByRole('rowheader')).toHaveAccessibleName(SECHS[i][0] === '—' ? 'kein Zeitpunkt' : SECHS[i][0]);
+    });
+  }
+
+  test.describe('grober Zeiger', () => {
+    test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
+    test('AK 9: bei grobem Zeiger ist jedes Bedienziel mindestens 48 × 48 px — „Läufe“ im Menü, „Neu lesen“, „Erneut versuchen“', async ({ page }) => {
+      const h = await anhalten(page, 1);
+      await oeffnen(page);
+      expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+      await menueOeffnen(page);
+      const masse = loc => loc.evaluate(e => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
+      const eintrag = menue(page).getByRole('menuitemradio', { name: 'Läufe', exact: true });
+      expect((await masse(eintrag))[1]).toBeGreaterThanOrEqual(47.5);
+      expect((await masse(eintrag))[0]).toBeGreaterThanOrEqual(47.5);
+      await eintrag.click();
+      await h.freigeben(503);
+      await expect(page.locator(ERNEUT)).toBeVisible();
+      for (const ziel of [page.locator(NEU), page.locator(ERNEUT)]) {
+        const [b, hoehe] = await masse(ziel);
+        expect(b, await ziel.innerText()).toBeGreaterThanOrEqual(47.5);
+        expect(hoehe, await ziel.innerText()).toBeGreaterThanOrEqual(47.5);
+      }
+    });
+  });
+
+  /* ── AK 10 Themen, Tastatur, Fokusring, Ansage ── */
+
+  const SCHRIFT = 4.5, MARKE = 3, GESPERRT = 3;
+  /** Text der Ansicht ≥ 4,5:1 (gesperrte Knöpfe ≥ 3:1, WCAG 1.4.3 inaktive Komponenten, UX-Nachprüfung S-A); Rand und Symbol jeder Marke ≥ 3:1. */
+  async function kontrastPruefen(page, wo) {
+    const messungen = await kontrastMessen(page, [ANSICHT_LAEUFE]);
+    expect(messungen.length, `${wo}: es gibt Text zu messen`).toBeGreaterThanOrEqual(3);
+    const zuWenig = messungen.filter(m => m.wert < SCHRIFT).map(m => `${wo}: ${m.element} „${String(m.text).slice(0, 30)}“ ${m.wert.toFixed(2)}`);
+    for (const gesperrt of await page.locator(`${ANSICHT_LAEUFE} [aria-disabled="true"]`).all()) {
+      const wert = await kontrastAm(gesperrt);
+      if (wert < GESPERRT) zuWenig.push(`${wo}: gesperrt „${await gesperrt.innerText()}“ ${wert.toFixed(2)}`);
+    }
+    const marken = await page.evaluate(() => [...document.querySelectorAll('#fenster .lf-panel .cl-zs, #fenster .lf-panel .cl-meld')].map(m => {
+      const st = getComputedStyle(m);
+      let grund = m.parentElement;
+      while (grund && getComputedStyle(grund).backgroundColor === 'rgba(0, 0, 0, 0)') grund = grund.parentElement;
+      const aussen = grund ? getComputedStyle(grund).backgroundColor : getComputedStyle(document.getElementById('fenster')).backgroundColor;
+      const svg = m.querySelector('svg');
+      return { text: m.textContent.slice(0, 24), rand: st.borderTopColor, flaeche: st.backgroundColor, tinte: svg ? getComputedStyle(svg).stroke === 'none' ? st.color : getComputedStyle(svg).stroke : st.color, aussen };
+    }));
+    for (const m of marken) {
+      const rand = await kontrastFarben(page, m.rand, m.aussen);
+      if (rand < MARKE) zuWenig.push(`${wo}: Rand der Marke „${m.text}“ ${rand.toFixed(2)}`);
+      const symbol = await kontrastFarben(page, m.tinte, m.flaeche);
+      if (symbol < MARKE) zuWenig.push(`${wo}: Symbol der Marke „${m.text}“ ${symbol.toFixed(2)}`);
+    }
+    return { zuWenig, marken: marken.length };
+  }
+  for (const farbe of ['hell', 'dunkel']) {
+    test(`AK 10: ${farbe} — Liste, Laden, Fehler, Fehler liest erneut und Hinweis: Text 4,5:1 (gesperrt 3:1), Marken 3:1`, async ({ page }) => {
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      await page.emulateMedia({ colorScheme: farbe === 'hell' ? 'light' : 'dark' });
+      const ergebnisse = [];
+      const h = await gehaltenOeffnen(page);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      const liste = await kontrastPruefen(page, `Liste ${farbe}`);
+      expect(liste.marken).toBe(3);
+      ergebnisse.push(...liste.zuWenig);
+      await page.locator(NEU).click();
+      await expect(page.locator(NEU)).toHaveAttribute('aria-disabled', 'true');
+      ergebnisse.push(...(await kontrastPruefen(page, `Laden ${farbe}`)).zuWenig);
+      await h.freigeben(503);
+      await expect(page.locator(MELDUNG)).toBeVisible();
+      ergebnisse.push(...(await kontrastPruefen(page, `Fehler ${farbe}`)).zuWenig);
+      await page.locator(ERNEUT).click();
+      await expect(page.locator(ERNEUT)).toHaveAttribute('aria-disabled', 'true');
+      ergebnisse.push(...(await kontrastPruefen(page, `Fehler liest erneut ${farbe}`)).zuWenig);
+      await h.freigeben();
+      await laeufeOeffnen(page, 3, 'zweit');
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      await expect(page.locator(HINWEIS)).toBeVisible();
+      ergebnisse.push(...(await kontrastPruefen(page, `Hinweis ${farbe}`)).zuWenig);
+      expect(ergebnisse).toEqual([]);
+    });
+
+    test(`AK 10: ${farbe} — Fokusring an „Läufe“ im Menü, „Neu lesen“ und „Erneut versuchen“ (auch gesperrt): solid, ≥ 2 px, ≥ 3:1 gegen die Fläche`, async ({ page }) => {
+      const h = await anhalten(page, 1);
+      await oeffnen(page);
+      await thema(page, farbe === 'hell' ? 'light' : 'dark');
+      const ring = async (ort, wo) => {
+        await expect(ort).toBeFocused();
+        const r = await ort.evaluate(e => {
+          const st = getComputedStyle(e);
+          // ein Ring nach innen (negativer Versatz) liegt auf der eigenen Fläche, sonst auf der des ersten deckenden Vorfahren
+          let grund = parseFloat(st.outlineOffset) < 0 ? e : e.parentElement;
+          while (grund && getComputedStyle(grund).backgroundColor === 'rgba(0, 0, 0, 0)') grund = grund.parentElement;
+          return { stil: st.outlineStyle, breite: parseFloat(st.outlineWidth), farbe: st.outlineColor, flaeche: grund ? getComputedStyle(grund).backgroundColor : '#fff' };
+        });
+        expect(r.stil, wo).toBe('solid');
+        expect(r.breite, wo).toBeGreaterThanOrEqual(2);
+        expect(await kontrastFarben(page, r.farbe, r.flaeche), wo).toBeGreaterThanOrEqual(3);
+      };
+      await ausloeser(page).focus();
+      await page.keyboard.press('Enter');
+      await menue(page).waitFor();
+      const eintrag = menue(page).getByRole('menuitemradio', { name: 'Läufe', exact: true });
+      for (let i = 0; i < 10 && !(await eintrag.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('ArrowDown');
+      await ring(eintrag, 'Läufe im Menü');
+      await page.keyboard.press('Enter');
+      await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Läufe');
+      await perTab(page, NEU);
+      await ring(page.locator(NEU), 'Neu lesen gesperrt');
+      await h.freigeben(503);
+      await expect(page.locator(MELDUNG)).toBeVisible();
+      await ring(page.locator(NEU), 'Neu lesen');
+      await perTab(page, ERNEUT);
+      await ring(page.locator(ERNEUT), 'Erneut versuchen');
+      await page.keyboard.press('Enter');
+      await expect(page.locator(ERNEUT)).toHaveAttribute('aria-disabled', 'true');
+      await ring(page.locator(ERNEUT), 'Erneut versuchen gesperrt');
+    });
+  }
+
+  test('AK 10: Einzahl — #6 mit genau einem Transkript ohne Kosten meldet „1 Lauf · Stand hh:mm:ss“', async ({ page }) => {
+    await laeufeOeffnen(page, 6);
+    await expect(page.locator(STATUS)).toHaveText(/^1 Lauf · Stand \d{2}:\d{2}:\d{2}$/);
+  });
+
+  test('AK 10: der Statusbereich ist schon im Laden-Zustand derselbe Knoten wie nach dem Lesen, und das Fokusziel liegt in keiner Live-Region', async ({ page }) => {
+    const h = await anhalten(page, 1);
+    await oeffnen(page);
+    await reiter(page, 'Läufe');
+    await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+    await merken(page, STATUS, 'kdStatus');
+    await h.freigeben();
+    await expect(page.locator(STATUS)).toHaveText(/^6 Läufe · Stand /);
+    expect(await istGemerkt(page, STATUS, 'kdStatus')).toBe(true);
+    for (const ziel of [NEU]) expect(await page.locator(ziel).evaluate(e => e.closest('[role=status],[role=alert],[aria-live]') === null)).toBe(true);
+    await page.route('**/api/aufgaben/1/transkripte', r => r.fulfill({ status: 503, json: { fehler: 'x' } }));
+    await page.locator(NEU).click();
+    await expect(page.locator(ERNEUT)).toBeVisible();
+    for (const ziel of [NEU, ERNEUT]) expect(await page.locator(ziel).evaluate(e => e.closest('[role=status],[role=alert],[aria-live]') === null)).toBe(true);
+    await expect(page.locator(`${MELDUNG} [role], ${MELDUNG}[role], ${MELDUNG} [aria-live], ${MELDUNG}[aria-live]`)).toHaveCount(0);
+    expect(await page.locator(MELDUNG).evaluate(e => e.closest('[role=status],[role=alert],[aria-live]') === null)).toBe(true);
+  });
+
+  /** Zählt Textänderungen in Live-Regionen (`[role=status],[role=alert],[aria-live]`): Änderungen in ihrem Inhalt und neu eingefügte Regionen mit Text. */
+  const ansagenZaehlen = page => page.evaluate(() => {
+    if (window.kdBeobachter) window.kdBeobachter.disconnect();
+    window.kdAnsagen = [];
+    const LIVE = '[role=status],[role=alert],[aria-live]';
+    const bekannt = new WeakSet(document.querySelectorAll(LIVE));
+    const beobachter = new MutationObserver(eintraege => {
+      for (const e of eintraege) {
+        const ort = e.target.nodeType === 3 ? e.target.parentElement : e.target;
+        const region = ort && ort.closest(LIVE);
+        if (region) { window.kdAnsagen.push(`${region.getAttribute('role') || 'live'}: ${region.textContent}`); continue; }
+        for (const n of e.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          for (const neu of [n, ...n.querySelectorAll(LIVE)].filter(x => x.matches(LIVE) && !bekannt.has(x) && x.textContent.trim())) {
+            bekannt.add(neu);
+            window.kdAnsagen.push(`${neu.getAttribute('role') || 'live'} neu: ${neu.textContent}`);
+          }
+        }
+      }
+    });
+    beobachter.observe(document, { subtree: true, childList: true, characterData: true });
+    window.kdBeobachter = beobachter;
+  });
+  const ansagen = page => page.evaluate(() => window.kdAnsagen);
+
+  for (const [fall, wie, erwartet] of [['Erfolg', 'weiter', /^status: 6 Läufe · Stand \d{2}:\d{2}:\d{2}$/], ['503', 503, /^status: Die Läufe ließen sich nicht lesen\.$/], ['ohne Verbindung', 'abbruch', /^status: Die Läufe ließen sich nicht lesen\.$/]]) {
+    test(`AK 10: genau eine Ansage im Statusbereich je Ereignis (${fall}) — beim ersten Lesen, nach „Erneut versuchen“ und nach einem selbsttätigen Lesen`, async ({ page }) => {
+      const h = await anhalten(page, 1);
+      await oeffnen(page);
+      await reiter(page, 'Läufe');
+      await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+      await ansagenZaehlen(page);
+      await h.freigeben(wie);
+      await expect(page.locator(STATUS)).not.toHaveText('Liest die Läufe …');
+      await page.waitForFunction(() => window.kdTest.gezeichnet());
+      const erstes = await ansagen(page);
+      expect(erstes, 'erstes Lesen').toHaveLength(1);
+      expect(erstes[0]).toMatch(erwartet);
+      if (wie !== 'weiter') {
+        await page.locator(ERNEUT).click();
+        await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+        await ansagenZaehlen(page);
+        await h.freigeben(wie);
+        await expect(page.locator(STATUS)).not.toHaveText('Liest die Läufe …');
+        await page.waitForFunction(() => window.kdTest.gezeichnet());
+        const nachErneut = await ansagen(page);
+        expect(nachErneut, 'nach „Erneut versuchen“').toHaveLength(1);
+        expect(nachErneut[0]).toMatch(erwartet);
+        await page.locator(ERNEUT).click();
+        await h.freigeben('weiter');
+        await expect(page.locator(STATUS)).toHaveText(/^6 Läufe/);
+      }
+      await lauf.ablegen(k.adresse, 1, lauf.L.L4, 'Entwicklertest');
+      await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+      await ansagenZaehlen(page);
+      await h.freigeben(wie);
+      await expect(page.locator(STATUS)).not.toHaveText('Liest die Läufe …');
+      await page.waitForFunction(() => window.kdTest.gezeichnet());
+      const selbst = await ansagen(page);
+      expect(selbst, 'selbsttätiges Lesen').toHaveLength(1);
+      expect(selbst[0]).toMatch(erwartet);
+    });
+  }
+
+  test('AK 10 (UX-Nachprüfung S-B): ab dem Klick auf „Neu lesen“ zwei Änderungen im Statusbereich — „Liest die Läufe …“ und das Ergebnis', async ({ page }) => {
+    const h = await gehaltenOeffnen(page);
+    await ansagenZaehlen(page);
+    await page.locator(NEU).click();
+    await expect(page.locator(STATUS)).toHaveText('Liest die Läufe …');
+    await h.freigeben();
+    await expect(page.locator(STATUS)).toHaveText(/^6 Läufe/);
+    await page.waitForFunction(() => window.kdTest.gezeichnet());
+    const alle = await ansagen(page);
+    expect(alle).toHaveLength(2);
+    expect(alle[0]).toBe('status: Liest die Läufe …');
+  });
 });
