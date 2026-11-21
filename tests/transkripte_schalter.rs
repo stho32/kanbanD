@@ -165,3 +165,140 @@ fn dienst_unbekanntes_board() {
     assert_eq!(commits(&l.pfad), vorher);
 }
 
+// ---- B1134 Routen ----
+
+use gemeinsam::{Laufendes, senden, senden_roh};
+use reqwest::Method;
+use serde_json::{Value, json};
+
+struct Instanz {
+    _tmp: tempfile::TempDir,
+    pfad: PathBuf,
+    lauf: Laufendes,
+}
+
+fn instanz() -> Instanz {
+    let tmp = tempfile::tempdir().unwrap();
+    let pfad = tmp.path().join("ordner");
+    ausgangslage(&pfad);
+    let lauf = gemeinsam::starten_in_berlin(&pfad, &["--port", "0"]);
+    Instanz { _tmp: tmp, pfad, lauf }
+}
+
+impl Instanz {
+    async fn board(&self, wer: &str, slug: &str, rumpf: Value) -> (u16, Value) {
+        senden(Method::PUT, &self.lauf.adresse, &format!("api/boards/{slug}/transkripte"), wer, rumpf).await
+    }
+
+    async fn vorgabe(&self, wer: &str, rumpf: Value) -> (u16, Value) {
+        senden(Method::PUT, &self.lauf.adresse, "api/einstellungen/transkripte", wer, rumpf).await
+    }
+
+    async fn lesen(&self, pfad: &str) -> Value {
+        let (s, v) = senden(Method::GET, &self.lauf.adresse, pfad, "sh", json!(null)).await;
+        assert_eq!(s, 200, "{pfad}: {v}");
+        v
+    }
+
+    /// Alle versionierten Dateien als ein Text — „zeichengleich“ heißt: dieser Text bleibt.
+    fn dateien(&self) -> String {
+        git(&self.pfad, &["ls-files"]).lines().map(|n| format!("== {n}\n{}", lies(&self.pfad, n))).collect()
+    }
+}
+
+/// AK 1 / US-1: Board an, gleicher Wert, `null`, ungültige Rümpfe und unbekanntes Board über die Route.
+#[tokio::test]
+async fn ak1_board_umschalten_ueber_die_route() {
+    let i = instanz();
+    let vorher = commits(&i.pfad);
+    assert_eq!(i.board("sh", "zweit", json!({"erfassen": true})).await, (200, json!({"erfassen": true, "wirksam": true})));
+    ein_commit_an(&i.pfad, vorher, "boards/zweit.md");
+    assert!(lies(&i.pfad, "boards/zweit.md").contains("\nrecord-transcripts: true\n"));
+    assert_eq!(i.board("sh", "zweit", json!({"erfassen": true})).await, (200, json!({"erfassen": true, "wirksam": true})));
+    assert_eq!(commits(&i.pfad), vorher + 1, "gleicher Wert: kein Commit");
+    assert_eq!(i.board("sh", "zweit", json!({"erfassen": null})).await, (200, json!({"erfassen": null, "wirksam": false})));
+    ein_commit_an(&i.pfad, vorher + 1, "boards/zweit.md");
+    assert!(!lies(&i.pfad, "boards/zweit.md").contains("record-transcripts"));
+    assert_eq!(i.board("sh", "zweit", json!({"erfassen": null})).await.0, 200);
+    assert_eq!(commits(&i.pfad), vorher + 2, "null ohne Schlüssel: kein Commit");
+    assert_eq!(i.lesen("api/boards/zweit").await["transkripte_erfassen"], json!(null));
+
+    let (stand, dateien) = (commits(&i.pfad), i.dateien());
+    for rumpf in [json!({}), json!({"erfassen": "an"}), json!({"erfassen": 1})] {
+        let (s, v) = i.board("sh", "zweit", rumpf.clone()).await;
+        assert_eq!(s, 400, "{rumpf}: {v}");
+        assert!(v["fehler"].is_string(), "{v}");
+    }
+    let (s, v) = i.board("sh", "gibtsnicht", json!({"erfassen": true})).await;
+    assert_eq!(s, 404, "{v}");
+    assert_eq!((commits(&i.pfad), i.dateien()), (stand, dateien), "kein Commit, Dateien zeichengleich");
+}
+
+/// AK 2 / US-1: die Vorgabe vergleicht den wirksamen Wert; das Lesefeld an `GET /api/einstellungen`.
+#[tokio::test]
+async fn ak2_vorgabe_und_lesefeld() {
+    let i = instanz();
+    assert_eq!(i.lesen("api/einstellungen").await.get("transkripte_erfassen"), Some(&json!(null)), "Ausgangslage: kein Schlüssel, das Feld steht da");
+    let (vorher, datei) = (commits(&i.pfad), lies(&i.pfad, "kanbanD.md"));
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": false})).await, (200, json!({"erfassen": false, "wirksam": false})));
+    assert_eq!((commits(&i.pfad), lies(&i.pfad, "kanbanD.md")), (vorher, datei), "der Schlüssel fehlt weiter");
+
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": true})).await, (200, json!({"erfassen": true, "wirksam": true})));
+    ein_commit_an(&i.pfad, vorher, "kanbanD.md");
+    assert_eq!(i.lesen("api/einstellungen").await["transkripte_erfassen"], json!(true));
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": false})).await, (200, json!({"erfassen": false, "wirksam": false})));
+    ein_commit_an(&i.pfad, vorher + 1, "kanbanD.md");
+    assert!(lies(&i.pfad, "kanbanD.md").contains("\nrecord-transcripts: false\n"));
+    assert_eq!(i.lesen("api/einstellungen").await["transkripte_erfassen"], json!(false));
+
+    let (stand, dateien) = (commits(&i.pfad), i.dateien());
+    for rumpf in [json!({"erfassen": null}), json!({}), json!({"erfassen": "aus"})] {
+        let (s, v) = i.vorgabe("sh", rumpf.clone()).await;
+        assert_eq!(s, 400, "{rumpf}: {v}");
+    }
+    assert_eq!((commits(&i.pfad), i.dateien()), (stand, dateien));
+}
+
+/// AK 3 / US-2: ein Agent bekommt an beiden Routen dieselbe 403 — vor Rumpf (auch kein JSON, kein `Content-Type`), Board
+/// und Sperre, auch bei gleichem Wert. Mutation „Prüfung in der Route entfernt“: der ungültige Rumpf ergibt 400 statt 403.
+#[tokio::test]
+async fn ak3_nur_menschen_schalten() {
+    let i = instanz();
+    let erwartet = json!({"fehler": "Den Schalter „Transkripte erfassen“ stellen nur Menschen um", "einstellung": "record-transcripts"});
+    let (stand, dateien) = (commits(&i.pfad), i.dateien());
+    for (slug, rumpf) in [("fabrik", json!({"erfassen": true})), ("fabrik", json!({"erfassen": false})), ("fabrik", json!({"erfassen": "an"})), ("fabrik", json!({})), ("gibtsnicht", json!({"erfassen": true}))] {
+        assert_eq!(i.board("entw1", slug, rumpf.clone()).await, (403, erwartet.clone()), "{slug} {rumpf}");
+    }
+    for rumpf in [json!({"erfassen": true}), json!({"erfassen": null}), json!({"erfassen": false}), json!("kaputt")] {
+        assert_eq!(i.vorgabe("entw1", rumpf.clone()).await, (403, erwartet.clone()), "{rumpf}");
+    }
+    for (pfad, art) in [("api/boards/fabrik/transkripte", Some("application/json")), ("api/einstellungen/transkripte", None), ("api/boards/fabrik/transkripte", Some("text/plain"))] {
+        let a = senden_roh(Method::PUT, &i.lauf.adresse, pfad, "entw1", art, "{kein json").await;
+        assert_eq!((a.status, a.json()), (403, erwartet.clone()), "{pfad} {art:?}");
+    }
+    assert_eq!((commits(&i.pfad), i.dateien()), (stand, dateien), "kein Commit, Dateien zeichengleich");
+    let a = senden_roh(Method::PUT, &i.lauf.adresse, "api/boards/fabrik/transkripte", "sh", Some("application/json"), "{kein json").await;
+    assert_eq!(a.status, 400, "ein Mensch mit kaputtem Rumpf: 400");
+}
+
+/// FA 6: Endpunkt-Liste und OpenAPI nennen die neuen Routen und ersetzen „nur von Hand in der Datei gesetzt“.
+#[tokio::test]
+async fn beschreibung_nennt_das_umschalten() {
+    let i = instanz();
+    let d = i.lesen("api/openapi.json").await;
+    let neu = "umschalten nur Menschen über `PUT …/transkripte`";
+    for (pfad, methode) in [("/api/boards", "get"), ("/api/boards/{slug}", "get"), ("/api/einstellungen", "get")] {
+        let text = d["paths"][pfad][methode]["description"].as_str().unwrap();
+        assert!(text.contains(neu) && !text.contains("nur von Hand"), "{pfad}: {text}");
+    }
+    for pfad in ["/api/boards/{slug}/transkripte", "/api/einstellungen/transkripte"] {
+        let put = &d["paths"][pfad]["put"];
+        assert!(put["description"].as_str().unwrap().contains("403"), "{pfad}: {put}");
+        assert!(put["responses"]["403"].is_object(), "{pfad}: {put}");
+        let zeile = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "PUT" && e.pfad == pfad).unwrap_or_else(|| panic!("{pfad} fehlt in /api/endpunkte"));
+        assert!(zeile.wer && zeile.zweck.contains("nur Menschen"), "{pfad}: {}", zeile.zweck);
+    }
+    for e in kanband::web::endpunkte::ENDPUNKTE {
+        assert!(!e.zweck.contains("nur von Hand in der Datei gesetzt"), "{} {}", e.methode, e.pfad);
+    }
+}

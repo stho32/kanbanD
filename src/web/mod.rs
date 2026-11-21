@@ -10,7 +10,7 @@ use crate::dienst::{Angelegt, Bewegung, BoardVerwalten, Einrichtung, Kanban, Neu
 use crate::fehler::Fehler;
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
-use koerper::{Abfrage, JsonKoerper, Pfad};
+use koerper::{Abfrage, Abweisung, JsonKoerper, Pfad};
 use endpunkte::{braucht_lesen, braucht_tuer, braucht_wartet};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use futures_util::stream::Stream;
@@ -83,6 +83,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(termine_setzen))
         .routes(routes!(bindung_setzen))
         .routes(routes!(board_klassen_setzen))
+        .routes(routes!(board_transkripte_setzen))
         .routes(routes!(start_setzen))
         .routes(routes!(berichtsfilter_setzen))
         .routes(routes!(bestand_setzen))
@@ -90,6 +91,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(fieber_cache, fieber_ergaenzen, fieber_verwerfen))
         .routes(routes!(wer))
         .routes(routes!(einstellungen_lesen, einstellungen_setzen))
+        .routes(routes!(vorgabe_transkripte_setzen))
         .routes(routes!(personen, person_anlegen))
         .routes(routes!(person_aendern, person_stilllegen))
         .routes(routes!(aufgaben, aufgabe_anlegen))
@@ -218,6 +220,10 @@ impl IntoResponse for Fehler {
             }
             Fehler::KennungBelegt { meldung, kennung } => {
                 let rumpf = openapi::KennungBelegt { fehler: meldung.clone(), kennung: kennung.clone() };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::SchalterVerboten { meldung } => {
+                let rumpf = openapi::SchalterVerboten { fehler: meldung.clone(), einstellung: crate::format::board::SCHALTER };
                 (status, Json(rumpf)).into_response()
             }
             Fehler::Transkriptzustand { meldung, zustand } => {
@@ -349,7 +355,7 @@ fn ohne_archivierte(k: &Kanban, boards: &mut [&mut crate::modell::Board]) -> Res
     get,
     path = "/api/boards/{slug}",
     tag = "Boards",
-    description = "ein Board {slug, titel, spalten: [{name, grenze, aufgaben (ohne archivierte; ?archivierte=ja nimmt sie auf — die Board-Datei behält ihren Platz), phase, pruefungen: column-checks, notiz: column-notes, farbe: column-colors, eigentuemer: column-owner — human | agent | null; ein Eintrag unter `column-owner`, der kein Skalar ist oder den Menschen meint (`human`/`mensch` in jeder Schreibweise), sperrt Agenten fail-safe (403) — gebunden seine Spalte, ungebunden das ganze Board; ein unbekannter Wert steht unter hinweise und als eigentuemer_unbekannt}], termine (je {name, datum, farbe, linie, staerke, ziel}), anwendungen, start: Projektstart JJJJ-MM-TT | null, fieber: {puffer, perzentil, woche, gelb: [bei 0 %, bei 100 %], rot, zielspalte, vonspalte: „Zugang ab“ des Durchsatzes | null, selbstlabels: [Label] („Selbsterzeugt =“ des Burndowns), aufloesung}, berichtsfilter: {zeitraum, von, bis, ohneFarben, ohneSpalten, personen, labels, messbasisTage}, bestand: Achsen des Berichts Bestand nach Labels {zeilen, spalten} | null, phasen: null | {anwendung, folge: [{nr, name, eingebettet, gleich}], hinweise}, hinweise: [unbekannte Prüfung …], archiviert: <JJJJ-MM-TT> | null (R00128, ein archiviertes Board bleibt lesbar)}; ist es an eine Anwendung gebunden und fehlt einer Phase der Hauptspur die Spalte, legt kanbanD sie zuerst an (ein Commit „Phasen-Spalten von „<Board>“ ergänzt: …“) — klassen: [{schluessel, bezeichnung, farbe}] | null (R00195): der eigene Klassensatz des Boards (classes), null = es gilt die Vorgabe des Ordners — transkripte_erfassen: true | false | null (R00216): eigener Schalter record-transcripts der Board-Datei, null = es gilt die Vorgabe aus kanbanD.md; nur von Hand in der Datei gesetzt",
+    description = "ein Board {slug, titel, spalten: [{name, grenze, aufgaben (ohne archivierte; ?archivierte=ja nimmt sie auf — die Board-Datei behält ihren Platz), phase, pruefungen: column-checks, notiz: column-notes, farbe: column-colors, eigentuemer: column-owner — human | agent | null; ein Eintrag unter `column-owner`, der kein Skalar ist oder den Menschen meint (`human`/`mensch` in jeder Schreibweise), sperrt Agenten fail-safe (403) — gebunden seine Spalte, ungebunden das ganze Board; ein unbekannter Wert steht unter hinweise und als eigentuemer_unbekannt}], termine (je {name, datum, farbe, linie, staerke, ziel}), anwendungen, start: Projektstart JJJJ-MM-TT | null, fieber: {puffer, perzentil, woche, gelb: [bei 0 %, bei 100 %], rot, zielspalte, vonspalte: „Zugang ab“ des Durchsatzes | null, selbstlabels: [Label] („Selbsterzeugt =“ des Burndowns), aufloesung}, berichtsfilter: {zeitraum, von, bis, ohneFarben, ohneSpalten, personen, labels, messbasisTage}, bestand: Achsen des Berichts Bestand nach Labels {zeilen, spalten} | null, phasen: null | {anwendung, folge: [{nr, name, eingebettet, gleich}], hinweise}, hinweise: [unbekannte Prüfung …], archiviert: <JJJJ-MM-TT> | null (R00128, ein archiviertes Board bleibt lesbar)}; ist es an eine Anwendung gebunden und fehlt einer Phase der Hauptspur die Spalte, legt kanbanD sie zuerst an (ein Commit „Phasen-Spalten von „<Board>“ ergänzt: …“) — klassen: [{schluessel, bezeichnung, farbe}] | null (R00195): der eigene Klassensatz des Boards (classes), null = es gilt die Vorgabe des Ordners — transkripte_erfassen: true | false | null (R00216): eigener Schalter record-transcripts der Board-Datei, null = es gilt die Vorgabe aus kanbanD.md; umschalten nur Menschen über `PUT …/transkripte`",
     params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("archivierte" = Option<String>, Query, description = "ja nimmt archivierte Karten in die Spalten auf")),
     responses((status = 200, description = "Erfolg", body = crate::dienst::BoardMitPhasen), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
@@ -592,6 +598,60 @@ async fn board_klassen_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(slug):
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
 }
 
+/// Rumpf von `PUT /api/boards/{slug}/transkripte`: `erfassen` ist Pflicht — `null` heißt „wie Vorgabe“.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+struct BoardSchalter {
+    #[serde(deserialize_with = "genannt_oder_null")]
+    erfassen: Option<bool>,
+}
+
+/// Rumpf von `PUT /api/einstellungen/transkripte`: die Vorgabe kennt nur „an“ und „aus“.
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+struct VorgabeSchalter {
+    erfassen: bool,
+}
+
+/// Der Rumpf eines Schalters wird erst gelesen, wenn feststeht, dass ein Mensch handelt (R00220 FA 3): ein Agent bekommt
+/// die 403 auch mit kaputtem Rumpf, fehlendem `Content-Type` oder unbekanntem Board.
+async fn als_mensch_schalten<T: Send + 'static>(app: &App, wer: Option<String>, rumpf: Result<JsonKoerper<T>, Abweisung>, schalten: impl FnOnce(&Kanban, &crate::modell::Person, T) -> Result<(bool, crate::dienst::Schalterantwort), Fehler> + Send + 'static) -> Result<Response, Response> {
+    let p = blockierend(app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        crate::dienst::nur_menschen_schalten(&p)?;
+        Ok(p)
+    })
+    .await
+    .map_err(IntoResponse::into_response)?;
+    let JsonKoerper(wert) = rumpf.map_err(IntoResponse::into_response)?;
+    let (_, antwort) = blockierend(app, move |k| schalten(k, &p, wert)).await.map_err(IntoResponse::into_response)?;
+    Ok(Json(antwort).into_response())
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/boards/{slug}/transkripte",
+    tag = "Boards",
+    description = "„Transkripte erfassen“ auf diesem Board umschalten {erfassen: true | false | null} (record-transcripts in der Board-Datei, R00220, ADR-0036 Nachtrag „Umschalten“) — true und false werden ausdrücklich geschrieben, null entfernt den Schlüssel, dann gilt die Vorgabe aus kanbanD.md; nur Menschen: ein Agent bekommt immer 403 {fehler, einstellung: \"record-transcripts\"}, auch bei gleichem Wert, vor Rumpf und Board; fehlt erfassen oder ist es weder Wahrheitswert noch null, 400; unbekanntes Board 404; ein Commit „Transkripte auf „<Board>“: an | aus | wie Vorgabe“ nur an der Board-Datei, ohne Änderung keiner; Antwort {erfassen, wirksam}: der gespeicherte Wert und der Wert, der danach gilt",
+    params(("slug" = String, Path, description = "Slug des Boards (Dateiname unter boards/ ohne .md)"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = BoardSchalter,
+    responses((status = 200, description = "Erfolg", body = crate::dienst::Schalterantwort), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "nur Menschen schalten um", body = crate::web::openapi::SchalterVerboten), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn board_transkripte_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<String>, rumpf: Result<JsonKoerper<BoardSchalter>, Abweisung>) -> Response {
+    als_mensch_schalten(&app, wer, rumpf, move |k, p, r: BoardSchalter| k.board_transkripte_setzen(p, &slug, r.erfassen)).await.unwrap_or_else(|abweisung| abweisung)
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/einstellungen/transkripte",
+    tag = "Ordner",
+    description = "Vorgabe des Ordners für „Transkripte erfassen“ umschalten {erfassen: true | false} (record-transcripts in kanbanD.md, R00220, ADR-0036 Nachtrag „Umschalten“) — gilt für Boards ohne eigenen Wert; verglichen wird der wirksame Wert: fehlt der Schlüssel, ändert false nichts, sonst wird der Wert ausdrücklich geschrieben; null, fehlendes erfassen oder ein anderer Wert 400; nur Menschen: ein Agent bekommt immer 403 {fehler, einstellung: \"record-transcripts\"}, auch bei gleichem Wert, vor dem Rumpf; ein Commit „Transkripte, Vorgabe des Ordners: an | aus“ nur an kanbanD.md, ohne Änderung keiner; Antwort {erfassen, wirksam}",
+    params(("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body = VorgabeSchalter,
+    responses((status = 200, description = "Erfolg", body = crate::dienst::Schalterantwort), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "nur Menschen schalten um", body = crate::web::openapi::SchalterVerboten), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn vorgabe_transkripte_setzen(State(app): State<App>, Wer(wer): Wer, rumpf: Result<JsonKoerper<VorgabeSchalter>, Abweisung>) -> Response {
+    als_mensch_schalten(&app, wer, rumpf, |k, p, r: VorgabeSchalter| k.vorgabe_transkripte_setzen(p, r.erfassen)).await.unwrap_or_else(|abweisung| abweisung)
+}
+
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 struct Start {
     start: Option<String>,
@@ -739,7 +799,7 @@ async fn bindung_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<
     get,
     path = "/api/einstellungen",
     tag = "Ordner",
-    description = "Personen, Klassen, Signale und Quellen in der Form, die PUT annimmt; je Anwendung und in quellen immer repository (gespeichert oder Startordner: Ordner von wbs, sonst anforderungen), wbs und anforderungen (leer = \"\"); quellen.erreichbar: {repository} — PUT überliest es",
+    description = "Personen, Klassen, Signale und Quellen in der Form, die PUT annimmt; je Anwendung und in quellen immer repository (gespeichert oder Startordner: Ordner von wbs, sonst anforderungen), wbs und anforderungen (leer = \"\"); quellen.erreichbar: {repository} — PUT überliest es; transkripte_erfassen: true | false | null (R00220): Vorgabe des Ordners record-transcripts, wie sie in kanbanD.md steht (null = kein Schlüssel, gilt als aus) — umschalten nur Menschen über `PUT …/transkripte`, PUT /api/einstellungen überliest es",
     responses((status = 200, description = "Erfolg", body = crate::dienst::Einstellungsantwort), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn einstellungen_lesen(State(app): State<App>) -> Result<Response, Fehler> {
@@ -1764,7 +1824,7 @@ async fn von_board_nehmen(State(app): State<App>, Wer(wer): Wer, Pfad((slug, nr)
     get,
     path = "/api/boards",
     tag = "Boards",
-    description = "alle offenen Boards mit Spalten und Aufgabennummern (archivierte Boards nur mit ?archivierte=ja, R00128) — je Spalte auch `eigentuemer_unbekannt` (column-owner: human | agent | null; ein Eintrag unter `column-owner`, der kein Skalar ist oder den Menschen meint (`human`/`mensch` in jeder Schreibweise), sperrt Agenten fail-safe (403) — gebunden seine Spalte, ungebunden das ganze Board) — ohne archivierte Karten, mit ?archivierte=ja mit ihnen — je Board klassen: [{schluessel, bezeichnung, farbe}] | null (R00195, eigener Klassensatz; null = Vorgabe des Ordners) — transkripte_erfassen: true | false | null (R00216): eigener Schalter record-transcripts der Board-Datei, null = es gilt die Vorgabe aus kanbanD.md; nur von Hand in der Datei gesetzt",
+    description = "alle offenen Boards mit Spalten und Aufgabennummern (archivierte Boards nur mit ?archivierte=ja, R00128) — je Spalte auch `eigentuemer_unbekannt` (column-owner: human | agent | null; ein Eintrag unter `column-owner`, der kein Skalar ist oder den Menschen meint (`human`/`mensch` in jeder Schreibweise), sperrt Agenten fail-safe (403) — gebunden seine Spalte, ungebunden das ganze Board) — ohne archivierte Karten, mit ?archivierte=ja mit ihnen — je Board klassen: [{schluessel, bezeichnung, farbe}] | null (R00195, eigener Klassensatz; null = Vorgabe des Ordners) — transkripte_erfassen: true | false | null (R00216): eigener Schalter record-transcripts der Board-Datei, null = es gilt die Vorgabe aus kanbanD.md; umschalten nur Menschen über `PUT …/transkripte`",
     params(("archivierte" = Option<String>, Query, description = "ja nimmt archivierte Karten in die Spalten auf — und archivierte Boards in die Liste")),
     responses((status = 200, description = "Erfolg", body = Vec<crate::modell::Board>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]

@@ -107,6 +107,16 @@ pub struct ErfassungAus {
     pub boards: Vec<String>,
 }
 
+/// 403 von `PUT …/transkripte` (R00220 FA 3, ADR-0036 Nachtrag „Umschalten“): ein Agent stellt den Schalter um — immer,
+/// auch bei gleichem Wert, vor Rumpf, Board und Sperre.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct SchalterVerboten {
+    pub fehler: String,
+    /// immer „record-transcripts“
+    #[schema(value_type = String, example = "record-transcripts")]
+    pub einstellung: &'static str,
+}
+
 /// 409 von `POST …/transkripte` (ADR-0036 Regel 2): Kennung oder gefalteter Dateiname schon belegt.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct KennungBelegt {

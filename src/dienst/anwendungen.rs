@@ -52,6 +52,9 @@ pub struct Einstellungsantwort {
     pub klassen: Vec<Klasse>,
     pub signale: Vec<Signal>,
     pub quellen: Quellenantwort,
+    /// `record-transcripts` in `kanbanD.md` (R00220 FA 6): die Vorgabe des Ordners, wie sie steht; `null` = kein Schlüssel.
+    /// Umschalten nur Menschen über `PUT /api/einstellungen/transkripte`; `PUT /api/einstellungen` überliest das Feld.
+    pub transkripte_erfassen: Option<bool>,
 }
 
 /// Ein gesetzter Pfad, der als Ordner bzw. Datei vorhanden ist; relativ gilt zum kanbanD-Ordner.
@@ -84,6 +87,6 @@ impl Kanban {
         let mut e: Einstellungen = self.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))?;
         e.repository_ergaenzen();
         let erreichbar = RepositoryErreichbar { repository: ordner_da(self.ordner().wurzel(), &e.quellen.repository) };
-        Ok(Einstellungsantwort { personen: e.personen, klassen: e.klassen, signale: e.signale, quellen: Quellenantwort { quellen: e.quellen, erreichbar } })
+        Ok(Einstellungsantwort { personen: e.personen, klassen: e.klassen, signale: e.signale, quellen: Quellenantwort { quellen: e.quellen, erreichbar }, transkripte_erfassen: e.transkripte_erfassen })
     }
 }

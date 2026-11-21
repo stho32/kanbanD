@@ -66,6 +66,8 @@ async fn einstellungen_lesen_und_unveraendert_zurueck() {
     assert_eq!(s, 200);
     let mut ohne_erreichbar = e.clone();
     assert_eq!(ohne_erreichbar["quellen"].as_object_mut().unwrap().remove("erreichbar"), Some(json!({"repository": false})), "R00209: plan/ fehlt");
+    // R00220 FA 6: das Lesefeld der Vorgabe steht nur in GET /api/einstellungen, PUT überliest es wie `erreichbar`
+    assert_eq!(ohne_erreichbar.as_object_mut().unwrap().remove("transkripte_erfassen"), Some(json!(null)), "R00220: kein Schlüssel");
     assert_eq!(ohne_erreichbar, einstellungen(&lauf.adresse).await);
     assert!(e["personen"].is_array() && e["klassen"].is_array() && e["signale"].is_array() && e["quellen"].is_object());
     let (s, r) = senden(Method::PUT, &lauf.adresse, "api/einstellungen", "st", e).await;
