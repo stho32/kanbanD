@@ -24,6 +24,7 @@ dateien! {
     "klassenvorrat.js" => "text/javascript; charset=utf-8",
     "reiter.js" => "text/javascript; charset=utf-8",
     "commits.js" => "text/javascript; charset=utf-8",
+    "laeufe.js" => "text/javascript; charset=utf-8",
     "register.js" => "text/javascript; charset=utf-8",
     "diff.js" => "text/javascript; charset=utf-8",
     "gesamt.js" => "text/javascript; charset=utf-8",

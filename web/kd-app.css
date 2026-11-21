@@ -1415,6 +1415,51 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .cl-kurz{margin:2px 0 0}
 }
 
+/* ── Ansicht „Läufe“ (R00219, Zeichnung D0009 #laeufe): Tabelle ab 1100 px, mittlere Form 641–1099 px, Block je Lauf bis 640 px.
+   Die Tabelle trägt ihre Rollen im Markup, damit `display` der schmalen Formen sie nicht nimmt. ── */
+.lf-panel{display:flex;flex-direction:column;padding:var(--kd-s4) var(--kd-s5) var(--kd-s5);gap:var(--kd-s3);min-width:0}
+.lf-rahmen{min-width:0;border:1px solid var(--kd-line)}
+.lf-tab{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--kd-surface)}
+.lf-tab thead th{height:26px;padding:0 var(--kd-s3);background:var(--kd-sunken);border-bottom:1px solid var(--kd-line-strong);text-align:left;font-size:11px;font-weight:600;color:var(--kd-muted);white-space:nowrap}
+.lf-tab th.r,.lf-tab td.r{text-align:right}
+.lf-tab tbody th,.lf-tab tbody td{padding:5px var(--kd-s3);border-bottom:1px solid var(--kd-line);text-align:left;font-weight:400;vertical-align:top}
+.lf-tab tbody tr:last-child>*{border-bottom:0}
+.lf-tab .lf-zp{width:132px;font:12px var(--kd-mono);white-space:nowrap;font-variant-numeric:tabular-nums;padding-top:6px}
+.lf-tab .lf-ro{width:22%;overflow-wrap:anywhere}
+.lf-tab .lf-sp{overflow-wrap:anywhere}
+.lf-tab .lf-be{width:84px;font:12px var(--kd-mono);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;padding-top:6px}
+.lf-tab .lf-zs{width:300px}
+.lf-neben{display:block;margin-top:2px;font-size:11.5px;color:var(--kd-muted);overflow-wrap:anywhere}
+.lf-kein{color:var(--kd-muted)}
+.lf-ohne{font-size:12px;color:var(--kd-muted)}
+.lf-zs .cl-zs{max-width:100%;overflow-wrap:anywhere}
+.lf-neutral{--zl:var(--kd-wbs-neutral);--zb:var(--kd-wbs-neutral-bg);--zi:var(--kd-wbs-neutral-ink)}
+.lf-stand{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
+.lf-hw{margin:0;overflow-wrap:anywhere;font-size:12.5px;color:var(--kd-muted)}
+.lf-tab tbody tr>.lf-zp{grid-area:zp}
+.lf-tab tbody tr>.lf-ro{grid-area:ro}
+.lf-tab tbody tr>.lf-sp{grid-area:sp}
+.lf-tab tbody tr>.lf-be{grid-area:be}
+.lf-tab tbody tr>.lf-zs{grid-area:zs}
+@media (max-width:1099px){
+  .lf-tab,.lf-tab tbody{display:block}
+  .lf-tab thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .lf-tab tbody tr{display:grid;grid-template-columns:132px minmax(0,1fr) auto;grid-template-areas:"zp ro be" ". sp sp" ". zs zs";column-gap:var(--kd-s3);row-gap:2px;padding:6px var(--kd-s3) 7px;border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}
+  .lf-tab tbody tr:last-child{border-bottom:0}
+  .lf-tab tbody tr>*{display:block;width:auto;padding:0;border:0;min-width:0}
+  .lf-tab .lf-ro{font-weight:500}
+  .lf-tab .lf-zs:empty{display:none}
+}
+@media (max-width:640px){
+  .lf-panel{padding:var(--kd-s4)}
+  .lf-rahmen{border:0}
+  .lf-tab{background:none}
+  .lf-tab tbody tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"zp be" "ro ro" "sp sp" "zs zs";padding:6px var(--kd-s4) 8px;margin-bottom:-1px;border:1px solid var(--kd-line)}
+  .lf-tab tbody tr:last-child{border-bottom:1px solid var(--kd-line)}
+  .lf-tab .lf-zp{font-size:11.5px;color:var(--kd-muted)}
+  .lf-tab .lf-zs{padding-top:3px}
+}
+
 /* ── Review-Seite eines Commits (R00207, ADR-0033, Artboard D0009 #diff-fenster, #diff-raender). Knöpfe nur `.btn` (PO Z. 418). ── */
 .rv-kz .kz-reihe{gap:0;padding:0}
 .rv-rueck{display:flex;align-items:center;align-self:stretch;padding:0 var(--kd-s5);border-right:1px solid var(--kd-head-line);color:var(--kd-head-link);font-weight:600;white-space:nowrap}

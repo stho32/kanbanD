@@ -62,7 +62,7 @@ function boardDatei(name, erfassen, eintraege) {
 }
 
 /** Die Ausgangslage im Ordner, committet; die Dateien unter `transkripte/` bleiben unversioniert wie nach dem Ablegen. */
-function ausgangslage() {
+function ausgangslage({ tausend = false } = {}) {
   const kanbanD = `---\npeople:\n  sh: {name: Stefan, kind: human}\n  entw1: {name: Entwickler eins, kind: agent}\nclasses: {}\nsources:\n  wbs: ""\n  requirements: ""\n---\n`;
   const link = (nr, slug) => `- [#${nr}](../aufgaben/000${nr}-${slug}.md)\n`;
   const dateien = {
@@ -83,6 +83,16 @@ function ausgangslage() {
     ...[1, 4, 5].flatMap(nr => DATEIEN_1.map(([k, b]) => [nr, k, b])),
     [3, L3_ZWEIT, BYTES], [4, L_BREIT, BYTES], [6, L_EINZEL, BYTES],
   ];
+  if (tausend) {
+    // #7: 1.000 Transkripte (Dateien vorhanden) und 1.000 Kosteneinträge gleicher Kennungen (R00219 AK 1, AK 4)
+    const kennungen = Array.from({ length: 1000 }, (_, i) => `lauf-${String(i).padStart(4, '0')}@2026-11-${String(1 + Math.floor(i / 60)).padStart(2, '0')}T${String(Math.floor((i % 60) / 4) + 6).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}+01:00`);
+    dateien['aufgaben/0007-tausend.md'] = aufgabe(7, 'Tausend Läufe', {
+      transkripte: kennungen.map(kn => transkriptZeile(kn, 'Entwicklung', BYTES)).join(''),
+      kosten: kennungen.map(kn => kostenZeile(kn, 'Entwicklung', 0.01)).join(''),
+    });
+    dateien['boards/fabrik.md'] = dateien['boards/fabrik.md'].replace('## Reviews', `${link(7, 'tausend')}\n## Reviews`);
+    transkriptdateien.push(...kennungen.map(kn => [7, kn, BYTES]));
+  }
   return ordner => {
     for (const [rel, inhalt] of Object.entries(dateien)) {
       fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });

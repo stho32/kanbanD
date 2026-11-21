@@ -956,6 +956,34 @@ function commitsStatusBehalten(vorher) {
   vorher.textContent = neu.textContent;
 }
 
+/* ── Ansicht „Läufe“ (R00219, ADR-0039): gelesen wird beim Öffnen der Ansicht ── */
+
+/** Vor jedem Zeichnen: ist „Läufe“ die gezeigte Ansicht und für diese Aufgabe noch nichts gelesen, beginnt das Lesen jetzt;
+    ist es nicht die gezeigte Ansicht, fällt der Zustand weg — das nächste Öffnen liest neu. */
+function laeufeAnstossen() {
+  const nr = S.ui.offen, a = nr && aufgabe(nr);
+  if (!a || ansichtDerAufgabe(a) !== 'laeufe') { S.ui.laeufe = null; return; }
+  if (S.ui.laeufe && S.ui.laeufe.nr === nr) return;
+  laeufeLesen(nr);
+}
+
+/** Liest `GET /api/aufgaben/{nr}/transkripte`. Bis zur Antwort bleibt das letzte Ergebnis stehen; die Antwort gilt nur, wenn
+    die Aufgabe noch dieselbe offen, „Läufe“ noch die gezeigte Ansicht und dieses Lesen das neueste ist (ADR-0014). */
+async function laeufeLesen(nr) {
+  const vorher = S.ui.laeufe && S.ui.laeufe.nr === nr ? S.ui.laeufe : null;
+  const lauf = S.ui.laeufe = { nr, laedt: true, ergebnis: vorher ? vorher.ergebnis : null };
+  let ergebnis;
+  try {
+    ergebnis = { art: 'liste', antwort: await api('GET', `/api/aufgaben/${nr}/transkripte`), stand: uhr(Date.now()) };
+  } catch (g) {
+    ergebnis = { art: 'fehler', fehler: { status: g.status || 0, fehler: g.message } };
+  }
+  const a = S.ui.offen === nr && aufgabe(nr);
+  if (S.ui.laeufe !== lauf || !a || ansichtDerAufgabe(a) !== 'laeufe') return;
+  S.ui.laeufe = { nr, laedt: false, ergebnis };
+  render();
+}
+
 /** „i von n“ der Review-Seite bleibt derselbe Knoten (`aria-live`, R00207 FA 3): nur so sagt ein Bildschirmleser den Schritt an. */
 function ansageBehalten(vorher, id) {
   const neu = document.getElementById(id);
@@ -2103,6 +2131,7 @@ function render() {
   if (menueEintragImFokus) S.ui.fokus = '#' + CSS.escape(aktiv.id);
   reiterRueckfallImFenster(aktiv);
   commitsAnstossen();
+  laeufeAnstossen();
   reviewAnstossen();
   document.title = fenstertitel();
   // Neuzeichnen in derselben Sicht und bei derselben offenen Aufgabe hält die Leseposition (R00103, ADR-0007) —

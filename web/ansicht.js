@@ -396,6 +396,7 @@ function vFenster() {
   const panel = tab === 'datei' ? `<div class="mod-main"><pre class="md" id="dateitext">${esc(u.datei ? u.datei.text : '')}</pre></div>`
     : tab === 'kosten' ? vKostenPanel(a)
     : tab === 'commits' ? vCommitsPanel()
+    : tab === 'laeufe' ? vLaeufePanel(a)
     : tab === 'verlauf' ? vVerlaufPanel()
     : tab === 'zeiten' ? `<div class="mod-main">${vFensterSeite(a)}</div>`
     : tab === 'details' ? `<div class="mod-main">${vFensterDetails(a)}</div>`
@@ -464,6 +465,11 @@ function vCommitsPanel() {
   const basis = S.ui.view === 'aufgaben' ? 'aufgaben' : 'board';
   const ziel = verweis => reviewAdresseBilden({ basis, slug: S.ui.slug, nummer: S.ui.offen, commit: verweis });
   return commitsAnsichtHtml(S.ui.commits || { status: 'laedt', stand: null }, esc, ziel);
+}
+/** Die Ansicht „Läufe“ (R00219): nur lesend; Zusammenführen und Zeichnen in web/laeufe.js, gelesen wird in app.js (laeufeLesen).
+    Die Kosten kommen aus dem aktuellen Stand der Aufgabe, der Zustand der Transkripte aus der letzten Antwort. */
+function vLaeufePanel(a) {
+  return laeufeAnsichtHtml(S.ui.laeufe || { laedt: true, ergebnis: null }, a.kosteneintraege || [], esc);
 }
 function vVerlaufPanel() {
   const u = S.ui;
