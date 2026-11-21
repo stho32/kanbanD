@@ -51,7 +51,7 @@ const KONFIGURATION: &str = "GIT_CONFIG_";
 const SPERREN: [&str; 4] = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"];
 
 /// Die abschließende Liste der Git-Befehle dieses Moduls (ADR-0032 Punkt 3 nennt dazu `diff` — es kommt nicht, N4.6,
-/// N6.11). Ein neuer Befehl braucht eine Zuordnung in [`Befehl::erzeugt_diffs`],
+/// N6.11; `patch-id` ist der achte, ADR-0038 Punkt 3). Ein neuer Befehl braucht eine Zuordnung in [`Befehl::erzeugt_diffs`],
 /// [`Befehl::schalter`] und [`Befehl::liefert_teil`], sonst baut das Programm nicht.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Befehl {
@@ -62,6 +62,7 @@ pub(crate) enum Befehl {
     RevList,
     DiffTree,
     MergeBase,
+    PatchId,
 }
 
 /// Die Schalter, die der Startort aus dem Befehl setzt (ADR-0032 N4.7): vor dem Befehl, nach dem Befehl, und was der
@@ -85,6 +86,7 @@ impl Befehl {
             Befehl::RevList => "rev-list",
             Befehl::DiffTree => "diff-tree",
             Befehl::MergeBase => "merge-base",
+            Befehl::PatchId => "patch-id",
         }
     }
 
@@ -92,7 +94,7 @@ impl Befehl {
     fn erzeugt_diffs(self) -> bool {
         match self {
             Befehl::Log | Befehl::DiffTree => true,
-            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase => false,
+            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase | Befehl::PatchId => false,
         }
     }
 
@@ -103,7 +105,7 @@ impl Befehl {
         match self {
             Befehl::Log => Schalter { vor: &["-c", "core.quotepath=off"], nach: &["--no-ext-diff", "--no-textconv", "--no-color", "--no-show-signature"], verboten: &["--ext-diff", "--textconv", "--color", "--show-signature"] },
             Befehl::DiffTree => Schalter { vor: &["-c", "core.quotepath=off", "--literal-pathspecs"], nach: &["--no-ext-diff", "--no-textconv", "--no-color"], verboten: &["--ext-diff", "--textconv", "--color"] },
-            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase => OHNE_SCHALTER,
+            Befehl::RevParse | Befehl::CatFile | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase | Befehl::PatchId => OHNE_SCHALTER,
         }
     }
 
@@ -112,7 +114,7 @@ impl Befehl {
     pub(crate) fn liefert_teil(self) -> bool {
         match self {
             Befehl::DiffTree => true,
-            Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase => false,
+            Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList | Befehl::MergeBase | Befehl::PatchId => false,
         }
     }
 
@@ -121,7 +123,17 @@ impl Befehl {
     fn einzige_form(self) -> Option<&'static [&'static str]> {
         match self {
             Befehl::MergeBase => Some(&["--independent"]),
+            Befehl::PatchId => Some(&["--stable"]),
             Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList | Befehl::DiffTree => None,
+        }
+    }
+
+    /// Liest der Befehl nur `stdin` und nennt nie eine Revision oder einen Pfad (ADR-0038 Punkt 3)? Dann ist seine einzige
+    /// Form die ganze Argumentliste, und ein Lauf ohne Eingabe ist eine verletzte Invariante.
+    fn liest_nur_stdin(self) -> bool {
+        match self {
+            Befehl::PatchId => true,
+            Befehl::RevParse | Befehl::CatFile | Befehl::Log | Befehl::ForEachRef | Befehl::RevList | Befehl::DiffTree | Befehl::MergeBase => false,
         }
     }
 }
@@ -440,6 +452,24 @@ pub enum Vielart {
     Diff(Diffart),
 }
 
+/// Höchstzahl der Zeilen von `patch-id` (ADR-0038 Punkt 3): eine Zeile je Commit, 1.000 Fenster-Commits und Spielraum.
+pub const PATCH_ID_ZEILEN: usize = 1_100;
+
+/// Je Commit seine `patch-id --stable` aus dem Patch-Text von `diff-tree --stdin -p` (ADR-0038 Punkt 2.5).
+/// Je Commit `(commit, patch-id)` in der Reihenfolge der Ausgabe; ein Commit ohne Änderung fehlt. Über
+/// [`PATCH_ID_ZEILEN`] Zeilen bricht der Lauf ab (`ZuvielAusgabe`), nie ein Teil.
+pub fn patch_ids(wurzel: &Path, patch: &[u8], frist: Instant) -> Result<Vec<(String, String)>, Arbeitsrepofehler> {
+    let aus = git(wurzel, Befehl::PatchId, &["--stable"], Lauf { zeitgrenze: grenze_bis(frist)?, eingabe: Some(patch), hoechstzeilen: Some(PATCH_ID_ZEILEN) })?;
+    if !aus.status.success() {
+        let grund = String::from_utf8_lossy(&aus.stderr).lines().next().unwrap_or_default().trim().to_string();
+        return Err(Arbeitsrepofehler::RepositoryFehlt(format!("Git verweigert {}: {grund}", wurzel.display())));
+    }
+    String::from_utf8_lossy(&aus.stdout).lines().map(|z| match z.split_once(' ') {
+        Some((id, commit)) => Ok((commit.to_string(), id.to_string())),
+        None => Err(Arbeitsrepofehler::Start(format!("Ausgabe von git patch-id unlesbar: {}", crate::nachricht::wert(z)))),
+    }).collect()
+}
+
 /// Die Erst-Eltern-Linie ab `letzter` (ADR-0032 N6.1): `rev-list --first-parent --parents --max-count=<hoechstens>`, je
 /// Zeile `<commit> <eltern>…`, neuester zuerst.
 pub fn linie(wurzel: &Path, letzter: &str, hoechstens: usize, frist: Instant) -> Result<Vec<u8>, Arbeitsrepofehler> {
@@ -573,6 +603,7 @@ impl Lauf<'_> {
 
 /// Der eine Startort für Git in einem Arbeits-Repository: fester Befehl, Argumentliste, Umgebung, Zeitgrenze, Zähler.
 pub(crate) fn git(ordner: &Path, befehl: Befehl, args: &[&str], lauf: Lauf) -> Result<Output, Arbeitsrepofehler> {
+    assert!(!befehl.liest_nur_stdin() || lauf.eingabe.is_some(), "{} liest nur stdin — ohne Eingabe startet er nicht", befehl.name());
     let c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
     vorab_pruefen(&c)?;
     AUFRUFE.with(|n| n.set(n.get() + 1));
@@ -586,8 +617,10 @@ fn kommando(ordner: &Path, befehl: Befehl, args: &[&str], vorhandene: impl Itera
     let optionen: Vec<&str> = args.iter().copied().take_while(|a| *a != "--end-of-options" && *a != "--").collect();
     let verboten = optionen.iter().find(|a| schalter.verboten.iter().any(|v| a.starts_with(v)));
     assert!(verboten.is_none(), "{} darf {verboten:?} nicht nennen — die Schalter setzt der Startort", befehl.name());
-    if let Some(form) = befehl.einzige_form() {
-        assert!(optionen == form && args.get(form.len()) == Some(&"--end-of-options"), "{} läuft nur als {form:?} --end-of-options …, nicht {args:?}", befehl.name());
+    match befehl.einzige_form() {
+        Some(form) if befehl.liest_nur_stdin() => assert!(args == form, "{} läuft nur als {form:?}, nicht {args:?}", befehl.name()),
+        Some(form) => assert!(optionen == form && args.get(form.len()) == Some(&"--end-of-options"), "{} läuft nur als {form:?} --end-of-options …, nicht {args:?}", befehl.name()),
+        None => {}
     }
     gehaertet(ordner, schalter.vor, befehl.name(), &[schalter.nach, args].concat(), vorhandene)
 }
@@ -865,7 +898,7 @@ mod tests {
     }
 
     /// Alle Befehle der abschließenden Liste — ein neuer gehört hier dazu.
-    const ALLE: [Befehl; 7] = [Befehl::RevParse, Befehl::CatFile, Befehl::Log, Befehl::ForEachRef, Befehl::RevList, Befehl::DiffTree, Befehl::MergeBase];
+    const ALLE: [Befehl; 8] = [Befehl::RevParse, Befehl::CatFile, Befehl::Log, Befehl::ForEachRef, Befehl::RevList, Befehl::DiffTree, Befehl::MergeBase, Befehl::PatchId];
 
     fn umgebung(c: &Command) -> Vec<(String, Option<String>)> {
         c.get_envs().map(|(k, v)| (k.to_string_lossy().into(), v.map(|v| v.to_string_lossy().into()))).collect()
@@ -996,6 +1029,45 @@ mod tests {
             assert!(fehlschlag.is_err(), "{boese:?} angenommen");
         }
         assert!(!Befehl::MergeBase.liefert_teil() && Befehl::MergeBase.schalter() == OHNE_SCHALTER);
+    }
+
+    // R00218 B1113, ADR-0038 Punkt 3: `patch-id` ist der achte Befehl — nur `--stable`, ohne Schalter, nie ein Teil;
+    // jede andere Form und ein Lauf ohne `stdin` brechen ab (Mutanten „einzige Form ungeprüft“, „stdin ungeprüft“)
+    #[test]
+    fn patch_id_nur_stable_und_nur_stdin() {
+        let c = kommando(Path::new("/r"), Befehl::PatchId, &["--stable"], std::iter::empty());
+        assert_eq!(args(&c), ["-C", "/r", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "patch-id", "--stable"]);
+        assert!(!Befehl::PatchId.erzeugt_diffs() && !Befehl::PatchId.liefert_teil() && Befehl::PatchId.schalter() == OHNE_SCHALTER);
+        for boese in [&[][..], &["--unstable"], &["--verbatim"], &["--stable", "x"], &["--stable", "--end-of-options", "HEAD"], &["x", "--stable"]] {
+            let fehlschlag = std::panic::catch_unwind(|| kommando(Path::new("/r"), Befehl::PatchId, boese, std::iter::empty()));
+            assert!(fehlschlag.is_err(), "{boese:?} angenommen");
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let vorher = aufrufe();
+        let ohne = std::panic::catch_unwind(|| git(tmp.path(), Befehl::PatchId, &["--stable"], Lauf::mit(ZEITGRENZE)));
+        assert!(ohne.is_err(), "patch-id ohne stdin angenommen");
+        assert_eq!(aufrufe(), vorher, "kein Git gestartet");
+    }
+
+    // R00218 B1113: `patch_ids` liest `<patch-id> <commit>` je Zeile aus dem Text von `diff-tree --stdin -p` — gegen
+    // echtes Git, gleich wie `git log -p | git patch-id --stable`; mehr als 1.100 Zeilen sind ein Fehler, nie ein Teil
+    #[test]
+    fn patch_ids_gegen_echtes_git() {
+        let (_tmp, r, [c1, c2, c3, s1]) = kette_mit_seite();
+        let vergleiche = [Vergleich { eltern: Some(&c1), commit: &c2 }, Vergleich { eltern: Some(&c2), commit: &c3 }, Vergleich { eltern: Some(&c1), commit: &s1 }];
+        let patch = diff_tree_viele(&r, &vergleiche, Vielart::Diff(Diffart::Patch), &[], 1 << 20, Instant::now() + ZEITGRENZE).unwrap();
+        let ids = patch_ids(&r, &patch.ausgabe, Instant::now() + ZEITGRENZE).unwrap();
+        let erwartet: Vec<(String, String)> = [&c2, &c3, &s1].iter().map(|c| {
+            let log = Command::new("git").arg("-C").arg(&r).args(["log", "-1", "-p", "--no-renames", c]).output().unwrap().stdout;
+            let mut kind = Command::new("git").arg("-C").arg(&r).args(["patch-id", "--stable"]).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
+            kind.stdin.take().unwrap().write_all(&log).unwrap();
+            let aus = String::from_utf8(kind.wait_with_output().unwrap().stdout).unwrap();
+            let (id, commit) = aus.trim().split_once(' ').unwrap();
+            (commit.to_string(), id.to_string())
+        }).collect();
+        assert_eq!(ids, erwartet);
+        let viele: String = (0..1_101).map(|i| format!("{i:040x}\ndiff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1 +1 @@\n-a\n+{i}\n")).collect();
+        assert_eq!(patch_ids(&r, viele.as_bytes(), Instant::now() + ZEITGRENZE), Err(Arbeitsrepofehler::ZuvielAusgabe(PATCH_ID_ZEILEN)));
     }
 
     /// Ein Repository mit `a.txt` und `b.txt`: c1 legt beide an, c2 ändert beide, c3 ändert nur `b.txt`; dazu ein Zweig
