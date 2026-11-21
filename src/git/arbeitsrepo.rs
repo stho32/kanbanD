@@ -487,16 +487,28 @@ pub fn linie(wurzel: &Path, letzter: &str, hoechstens: usize, frist: Instant) ->
     lesen(wurzel, Befehl::RevList, &["--first-parent", "--parents", &anzahl, "--end-of-options", letzter, "--"], None, frist)
 }
 
+/// Ein Commit des Fensters: Hash, erster Elternteil (ohne beim Wurzel-Commit) und Commit-Datum in Sekunden seit 1970.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Fenstercommit {
+    pub commit: String,
+    pub eltern: Option<String>,
+    pub zeit: i64,
+}
+
 /// Das Fenster der Nachfolger (ADR-0038 Punkt 2.2): Commits der lokalen und entfernten Zweige, ohne Merges, die nicht
 /// Vorfahr von `verwaist` sind und deren Commit-Datum ab `seit` (Sekunden seit 1970) liegt — neueste zuerst, höchstens
-/// `hoechstens + 1` (ein Commit mehr zeigt die Kappe). Je Commit `(commit, erster Elternteil)`, beim Wurzel-Commit ohne.
-pub fn fenster(wurzel: &Path, verwaist: &str, seit: i64, hoechstens: usize, frist: Instant) -> Result<Vec<(String, Option<String>)>, Arbeitsrepofehler> {
+/// `hoechstens + 1` (ein Commit mehr zeigt die Kappe).
+pub fn fenster(wurzel: &Path, verwaist: &str, seit: i64, hoechstens: usize, frist: Instant) -> Result<Vec<Fenstercommit>, Arbeitsrepofehler> {
     let (seit, anzahl, ohne) = (format!("--since={seit}"), format!("--max-count={}", hoechstens + 1), format!("^{verwaist}"));
-    let aus = lesen(wurzel, Befehl::RevList, &["--no-merges", "--parents", &seit, &anzahl, "--branches", "--remotes", "--end-of-options", &ohne, "--"], None, frist)?;
-    Ok(String::from_utf8_lossy(&aus).lines().filter_map(|z| {
+    let aus = lesen(wurzel, Befehl::RevList, &["--no-merges", "--parents", "--timestamp", &seit, &anzahl, "--branches", "--remotes", "--end-of-options", &ohne, "--"], None, frist)?;
+    String::from_utf8_lossy(&aus).lines().map(|z| {
         let mut teile = z.split(' ');
-        Some((teile.next().filter(|c| !c.is_empty())?.to_string(), teile.next().map(String::from)))
-    }).collect())
+        let zeit = teile.next().and_then(|t| t.parse().ok());
+        match (zeit, teile.next().filter(|c| !c.is_empty())) {
+            (Some(zeit), Some(commit)) => Ok(Fenstercommit { commit: commit.to_string(), eltern: teile.next().map(String::from), zeit }),
+            _ => Err(Arbeitsrepofehler::Start(format!("Ausgabe von git rev-list unlesbar: {}", crate::nachricht::wert(z)))),
+        }
+    }).collect()
 }
 
 /// Höchstzahl der Zeilen von `rev-list` (ADR-0032 N3.4); darüber wird der Lauf abgebrochen, nie gekürzt.
