@@ -309,6 +309,14 @@ async fn ak10_kreis_wird_abgewiesen_und_benannt() {
     assert_eq!((mehrere.commits(), mehrere.datei(1), mehrere.datei(5)), (commits, eins, fuenf), "keine Datei geändert, kein Commit");
 }
 
+/// Die Kanten archivierter Aufgaben gehören zum Stand der Kreisprüfung (Sollte des code-reviewers).
+#[tokio::test]
+async fn ak10_kreis_ueber_eine_archivierte_aufgabe() {
+    let lage = Lage::von_hand(&[(4, &["braucht:1"])]);
+    let meldung = abgewiesen(&lage, 1, &["braucht:4"], "#1 → #4 → #1").await;
+    assert_eq!(meldung, "braucht:4 ergäbe einen Kreis: #1 → #4 → #1");
+}
+
 #[tokio::test]
 async fn ak11_unveraendert_mitgeschickte_labels_werden_nicht_geprueft() {
     let lage = Lage::von_hand(&[(3, &["braucht:abc", "braucht:888"])]);
