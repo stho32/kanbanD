@@ -4,13 +4,15 @@
    (reiterRueckfall) rufen sie. */
 (function (ziel) {
   /** Ansichts-Schlüssel und Beschriftungen in Anzeigereihenfolge (R00145): „Kosten“ steht bedingt direkt hinter „Datei“ (R00105),
-      „Commits“ steht bedingt davor (R00205), „Verlauf“ ist immer letzter (R00123). „Anhänge“ ist keine Ansicht mehr: die Liste steht im Inhalt (R00145 FA 11/13). */
-  const REITER = [['inhalt', 'Inhalt'], ['zeiten', 'Zeiten'], ['details', 'Details'], ['datei', 'Datei'], ['kosten', 'Kosten'], ['commits', 'Commits'], ['verlauf', 'Verlauf']];
+      „Commits“ steht bedingt davor (R00205), „Läufe“ bedingt dahinter (R00219), „Verlauf“ ist immer letzter (R00123). „Anhänge“ ist keine Ansicht mehr: die Liste steht im Inhalt (R00145 FA 11/13). */
+  const REITER = [['inhalt', 'Inhalt'], ['zeiten', 'Zeiten'], ['details', 'Details'], ['datei', 'Datei'], ['kosten', 'Kosten'], ['commits', 'Commits'], ['laeufe', 'Läufe'], ['verlauf', 'Verlauf']];
   /** Die Ansichten einer Aufgabe: „Kosten“ nur, wenn sie ein Preisetikett (R00105) oder einen Kosteneintrag (R00165) trägt. */
   const hatKosten = a => Boolean(a.cost) || (a.kosteneintraege || []).length > 0;
   /** „Commits“ nur, wenn die Aufgabendatei mindestens einen Commit-Verweis trägt (R00205 FA 1) — gelesen wird dafür kein Git. */
   const hatCommits = a => (a.commits || []).length > 0;
-  const reiterDerAufgabe = a => REITER.filter(([k]) => (k !== 'kosten' || hatKosten(a)) && (k !== 'commits' || hatCommits(a)));
+  /** „Läufe“ nur, wenn die Aufgabe ein lesbares Transkript trägt (R00219 FA 1, ADR-0039 Punkt 5) — Kosten allein genügen nicht, gelesen wird dafür nichts. */
+  const hatTranskripte = a => (a.transkripte || []).length > 0;
+  const reiterDerAufgabe = a => REITER.filter(([k]) => (k !== 'kosten' || hatKosten(a)) && (k !== 'commits' || hatCommits(a)) && (k !== 'laeufe' || hatTranskripte(a)));
   /** Die Schlüssel der sichtbaren Ansichten — Zuhause der generischen Rückfallregel (R00145 FA 2). */
   const reiterSchluessel = a => reiterDerAufgabe(a).map(([k]) => k);
   /** Die gewählte Ansicht: der gemerkte Schlüssel, wenn die Aufgabe ihn führt, sonst „Inhalt“. Die eine Rückfallregel —

@@ -4,10 +4,10 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { REITER, reiterDerAufgabe, reiterSchluessel } = require('../../web/reiter.js');
 
-test('REITER: Schlüssel und Beschriftungen in Anzeigereihenfolge (R00145) — „Anhänge“ ist keine Ansicht mehr', () => {
+test('REITER: Schlüssel und Beschriftungen in Anzeigereihenfolge (R00145, R00219) — „Anhänge“ ist keine Ansicht mehr', () => {
   assert.deepStrictEqual(REITER, [
     ['inhalt', 'Inhalt'], ['zeiten', 'Zeiten'], ['details', 'Details'],
-    ['datei', 'Datei'], ['kosten', 'Kosten'], ['commits', 'Commits'], ['verlauf', 'Verlauf'],
+    ['datei', 'Datei'], ['kosten', 'Kosten'], ['commits', 'Commits'], ['laeufe', 'Läufe'], ['verlauf', 'Verlauf'],
   ]);
   assert.strictEqual(REITER.some(([k]) => k === 'anhaenge'), false, 'kein Eintrag „Anhänge“');
 });
@@ -72,4 +72,27 @@ test('rueckfallAnsicht (R00205 FA 1): fällt der letzte Verweis weg, gilt „Inh
   const { rueckfallAnsicht } = require('../../web/reiter.js');
   assert.strictEqual(rueckfallAnsicht(reiterSchluessel({ commits: ['kd:a'] }), 'commits'), 'commits');
   assert.strictEqual(rueckfallAnsicht(reiterSchluessel({ commits: [] }), 'commits'), 'inhalt');
+});
+
+const TRANSKRIPT = { kennung: 'planer@2026-11-20T09:00+01:00', at: '2026-11-20 09:00+01:00', role: 'planer', column: 'Detailplanung', bytes: 2048 };
+const KOSTENEINTRAG = { at: '2026-11-20 09:00+01:00', role: 'planer', column: 'Detailplanung', amount: 0.42, currency: 'USD', kennung: 'planer@2026-11-20T09:00+01:00' };
+
+test('reiterDerAufgabe (R00219 FA 1): „Läufe“ steht nur mit mindestens einem Transkript, hinter „Commits“, vor „Verlauf“', () => {
+  assert.deepStrictEqual(reiterSchluessel({ transkripte: [TRANSKRIPT] }), ['inhalt', 'zeiten', 'details', 'datei', 'laeufe', 'verlauf']);
+  assert.deepStrictEqual(reiterSchluessel({ kosteneintraege: [KOSTENEINTRAG], transkripte: [TRANSKRIPT] }), ['inhalt', 'zeiten', 'details', 'datei', 'kosten', 'laeufe', 'verlauf']);
+  assert.deepStrictEqual(reiterSchluessel({ kosteneintraege: [KOSTENEINTRAG], commits: ['kd:a'], transkripte: [TRANSKRIPT] }), ['inhalt', 'zeiten', 'details', 'datei', 'kosten', 'commits', 'laeufe', 'verlauf']);
+  assert.deepStrictEqual(reiterDerAufgabe({ transkripte: [TRANSKRIPT] }).find(([k]) => k === 'laeufe'), ['laeufe', 'Läufe']);
+});
+
+test('reiterDerAufgabe (R00219 FA 1, ADR-0039 Punkt 5): nur Kosteneinträge ergeben kein „Läufe“; leer, null oder fehlend auch nicht', () => {
+  assert.strictEqual(reiterSchluessel({ kosteneintraege: [KOSTENEINTRAG] }).includes('laeufe'), false, 'nur Kosten');
+  for (const leer of [{}, { transkripte: [] }, { transkripte: null }]) {
+    assert.strictEqual(reiterSchluessel(leer).includes('laeufe'), false, JSON.stringify(leer));
+  }
+});
+
+test('rueckfallAnsicht (R00219 FA 1): fällt das letzte Transkript weg, gilt „Inhalt“', () => {
+  const { rueckfallAnsicht } = require('../../web/reiter.js');
+  assert.strictEqual(rueckfallAnsicht(reiterSchluessel({ transkripte: [TRANSKRIPT] }), 'laeufe'), 'laeufe');
+  assert.strictEqual(rueckfallAnsicht(reiterSchluessel({ transkripte: [] }), 'laeufe'), 'inhalt');
 });
