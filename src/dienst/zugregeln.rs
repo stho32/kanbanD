@@ -171,8 +171,6 @@ fn grenzwarnung(v: &crate::modell::Grenzverletzung) -> Warnung {
     Warnung {
         pruefung: "grenze".into(),
         text: format!("Grenze erreicht: „{}“ hat {} von {}", v.spalte, v.nachher, v.grenze),
-        knoten: Vec::new(),
-        details: Vec::new(),
     }
 }
 
@@ -202,11 +200,10 @@ mod tests {
     #[test]
     fn mensch_bekommt_je_verletzung_eine_warnung() {
         let warnungen = zugregeln(Art::Mensch, &verletzungen()).unwrap();
-        let gemeldet: Vec<(&str, &str, usize, usize)> =
-            warnungen.iter().map(|w| (w.pruefung.as_str(), w.text.as_str(), w.knoten.len(), w.details.len())).collect();
+        let gemeldet: Vec<(&str, &str)> = warnungen.iter().map(|w| (w.pruefung.as_str(), w.text.as_str())).collect();
         assert_eq!(
             gemeldet,
-            [("grenze", "Grenze erreicht: „Bereit“ hat 2 von 1", 0, 0), ("grenze", "Grenze erreicht: „In Arbeit“ hat 3 von 2", 0, 0)]
+            [("grenze", "Grenze erreicht: „Bereit“ hat 2 von 1"), ("grenze", "Grenze erreicht: „In Arbeit“ hat 3 von 2")]
         );
     }
 

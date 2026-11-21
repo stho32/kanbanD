@@ -106,7 +106,7 @@ async fn mensch_zieht_in_die_volle_spalte_mit_warnung() {
     let commits: u32 = git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse().unwrap();
     let (s, r) = als(Method::POST, &lauf.adresse, "api/boards/fluss/ziehen", "st", Some("M"), json!({"von": "Bereit"})).await;
     assert_eq!(s, 200, "{r}");
-    assert_eq!(r["warnungen"], json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 3 von 2", "knoten": [], "details": []}]));
+    assert_eq!(r["warnungen"], json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 3 von 2"}]));
     assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap(), commits + 1, "ein Commit");
     assert_eq!(spalte(&lies(tmp.path(), "boards/fluss.md"), "In Arbeit"), vec![7, 5, 6]);
 }
@@ -214,14 +214,14 @@ async fn mensch_bewegt_in_die_volle_spalte_mit_warnung() {
     fluss(tmp.path(), 2, &[7, 8], &[5, 6]);
     let lauf = gemeinsam::starten_in_berlin(tmp.path(), &["--port", "0"]);
     let a = &lauf.adresse;
-    let warnung = json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 3 von 2", "knoten": [], "details": []}]);
+    let warnung = json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 3 von 2"}]);
     let commits = || git(tmp.path(), &["rev-list", "--count", "HEAD"]).parse::<u32>().unwrap();
     let vorher = commits();
     let (s, r) = bewegen(a, "st", 7, "In Arbeit", None).await;
     assert_eq!((s, &r["warnungen"]), (200, &warnung), "{r}");
     assert_eq!(commits(), vorher + 1, "ein Commit");
     let (s, r) = mehrere(a, "st", &[(8, "In Arbeit")]).await;
-    assert_eq!((s, &r["warnungen"]), (200, &json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 4 von 2", "knoten": [], "details": []}])), "{r}");
+    assert_eq!((s, &r["warnungen"]), (200, &json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 4 von 2"}])), "{r}");
     assert_eq!(commits(), vorher + 2);
 }
 

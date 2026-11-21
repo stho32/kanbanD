@@ -493,7 +493,7 @@ async fn ak06_gegenprobe_wip_warnung_wie_vor_der_karte() {
     let (s, _) = senden(reqwest::Method::POST, a, "api/aufgaben", json!({"titel": "Belegt", "board": "entwicklung", "spalte": "In Arbeit"})).await;
     assert!(s < 300);
     let (s, v) = bewegen(a, 2, "In Arbeit").await;
-    assert_eq!((s, &v["warnungen"]), (200, &json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 2 von 1", "knoten": [], "details": []}])), "{v}");
+    assert_eq!((s, &v["warnungen"]), (200, &json!([{"pruefung": "grenze", "text": "Grenze erreicht: „In Arbeit“ hat 2 von 1"}])), "{v}");
 }
 
 // ---- AK 7: Änderungen an der WBS lösen kein Ereignis aus --------------------------------------------------------------

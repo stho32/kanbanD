@@ -7,13 +7,10 @@ use crate::modell::Board;
 use serde::Serialize;
 
 /// Eine Warnung, wie die Antwort einer Aktion sie nennt (heute nur `grenze`: die WIP-Grenze einer Spalte ist erreicht).
-/// `knoten` und `details` bleiben als leere Listen in der Antwort, damit ältere Leser dieselbe Form bekommen.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Warnung {
     pub pruefung: String,
     pub text: String,
-    pub knoten: Vec<String>,
-    pub details: Vec<String>,
 }
 
 /// Je unbekanntem Eigentümer (R00097) und je verwaistem oder ungültigem `column-owner`-Eintrag (R00120) ein Hinweis;

@@ -1025,3 +1025,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #227 R00223 | B1159 Abnahme-Proben rot (Rust AK 1–8, Node AK 1, 9, 14, 15, e2e AK 1, 10–13), Farben vor der Karte gemessen | Standard | 1h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1160 Board lesen ohne Phasen: src/phasen.rs, dienst/phasen.rs, Spalte.phase, Bewegungen.phasen weg, column-phases überlesen | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1161 Aufgabe ohne phases: Phasenangaben/Phasenaenderung weg, phases als unbekannter Schlüssel, PATCH phasen überlesen, Bewegung.uebersprungen weg | Standard | 1h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #227 R00223 | B1162 Warnung ohne knoten/details, Endpunktliste und OpenAPI ohne phasen, phase, uebersprungen, Nachtragen | Standard | 1h | 0,2h | 0,2h | autonom |
