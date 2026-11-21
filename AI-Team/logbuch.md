@@ -1751,3 +1751,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #232 | Detailplanung | ux-reviewer | befund | 2 min | M1/M2 geschlossen; neuer Muss: innerText-Satz in AK 12 falsch · claude · sonnet · Lauf 232-ux-reviewer-2 · 0,68 $ · Karte gesamt 8,73 $ |
 | 2026-11-21 | #238 | Architektur | architekt | bestanden | 4 min | ADR-0032 N9 · claude · opus · Lauf 238-architekt-1 · 1,42 $ · Karte gesamt 1,42 $ |
 | 2026-11-21 | #232 | Detailplanung | planer | bestanden | 1 min | AK 12 Satz, AK 6 Lage · claude · opus · Lauf 232-planer-3 · 0,34 $ · Karte gesamt 9,07 $ |
+| 2026-11-21 | #238 | Detailplanung | product-owner | bestanden | 2 min | PO Z. 512-513 · claude · opus · Lauf 238-product-owner-1 · 0,98 $ · Karte gesamt 2,40 $ |
