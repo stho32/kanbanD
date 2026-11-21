@@ -34,15 +34,6 @@ pub struct Ablageangaben {
 }
 
 impl Ablageangaben {
-    /// Die Form der Felder (400), sobald alle drei da sind — damit eine falsche Anfrage abgewiesen wird, bevor die Datei
-    /// geschrieben ist. Die Spalte und die Kennung prüft erst [`Kanban::transkript_einhaengen`] unter der Sperre.
-    pub fn form_pruefen(&self) -> Result<(), Fehler> {
-        if self.at.is_some() && self.role.is_some() && self.column.is_some() {
-            self.eintrag(0)?;
-        }
-        Ok(())
-    }
-
     /// Der Eintrag nach ADR-0028 Punkt 2: `at` nicht in der Zukunft, gespeichert in Ortszeit mit Versatz — wie beim
     /// Kosteneintrag desselben Laufs, damit beide dieselbe Kennung tragen.
     fn eintrag(&self, bytes: u64) -> Result<Transkripteintrag, Fehler> {
@@ -148,19 +139,33 @@ impl Kanban {
     }
 
     /// Stufe 1, **bevor der Körper gelesen wird** (ADR-0036 Regel 5): 404 unbekannte Nummer → 423 defekte Datei →
-    /// 409 `{fehler, erfassung: "aus", boards}`.
+    /// 409 `{fehler, erfassung: "aus", boards}` → 409 Höchstzahl.
     pub fn transkript_vorpruefen(&self, nr: u32) -> Result<(), Fehler> {
-        self.ordner().aufgabe(nr)?;
-        erfassung_verlangen(nr, self.transkripte_erfassung(nr)?)
+        let a = self.ordner().aufgabe(nr)?;
+        erfassung_verlangen(nr, self.transkripte_erfassung(nr)?)?;
+        hoechstzahl_pruefen(nr, &a.transkripte)
+    }
+
+    /// Stufe 2, sobald alle drei Felder da sind und **bevor die Datei gelesen wird**: ihre Form (400), dann Kennung und
+    /// gefalteter Name (409 `{fehler, kennung}`) gegen die Datei der Aufgabe. Stehen die Felder hinter der Datei, prüft
+    /// nur [`Kanban::transkript_einhaengen`] — die Prüfung unter der Sperre bleibt in jedem Fall (Prüfen, dann Handeln).
+    pub fn transkript_felder_vorpruefen(&self, nr: u32, angaben: &Ablageangaben) -> Result<(), Fehler> {
+        if angaben.at.is_none() || angaben.role.is_none() || angaben.column.is_none() {
+            return Ok(());
+        }
+        let neu = angaben.eintrag(0)?;
+        kennung_frei(&self.ordner().aufgabe(nr)?.transkripte, &neu, nr)
     }
 
     /// Stufe 3 unter der Sperre (Prüfen-dann-Handeln): gegen die frisch gelesene Datei erneut Schalter (409), Felder und
     /// Spalte (400), Höchstzahl (409), Kennung und gefalteter Name (409 `{fehler, kennung}`); dann die Zwischendatei
     /// umbenennen, den Eintrag schreiben und **einen** Commit nur mit der Aufgabendatei. Jeder Fehler räumt die
     /// Zwischendatei und, was dieser Upload angelegt hat; scheitert der Commit, wird die umbenannte Datei entfernt.
+    /// `sync_all` der Zwischendatei läuft vor der Sperre — sie wartet nicht auf die Platte (ADR-0032).
     pub fn transkript_einhaengen(&self, wer: &Person, nr: u32, angaben: &Ablageangaben, mut empfang: Empfang) -> Result<Transkripteintrag, Fehler> {
+        let abgeschlossen = empfang.abschliessen();
         let _sperre = self.gesperrt();
-        let ergebnis = self.einhaengen_gesperrt(wer, nr, angaben, &mut empfang);
+        let ergebnis = abgeschlossen.and_then(|(zwischen, bytes)| self.einhaengen_gesperrt(wer, nr, angaben, &mut empfang, zwischen, bytes));
         if ergebnis.is_err() {
             verwerfen_gesperrt(&mut empfang);
         }
@@ -173,15 +178,12 @@ impl Kanban {
         verwerfen_gesperrt(&mut empfang);
     }
 
-    fn einhaengen_gesperrt(&self, wer: &Person, nr: u32, angaben: &Ablageangaben, empfang: &mut Empfang) -> Result<Transkripteintrag, Fehler> {
-        let (zwischen, bytes) = empfang.abschliessen()?;
+    fn einhaengen_gesperrt(&self, wer: &Person, nr: u32, angaben: &Ablageangaben, empfang: &mut Empfang, zwischen: PathBuf, bytes: u64) -> Result<Transkripteintrag, Fehler> {
         let mut a = self.ordner().aufgabe(nr)?;
         erfassung_verlangen(nr, self.transkripte_erfassung(nr)?)?;
         let neu = angaben.eintrag(bytes)?;
         super::kosteneintraege::spalte_pruefen(PFAD, &neu.spalte, nr, &self.ordner().boards()?.0)?;
-        if a.transkripte.len() >= HOECHSTZAHL_TRANSKRIPTE {
-            return Err(Fehler::Konflikt(format!("#{nr} trägt schon {HOECHSTZAHL_TRANSKRIPTE} Transkripte — mehr nimmt eine Aufgabe nicht auf")));
-        }
+        hoechstzahl_pruefen(nr, &a.transkripte)?;
         kennung_frei(&a.transkripte, &neu, nr)?;
         let unsicher = |f: Pfadfehler| Fehler::Intern(format!("Transkript nicht abgelegt: {}", f.meldung()));
         ordner_anlegen(self.ordner().wurzel(), nr).map_err(unsicher)?;
@@ -339,6 +341,13 @@ fn erfassung_verlangen(nr: u32, e: Erfassung) -> Result<(), Fehler> {
     }
     let wo = if e.boards_aus.is_empty() { "in der Vorgabe des Ordners (kanbanD.md)".to_string() } else { format!("auf {}", e.boards_aus.join(", ")) };
     Err(Fehler::ErfassungAus { meldung: format!("Transkripte erfassen ist für #{nr} aus ({wo}) — nichts abgelegt"), boards: e.boards_aus })
+}
+
+fn hoechstzahl_pruefen(nr: u32, zeilen: &[Transkriptzeile]) -> Result<(), Fehler> {
+    if zeilen.len() >= HOECHSTZAHL_TRANSKRIPTE {
+        return Err(Fehler::Konflikt(format!("#{nr} trägt schon {HOECHSTZAHL_TRANSKRIPTE} Transkripte — mehr nimmt eine Aufgabe nicht auf")));
+    }
+    Ok(())
 }
 
 /// ADR-0036 Regel 2: gleiche Kennung oder gleicher gefalteter Name an derselben Aufgabe → 409 mit der Kennung des

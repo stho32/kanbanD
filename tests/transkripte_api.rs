@@ -608,6 +608,22 @@ async fn ak15_beschreibung() {
     assert!(ab.contains("-F datei=@lauf.jsonl.gz") && ab.contains("/api/aufgaben/1/transkripte"), "Beispiel-Aufruf");
 }
 
+// Nacharbeit 1 #208 (code- und security-reviewer, Sollte): eine vorhandene leere `transkripte/.gitignore` — etwa nach
+// einem Abbruch zwischen Anlegen und Schreiben — schützt nicht; der Upload schreibt sie neu, `git status -uall` bleibt leer.
+// Eine nicht leere (von Hand) bleibt byte-gleich (AK 2, `ak02_ablage_ohne_eingriff_in_fremde_dateien`).
+#[tokio::test]
+async fn nacharbeit_leere_gitignore_wird_neu_geschrieben() {
+    for (was, inhalt) in [("leer", ""), ("nur Leerraum", " \n\n")] {
+        let o = an();
+        std::fs::create_dir(o.pfad.join("transkripte")).unwrap();
+        std::fs::write(o.pfad.join("transkripte/.gitignore"), inhalt).unwrap();
+        let (s, e) = hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await;
+        assert_eq!(s, 201, "{was}: {e}");
+        assert_eq!(lies(&o.pfad, "transkripte/.gitignore"), "*\n", "{was}");
+        assert_eq!(o.status(), "", "{was}: git status --untracked-files=all leer");
+    }
+}
+
 // Nacharbeit 1 #208 (security-reviewer Sollte 1): `İ` faltet zu zwei Zeichen; 31 × `İ` war 500 „Programmfehler“
 #[tokio::test]
 async fn nacharbeit_rolle_mit_zweizeichigem_kleinbuchstaben() {
@@ -623,18 +639,36 @@ async fn nacharbeit_rolle_mit_zweizeichigem_kleinbuchstaben() {
     assert!(o.transkriptdateien().iter().all(|d| !d.ends_with(".kanbanD-tmp")));
 }
 
-// Nacharbeit 1 #208 (code- und security-reviewer, Sollte): eine vorhandene leere `transkripte/.gitignore` — etwa nach
-// einem Abbruch zwischen Anlegen und Schreiben — schützt nicht; der Upload schreibt sie neu, `git status -uall` bleibt leer.
-// Eine nicht leere (von Hand) bleibt byte-gleich (AK 2, `ak02_ablage_ohne_eingriff_in_fremde_dateien`).
+// Nacharbeit 1 #208 (security- und architektur-reviewer Sollte): Höchstzahl und Kennung werden geprüft, **bevor** die
+// Datei gelesen wird — erkennbar daran, dass eine Datei ohne gzip-Kennbytes 409 statt 400 ergibt. Stehen die Felder
+// erst hinter der Datei, prüft die Sperre (Prüfen, dann Handeln) und die Antwort bleibt 409.
 #[tokio::test]
-async fn nacharbeit_leere_gitignore_wird_neu_geschrieben() {
-    for (was, inhalt) in [("leer", ""), ("nur Leerraum", " \n\n")] {
-        let o = an();
-        std::fs::create_dir(o.pfad.join("transkripte")).unwrap();
-        std::fs::write(o.pfad.join("transkripte/.gitignore"), inhalt).unwrap();
-        let (s, e) = hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await;
-        assert_eq!(s, 201, "{was}: {e}");
-        assert_eq!(lies(&o.pfad, "transkripte/.gitignore"), "*\n", "{was}");
-        assert_eq!(o.status(), "", "{was}: git status --untracked-files=all leer");
-    }
+async fn nacharbeit_hoechstzahl_und_kennung_vor_der_datei() {
+    let kein_gzip = vec![0x50, 0x4b, 0x03, 0x04];
+    let felder = [("at", AT), ("role", "entwickler"), ("column", "Entwicklung")];
+    let o = an();
+    assert_eq!(hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await.0, 201);
+    let vorher = stand(&o);
+    let (s, e) = hochladen_mit(o.adresse(), 1, "entwickler", &felder, Some(kein_gzip.clone())).await;
+    assert_eq!((s, &e["kennung"]), (409, &json!(K)), "gleiche Kennung vor der Datei: {e}");
+    nichts_geschrieben(&o, &vorher, "gleiche Kennung vor der Datei");
+    let (s, e) = hochladen_mit(o.adresse(), 1, "entwickler", &[("at", AT), ("role", "Entwickler"), ("column", "Entwicklung")], Some(kein_gzip.clone())).await;
+    assert_eq!((s, &e["kennung"]), (409, &json!(K)), "gleich gefaltet vor der Datei: {e}");
+    // Felder hinter der Datei: erst die Sperre sieht die Kennung
+    let form = reqwest::multipart::Form::new().part("datei", reqwest::multipart::Part::bytes(G1.to_vec()).file_name("lauf.jsonl.gz")).text("at", AT).text("role", "entwickler").text("column", "Entwicklung");
+    let r = reqwest::Client::new().post(format!("{}api/aufgaben/1/transkripte", o.adresse())).header("X-KanbanD-Wer", "entwickler").multipart(form).send().await.unwrap();
+    assert_eq!(r.status().as_u16(), 409, "Felder hinter der Datei");
+    nichts_geschrieben(&o, &vorher, "Felder hinter der Datei");
+
+    let o = an();
+    let zeilen: String = (0..1000).map(|i| format!("  - {{at: 2026-01-01 {:02}:{:02}+01:00, role: alt, column: Entwicklung, bytes: 1}}\n", i / 60, i % 60)).collect();
+    o.schreiben_und_committen("aufgaben/0001-transkript-ablegen.md", &format!("---\nid: 1\ntitle: transkript-ablegen\ntranscripts:\n{zeilen}---\n"));
+    let vorher = stand(&o);
+    let (s, e) = hochladen_mit(o.adresse(), 1, "entwickler", &felder, Some(kein_gzip.clone())).await;
+    assert_eq!(s, 409, "1000 Einträge, Datei ohne Kennbytes: {e}");
+    assert!(e["fehler"].as_str().is_some_and(|f| f.contains("1000")) && e.get("kennung").is_none(), "{e}");
+    let (s, e) = hochladen_mit(o.adresse(), 1, "entwickler", &[], Some(kein_gzip)).await;
+    assert_eq!(s, 409, "1000 Einträge, ohne Felder: die Vorprüfung vor dem Körper: {e}");
+    nichts_geschrieben(&o, &vorher, "Höchstzahl vor dem Körper");
+    assert!(!o.pfad.join("transkripte").exists());
 }

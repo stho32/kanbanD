@@ -1359,7 +1359,7 @@ async fn transkript_ablegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfa
     .await?;
     let mut teile = teile.map_err(|e| Fehler::Ungueltig(format!("Hochladen: {}", e.body_text())))?;
     let mut empfang = Empfang::neu(&wurzel, nr);
-    let gelesen = transkript_empfangen(&mut teile, &mut empfang).await;
+    let gelesen = transkript_empfangen(&app, nr, &mut teile, &mut empfang).await;
     let eintrag = blockierend(&app, move |k| match gelesen {
         Ok(angaben) => k.transkript_einhaengen(&person, nr, &angaben, empfang),
         Err(f) => {
@@ -1418,7 +1418,7 @@ async fn transkript_entfernen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, k
 }
 
 /// Liest die Felder und schreibt die Datei Stück für Stück in den Empfang — nie den ganzen Körper in den Speicher.
-async fn transkript_empfangen(teile: &mut axum::extract::Multipart, empfang: &mut crate::dienst::transkripte::Empfang) -> Result<crate::dienst::transkripte::Ablageangaben, Fehler> {
+async fn transkript_empfangen(app: &App, nr: u32, teile: &mut axum::extract::Multipart, empfang: &mut crate::dienst::transkripte::Empfang) -> Result<crate::dienst::transkripte::Ablageangaben, Fehler> {
     use crate::dienst::transkripte::FELD_HOECHSTENS;
     let lesefehler = |e: axum::extract::multipart::MultipartError| match e.status() {
         StatusCode::PAYLOAD_TOO_LARGE => Fehler::ZuGross("Die Anfrage ist größer als 10 MB und 64 KB".into()),
@@ -1433,7 +1433,9 @@ async fn transkript_empfangen(teile: &mut axum::extract::Multipart, empfang: &mu
                 return Err(Fehler::Ungueltig("Feld „datei“ doppelt".into()));
             }
             mit_datei = true;
-            angaben.form_pruefen()?;
+            // Form, Kennung und gefalteter Name, bevor ein Byte der Datei gelesen ist (ADR-0036 Regel 5)
+            let felder = angaben.clone();
+            blockierend(app, move |k| k.transkript_felder_vorpruefen(nr, &felder)).await?;
             while let Some(stueck) = feld.chunk().await.map_err(lesefehler)? {
                 tokio::task::block_in_place(|| empfang.stueck(&stueck))?;
             }
