@@ -569,6 +569,24 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     expect(zahl()).toBe(anzahl + 1);
   });
 
+  test('US-8: zweimal schnell „Ersetzen“ nach einer zweiten Sitzung — genau ein Aufruf, sichtbar gesperrt, dann der 409-Satz, Datei byte-gleich, Fokus auf „Verwaisten Verweis entfernen“', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    await suchKnopf(page, rep.k).click();
+    await expect(ersetzenKnopf(page)).toBeVisible();
+    expect((await page.request.post(`${k.adresse}api/aufgaben/1/commits`, { headers: { 'X-KanbanD-Wer': 'entw1' }, data: { commits: [`kd:${rep.k2}`] } })).status()).toBe(200);
+    const vorher = datei(1);
+    const h = await schreibenHalten(page, 'POST', '**/api/aufgaben/1/commits/ersetzen');
+    await ersetzenKnopf(page).dblclick();
+    await expect(ersetzenKnopf(page)).toHaveAttribute('aria-disabled', 'true');
+    await expect(ersetzenKnopf(page)).toHaveAttribute('data-sperrform', '');
+    expect(h.aufrufe.length).toBe(1);
+    h.frei();
+    await expect(page.locator(GRUPPE).getByText(`Der Verweis ließ sich nicht ersetzen: ${kurz(rep.k2)} steht inzwischen schon an der Aufgabe (409).`, { exact: true })).toBeVisible();
+    await expect(entfernenKnopf(page)).toBeFocused();
+    expect(datei(1)).toBe(vorher);
+    expect(h.aufrufe.length).toBe(1);
+  });
+
   test('AK 10: jeder andere 409 (per page.route) zeigt die allgemeine Form in einer schon stehenden Live-Region, „Ersetzen“ bleibt, Fokus bleibt; 423 ebenso, die Datei bleibt byte-gleich', async ({ page }) => {
     await commitsOeffnen(page, 1, 2);
     await suchKnopf(page, rep.k).click();

@@ -1,6 +1,6 @@
 ---
 id: R00218
-status: Neu
+status: Erledigt
 datum: 2026-11-21
 ---
 
@@ -67,20 +67,20 @@ Die Karten tragen diese Verweise: #1 `kd:<K>`, `kd:<M1>` · #2 `kd:<C>` · #3 `k
 
 ### Suche per API
 
-- [ ] **1. Sondierung (Tag-Kriterium, nicht im Nachtbetrieb).** Gegeben ist der Erzeuger aus B0998 (20.000 Commits, 50 Zweige, ohne `commit-graph`) mit den Fällen (a)–(f) aus ADR-0038 Punkt 9, dazu kanbanD nur lesend. Wenn die Suche nach V2 tagsüber (8–21 Uhr, Last ≤ 6 beim Start, `nice -n 10`) je Fall 20-mal kalt läuft, dann ist ihre Kandidatenmenge je Fall gleich der des Orakels `git log -p --no-merges --no-renames --branches --remotes ^<verwaist> --since=<…> -n 1000 | git patch-id --stable`, gefiltert auf die `patch-id` des verwaisten. Einzige Ausnahme ist Fall (e), dort ist V2 strenger. Erwartet: (a) je der Nachfolger, (b) zwei, (c) keiner, (d) einer, (e) keiner, (f) wie das Orakel. Außerdem ist p95, der 19. von 20 sortierten Werten, kleiner als 2 s. Messwerte, Uhrzeit und Last stehen im Bericht. **Regel ohne Rückfrage:** Ist das Orakel gleich und p95 < 2 s, bleibt es bei 1.000. Ist p95 ≥ 2 s, wird halbiert, bis p95 < 2 s gilt, aber nie unter 200 (1.000 → 500 → 250 → 200); der Wert steht in der Commit-Nachricht. Ist das Orakel ungleich oder p95 ≥ 2 s bei 200: **Halt**, nichts weiter bauen, Rückweg `anforderung_falsch` an den architekt.
-- [ ] **2. Kandidaten.** Gegeben die Ausgangslage, dann gilt:
+- [x] **1. Sondierung (Tag-Kriterium, nicht im Nachtbetrieb).** Gegeben ist der Erzeuger aus B0998 (20.000 Commits, 50 Zweige, ohne `commit-graph`) mit den Fällen (a)–(f) aus ADR-0038 Punkt 9, dazu kanbanD nur lesend. Wenn die Suche nach V2 tagsüber (8–21 Uhr, Last ≤ 6 beim Start, `nice -n 10`) je Fall 20-mal kalt läuft, dann ist ihre Kandidatenmenge je Fall gleich der des Orakels `git log -p --no-merges --no-renames --branches --remotes ^<verwaist> --since=<…> -n 1000 | git patch-id --stable`, gefiltert auf die `patch-id` des verwaisten. Einzige Ausnahme ist Fall (e), dort ist V2 strenger. Erwartet: (a) je der Nachfolger, (b) zwei, (c) keiner, (d) einer, (e) keiner, (f) wie das Orakel. Außerdem ist p95, der 19. von 20 sortierten Werten, kleiner als 2 s. Messwerte, Uhrzeit und Last stehen im Bericht. **Regel ohne Rückfrage:** Ist das Orakel gleich und p95 < 2 s, bleibt es bei 1.000. Ist p95 ≥ 2 s, wird halbiert, bis p95 < 2 s gilt, aber nie unter 200 (1.000 → 500 → 250 → 200); der Wert steht in der Commit-Nachricht. Ist das Orakel ungleich oder p95 ≥ 2 s bei 200: **Halt**, nichts weiter bauen, Rückweg `anforderung_falsch` an den architekt.
+- [x] **2. Kandidaten.** Gegeben die Ausgangslage, dann gilt:
   - `GET /api/aufgaben/1/commits/kd:<K:7>/nachfolger` ergibt 200 mit genau einem Kandidaten: `verweis` `kd:<K'>`, `zweige ["main"]`, `an_der_karte: false`. G kommt nicht vor.
   - Für #2 und `kd:<C>` kommen genau C1, dann C2 (Commit-Datum absteigend).
   - Für #3 und `kd:<K>` steht K' mit `an_der_karte: true`.
   - Wird C auf 12 Zweige übertragen, stehen 10 Kandidaten da und `kandidaten_weitere: 2` (12 − 10). Bei genau 10 fehlt das Feld.
   - Die Commit-Zahl im Board-Ordner bleibt bei allen Aufrufen gleich.
-- [ ] **3. Ohne Kandidat, mit Hinweis.** Gegeben die Ausgangslage, dann ergibt jeder dieser Aufrufe 200:
+- [x] **3. Ohne Kandidat, mit Hinweis.** Gegeben die Ausgangslage, dann ergibt jeder dieser Aufrufe 200:
   - `kd:<S1>` an #4: `kandidaten: []` ohne Hinweis (Squash);
   - `kd:<Mg>`: `kandidaten: []` und `hinweise` mit `art: "merge"`;
   - `kd:<E>`: `kandidaten: []` und `art: "leer"`;
   - `kd:<B>`: nur B3, nie B2 (gleiche Datei, anderer Binärinhalt).
   - Gegeben ein Repository R2 mit einem verwaisten Commit V und danach 1.001 Commits auf `main` (über `git fast-import`): `hinweise` enthält `{art: "suche_gekappt", durchsucht: 1000, grund: "fenster"}` (1.001 Zeilen, durchsucht 1.000).
-- [ ] **4. Zulassung und Zeitgrenze.** Gegeben die Ausgangslage, dann gilt:
+- [x] **4. Zulassung und Zeitgrenze.** Gegeben die Ausgangslage, dann gilt:
   - `/api/aufgaben/999/…/nachfolger` ergibt 404;
   - `kd:<M1:7>` an #1 ergibt 404 `{fehler, zustand: "auf_zweig"}`;
   - ein Verweis, der nicht an der Karte steht, ergibt 404 `{fehler, verweis}`;
@@ -88,12 +88,12 @@ Die Karten tragen diese Verweise: #1 `kd:<K>`, `kd:<M1>` · #2 `kd:<C>` · #3 `k
   - eine defekte Aufgabendatei ergibt 423.
   - Gegeben ein `git`, das `patch-id` 60 s festhält, dann kommt nach höchstens 15 s 503 `{fehler}` ohne `kandidaten`.
   - Kein Aufruf braucht `X-KanbanD-Wer`.
-- [ ] **5. Nur lesen, nie Inhalt.** Gegeben alle Aufrufe aus AK 2–4, dann gilt:
+- [x] **5. Nur lesen, nie Inhalt.** Gegeben alle Aufrufe aus AK 2–4, dann gilt:
   - Keine Antwort enthält einen Schlüssel `patch`, `pfad` oder `dateien`, die Texte `a.txt`, `b.txt` oder `bild.png` und den Titel von G („Zeile zwei anders ändern“).
   - `GET /api/aufgaben/1/diff?commit=kd:<K'>` ergibt 404, bis ersetzt ist.
   - `git status --porcelain` und die Commit-Zahl sind in R und im Board-Ordner unverändert.
   - Bei 1, 30 und 1.000 Commits im Fenster startet eine Suche höchstens 12 Git-Prozesse (Zähler des Moduls oder `GIT_TRACE`), und die Lesegrenze ist währenddessen mit genau 1 belegt.
-- [ ] **6. ETag und Beschreibung.** Gegeben die Antwort für `kd:<K>` an #1, dann gilt:
+- [x] **6. ETag und Beschreibung.** Gegeben die Antwort für `kd:<K>` an #1, dann gilt:
   - Derselbe Aufruf mit `If-None-Match` ergibt 304.
   - Nach `git branch neu M0` in R ergibt er 200 mit neuem `ETag`. Nach dem Hinterlegen von `kd:<K'>` an #1 ebenso, und dann gilt `an_der_karte: true`.
   - Die Endpunktliste unter `/api`, die OpenAPI-Beschreibung und die README „Für Agenten“ nennen den Endpunkt mit den Statuscodes 200, 304, 400, 404, 423, 503 und einem Beispiel „Nachfolger suchen, dann ersetzen“.
@@ -102,7 +102,7 @@ Die Karten tragen diese Verweise: #1 `kd:<K>`, `kd:<M1>` · #2 `kd:<C>` · #3 `k
 
 Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu „Entfernen“ Z. 465). Sie gelten wörtlich; `<K:7>` und `<K':7>` sind die Kurzform aus sieben Zeichen.
 
-- [ ] **7. Suchen nur auf Klick am verwaisten Eintrag.** Gegeben #1 in der Ansicht „Commits“, dann gilt:
+- [x] **7. Suchen nur auf Klick am verwaisten Eintrag.** Gegeben #1 in der Ansicht „Commits“, dann gilt:
   - Nur der Eintrag `kd:<K>` („auf keinem Zweig“) trägt „Nachfolger suchen“. `kd:<M1>` trägt den Knopf nicht, die Review-Seite von #1 auch nicht.
   - Das Öffnen der Ansicht und „Neu lesen“ lösen kein `GET …/nachfolger` aus.
   - Wenn `sh` den Knopf drückt, kommt genau ein Aufruf. Solange die Antwort gehalten wird, steht „Sucht Commits mit gleichem Patch …“, der Knopf ist gesperrt, und ein zweiter Klick löst keinen zweiten Aufruf aus.
@@ -112,7 +112,7 @@ Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu 
   - Trägt eine Antwort zwei Kandidaten und nur einer davon `an_der_karte: true` (per `page.route`), stehen beide Zusätze im Kopf, zuerst der zu „Ersetzen“: „neuester zuerst · „Ersetzen“ trägt ihn an der Stelle von kd:<K:7> ein · „Verwaisten Verweis entfernen“ nimmt kd:<K:7> von der Aufgabe“. Für jeden Zusatz reicht ein Kandidat mit dem Knopf.
   - **Zweige am Kandidaten** wie in der Liste (R00205 FA 6, AK 5): Gegeben ein Kandidat mit 10 lokalen Zweigen (per `page.route`), dann stehen die ersten drei Namen und der Knopf „+7 weitere“ (10 − 3) mit `aria-expanded="false"` und dem Namen „7 weitere Zweige zeigen“. Nach der Betätigung gilt `aria-expanded="true"`, der Name „7 weitere Zweige verbergen“, darunter „LOKALE ZWEIGE 10“ mit allen zehn Namen und keine Überschrift „ENTFERNTE ZWEIGE“. Eine zweite Betätigung klappt zu, der Fokus bleibt auf dem Knopf. Mit genau 3 Zweigen gibt es keinen Knopf. Eine neue Suche oder „Neu lesen“ zeigt die Zweige wieder zugeklappt.
   - **Zwei verwaiste Einträge auf einer Karte** (#4 trägt `kd:<S1>`, `kd:<Mg>`, `kd:<E>` und `kd:<B>`, alle verwaist): Es läuft höchstens eine Suche je Aufgabe, und es steht höchstens ein Ergebnis. Solange die Suche an `kd:<S1>` gehalten wird, sind alle anderen „Nachfolger suchen“ der Aufgabe gesperrt (Form nach Z. 216). Ein Klick an `kd:<B>` löst dann keinen Aufruf aus, geprüft nach dem Freigeben der Antwort. Sucht `sh` danach an `kd:<B>`, verschwindet das Ergebnis an `kd:<S1>`, und das neue Ergebnis steht in der Gruppe „Nachfolger von kd:<B:7>“; sie bekommt den Fokus (AK 13).
-- [ ] **8. Zustände ohne Ersetzen.** Gegeben die Suche an diesen Einträgen, dann steht:
+- [x] **8. Zustände ohne Ersetzen.** Gegeben die Suche an diesen Einträgen, dann steht:
   - `kd:<S1>`: „Kein Commit mit gleichem Patch auf einem Zweig gefunden. Nach Squash oder einem anders gelösten Konflikt findet die Suche keinen Nachfolger.“ (ADR-0038 Punkt 4, wörtlich);
   - `kd:<Mg>`: „Für einen Merge-Commit sucht kanbanD keinen Nachfolger.“;
   - `kd:<E>`: „Der Commit ändert keine Datei, darum gibt es keinen Patch zum Vergleichen.“;
@@ -120,7 +120,7 @@ Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu 
   - bei `kandidaten_weitere: 2`: 10 Kandidaten und „2 weitere Commits mit gleichem Patch sind nicht gezeigt.“; bei `kandidaten_weitere: 1`: „1 weiterer Commit mit gleichem Patch ist nicht gezeigt.“;
   - **Ort der Sätze bei vorhandenen Kandidaten:** Der Satz zu „weitere“ und der Satz zu „gekappt“ stehen in der Gruppe nach der Liste der Kandidaten, nie zwischen Kopf und Liste. Trägt eine Antwort beides (per `page.route`: 10 Kandidaten, `kandidaten_weitere: 1`, `suche_gekappt` mit `durchsucht: 1000`), steht in Dokumentreihenfolge zuerst der Kopf, dann die Liste, dann „1 weiterer Commit mit gleichem Patch ist nicht gezeigt.“, dann „Die Suche hat nach 1.000 Commits aufgehört; ein Nachfolger kann fehlen.“;
   - bei 503: „Der Nachfolger ließ sich nicht suchen: <`fehler` der Antwort> (503).“ mit „Erneut versuchen“, das genau einen weiteren Aufruf auslöst; ohne Verbindung: „Der Nachfolger ließ sich nicht suchen: keine Verbindung zum Programm.“ ohne Zahl (Z. 450), ebenfalls mit „Erneut versuchen“.
-- [ ] **9. Ersetzen und Entfernen.** Gegeben `sh` ist gewählt und die Suche an `kd:<K>` von #1 zeigt K'. Wenn `sh` „Ersetzen“ drückt, dann gilt:
+- [x] **9. Ersetzen und Entfernen.** Gegeben `sh` ist gewählt und die Suche an `kd:<K>` von #1 zeigt K'. Wenn `sh` „Ersetzen“ drückt, dann gilt:
   - Es gibt genau ein `POST /api/aufgaben/1/commits/ersetzen` mit `{ersetzungen: [{alt: "kd:<K>", neu: "kd:<K'>"}]}` und keinen Dialog.
   - Die Commit-Zahl steigt um genau 1, mit `sh` als Autor.
   - Die Liste wird einmal neu gelesen und zeigt an Platz 1 `kd:<K'>` auf `main`, ohne „auf keinem Zweig“.
@@ -128,14 +128,14 @@ Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu 
   - Danach ist `document.activeElement` der Kurz-Hash-Verweis (`a.cl-hash`) in der Zeile von K'. Sein zugänglicher Name beginnt mit „Commit kd:<K':7>“. Der Fokus springt erst, wenn der Satz im Statusbereich steht (AK 13).
   - Für #3 ergibt „Verwaisten Verweis entfernen“ genau ein `DELETE …/commits/kd:<K>` und einen Commit. Danach steht K' allein an der Karte, und der Statusbereich sagt „Verwaisten Verweis kd:<K:7> entfernt.“. `document.activeElement` ist wieder der Kurz-Hash-Verweis in der Zeile von K'.
   - Ohne gewählte Person öffnet der Klick „Ich bin …“ mit Hinweis und sendet nichts (R00003).
-- [ ] **10. Fehler, Sperre und Nachbarübergänge.** Gegeben die Suche an `kd:<K>` zeigt K', dann gilt:
+- [x] **10. Fehler, Sperre und Nachbarübergänge.** Gegeben die Suche an `kd:<K>` zeigt K', dann gilt:
   - Hat eine zweite Sitzung inzwischen `kd:<K'>` an #1 hinterlegt, ergibt „Ersetzen“ 409 mit `verweis` gleich `kd:<K>`. Am Kandidaten steht dann „Der Verweis ließ sich nicht ersetzen: kd:<K':7> steht inzwischen schon an der Aufgabe (409).“, ohne den Text des Servers. Der Kandidat wechselt in die Form `an_der_karte` (Marke „schon an der Aufgabe“, Knopf „Verwaisten Verweis entfernen“), und der Fokus steht auf diesem Knopf. Der Satz ist keine Live-Region; er hängt als Beschreibung (`aria-describedby`) an diesem Knopf. Der Kopf heißt danach „1 Commit mit gleichem Patch“, daneben „neuester zuerst · „Verwaisten Verweis entfernen“ nimmt kd:<K:7> von der Aufgabe“: Der Zusatz zu „Ersetzen“ fällt weg, sobald kein Kandidat mehr „Ersetzen“ trägt, und der Zusatz zu „Entfernen“ kommt dazu (Z. 465). Es geht kein `DELETE` hinaus, und die Aufgabendatei bleibt byte-gleich. Erst der Klick darauf ergibt genau ein `DELETE …/commits/kd:<K>` und einen Commit (weiter wie AK 9).
   - Jeder andere 409, etwa mit einem anderen `verweis` oder ohne `verweis` (per `page.route`), zeigt die allgemeine Form „Der Verweis ließ sich nicht ersetzen: <`fehler` der Antwort> (409).“. Der Kandidat behält „Ersetzen“, und der Fokus bleibt auf dem Knopf. Der Satz steht in einer Live-Region (`role="status"`), die schon vor dem Satz im Dokument steht.
   - Bei defekter Aufgabendatei steht die allgemeine Form mit (423). Die Datei bleibt byte-gleich, und der Fokus bleibt auf dem Knopf. Für „Verwaisten Verweis entfernen“ lautet die Form „Der Verweis ließ sich nicht entfernen: <`fehler` der Antwort> (<Status>).“
   - Solange „Ersetzen“ auf die Antwort wartet, sind alle „Ersetzen“ und „Verwaisten Verweis entfernen“ dieser Suche gesperrt, dazu jedes „Nachfolger suchen“ der Aufgabe, in der Form nach Z. 216. Ein zweiter Klick ergibt keinen zweiten Aufruf und keinen zweiten Commit.
   - Wechselt `sh` während einer laufenden Suche in die Ansicht „Inhalt“ und zurück, erscheint keine Fehlermeldung. „Inhalt“ ändert sich nicht, und zurück in „Commits“ steht wieder „Nachfolger suchen“. „Neu lesen“ verwirft ein angezeigtes Ergebnis ebenso.
   - Wechselt `sh` während eines laufenden „Ersetzen“ die Ansicht, entsteht genau ein Commit. Zurück in „Commits“ steht K' an Platz 1.
-- [ ] **11. Breite, Themen, Kontrast und Tastatur.** Gegeben die Suche an `kd:<K>` von #1 mit 10 Kandidaten (per `page.route`): je Titel 500 Zeichen mit einem Wort aus 120 Zeichen, je 10 Zweige mit 60 Zeichen, Kandidat 4 mit `an_der_karte: true` (Knopf „Verwaisten Verweis entfernen“), dann gilt:
+- [x] **11. Breite, Themen, Kontrast und Tastatur.** Gegeben die Suche an `kd:<K>` von #1 mit 10 Kandidaten (per `page.route`): je Titel 500 Zeichen mit einem Wort aus 120 Zeichen, je 10 Zweige mit 60 Zeichen, Kandidat 4 mit `an_der_karte: true` (Knopf „Verwaisten Verweis entfernen“), dann gilt:
   - Bei 320, 414, 641, 768, 980, 1100 und 1280 px, jeweils hell und dunkel, ist `documentElement.scrollWidth ≤ clientWidth`, ebenso `scrollWidth ≤ clientWidth` am Aufgabenfenster und am Rahmen der Liste. Kein Element der Ansicht hat eine rechte Kante über `clientWidth`.
   - Bei 641, 768, 980, 1100 und 1280 px ist der Titel jedes Kandidaten mindestens 200 px breit (Breite seines Rechtecks). Bei 320 und 414 px nimmt er die ganze Breite seines Blocks ein (schmale Form aus R00205).
   - Bei allen sieben Breiten liegt der Knopf jedes Kandidaten ganz in dessen Block: Seine linke und rechte Kante liegen innerhalb der Kanten des Kandidaten (`.nf-k` bzw. dem Element, das ihn trägt).
@@ -145,13 +145,13 @@ Wortlaute: vom PO entschieden (Z. 455 und Z. 461, zum 409 Z. 460, Kopfzusatz zu 
   - In beiden Themen hat Text in Ruhe, Zeigen und Fokus mindestens 4,5:1 Kontrast. Der Fokusring und Zeichen ohne Text haben mindestens 3:1. Der Knopfrand ist davon ausgenommen, weil die Beschriftung den Knopf erkennbar macht; er ist `--kd-line-strong` wie an `.btn` (Z. 418).
   - Gesperrte Auslöser (`aria-disabled="true"`) fallen aus der Regel 4,5:1 und aus der Regel für Konturen heraus (WCAG 1.4.3, Z. 459). Für sie gilt die Form nach Z. 216: Schrift und Symbol in `--kd-faint`, Kontur in `--kd-line`, die Fläche bleibt. Der Fokusring ist ungedämpft und hat mindestens 3:1.
   - Tab erreicht in Dokumentreihenfolge „Nachfolger suchen“, danach je Kandidat „+n weitere“ (falls vorhanden) und seinen Knopf. Enter und Leertaste lösen aus. Nach der Suche steht der Fokus auf dem Ergebnis (Rolle `group`, Name „Nachfolger von kd:<K:7>“), nie auf `body`.
-- [ ] **12. Liste ohne Suche in der mittleren Form.** Gegeben die Ausgangslage und die Breitendaten von R00205 (dort AK 8: die Karten #4 und #3 von R00205 mit allen Zeilen und einer aufgeklappten Zweigliste), ohne Suche, dann gilt:
+- [x] **12. Liste ohne Suche in der mittleren Form.** Gegeben die Ausgangslage und die Breitendaten von R00205 (dort AK 8: die Karten #4 und #3 von R00205 mit allen Zeilen und einer aufgeklappten Zweigliste), ohne Suche, dann gilt:
   - Bei 641, 768 und 980 px, hell und dunkel, ist `documentElement.scrollWidth ≤ clientWidth`, ebenso `scrollWidth ≤ clientWidth` am Aufgabenfenster und am Rahmen der Liste (`.cl-rahmen`). Der Rahmen scrollt hier nicht mehr quer, anders als R00205 (Nicht-funktionale Anforderung „Breite“) es zwischen 641 und 980 px erlaubt hat. Kein Element der Ansicht hat eine rechte Kante über `clientWidth`.
   - Bei diesen Breiten steht je Verweis links der Hash, rechts untereinander Titel, „Autor · Datum“ und Zustand bzw. Zweige. Der Titel jeder Zeile ist mindestens 200 px breit. Die Spaltenüberschriften (`scope="col"`) und die Zeilenüberschrift aus R00205 AK 10 bleiben im Dokument und vorlesbar, auch wenn sie nicht sichtbar sind.
   - **Grenze an `.rv-abs-rumpf`:** Bei 640 px steht die schmale Form aus R00205, bei 1099 px die mittlere, bei 1100 px die Tabelle mit sichtbaren Spaltenköpfen.
   - Bei grobem Zeiger und 768 px ist jedes Bedienziel der Ansicht („+n weitere“, „Neu lesen“, „Erneut versuchen“, „Alle Änderungen ansehen“, der Kurz-Hash-Verweis) mindestens 48 × 48 px groß.
   - **Regression R00205:** Bei 320, 414 und 1280 px bleibt das Verhalten aus R00205 unverändert. Die Proben in `e2e/tests/r00205-ansicht-commits.spec.js` laufen ohne Änderung an ihren Erwartungen grün.
-- [ ] **13. Fokus und Ansage.** Gegeben die Suche an `kd:<K>` von #1, Antworten per `page.route` gehalten, und ein Beobachter (`MutationObserver`), der jeden Text in `[role=status]`, `[role=alert]` und `[aria-live]` der Ansicht mitschreibt, dann gilt:
+- [x] **13. Fokus und Ansage.** Gegeben die Suche an `kd:<K>` von #1, Antworten per `page.route` gehalten, und ein Beobachter (`MutationObserver`), der jeden Text in `[role=status]`, `[role=alert]` und `[aria-live]` der Ansicht mitschreibt, dann gilt:
   - **Fokus nur vom Auslöser:** Bleibt der Fokus während der Suche auf „Nachfolger suchen“, steht er nach der Antwort auf der Gruppe „Nachfolger von kd:<K:7>“. Setzt `sh` den Fokus vor der Antwort auf „Neu lesen“, steht er nach der Antwort weiter dort. Dasselbe gilt für Ersetzen und Entfernen (AK 9, 10): Der Fokus springt nur, wenn er auf dem Auslöser oder auf `body` liegt.
   - **Keine Live-Region am Fokusziel:** Sobald die Gruppe den Fokus hat, enthält sie kein Element mit `role="status"`, `role="alert"` oder `aria-live`. Der erste Satz der Gruppe (Kopf bzw. Satz des Zustands, auch beim 503) hängt als `aria-describedby` an der Gruppe. Ebenso hat der Knopf „Verwaisten Verweis entfernen“ nach dem 409-Wechsel keine Live-Region in seinem Kandidaten.
   - **Live-Regionen nur hier:** „Sucht Commits mit gleichem Patch …“ (Fokus auf dem Auslöser), die Fehler beim Schreiben mit Fokus auf dem Auslöser (409 allgemein, 423) und die Erfolgsmeldung im Kopf der Liste.
