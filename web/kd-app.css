@@ -1730,9 +1730,10 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .ts-ms.ok{margin:2px 0 4px;color:var(--kd-wbs-ok-ink);font-weight:500}
 .ts-ms.fehler{margin:4px 0 6px;padding:6px 10px;border:1px solid var(--kd-wbs-error-ink);color:var(--kd-wbs-error-ink);background:var(--kd-surface)}
 .ts-ms .btn{color:var(--kd-text);min-block-size:max(var(--kd-row),var(--kd-ziel))}
-.ts-seg{display:inline-flex;border:1px solid var(--kd-line-strong);background:var(--kd-surface)}
+/* Rand und Trenner der Wahl in --kd-muted wie .seg.umsch: --kd-line-strong der Zeichnung läge unter 3:1 (AK 10) */
+.ts-seg{display:inline-flex;border:1px solid var(--kd-muted);background:var(--kd-surface)}
 .ts-seg>button{display:flex;align-items:center;justify-content:center;min-block-size:max(26px,var(--kd-ziel));min-inline-size:var(--kd-ziel);padding:0 var(--kd-s3);border:0;background:var(--kd-surface);color:var(--kd-text);font:inherit;font-size:12px;white-space:nowrap;cursor:pointer}
-.ts-seg>button+button{border-left:1px solid var(--kd-line-strong)}
+.ts-seg>button+button{border-left:1px solid var(--kd-muted)}
 .ts-seg>button:hover{background:var(--kd-accent-weak)}
 .ts-seg>button[aria-checked="true"]{background:var(--kd-text);color:var(--kd-surface);cursor:default}
 .ts-seg>button:focus-visible{outline:2px solid var(--kd-accent);outline-offset:-4px}

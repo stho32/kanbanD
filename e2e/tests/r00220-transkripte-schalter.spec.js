@@ -7,7 +7,7 @@ const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { kanbanStarten, alsPerson, bereit, commitSteht, reiter, liveBereit } = require('./hilfen');
+const { kanbanStarten, alsPerson, bereit, commitSteht, reiter, liveBereit, breiteSetzen, thema, kontrastMessen, kontrastAm, kontrastFarben, mutanteEinsetzen } = require('./hilfen');
 
 const LANGER_NAME = 'zweites-board-mit-einem-sehr-langen-namen-aus-sechzig-zeiche';
 const ERKLAERTEXT = 'Ein Transkript hält den ganzen Lauf eines Agenten fest, auch die Ausgaben seiner Werkzeuge. Es liegt gezippt im Board-Ordner, bleibt auf diesem Rechner und reist nicht mit dem Repository; Löschen löscht es wirklich. Ausschalten gilt nur für neue Läufe; abgelegte Transkripte bleiben. Umschalten können nur Menschen. Jeder Klick gilt sofort, ohne „Speichern“.';
@@ -37,12 +37,13 @@ const gruppe = (page, board) => page.getByRole('radiogroup', { name: board === n
 const wahl = (page, board, name) => gruppe(page, board).getByRole('radio', { name, exact: true });
 const zeile = (page, board) => page.locator(`${ABSCHNITT} .ts-z`).filter({ has: gruppe(page, board) });
 const wirkung = (page, board) => zeile(page, board).locator('.wk');
-const satz = (page, board) => zeile(page, board).locator('[role="status"]');
+const satz = (page, board) => zeile(page, board).locator('.ts-ms p');
 
 let k;
 test.beforeEach(async ({ page }) => {
   k = await kanbanStarten(ausgangslage);
   await alsPerson(page, 'sh');
+  await mutanteEinsetzen(page);
 });
 test.afterEach(async () => { await k.stoppen(); });
 
@@ -350,4 +351,244 @@ test('AK 9: derselbe Verweis per Mausklick; an #1 auf fabrik weder Hinweis noch 
   await laeufeOeffnen(page, 3, 'zweit');
   await page.locator(HINWEIS).getByRole('link', { name: VERWEIS_NAME }).click();
   await amAbschnittTranskripte(page);
+});
+
+/* ── AK 10 Breite, Ziele, Themen, Kontrast, Tastatur und Ansage ── */
+
+const BREITEN = [320, 414, 640, 641, 768, 900, 901, 980, 1099, 1100, 1280];
+const THEMEN = ['light', 'dark'];
+
+/** Stellt nacheinander die fünf Zustände an der Zeile des langen Boards her; `je(zustand)` misst in jedem. */
+async function zustaendeDurchlaufen(page, je) {
+  const h = await anhalten(page);
+  await je('Grundstand');
+  await wahl(page, LANGER_NAME, 'an').click();
+  await expect(wirkung(page, LANGER_NAME)).toHaveText('stellt um …');
+  await je('stellt um');
+  await h.freigeben();
+  await expect(satz(page, LANGER_NAME)).toHaveText(`Auf „${LANGER_NAME}“ werden jetzt Transkripte erfasst.`);
+  await je('Erfolg');
+  await wahl(page, LANGER_NAME, 'aus').click();
+  await h.freigeben(503);
+  await expect(satz(page, LANGER_NAME)).toHaveText('Der Schalter ließ sich nicht umstellen: Git ist beschäftigt (503).');
+  await je('Fehler mit Status');
+  await wahl(page, LANGER_NAME, 'wie Vorgabe').click();
+  await h.freigeben('abbruch');
+  await expect(satz(page, LANGER_NAME)).toHaveText('Der Schalter ließ sich nicht umstellen: keine Verbindung zum Programm.');
+  await je('ohne Verbindung');
+}
+
+/** Querscrollen an Dokument und Bildlaufbehälter, Rechtecke des langen Namens in seiner Zeile, Wahl und Wirkung ganz. */
+const breiteMessen = page => page.evaluate(name => {
+  const doc = document.documentElement;
+  const abschnitt = document.getElementById('transkripte');
+  let behaelter = abschnitt.parentElement;
+  while (behaelter && !/(auto|scroll)/.test(getComputedStyle(behaelter).overflowY + getComputedStyle(behaelter).overflowX)) behaelter = behaelter.parentElement;
+  const z = [...abschnitt.querySelectorAll('.ts-z')].find(x => x.querySelector('.nm b').textContent === name);
+  const zr = z.getBoundingClientRect();
+  const bereich = document.createRange();
+  bereich.selectNodeContents(z.querySelector('.nm b'));
+  const rechtecke = [...bereich.getClientRects()];
+  const drin = r => r.left >= zr.left - 1 && r.right <= zr.right + 1 && r.top >= zr.top - 1 && r.bottom <= zr.bottom + 1;
+  const ganz = e => { const r = e.getBoundingClientRect(); return r.width > 0 && drin(r) && r.right <= doc.clientWidth + 1; };
+  const fehler = [];
+  if (doc.scrollWidth > doc.clientWidth) fehler.push(`Dokument ${doc.scrollWidth} > ${doc.clientWidth}`);
+  if (!behaelter) fehler.push('kein Bildlaufbehälter');
+  else if (behaelter.scrollWidth > behaelter.clientWidth) fehler.push(`Behälter ${behaelter.className} ${behaelter.scrollWidth} > ${behaelter.clientWidth}`);
+  if (!rechtecke.length || !rechtecke.every(drin)) fehler.push(`Name außerhalb der Zeile (${rechtecke.length} Rechtecke)`);
+  if (!ganz(z.querySelector('.ts-seg'))) fehler.push('Wahl nicht ganz sichtbar');
+  if (!ganz(z.querySelector('.wk'))) fehler.push('Wirkung nicht ganz sichtbar');
+  return fehler;
+}, LANGER_NAME);
+
+test('AK 10: elf Breiten, hell und dunkel, fünf Zustände — nichts scrollt quer, der Name aus 60 Zeichen bricht in seiner Zeile um, Wahl und Wirkung ganz', async ({ page }) => {
+  test.setTimeout(120000);
+  await einrichtenOeffnen(page);
+  const funde = [];
+  await zustaendeDurchlaufen(page, async zustand => {
+    for (const t of THEMEN) {
+      await thema(page, t);
+      for (const b of BREITEN) {
+        await breiteSetzen(page, b);
+        funde.push(...(await breiteMessen(page)).map(f => `${zustand} ${t} ${b}: ${f}`));
+      }
+    }
+    await breiteSetzen(page, 1280);
+  });
+  expect(funde).toEqual([]);
+});
+
+test.describe('grober Zeiger', () => {
+  test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
+  test('AK 10: jede Wahl, „Erneut versuchen“ und der Verweis aus „Läufe“ sind mindestens 48 × 48 px', async ({ page }) => {
+    await einrichtenOeffnen(page);
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+    const masse = loc => loc.evaluate(e => { const r = e.getBoundingClientRect(); return [r.width, r.height]; });
+    const klein = [];
+    for (const r of await page.locator(`${ABSCHNITT} [role="radio"]`).all()) {
+      const [b, h] = await masse(r);
+      if (b < 47.5 || h < 47.5) klein.push(`${await r.getAttribute('id')} ${b}×${h}`);
+    }
+    const h = await anhalten(page);
+    await wahl(page, 'zweit', 'an').click();
+    await h.freigeben('abbruch');
+    const erneut = zeile(page, 'zweit').getByRole('button', { name: 'Erneut versuchen' });
+    const [eb, eh] = await masse(erneut);
+    if (eb < 47.5 || eh < 47.5) klein.push(`Erneut versuchen ${eb}×${eh}`);
+    await laeufeOeffnen(page, 3, 'zweit');
+    const [vb, vh] = await masse(page.locator(HINWEIS).getByRole('link', { name: VERWEIS_NAME }));
+    if (vb < 47.5 || vh < 47.5) klein.push(`Verweis ${vb}×${vh}`);
+    expect(klein).toEqual([]);
+  });
+});
+
+/** Text ≥ 4,5:1, der Text gesperrter Wahlen ≥ 3:1 (PO Z. 484, Z. 491), Rand der Gruppe und Fläche der gewählten Wahl ≥ 3:1. */
+async function kontrastPruefen(page, wo) {
+  const zuWenig = (await kontrastMessen(page, [ABSCHNITT])).filter(m => m.wert < 4.5).map(m => `${wo}: ${m.element} „${String(m.text).slice(0, 30)}“ ${m.wert.toFixed(2)}`);
+  for (const r of await page.locator(`${ABSCHNITT} [role="radio"][aria-disabled="true"]`).all()) {
+    const wert = await kontrastAm(r);
+    if (wert < 3) zuWenig.push(`${wo}: gesperrt „${await r.innerText()}“ ${wert.toFixed(2)}`);
+  }
+  const marken = await page.locator(`${ABSCHNITT} .ts-seg:not([aria-disabled="true"])`).evaluateAll(gruppen => gruppen.map(g => {
+    const gewaehlt = g.querySelector('[aria-checked="true"]');
+    const flaeche = getComputedStyle(g.closest('.ts-z')).backgroundColor;
+    return { name: g.getAttribute('aria-label'), rand: getComputedStyle(g).borderTopColor, gewaehlt: getComputedStyle(gewaehlt).backgroundColor, frei: getComputedStyle(g.querySelector('[aria-checked="false"]')).backgroundColor, flaeche: flaeche === 'rgba(0, 0, 0, 0)' ? getComputedStyle(document.querySelector('.einr.breit')).backgroundColor : flaeche };
+  }));
+  for (const m of marken) {
+    const rand = await kontrastFarben(page, m.rand, m.flaeche);
+    if (rand < 3) zuWenig.push(`${wo}: Rand „${m.name}“ ${rand.toFixed(2)}`);
+    const wahlFlaeche = await kontrastFarben(page, m.gewaehlt, m.frei);
+    if (wahlFlaeche < 3) zuWenig.push(`${wo}: gewählte Fläche „${m.name}“ ${wahlFlaeche.toFixed(2)}`);
+  }
+  return zuWenig;
+}
+
+for (const t of THEMEN) {
+  test(`AK 10: ${t} — Kontrast in allen fünf Zuständen; Fokusring an Wahl, gesperrter Wahl und Überschrift solid, ≥ 2 px, ≥ 3:1`, async ({ page }) => {
+    await einrichtenOeffnen(page);
+    await thema(page, t);
+    const funde = [];
+    await zustaendeDurchlaufen(page, async zustand => { funde.push(...(await kontrastPruefen(page, zustand))); });
+    expect(funde).toEqual([]);
+
+    const ring = async (ort, wo) => {
+      await expect(ort).toBeFocused();
+      const r = await ort.evaluate(e => {
+        const st = getComputedStyle(e);
+        let grund = parseFloat(st.outlineOffset) < 0 ? e : e.parentElement;
+        while (grund && getComputedStyle(grund).backgroundColor === 'rgba(0, 0, 0, 0)') grund = grund.parentElement;
+        return { stil: st.outlineStyle, breite: parseFloat(st.outlineWidth), farbe: st.outlineColor, flaeche: grund ? getComputedStyle(grund).backgroundColor : '#fff' };
+      });
+      expect(r.stil, wo).toBe('solid');
+      expect(r.breite, wo).toBeGreaterThanOrEqual(2);
+      expect(await kontrastFarben(page, r.farbe, r.flaeche), wo).toBeGreaterThanOrEqual(3);
+    };
+    await page.locator('#transkripte h2').focus();
+    await page.keyboard.press('Tab');
+    await ring(wahl(page, null, 'aus'), 'gewählte Wahl der Vorgabe');
+    const h = await anhalten(page);
+    await page.keyboard.press('ArrowLeft');
+    await expect(gruppe(page, null)).toHaveAttribute('aria-disabled', 'true');
+    await ring(wahl(page, null, 'an'), 'gesperrte, fokussierte Wahl');
+    await h.freigeben();
+    await expect(satz(page, null)).toHaveText('Für Boards ohne eigenen Wert werden jetzt Transkripte erfasst.');
+    await page.keyboard.press('Tab');
+    const frei = gruppe(page, (await page.locator(`${ABSCHNITT} .ts-z:not(.vorgabe) .nm b`).first().innerText()));
+    await expect(frei.locator('[role="radio"]:focus')).toHaveCount(1);
+    await ring(frei.locator('[role="radio"]:focus'), 'Wahl eines Boards');
+  });
+}
+
+test('AK 10: Tab erreicht jede Gruppe; Pfeile schreiben wie ein Klick; in der gesperrten Gruppe wirken Pfeile, Leertaste und Enter nicht', async ({ page }) => {
+  await einrichtenOeffnen(page);
+  const anfragen = schreibzaehler(page);
+  await page.locator('#transkripte h2').focus();
+  const erreicht = [];
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press('Tab');
+    erreicht.push(await page.evaluate(() => document.activeElement.closest('[role="radiogroup"]')?.getAttribute('aria-label')));
+  }
+  const boards = (await (await page.request.get(`${k.adresse}api/boards`)).json()).map(b => b.titel);
+  expect(erreicht).toEqual(['Vorgabe: Transkripte erfassen', ...boards.map(b => `Transkripte erfassen auf ${b}`)]);
+  expect(anfragen).toHaveLength(0);
+
+  const h = await anhalten(page);
+  await wahl(page, 'zweit', 'wie Vorgabe').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(gruppe(page, 'zweit')).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('ArrowRight');
+  for (const taste of [' ', 'Enter', 'ArrowLeft', 'ArrowDown']) await page.keyboard.press(taste);
+  await page.waitForFunction(() => window.kdTest.gezeichnet());
+  await expect(wahl(page, 'zweit', 'an')).toBeFocused();
+  await expect(gruppe(page, 'zweit').locator('[aria-checked="true"]')).toHaveText(['an']);
+  expect(anfragen).toEqual([{ pfad: '/api/boards/zweit/transkripte', rumpf: { erfassen: true } }]);
+  await h.freigeben();
+  await expect(satz(page, 'zweit')).toHaveText('Auf „zweit“ werden jetzt Transkripte erfasst.');
+  await expect(wahl(page, 'zweit', 'an')).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(wahl(page, 'zweit', 'aus')).toBeFocused();
+  await h.freigeben();
+  await expect(satz(page, 'zweit')).toHaveText('Auf „zweit“ werden keine Transkripte mehr erfasst.');
+  expect(anfragen.map(a => a.rumpf.erfassen)).toEqual([true, false]);
+});
+
+/* Genau eine Ansage (PO Z. 481): gezählt werden Textänderungen in Live-Regionen — ein neuer Knoten mit Text zählt, derselbe Knoten
+   mit gleichem Text nicht. */
+async function ansagenZaehlen(page) {
+  await page.evaluate(() => {
+    const LIVE = '[role=status],[role=alert],[aria-live]';
+    const zuletzt = new WeakMap();
+    window.kdAnsagen = [];
+    const merken = region => {
+      const text = region.textContent.trim();
+      if (zuletzt.get(region) === text) return;
+      zuletzt.set(region, text);
+      if (text) window.kdAnsagen.push({ rolle: region.getAttribute('role') || 'live', id: region.id, text });
+    };
+    document.querySelectorAll(LIVE).forEach(r => zuletzt.set(r, r.textContent.trim()));
+    new MutationObserver(eintraege => {
+      for (const e of eintraege) {
+        const ort = e.target.nodeType === 3 ? e.target.parentElement : e.target;
+        const region = ort && ort.closest(LIVE);
+        if (region) merken(region);
+        for (const n of e.addedNodes) if (n.nodeType === 1) [n, ...n.querySelectorAll(LIVE)].filter(x => x.matches(LIVE)).forEach(merken);
+      }
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+  return () => page.evaluate(() => window.kdAnsagen);
+}
+
+for (const [fall, wie, erwartet] of [['Erfolg', 'weiter', 'Auf „zweit“ werden jetzt Transkripte erfasst.'], ['503', 503, 'Der Schalter ließ sich nicht umstellen: Git ist beschäftigt (503).'], ['ohne Verbindung', 'abbruch', 'Der Schalter ließ sich nicht umstellen: keine Verbindung zum Programm.']]) {
+  test(`AK 10: genau eine Ansage je Umschalten (${fall}) — im Statusbereich der Zeile; „stellt um …“ und Wirkung in keiner Live-Region`, async ({ page }) => {
+    await einrichtenOeffnen(page);
+    const h = await anhalten(page);
+    const ansagen = await ansagenZaehlen(page);
+    await wahl(page, 'zweit', 'an').click();
+    await expect(wirkung(page, 'zweit')).toHaveText('stellt um …');
+    expect(await wirkung(page, 'zweit').evaluate(e => e.closest('[role=status],[role=alert],[aria-live]'))).toBeNull();
+    await h.freigeben(wie);
+    await expect(satz(page, 'zweit')).toHaveText(erwartet);
+    // bis das Nachladen nach dem Schreiben gezeichnet ist
+    await bereit(page, `${ABSCHNITT} .ts-z`);
+    if (wie === 'weiter') await expect.poll(() => k.lies('boards/zweit.md')).toContain('record-transcripts: true');
+    await page.waitForFunction(() => window.kdTest.gezeichnet());
+    expect(await ansagen()).toEqual([{ rolle: 'status', id: 'ts-status-b-zweit', text: erwartet }]);
+  });
+}
+
+test('AK 10: genau eine Ansage bei 403 (entw1 im Ich-Menü)', async ({ browser }) => {
+  const kontext = await browser.newContext();
+  const seite = await kontext.newPage();
+  await alsPerson(seite, 'entw1');
+  try {
+    await einrichtenOeffnen(seite);
+    const ansagen = await ansagenZaehlen(seite);
+    await wahl(seite, 'fabrik', 'aus').click();
+    const text = 'Der Schalter ließ sich nicht umstellen: Den Schalter „Transkripte erfassen“ stellen nur Menschen um (403).';
+    await expect(satz(seite, 'fabrik')).toHaveText(text);
+    await seite.waitForFunction(() => window.kdTest.gezeichnet());
+    expect(await ansagen()).toEqual([{ rolle: 'status', id: 'ts-status-b-fabrik', text }]);
+  } finally {
+    await kontext.close();
+  }
 });
