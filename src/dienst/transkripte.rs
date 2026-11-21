@@ -59,6 +59,9 @@ impl Ablageangaben {
     }
 }
 
+/// So oft legt ein Upload den Ordner neu an, den ein gleichzeitig abgebrochener ihm entzogen hat.
+const VERSUCHE_ORDNER: usize = 5;
+
 /// Was ein Upload unter `transkripte/` angelegt hat — beim Verwerfen wird nur das zurückgebaut.
 #[derive(Debug, Default)]
 struct Angelegt {
@@ -107,17 +110,27 @@ impl Empfang {
         Ok(self.datei.as_mut().expect("eben geöffnet").write_all(&anfang)?)
     }
 
+    /// Ordner und Zwischendatei außerhalb der Sperre. Baut ein gleichzeitig abgebrochener Upload den Ordner zwischen
+    /// Anlegen und Zwischendatei zurück, legt dieser ihn neu an; „angelegt“ ist nur, was **sein** `create_dir` anlegte.
     fn oeffnen(&mut self) -> Result<(), Fehler> {
-        let oben_da = self.wurzel.join(ORDNER).exists();
-        let ordner_da = self.wurzel.join(ORDNER).join(format!("{:04}", self.nr)).exists();
-        let ordner = ordner_anlegen(&self.wurzel, self.nr).map_err(|f| Fehler::Intern(f.meldung().to_string()))?;
-        self.angelegt = Angelegt { oben: !oben_da, ordner: !ordner_da };
-        haken("empfang: Ordner da, Zwischendatei noch nicht");
-        let pfad = ordner.join(format!("{}.kanbanD-tmp", zwischenname()));
-        let datei = std::fs::OpenOptions::new().write(true).create_new(true).open(&pfad)?;
-        self.zwischen = Some(pfad);
-        self.datei = Some(datei);
-        Ok(())
+        for _ in 0..VERSUCHE_ORDNER {
+            let (ordner, angelegt) = ordner_anlegen_mit(&self.wurzel, self.nr).map_err(|f| Fehler::Intern(f.meldung().to_string()))?;
+            self.angelegt.oben |= angelegt.oben;
+            self.angelegt.ordner |= angelegt.ordner;
+            haken("empfang: Ordner da, Zwischendatei noch nicht");
+            let pfad = ordner.join(format!("{}.kanbanD-tmp", zwischenname()));
+            match std::fs::OpenOptions::new().write(true).create_new(true).open(&pfad) {
+                Ok(datei) => {
+                    self.zwischen = Some(pfad);
+                    self.datei = Some(datei);
+                    return Ok(());
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(e.into()),
+            }
+        }
+        // nur, wenn ihn fünf gleichzeitig abgebrochene Uploads nacheinander entfernt haben — 500 wie jeder Dateifehler
+        Err(Fehler::Intern(format!("{ORDNER}/{:04}/ wurde {VERSUCHE_ORDNER}-mal während des Hochladens entfernt — erneut hochladen", self.nr)))
     }
 
     /// Der Körper ist vollständig: leer oder kürzer als die Kennbytes → 400.
@@ -455,11 +468,17 @@ pub(crate) fn aufgabenordner(wurzel: &Path, nr: u32) -> Result<PathBuf, Pfadfehl
 /// Legt `transkripte/` mit seiner `.gitignore` und `transkripte/<nr4>/` an, wo sie fehlen — eine vorhandene `.gitignore`
 /// bleibt, wie sie ist (Regel 1), außer sie ist leer. Danach dieselbe Prüfung wie [`aufgabenordner`].
 pub(crate) fn ordner_anlegen(wurzel: &Path, nr: u32) -> Result<PathBuf, Pfadfehler> {
+    ordner_anlegen_mit(wurzel, nr).map(|(ordner, _)| ordner)
+}
+
+/// Wie [`ordner_anlegen`], dazu, welche Ebene **dieser** Aufruf angelegt hat.
+fn ordner_anlegen_mit(wurzel: &Path, nr: u32) -> Result<(PathBuf, Angelegt), Pfadfehler> {
+    let mut angelegt = Angelegt::default();
     let unsicher = |e: std::io::Error| Pfadfehler::Unsicher(format!("{ORDNER}/ lässt sich nicht anlegen: {e}"));
     let oben = wurzel.join(ORDNER);
     ordner_pruefen(&oben, ORDNER)?;
     match std::fs::create_dir(&oben) {
-        Ok(()) => {}
+        Ok(()) => angelegt.oben = true,
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
         Err(e) => return Err(unsicher(e)),
     }
@@ -474,11 +493,11 @@ pub(crate) fn ordner_anlegen(wurzel: &Path, nr: u32) -> Result<PathBuf, Pfadfehl
     }
     let ordner = oben.join(format!("{nr:04}"));
     match std::fs::create_dir(&ordner) {
-        Ok(()) => {}
+        Ok(()) => angelegt.ordner = true,
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
         Err(e) => return Err(unsicher(e)),
     }
-    aufgabenordner(wurzel, nr)
+    Ok((aufgabenordner(wurzel, nr)?, angelegt))
 }
 
 /// `transkripte/.gitignore` über eine Zwischendatei und Umbenennen: es gibt nie eine leere oder halbe `.gitignore`, auch
@@ -576,6 +595,35 @@ mod tests {
         drop(e);
         assert_eq!(zwischendateien(w.path()), 0);
         assert_eq!(git_status(w.path()), "");
+    }
+
+    fn haken_setzen(stelle: &'static str, handlung: impl FnOnce() + 'static) {
+        HAKEN.with(|h| h.borrow_mut().insert(stelle, Box::new(handlung)));
+    }
+
+    // Nacharbeit 1 #208 (code- und security-reviewer Sollte, Empfang::oeffnen): bricht ein Upload ab, der den Ordner
+    // angelegt hat, während ein zweiter den Ordner schon gesehen, aber seine Zwischendatei noch nicht angelegt hat, darf
+    // der zweite daran nicht scheitern (vorher: io-Fehler → 500). Danach baut jeder nur ab, was er selbst angelegt hat.
+    #[test]
+    fn abbruch_des_ersten_entzieht_dem_zweiten_den_ordner_nicht() {
+        for zweiter_haengt_ein in [true, false] {
+            let (w, k, wer) = ordner();
+            let mut erster = empfangen(&k);
+            haken_setzen("empfang: Ordner da, Zwischendatei noch nicht", move || verwerfen_gesperrt(&mut erster));
+            let mut zweiter = Empfang::neu(k.ordner().wurzel(), 1);
+            let r = zweiter.stueck(&[0x1f, 0x8b, 0x08, 7]);
+            assert!(r.is_ok(), "zweiter Upload nach dem Abbruch des ersten: {r:?}");
+            assert_eq!(zwischendateien(w.path()), 1, "nur die Zwischendatei des zweiten");
+            if zweiter_haengt_ein {
+                assert!(k.transkript_einhaengen(&wer, 1, &angaben(), zweiter).is_ok());
+                assert_eq!(dateien(w.path()), ["entwickler@2026-11-13T1034+0100.jsonl.gz"]);
+                assert_eq!(std::fs::read_to_string(w.path().join("transkripte/.gitignore")).unwrap(), "*\n");
+            } else {
+                k.transkript_verwerfen(zweiter);
+                assert!(!w.path().join("transkripte").exists(), "der zweite hat den Ordner neu angelegt und baut ihn zurück");
+            }
+            assert_eq!(git_status(w.path()), "");
+        }
     }
 
     // Prüfen-dann-Handeln (ADR-0036 Regel 5): zwei Uploads derselben Kennung haben beide die Vorprüfung und die
