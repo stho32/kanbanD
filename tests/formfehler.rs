@@ -66,7 +66,7 @@ const MIT_BYTES_RUMPF: [(&str, &str); 5] = [
 ];
 
 /// R00153 AK 3: ohne Rumpf oder Multipart.
-const OHNE_JSON_RUMPF: [(&str, &str); 17] = [
+const OHNE_JSON_RUMPF: [(&str, &str); 19] = [
     ("DELETE", "/api/boards/{slug}"),
     ("DELETE", "/api/boards/{slug}/fieber/cache"),
     ("DELETE", "/api/personen/{kuerzel}"),
@@ -79,6 +79,8 @@ const OHNE_JSON_RUMPF: [(&str, &str); 17] = [
     ("DELETE", "/api/aufgaben/{nr}/zeiten/{kennung}"),
     ("DELETE", "/api/aufgaben/{nr}/kosteneintraege/{kennung}"),
     ("DELETE", "/api/aufgaben/{nr}/commits/{verweis}"),
+    ("POST", "/api/aufgaben/{nr}/transkripte"),
+    ("DELETE", "/api/aufgaben/{nr}/transkripte/{kennung}"),
     ("POST", "/api/aufgaben/{nr}/anhaenge"),
     ("DELETE", "/api/aufgaben/{nr}/anhaenge/{name}"),
     ("POST", "/api/aufgaben/{nr}/archivieren"),
@@ -169,9 +171,9 @@ async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_ei
     let liste: serde_json::Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let beschrieben: Vec<String> = liste.as_array().unwrap().iter().filter(|e| e["methode"] != "GET").map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
     let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_WAHLFREIEM_JSON_RUMPF.iter().map(|(m, p)| (m, p))).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
-    assert_eq!((beschrieben.len(), benannt.len()), (64, 64), "64 = 41 + 1 + 5 + 17");
+    assert_eq!((beschrieben.len(), benannt.len()), (66, 66), "66 = 41 + 1 + 5 + 19");
     let (beschrieben, benannt): (BTreeSet<_>, BTreeSet<_>) = (beschrieben.into_iter().collect(), benannt.into_iter().collect());
-    assert_eq!(benannt.len(), 64, "kein Endpunkt steht in zwei Listen");
+    assert_eq!(benannt.len(), 66, "kein Endpunkt steht in zwei Listen");
     assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der vier Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "benannter Endpunkt fehlt in der Beschreibung");
 }
@@ -335,9 +337,11 @@ async fn die_beschreibung_nennt_400_mit_fehlerantwort_und_keinen_code_des_transp
             }
         }
     }
-    assert_eq!(schreibend, 64);
+    assert_eq!(schreibend, 66);
+    // 413: nur POST …/transkripte (R00216 AK 6 und AK 15, ADR-0036 Regel 5) — die Datei ist der Körper; jeder JSON-Rumpf bleibt ohne 413
+    assert_eq!(api["paths"].as_object().unwrap().iter().flat_map(|(p, m)| m.as_object().unwrap().iter().filter(|(_, b)| b["responses"].get("413").is_some()).map(move |(m, _)| format!("{m} {p}"))).collect::<Vec<_>>(), ["post /api/aufgaben/{nr}/transkripte"]);
     // 304: GET …/diff mit If-None-Match (R00206 FA 12) — die einzige Route mit ETag
-    assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "304", "400", "403", "404", "409", "423", "500", "503"]);
+    assert_eq!(codes.into_iter().collect::<Vec<_>>(), ["200", "201", "303", "304", "400", "403", "404", "409", "413", "423", "500", "503"]);
 }
 
 // ADR-0003 N3 Punkt 6: die Standardgrenze des Rahmens bleibt — ein JSON-Rumpf von genau 2 MiB geht durch
