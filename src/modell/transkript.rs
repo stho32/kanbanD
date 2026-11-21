@@ -4,7 +4,7 @@
 //! Ein formwidriger Eintrag macht die Aufgabe nicht defekt: er bleibt wörtlich stehen und gilt als `unlesbar`.
 
 use super::kosten::Felder;
-use super::kosteneintrag::{kennung, rolle_pruefen};
+use super::kosteneintrag::{ROLLE_HOECHSTENS_ZEICHEN, kennung, rolle_pruefen};
 use serde_yaml::Value;
 
 /// Ordner der Transkripte im Board-Ordner (ADR-0036 Regel 1) — hier, wo die Dienste und der Wächter ihn lesen,
@@ -94,7 +94,7 @@ impl Transkripteintrag {
     }
 }
 
-/// `Code Reviewer` → `code-reviewer`, `../../x` → `x`, `..` → `lauf`.
+/// `Code Reviewer` → `code-reviewer`, `../../x` → `x`, `..` → `lauf`; höchstens 60 Zeichen wie die Rolle.
 fn rolle_falten(rolle: &str) -> String {
     let mut s = String::new();
     for c in rolle.to_lowercase().chars() {
@@ -104,7 +104,9 @@ fn rolle_falten(rolle: &str) -> String {
             s.push('-');
         }
     }
-    let s = s.trim_matches('-');
+    // Ein Kleinbuchstabe kann aus zwei Zeichen bestehen (`İ` → `i` + U+0307): erst kürzen, dann die Striche am Rand weg
+    let s: String = s.trim_start_matches('-').chars().take(ROLLE_HOECHSTENS_ZEICHEN).collect();
+    let s = s.trim_end_matches('-');
     if s.is_empty() { "lauf".to_string() } else { s.to_string() }
 }
 
@@ -217,6 +219,21 @@ mod tests {
         let lang = "a".repeat(60);
         assert_eq!(eintrag("2026-11-13 10:34+01:00", &lang).dateiname(), format!("{lang}@2026-11-13T1034+0100.jsonl.gz"));
         assert_eq!(eintrag("2026-11-13 10:34+01:00", "Code Reviewer").dateiname(), eintrag("2026-11-13 10:34+01:00", "code-reviewer").dateiname(), "gleich gefaltet (AK 8)");
+    }
+
+    // Nacharbeit 1 #208 (security-reviewer Sollte 1): ein Zeichen, dessen Kleinbuchstabe aus zwei Zeichen besteht (`İ`
+    // → `i` + U+0307), verlängert den gefalteten Namen; er bleibt trotzdem bei höchstens 60 Zeichen nach dem Muster
+    #[test]
+    fn faltung_bleibt_bei_60_zeichen() {
+        let lang_i = |n: usize| "İ".repeat(n);
+        for rolle in [lang_i(30), lang_i(31), lang_i(60), format!("a{}", lang_i(59)), format!("{}b", lang_i(59)), format!("{}x", "İa".repeat(29))] {
+            let name = eintrag("2026-11-13 10:34+01:00", &rolle).dateiname();
+            let gefaltet = name.split_once('@').unwrap().0;
+            assert!((1..=60).contains(&gefaltet.len()), "{rolle:?} → {gefaltet:?} ({} Zeichen)", gefaltet.len());
+            assert!(gefaltet.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-'), "{gefaltet:?}");
+            assert!(!gefaltet.starts_with('-') && !gefaltet.ends_with('-'), "{gefaltet:?}");
+        }
+        assert_eq!(eintrag("2026-11-13 10:34+01:00", &lang_i(31)).dateiname(), format!("{}i@2026-11-13T1034+0100.jsonl.gz", "i-".repeat(29)), "gekürzt, dann ohne Strich am Ende");
     }
 
     // R00216 AK 3: die Tabelle Zeile für Zeile

@@ -607,3 +607,18 @@ async fn ak15_beschreibung() {
     let ab = readme.split("### Transkripte ablegen").nth(1).expect("Abschnitt Transkripte ablegen");
     assert!(ab.contains("-F datei=@lauf.jsonl.gz") && ab.contains("/api/aufgaben/1/transkripte"), "Beispiel-Aufruf");
 }
+
+// Nacharbeit 1 #208 (security-reviewer Sollte 1): `İ` faltet zu zwei Zeichen; 31 × `İ` war 500 „Programmfehler“
+#[tokio::test]
+async fn nacharbeit_rolle_mit_zweizeichigem_kleinbuchstaben() {
+    let o = an();
+    for (i, rolle) in ["İ".repeat(30), "İ".repeat(31), "İ".repeat(60)].iter().enumerate() {
+        let at = format!("2026-11-13 10:3{i}+01:00");
+        let (s, e) = hochladen(o.adresse(), 1, "entwickler", &at, G1.to_vec()).await;
+        let (s2, e2) = hochladen(o.adresse(), 1, rolle, &at, G1.to_vec()).await;
+        assert_eq!(s, 201, "{e}");
+        assert_eq!(s2, 201, "{} × İ: {e2}", rolle.chars().count());
+    }
+    assert_eq!(o.status(), "");
+    assert!(o.transkriptdateien().iter().all(|d| !d.ends_with(".kanbanD-tmp")));
+}
