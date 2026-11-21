@@ -1,6 +1,6 @@
 # ADR-0036: Transkripte der Agentenläufe — gzip unversioniert unter `transkripte/<nr>/`, Dateiname aus der Kennung, Eintrag `transcripts` an der Karte, Schalter `record-transcripts`, Lesen im Antwortbudget
 
-**Status**: Akzeptiert; Nachtrag 2026-11-21 „Gebaut“ (G1–G9) Akzeptiert — gebaute Prüfreihenfolge des Hochladens (Regel 5), Ortszeit mit Versatz (Regel 3), leere `.gitignore` (Regel 1), Schalter formwidrig (Regel 4), gescheiterter Commit und Löschen unter einer Sperre (Regel 5), Lesen ohne Lücke zwischen Prüfen und Öffnen (Regel 7), Lesefelder (Regel 5)
+**Status**: Akzeptiert; Nachtrag 2026-11-21 „Gebaut“ (G1–G9) Akzeptiert — gebaute Prüfreihenfolge des Hochladens (Regel 5), Ortszeit mit Versatz (Regel 3), leere `.gitignore` (Regel 1), Schalter formwidrig (Regel 4), gescheiterter Commit und Löschen unter einer Sperre (Regel 5), Lesen ohne Lücke zwischen Prüfen und Öffnen (Regel 7), Lesefelder (Regel 5); Nachtrag 2026-11-21 „Umschalten“ Akzeptiert — eigene Routen `PUT …/transkripte` für Board und Vorgabe, nur Menschen (Agent 403), getrennt von „Speichern“ und „Verwerfen“ (#218, Regel 4)
 **Datum**: 2026-11-21
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #208, Lauf 208-architekt-1)
 **Kontext-Anforderung**: — (Karte #208, Scheibe C1 „Transkripte der Agentenläufe ablegen (API und Schalter in der Datei)“; Anforderung und WBS-Knoten folgen über den planer). Bezug: po-entscheidungen Z. 370–381, 387; ADR-0003, ADR-0006, ADR-0008, ADR-0024, ADR-0028, ADR-0031, ADR-0032 (Punkt 10, N2.2, N5.1)
@@ -109,7 +109,7 @@ Qualitätsziele: (Q1) kein Transkript gerät je in einen Commit; (Q2) eine Anfra
 
 - [ ] Anforderung über den planer: Regeln 1–10 (Scheibe C1).
 - [ ] #210 (D1/D2): Liste und Laufansicht lesen `zustand` und entpacken mit `DecompressionStream`.
-- [ ] #218 (C2): Umschalten in Einrichten, `PUT` nur für Menschen, Agent 403 (ADR-0006); löst Regel 4 letzter Satz ab.
+- [x] #218 (C2): Umschalten in Einrichten, `PUT` nur für Menschen, Agent 403 (ADR-0006) — entschieden im Nachtrag „Umschalten“; Regel 4 letzter Satz bleibt mit neuer Begründung (getrennte Felder).
 - [ ] Factory (E2, `/factory lehren`): multipart-Upload je Lauf, 409 `erfassung` und 404 hinnehmen.
 - [ ] Modell nach dem Bau nachführen (A00003, A00004, A00005, A00008).
 
@@ -167,9 +167,51 @@ Der Name `transkripte` steht einmal, als `modell::TRANSKRIPTE_ORDNER`; Dienste u
 - **Inkauf**: Die Vorprüfungen lesen die Aufgabendatei ein- bis zweimal zusätzlich ohne Sperre. Ein formwidriger Schalter macht das Lesen der Board-Datei oder von `kanbanD.md` zum Fehler, bis ein Mensch ihn berichtigt.
 - **Folgeaufgaben**: Die Anforderung ist R00216; das Modell ist nachgeführt (A00003, A00004, A00005, A00006, A00008, X00002, 2026-11-21). Offen bleiben #210, #218 und die Factory-Seite (E2), dazu die Karte für den schmutzigen Arbeitsbaum nach gescheiterter Rücknahme (G5).
 
+## Nachtrag 2026-11-21 „Umschalten“: Schalter in „Einrichten“ — eigene Routen je Schlüssel, nur Menschen, getrennt vom Entwurf (Karte #218, Scheibe C2)
+
+**Status**: Akzeptiert (2026-11-21). **Entscheider**: Claude (autonom, architekt, Lauf 218-architekt-1). Bezug: PO Z. 473 (sofort, ein Commit je Umschalten; „Speichern“ und „Verwerfen“ ändern `record-transcripts` nie, auch nicht aus einem vor dem Umschalten geladenen Stand; die Vorschau zeigt den geschriebenen Stand), Z. 476 (Freigabe D0009 `#transkripte-schalter`, Wortlaut 24 bei Agent), Z. 377; ADR-0006 (Mensch oder Agent über `X-KanbanD-Wer`); Muster der Board-Routen je Schlüssel (`PUT /api/boards/{slug}/klassen`, `src/dienst/klassen.rs:11`). Erprobt: nichts gefahren; am Code gelesen (Stand `f9dce597`): `einstellungen_setzen` übernimmt den Schalter aus der frisch gelesenen Datei unter der Sperre (`src/dienst/einstellungen.rs:195–198`), jede Board-Route liest das Board unter `gesperrt()` frisch und schreibt es über `board_text` samt Schalter zurück (`src/format/board.rs:424`). Ein ETag gibt es für Schreibwege im Projekt nicht.
+
+### Frage
+
+Wie schaltet ein Mensch `record-transcripts` sofort um, so dass ein Agent 403 bekommt und kein „Speichern“ oder „Verwerfen“ aus irgendeinem Stand den Wert ändert?
+
+### Varianten
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **S1 — eigene Routen nur für den Schalter; die übrigen Schreibwege kennen ihn weiter nicht** (gewählt) | Getrennte Felder: kein Rumpf von „Speichern“ trägt den Wert, also kann auch kein veralteter Stand ihn überschreiben, ohne Versionsvergleich. Das gilt schon heute (Regel 4) und wird nur bestätigt. Es ist dasselbe Muster wie die übrigen Board-Routen: Prüfung vor der Sperre, frisch lesen, ein Commit an einer Datei | zwei Routen mehr; der Erklärtext muss sagen, dass der Schalter nicht zu „Speichern“ gehört (steht schon in Wortlaut 21) |
+| S2 — Schalter in `PUT /api/einstellungen` und die Board-Routen aufnehmen, Schutz über ETag/`If-Match` | ein Schreibweg für alles in „Einrichten“ | „Speichern“ trüge den Wert mit, und ein Entwurf von vor dem Umschalten bekäme 412 statt zu speichern: der Mensch verlöre seine übrigen Änderungen wegen eines Schalters, den er gar nicht angefasst hat. Für Schreibwege gibt es im Projekt kein ETag; es wäre neue Technik an jeder Route von „Einrichten“. Der Agent-403 müsste aus dem Unterschied im Rumpf abgeleitet werden |
+| S3 — eine Route für alle Schalter `{vorgabe, boards: {slug: wert}}` | ein Aufruf zeigt und setzt alles | Der Rumpf trägt die Werte aller Boards. Zwei Menschen in zwei Fenstern überschreiben sich gegenseitig mit einem veralteten Stand. Ein Umschalten ändert mehrere Dateien und damit mehrere Diffs in einem Commit |
+| S4 — Schalter als Eintrag im Entwurf, geschrieben über „Speichern“ | wie der Rest von „Einrichten“ | vom PO verworfen (Z. 473): Läufe zwischen Wahl und Speichern würden still erfasst |
+
+### Entscheidung (S1)
+
+1. **Board**: `PUT /api/boards/{slug}/transkripte` mit Rumpf `{erfassen: true | false | null}`. `null` heißt „wie Vorgabe“: der Schlüssel `record-transcripts` wird aus der Board-Datei entfernt. Fehlt `erfassen` oder ist er kein Wahrheitswert und nicht `null`, kommt 400. Ein unbekanntes Board ergibt 404, ein archiviertes Board wird behandelt wie an den übrigen Board-Routen.
+2. **Vorgabe des Ordners**: `PUT /api/einstellungen/transkripte` mit Rumpf `{erfassen: true | false}`; `null` ergibt 400, denn die Vorgabe kennt nur „an · aus“ (Z. 476). Verglichen wird der **wirksame** Wert: fehlt der Schlüssel und wird „aus“ gewählt, ändert sich nichts, und `kanbanD.md` bleibt zeichengleich. Sonst wird der gewählte Wert ausdrücklich geschrieben (`true` bzw. `false`).
+3. **Nur Menschen**: Ist `wer` ein Agent, kommt an beiden Routen 403 `{fehler, einstellung: "record-transcripts"}`. Das gilt immer, auch wenn sich nichts ändern würde, und es wird vor Rumpf, Board und Sperre geprüft. Die Routen dienen nur dem Umschalten; ein Agent hat dort nichts zu tun, und die Probe bleibt eine Zeile. Das ist bewusst strenger als R00102 (dort gilt ein unveränderter Wert nicht als Änderung). Arbeitswortlaut für `fehler`: „Den Schalter „Transkripte erfassen“ stellen nur Menschen um.“ Die Oberfläche setzt ihn in Wortlaut 24 ein: „Der Schalter ließ sich nicht umstellen: <fehler> (403).“
+4. **Schreiben**: Unter `gesperrt()` wird die Datei frisch gelesen (Board bzw. `kanbanD.md`). Ändert sich der Wert, wird **nur dieser Schlüssel** geändert, und es entsteht **ein Commit an genau dieser Datei** (Arbeitstexte „Transkripte auf „<Board>“: an | aus | wie Vorgabe“ bzw. „Transkripte, Vorgabe des Ordners: an | aus“). Ohne Änderung gibt es keinen Commit. Die Antwort ist 200 `{erfassen, wirksam}` mit dem gespeicherten Wert (Board: `true | false | null`) und dem danach wirksamen Wert.
+5. **Getrennt von „Speichern“ und „Verwerfen“** (Regel 4 letzter Satz gilt weiter, Begründung neu): `PUT /api/einstellungen` und alle übrigen Board-Routen nehmen den Schalter weiter nicht an. Sie übernehmen ihn aus der unter der Sperre frisch gelesenen Datei, auch wenn der Rumpf `transkripte_erfassen` oder `record-transcripts` enthält. In der Oberfläche gehört der Schalter **nicht** zum Entwurf von „Einrichten“: „Verwerfen“ setzt nur den Entwurf zurück und ruft keine Schalter-Route, „Speichern“ schickt keinen Schalterwert. Damit ist die Bedingung aus Z. 473 eine Eigenschaft des Schreibwegs, die kein Stand im Browser aushebeln kann. ETag (S2) ist nicht nötig.
+6. **Lesen und Vorschau**: `GET /api/einstellungen` bekommt das Lesefeld `transkripte_erfassen: true | false | null` (Vorgabe). `PUT` überliest es wie `quellen.erreichbar`, und `Einstellungen.transkripte_erfassen` bleibt `#[serde(skip)]`; das Feld kommt über `Einstellungsantwort`. Am Board steht `transkripte_erfassen` schon (`GET /api/boards`). Die Vorschau zeigt den Wert aus der Antwort des `PUT` und danach aus dem Live-Ereignis des Commits. Sie zeigt nie die gewählte, noch nicht bestätigte Lage; während des Schreibens steht „stellt um …“ (Wortlaut 22). Scheitert das Schreiben, springt die Wahl zurück (Z. 476).
+7. **Endpunkt-Liste und OpenAPI**: Der Zusatz „nur von Hand in der Datei gesetzt“ an `GET /api/boards`, `GET /api/boards/{slug}` und an `Einstellungen` wird ersetzt durch „umschalten nur Menschen über `PUT …/transkripte`“.
+
+### Abnahme-Ideen für den planer (Kriterien)
+
+- **Eigenes Kriterium „Speichern und Verwerfen ändern den Schalter nie“**: Ausgangsstand S0 lesen (`GET /api/einstellungen`, `GET /api/boards/{slug}`, Schalter aus), dann als Mensch `PUT …/transkripte {erfassen: true}` (ein Commit). Danach mit dem Rumpf aus S0 nacheinander `PUT /api/einstellungen`, `…/spalten`, `…/klassen` und `…/anwendungen`, je einmal mit eingeschmuggeltem `transkripte_erfassen: false` bzw. `record-transcripts: false`. Erwartet: die Board-Datei und `kanbanD.md` tragen weiter `true`, `GET` meldet `true`. Mutant: `..neu` ohne Übernahme in `einstellungen_setzen` macht den Test rot. Dazu in der Oberfläche: Schalter umstellen, dann „Verwerfen“, dann „Speichern“ eines anderen Abschnitts. Es gibt keinen Aufruf einer Schalter-Route, und der Schalter steht weiter auf der neuen Lage.
+- Agent an beiden Routen 403 mit `einstellung`, auch bei unverändertem Wert; die Datei bleibt zeichengleich, und es gibt keinen Commit. Mensch: genau ein Commit, der nur die eine Datei ändert, und kein Commit bei gleichem Wert.
+- `null` am Board entfernt den Schlüssel, und das Board folgt der Vorgabe. `null` an der Vorgabe ergibt 400. Bei Vorgabe ohne Schlüssel bleibt „aus“ zeichengleich ohne Commit.
+- Umschalten bei offenem Entwurf: der Entwurf der übrigen Abschnitte bleibt nach dem Live-Ereignis erhalten (prüfen; verwirft das Live-Ereignis heute einen offenen Entwurf, ist das ein eigener Befund).
+
+### Konsequenzen
+
+- **Positiv**: Die Bedingung des PO hängt am Server, nicht an der Sorgfalt der Oberfläche. Kein neues Konzept; zwei Routen nach vorhandenem Muster.
+- **Inkauf**: Die 403 beruht auf `X-KanbanD-Wer`. Wer den Kopf eines Menschen nennt, schaltet um; das ist die bekannte Grenze aus ADR-0006 (Schutz vor Versehen, nicht vor Absicht). Eine ältere Version, die die Board-Datei schreibt, verliert den Schalter weiter (Regel 10, fällt auf „aus“).
+- **Lastprofil**: schreibend ein Commit an einer kleinen Datei, weit unter p95 500 ms; das Lesefeld kostet nichts zusätzlich, denn `kanbanD.md` wird für die Antwort schon gelesen.
+- **Folgeaufgaben**: Anforderung über den planer (Punkte 1–7, Kriterien oben). Nach dem Bau das Modell nachführen (A00003 Zeile „Keine Route nimmt den Schalter an“, A00004 `einstellungen_setzen`).
+
 ## Quellen / Bezuege
 
 - Karte #208 mit Kommentaren 2026-11-19; po-entscheidungen Z. 370–381, 387; Vision Z. 169
 - ADR-0003, ADR-0006, ADR-0008, ADR-0024, ADR-0028, ADR-0031, ADR-0032 (Punkt 10 — Ablage und Schalter hier entschieden, N2.2, N5.1)
 - `src/modell/aufgabe.rs:458`, `src/modell/kosteneintrag.rs:82–103`, `src/dienst/anhaenge.rs`, `src/dienst/archiv.rs:46–90`, `src/dienst/antwortbudget.rs`, `src/git.rs:90–91`, `src/waechter.rs:44–46`, `src/web/mod.rs:126–127`, `:1336–1353`
 - Nachtrag „Gebaut“: Kartenkommentare an #208 vom 2026-11-21 (Architektur-Review 208-1 und 208-2, Nacharbeit 1, Entwicklertest); `src/dienst/transkripte.rs`, `src/modell/transkript.rs`, `src/web/mod.rs:132–136`, `:1351–1460`, `src/waechter.rs:44–49`, `src/dienst/archiv.rs:70`, `src/format/board.rs:94`, `tests/fitness_waechter_importe.rs` (Stand `c37b74cc`)
+- Nachtrag „Umschalten“: Karte #218 mit Kommentar 2026-11-21; po-entscheidungen Z. 473, 476, 377; `src/dienst/einstellungen.rs:195–198`, `src/dienst/klassen.rs:11`, `src/format/board.rs:424`, `src/dienst/anwendungen.rs:83`, `web/app.js:3801`, `:3862–3866` (Stand `f9dce597`)
