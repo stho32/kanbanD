@@ -2,7 +2,9 @@
 // Ausgangslage: farben-hilfen.js (R mit K1 an #2, K2 an #3, K3 an #4). Über Farbe wird erst geurteilt, wenn der Diffbereich
 // `data-farbe="ja"` oder `"nein"` trägt — ereignisgenau, nie nach Zeit (ADR-0026). Konsole im Testkörper urteilen, dann abbauen.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, kontrastAm } = require('./hilfen');
+const fs = require('fs');
+const path = require('path');
 const { farbenRepository, farbenVorbereiten, kommentarAnlegen } = require('./farben-hilfen');
 
 /* ── Treiber ── */
@@ -219,5 +221,65 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     await expect(datei(page, 'src/main.rs').locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
     expect(await aufklappenUndWarten(page, 'src/main.rs')).toBe('ja');
     expect(rolle(await rollenJeZeile(page, 'src/main.rs'), 4, 'fn')).toEqual(['tk-keyword']);
+  });
+
+  /* ── AK 9 Farben und Kontrast (B1110) ── */
+
+  const ROLLEN = ['tk-keyword', 'tk-string', 'tk-comment', 'tk-number', 'tk-function', 'tk-type', 'tk-macro'];
+  /** Die vier Themenlagen: System und gewähltes Thema. */
+  const LAGEN = [['hell', 'light', null], ['System dunkel', 'dark', null], ['erzwungen dunkel', 'light', 'dark'], ['erzwungen hell bei System dunkel', 'dark', 'light']];
+
+  test('AK 9: hell und dunkel verschieden, jede Rolle ≥ 4,5:1 auf Kontext, hinzugefügt und entfernt in vier Themenlagen (84 Messungen), nur der Kommentar kursiv', async ({ page }, info) => {
+    await page.goto(reviewAdresse(k, 2));
+    // gemessen wird erst an der gefärbten Datei (UX S4), an der Codezelle td.c je Zeilenart (UX-Vorprüfung Runde 1)
+    expect(await aufklappenUndWarten(page, 'src/seiten.rs')).toBe('ja');
+    expect(await aufklappenUndWarten(page, 'src/main.rs')).toBe('ja');
+    // je Zeilenart und Rolle ein Messstück in der Codezelle von src/seiten.rs (Kontext, entfernt, hinzugefügt)
+    await bereich(page, 'src/seiten.rs').evaluate((b, rollen) => {
+      for (const art of ['ctx', 'add', 'del']) {
+        const zelle = b.querySelector(`tr.${art} td.c`);
+        for (const r of rollen) zelle.insertAdjacentHTML('beforeend', `<span class="${r}" data-mess="${art}">Xg</span>`);
+      }
+    }, ROLLEN);
+    const keyword = page.locator('#rv-insel .df-sc .tk-keyword').first();
+    const messungen = [], farben = {};
+    for (const [lage, system, gewaehlt] of LAGEN) {
+      await page.emulateMedia({ colorScheme: system });
+      await page.evaluate(t => { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }, gewaehlt);
+      farben[lage] = await keyword.evaluate(e => getComputedStyle(e).color);
+      for (const art of ['ctx', 'add', 'del']) {
+        for (const r of ROLLEN) {
+          const stueck = bereich(page, 'src/seiten.rs').locator(`[data-mess="${art}"].${r}`);
+          const wert = await kontrastAm(stueck);
+          const kursiv = await stueck.evaluate(e => getComputedStyle(e).fontStyle);
+          messungen.push({ lage, art, rolle: r, wert: Math.round(wert * 100) / 100, kursiv });
+        }
+      }
+    }
+    await info.attach('kontrast-84.json', { body: JSON.stringify(messungen, null, 1), contentType: 'application/json' });
+    if (process.env.KD_KONTRAST_AUS) fs.writeFileSync(process.env.KD_KONTRAST_AUS, JSON.stringify({ farben, messungen }, null, 1));
+    expect(messungen).toHaveLength(84);
+    expect(messungen.filter(m => !(m.wert >= 4.5)), 'alle ≥ 4,5:1').toEqual([]);
+    expect(messungen.filter(m => (m.kursiv === 'italic') !== (m.rolle === 'tk-comment')), 'nur der Kommentar kursiv').toEqual([]);
+    expect(farben['hell']).not.toBe(farben['System dunkel']);
+    expect(farben['erzwungen dunkel']).toBe(farben['System dunkel']);
+    expect(farben['erzwungen hell bei System dunkel']).toBe(farben['hell']);
+  });
+
+  test('AK 9: --kd-tk-* stehen in allen drei Themen-Blöcken von kd-tokens.css, kd-app.css färbt tk-… nur über Tokens', async () => {
+    const web = path.resolve(__dirname, '../../web');
+    const tokens = fs.readFileSync(path.join(web, 'kd-tokens.css'), 'utf8');
+    const bloecke = [
+      tokens.slice(tokens.indexOf(':root{'), tokens.indexOf('@media (prefers-color-scheme:dark)')),
+      tokens.slice(tokens.indexOf('@media (prefers-color-scheme:dark)'), tokens.indexOf(':root[data-theme="dark"]')),
+      tokens.slice(tokens.indexOf(':root[data-theme="dark"]'), tokens.indexOf('@media (pointer:coarse)')),
+    ];
+    for (const [i, block] of bloecke.entries()) {
+      for (const r of ['keyword', 'string', 'comment', 'number', 'function', 'type', 'macro']) expect(block, `Block ${i + 1}: --kd-tk-${r}`).toMatch(new RegExp(`--kd-tk-${r}:oklch\\(`));
+    }
+    const app = fs.readFileSync(path.join(web, 'kd-app.css'), 'utf8');
+    const regeln = app.split('}').filter(r => /\.tk-/.test(r));
+    expect(regeln.length).toBeGreaterThan(0);
+    expect(regeln.filter(r => /color:(?!var\(--kd-tk-)/.test(r)), 'keine Farbe als Literal').toEqual([]);
   });
 });

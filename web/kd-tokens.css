@@ -55,6 +55,8 @@ color-scheme:light;
 --kd-shadow-mod:0 12px 40px oklch(0.24 0.02 255 / .35);--kd-scrim:oklch(0.24 0.02 255 / .45);
 /* Diagrammlinien „Wie lange noch“: Linie mit Zustand, ≥ 3:1 auf --kd-surface */
 --kd-wl-1:oklch(0.575 0.163 256);--kd-wl-2:oklch(0.62 0.175 41);--kd-wl-3:oklch(0.6 0.141 162);
+/* Syntaxfarben der Review-Seite (R00217, Artboard D0009 Syntax-Block): je Rolle eine Farbe, ≥ 4,5:1 auf Kontext, hinzugefügt und entfernt */
+--kd-tk-keyword:oklch(0.42 0.15 300);--kd-tk-string:oklch(0.4 0.11 150);--kd-tk-comment:oklch(0.48 0.018 255);--kd-tk-number:oklch(0.44 0.12 55);--kd-tk-function:oklch(0.4 0.12 255);--kd-tk-type:oklch(0.41 0.09 195);--kd-tk-macro:oklch(0.44 0.15 5);
 }
 /* Dark-Mode (R00070): folgt dem System, solange keine Wahl gesetzt ist; data-theme am Wurzelelement erzwingt. */
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -92,6 +94,7 @@ color-scheme:dark;
 --kd-shadow-mod:0 12px 40px oklch(0 0 0 / .6);--kd-scrim:oklch(0 0 0 / .55);
 --kd-wl-1:oklch(0.68 0.15 256);--kd-wl-2:oklch(0.671 0.175 41);--kd-wl-3:oklch(0.669 0.141 162);
 --kd-spalte-anteil:28%;--kd-klasse-anteil:30%;
+--kd-tk-keyword:oklch(0.8 0.11 300);--kd-tk-string:oklch(0.82 0.1 150);--kd-tk-comment:oklch(0.76 0.014 250);--kd-tk-number:oklch(0.82 0.1 65);--kd-tk-function:oklch(0.82 0.09 250);--kd-tk-type:oklch(0.82 0.08 195);--kd-tk-macro:oklch(0.82 0.1 350);
 }}
 :root[data-theme="dark"]{
 color-scheme:dark;
@@ -128,6 +131,7 @@ color-scheme:dark;
 --kd-shadow-mod:0 12px 40px oklch(0 0 0 / .6);--kd-scrim:oklch(0 0 0 / .55);
 --kd-wl-1:oklch(0.68 0.15 256);--kd-wl-2:oklch(0.671 0.175 41);--kd-wl-3:oklch(0.669 0.141 162);
 --kd-spalte-anteil:28%;--kd-klasse-anteil:30%;
+--kd-tk-keyword:oklch(0.8 0.11 300);--kd-tk-string:oklch(0.82 0.1 150);--kd-tk-comment:oklch(0.76 0.014 250);--kd-tk-number:oklch(0.82 0.1 65);--kd-tk-function:oklch(0.82 0.09 250);--kd-tk-type:oklch(0.82 0.08 195);--kd-tk-macro:oklch(0.82 0.1 350);
 }
 /* Zielgröße (R00108, ADR-0012 Regel 1): Mindestkante jedes Bedienziels, der einzige Ort dieses Maßes. */
 @media (pointer:coarse){:root{--kd-ziel:48px}}
