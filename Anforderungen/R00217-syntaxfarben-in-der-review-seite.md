@@ -122,7 +122,7 @@ Nach `~/.claude/skills/test-pyramide/SKILL.md`: Test zuerst je Bubble.
 
 ## Offene Fragen
 
-- **An den product-owner:** Soll eine Datei, die wegen der Grenze ungefärbt bleibt, einen Hinweis tragen („ohne Farbe: zu groß für die Hervorhebung“)? Empfehlung (architekt, planer): nein — es fehlt kein Inhalt, und eine unbekannte Endung trägt auch keinen. **Bis zur Antwort gilt: kein Hinweis** (AK 5); hält den Bau nicht auf.
+- ~~**An den product-owner:** Soll eine Datei, die wegen der Grenze ungefärbt bleibt, einen Hinweis tragen („ohne Farbe: zu groß für die Hervorhebung“)?~~ **Entschieden** (po-entscheidungen Z. 457, 2026-11-21): kein Hinweis, die vorläufige Regel ist endgültig; AK 5 bleibt wie geschrieben.
 - **An den architekt nach der Sondierung:** Status von ADR-0037 auf „Akzeptiert“ oder Wechsel zu L4 (ADR-0037 Folgeaufgaben).
 
 ## Manuelle Vorbereitungstätigkeiten
