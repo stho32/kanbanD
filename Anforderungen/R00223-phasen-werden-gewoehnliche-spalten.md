@@ -25,6 +25,8 @@ Was bleibt: die Spalten selbst mit Namen, Grenzen, Eigentümern, Notizen und Far
 
 **Abnahme-Probe der Karte (Auftrag des Directors, wörtlich):** „Ein Board mit `column-phases` liefert kein `phasen` und erzeugt keinen Auto-Commit. Die Berichte (Burndown, Fieber, Wie lange noch) sind gleich denen desselben Boards ohne `column-phases`.“ Sie steckt in AK 1.
 
+**Einschränkung nach PO Z. 505:** „Kein Auto-Commit“ meint das Schreiben von Phasen-Spalten beim Ansehen. Der Nachtrag fehlender Tage im Fieber-Cache beim Öffnen des Fever Charts bleibt bewusster Bestand (R00078, ADR-0027). Probe: Gegeben die Ausgangslage ohne `berichte/*-fieber.md`. Wenn der Betreiber alle Berichte ansieht, entsteht höchstens ein Commit, und der berührt nur `berichte/entwicklung-fieber.md` (Autor kanbanD). Beim zweiten Öffnen entsteht kein Commit. AK 2 zählt nur `GET` und bleibt.
+
 Ändert [R00058](R00058-phasen-als-spalten.md) (Phasen als Spalten), [R00062](R00062-leere-anwendungsliste-loest-die-bindung.md) (Tooltips der Bindung) und die Phasenzweige von [R00046](R00046-wie-lange-noch.md), [R00078](R00078-projekt-fever-chart.md), [R00166](R00166-erledigt-heisst-je-board-fuer-burndown-durchsatz-und-fever-chart.md), [R00167](R00167-durchsatz-von-spalte-waehlbar-zugang-als-zweiter-balken.md), [R00169](R00169-kumulativer-fluss-und-durchlaufzeit-folgen-der-zielspalte.md). Sie bleiben unverändert als Historie stehen.
 
 Zahlt ein auf: [Vision](R00000-vision.md) — Zielbild „Die Aufgaben sind der Stand“ („Spalten sind Spalten“; kanbanD liest, schreibt und zeigt die WBS nicht), Nicht-Ziel „Kein Ersatz für Vision, Anforderungen und WBS“.
