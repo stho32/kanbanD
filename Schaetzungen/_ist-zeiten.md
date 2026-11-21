@@ -1031,3 +1031,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #227 R00223 | B1165 Namen ohne „Phase“ (.hinweisleiste, .wl-block, Etappe 1), README ohne Phasen, Durchsetzungsproben leer | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1166 Legacy-Probe JoinPuya (alt/neu), Factory test_auftrag gegen den Build, volles Gate, R00223 abgehakt | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-22 | Karte #232 R00224 | B1167 Abnahme-Proben rot am heutigen Stand: Spec r00224 mit AK 1–12, 17 erwartet rot, AK 4/9 grün | Standard | 0,5-1h | 0,8h | 0,8h | autonom |
+| 2026-11-22 | Karte #232 R00224 | B1168 zustandSatz und zustandsSymbol in commits.js, anwendungName aus diff.js dorthin (ein Wörterbuch) | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

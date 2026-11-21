@@ -2,7 +2,7 @@
    Fremder Text geht hier unverändert durch; maskiert wird erst beim Zeichnen (esc). */
 (function (ziel) {
   'use strict';
-  const { ZUSTANDSWOERTER, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
+  const { ZUSTANDSWOERTER, anwendungName, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
 
   /** Zustände der Liste, zu denen es einen Diff gibt (ADR-0033 Punkt 2). */
   const MIT_DIFF = ['auf_zweig', 'verwaist'];
@@ -337,12 +337,6 @@
     if (zustand === 'nachladen') return `<div class="df-hin"><p>Diese Datei war nicht in der ersten Antwort, weil die Antwort zu groß wurde. Sie wird einzeln geladen.</p>${knopf('Nachladen', 'review-nachladen', i)}</div>`;
     if (zustand === 'binaer') return '<p class="df-hin">Binärdatei — der Inhalt wird nicht angezeigt.</p>';
     return '';
-  }
-
-  /** Name einer Anwendung im Satz (PO Z. 448): das leere Kürzel ist die Standardanwendung, nie „Anwendung “ ohne Namen. Roh. */
-  function anwendungName(kuerzel) {
-    if (kuerzel) return `Anwendung ${kuerzel}`;
-    return 'Standardanwendung';
   }
 
   /** Worauf eine wartende Datei wartet: in „Alle Änderungen“ auf eine Anwendung (`wartetAuf`, rohes Kürzel, '' = Standardanwendung;

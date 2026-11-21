@@ -196,3 +196,45 @@ test('Bidi-Steuerzeichen U+202A–202E und U+2066–2069 verschwinden aus Titel,
 test('zahlenText: eine Zahl als Zeichenkette wird wie eine Zahl gesetzt, ein Zahlenwert ohne Nachkomma bleibt', () => {
   assert.strictEqual(zahlenText({ plus: '1204567', minus: 7 }), '+1.204.567 −7');
 });
+
+/* ── R00224 B1168: Satz und Hinweiszeile je Zustand einer 404 (PO Z. 506–508), roh ── */
+
+test('zustandSatz: Satz, Hinweiszeile, Symbol und Ton je Zustand wörtlich nach PO Z. 506–508', () => {
+  const { zustandSatz } = require('../../web/commits.js');
+  assert.deepStrictEqual(zustandSatz('repository_fehlt', 'wb', 'Ordner fehlt: /x/wb'), { satz: 'Das Repository der Anwendung wb ist nicht erreichbar.', hinweis: 'Ordner fehlt: /x/wb', symbol: 'ordner-offen', ton: 'fehl' });
+  assert.deepStrictEqual(zustandSatz('fehlt', 'kd', 'egal'), { satz: 'Das Repository der Anwendung kd kennt diesen Commit nicht mehr.', hinweis: '', symbol: 'fehlt', ton: 'fehl' });
+  assert.deepStrictEqual(zustandSatz('anwendung_unbekannt', 'xy', 'egal'), { satz: 'Die Anwendung xy ist unter Einrichten nicht eingetragen.', hinweis: '', symbol: 'frage', ton: 'warn' });
+  assert.deepStrictEqual(zustandSatz('anwendung_unbekannt', '', undefined), { satz: 'Der Verweis nennt keine Anwendung, und es ist keine Standardanwendung eingerichtet.', hinweis: '', symbol: 'frage', ton: 'warn' });
+  assert.deepStrictEqual(zustandSatz('unlesbar', 'kd', 'Kurz-Hash mehrdeutig'), { satz: 'Der Eintrag an der Aufgabe ist nicht lesbar.', hinweis: 'Kurz-Hash mehrdeutig', symbol: 'achtung', ton: 'fehl' });
+});
+
+test('zustandSatz: leeres Kürzel ist die Standardanwendung, nie „Anwendung “ ohne Namen; ohne grund leere Hinweiszeile', () => {
+  const { zustandSatz } = require('../../web/commits.js');
+  assert.strictEqual(zustandSatz('repository_fehlt', '', null).satz, 'Das Repository der Standardanwendung ist nicht erreichbar.');
+  assert.strictEqual(zustandSatz('fehlt', undefined, null).satz, 'Das Repository der Standardanwendung kennt diesen Commit nicht mehr.');
+  assert.strictEqual(zustandSatz('repository_fehlt', 'wb', undefined).hinweis, '');
+  assert.strictEqual(zustandSatz('unlesbar', 'wb', '').hinweis, '');
+});
+
+test('zustandSatz: grund und Kürzel ohne Bidi-Steuerzeichen, sonst unverändert (maskiert wird beim Zeichnen); unbekannter Zustand und auf_zweig → null', () => {
+  const { zustandSatz } = require('../../web/commits.js');
+  const s = zustandSatz('repository_fehlt', 'w‮b', 'Ordner fehlt: /x/<img src=x>‮gpj.exe⁦⁩‪');
+  assert.strictEqual(s.hinweis, 'Ordner fehlt: /x/<img src=x>gpj.exe');
+  assert.strictEqual(s.satz, 'Das Repository der Anwendung wb ist nicht erreichbar.');
+  for (const z of ['neu_art', 'auf_zweig', 'verwaist', undefined]) assert.strictEqual(zustandSatz(z, 'kd', 'g'), null, String(z));
+});
+
+test('zustandsSymbol: dasselbe SVG wie die Marke der Liste, für jeden Zustand mit Satz ohne „undefined“', () => {
+  const { zustandsSymbol, zustandsmarke } = require('../../web/commits.js');
+  for (const z of ['repository_fehlt', 'fehlt', 'anwendung_unbekannt', 'unlesbar']) {
+    const svg = zustandsSymbol(zustandsmarke({ zustand: z, anwendung: 'kd' }).symbol);
+    assert.ok(svg.startsWith('<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><') && !svg.includes('undefined'), z);
+  }
+});
+
+test('anwendungName steht in commits.js und ist dieselbe Funktion wie in diff.js (ein Wörterbuch)', () => {
+  const c = require('../../web/commits.js'), d = require('../../web/diff.js');
+  assert.strictEqual(c.anwendungName('wb'), 'Anwendung wb');
+  assert.strictEqual(c.anwendungName(''), 'Standardanwendung');
+  assert.strictEqual(d.anwendungName, c.anwendungName);
+});

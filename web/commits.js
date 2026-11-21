@@ -40,6 +40,30 @@
     }
   };
 
+  /** Name einer Anwendung im Satz (PO Z. 448): das leere Kürzel ist die Standardanwendung, nie „Anwendung “ ohne Namen. Roh. */
+  function anwendungName(kuerzel) {
+    if (kuerzel) return `Anwendung ${kuerzel}`;
+    return 'Standardanwendung';
+  }
+
+  /** Satz und Hinweiszeile einer 404 mit `zustand` auf der Review-Seite (R00224 FA 1, 6, 7; PO Z. 506–508): `{satz, hinweis, symbol, ton}`
+      mit Symbol und Ton aus `ZEICHEN`, `hinweis` ist der `grund` ohne Bidi-Steuerzeichen oder leer; `null` für einen Zustand ohne Satz.
+      Roh, maskiert wird beim Zeichnen. */
+  function zustandSatz(zustand, kuerzel, grund) {
+    const k = ohneSteuerzeichen(kuerzel) || '';
+    const mitGrund = ohneSteuerzeichen(grund) || '';
+    let satz, hinweis = '';
+    switch (zustand) {
+      case 'repository_fehlt': satz = `Das Repository der ${anwendungName(k)} ist nicht erreichbar.`; hinweis = mitGrund; break;
+      case 'fehlt': satz = `Das Repository der ${anwendungName(k)} kennt diesen Commit nicht mehr.`; break;
+      case 'anwendung_unbekannt': satz = k ? `Die Anwendung ${k} ist unter Einrichten nicht eingetragen.` : HINWEIS_OHNE_ANWENDUNG; break;
+      case 'unlesbar': satz = 'Der Eintrag an der Aufgabe ist nicht lesbar.'; hinweis = mitGrund; break;
+      default: return null;
+    }
+    const [symbol, ton] = ZEICHEN[zustand];
+    return { satz, hinweis, symbol, ton };
+  }
+
   /** Bidi-Steuerzeichen (U+202A–202E, U+2066–2069) aus fremdem Text: ein RLO in einem Zweignamen ließe `fix-<RLO>gpj.exe` als `fix-exe.jpg` erscheinen. */
   const ohneSteuerzeichen = text => (typeof text === 'string' ? text.replace(/[\u202A-\u202E\u2066-\u2069]/g, '') : text);
 
@@ -372,5 +396,5 @@
     return `<div class="mod-main cl-panel">${commitsKopfHtml(anzahl, ziel && esc(ziel(null)))}${inhaltHtml(c, esc, ziel)}${commitsFussHtml({ stand: c.stand, laedt: c.status === 'laedt' })}</div>`;
   }
 
-  Object.assign(ziel, { ZUSTANDSWOERTER, NACHFOLGER_LAEDT, nachfolgerDeuten, schreibfehlerText, erfolgText, kurzVerweis, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml });
+  Object.assign(ziel, { ZUSTANDSWOERTER, anwendungName, zustandSatz, zustandsSymbol: symbol, NACHFOLGER_LAEDT, nachfolgerDeuten, schreibfehlerText, erfolgText, kurzVerweis, kurzform, titelGekuerzt, zahlenText, datumText, zustandsmarke, zweigmarken, zeilenwerte, fehlerText, gelesenText, commitsListeHtml, commitsKopfHtml, commitsFussHtml, commitsAnsichtHtml });
 })(typeof module !== 'undefined' ? module.exports : window);
