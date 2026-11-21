@@ -1535,3 +1535,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Aufräumen von Zwischendateien nach SIGKILL.
 - **Wackler, neu gesehen:** `transkripte_api::ak03_wirksamer_schalter` war 1 von etwa 22 Läufen rot: `send()` scheitert, wenn der Server früh mit 409 antwortet.
 | 2026-11-21 | #208 | Erledigt | architekt | bestanden | 9 min | Modell nachgeführt, ADR-0036 Nachtrag Gebaut G1–G9 · claude · opus · Lauf 208-architekt-2 · 3,31 $ · Karte gesamt 38,55 $ |
+| 2026-11-21 | #217 | Architektur | architekt | bestanden | 4 min | ADR-0039 Läufe in der Seite zusammengeführt · claude · opus · Lauf 217-architekt-1 · 1,43 $ · Karte gesamt 1,43 $ |
