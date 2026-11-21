@@ -302,3 +302,55 @@ async fn beschreibung_nennt_das_umschalten() {
         assert!(!e.zweck.contains("nur von Hand in der Datei gesetzt"), "{} {}", e.methode, e.pfad);
     }
 }
+
+// ---- B1135 Veralteter Stand ----
+
+/// Ein Rumpf mit eingeschmuggeltem Schalter: an einem Objekt beide Schreibweisen, an einer Liste an jedem Objekt-Element.
+fn eingeschmuggelt(rumpf: &Value) -> Value {
+    let mut r = rumpf.clone();
+    let schmuggeln = |o: &mut serde_json::Map<String, Value>| {
+        o.insert("transkripte_erfassen".into(), json!(false));
+        o.insert("record-transcripts".into(), json!(false));
+    };
+    match &mut r {
+        Value::Object(o) => schmuggeln(o),
+        Value::Array(liste) if liste.iter().all(Value::is_object) => liste.iter_mut().for_each(|e| schmuggeln(e.as_object_mut().unwrap())),
+        // eine Liste aus Texten (Bindung) trägt kein Feld: das Objekt daneben ist der Schmuggelweg
+        Value::Array(liste) => r = json!({"anwendungen": liste.clone(), "transkripte_erfassen": false, "record-transcripts": false}),
+        _ => {}
+    }
+    r
+}
+
+/// AK 4 / US-3: der Stand S0 von vor dem Umschalten überschreibt den Schalter über keinen der vier Schreibwege.
+/// Gegenprobe: der Mutant `*e = neu` ohne Übernahme in `einstellungen_setzen` macht diese Probe rot.
+#[tokio::test]
+async fn ak4_veralteter_stand_laesst_den_schalter_stehen() {
+    let i = instanz();
+    let einstellungen_s0 = i.lesen("api/einstellungen").await;
+    let board_s0 = i.lesen("api/boards/zweit").await;
+    assert_eq!((einstellungen_s0["transkripte_erfassen"].clone(), board_s0["transkripte_erfassen"].clone()), (json!(null), json!(null)), "S0: Schalter aus");
+    assert_eq!(i.board("sh", "zweit", json!({"erfassen": true})).await.0, 200);
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": true})).await.0, 200);
+
+    let spalten: Value = board_s0["spalten"].as_array().unwrap().iter().map(|s| json!({"name": s["name"], "alt": s["name"]})).collect();
+    let wege = [
+        ("api/einstellungen", einstellungen_s0.clone()),
+        ("api/boards/zweit/spalten", spalten),
+        ("api/boards/zweit/klassen", json!({"klassen": board_s0["klassen"]})),
+        ("api/boards/zweit/anwendungen", board_s0["anwendungen"].clone()),
+    ];
+    let mut aufrufe = 0;
+    for (pfad, rumpf) in wege {
+        for gesendet in [rumpf.clone(), eingeschmuggelt(&rumpf)] {
+            let (s, v) = senden(Method::PUT, &i.lauf.adresse, pfad, "sh", gesendet.clone()).await;
+            aufrufe += 1;
+            for datei in ["boards/zweit.md", "kanbanD.md"] {
+                assert!(lies(&i.pfad, datei).contains("\nrecord-transcripts: true\n"), "{datei} nach {pfad} ({s} {v}) mit {gesendet}");
+            }
+        }
+    }
+    assert_eq!(aufrufe, 8);
+    assert_eq!(i.lesen("api/einstellungen").await["transkripte_erfassen"], json!(true));
+    assert_eq!(i.lesen("api/boards/zweit").await["transkripte_erfassen"], json!(true));
+}
