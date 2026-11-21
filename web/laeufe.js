@@ -142,10 +142,10 @@
     return `${genannt.slice(0, -1).join(', ')} und ${genannt[genannt.length - 1]}`;
   }
   /** Hinweis bei `erfassen: false` (Wortlaut 12), nur Text. */
-  const hinweisText = boards => `Auf ${boardsText(boards)} werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript.`;
+  const laeufeHinweisText = boards => `Auf ${boardsText(boards)} werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript.`;
 
   /** Meldung über der Liste (Wortlaut 10, Form wie R00205 FA 8). */
-  function fehlerText({ status, fehler }) {
+  function laeufeFehlerText({ status, fehler }) {
     if (status === 0) return 'Die Läufe ließen sich nicht lesen: keine Verbindung zum Programm.';
     return `Die Läufe ließen sich nicht lesen: ${ohneSteuerzeichen(fehler) || 'unbekannter Fehler'} (${status}).`;
   }
@@ -175,9 +175,9 @@
     let oben = '';
     if (l.ergebnis && l.ergebnis.art === 'fehler') {
       const erneut = `<button type="button" class="cl-knopf" id="laeufe-erneut"${l.laedt ? ' aria-disabled="true"' : ' data-act="laeufe-lesen"'}>Erneut versuchen</button>`;
-      oben = `<div class="cl-meld lf-meld">${ACHTUNG_SYMBOL}<p class="cl-meldtext">${esc(fehlerText(l.ergebnis.fehler))}</p>${erneut}</div>`;
+      oben = `<div class="cl-meld lf-meld">${ACHTUNG_SYMBOL}<p class="cl-meldtext">${esc(laeufeFehlerText(l.ergebnis.fehler))}</p>${erneut}</div>`;
     }
-    if (liste && l.ergebnis.antwort.erfassen === false) oben += `<p class="lf-hw" role="note">${esc(hinweisText(l.ergebnis.antwort.boards_aus || []))}</p>`;
+    if (liste && l.ergebnis.antwort.erfassen === false) oben += `<p class="lf-hw" role="note">${esc(laeufeHinweisText(l.ergebnis.antwort.boards_aus || []))}</p>`;
     let mitte = '';
     if (zeilen.length) mitte = tabelleHtml(zeilen, liste, esc);
     else if (liste) mitte = '<div class="cl-leer">An dieser Aufgabe stehen keine Läufe mehr.</div>';
@@ -186,5 +186,5 @@
     return `<div class="mod-main lf-panel">${kopf}${oben}${mitte}${fuss}</div>`;
   }
 
-  Object.assign(ziel, { laeufe, kennungsmengeGeaendert, laeufeAnsichtHtml, hinweisText, fehlerText, statusText });
+  Object.assign(ziel, { laeufe, kennungsmengeGeaendert, laeufeAnsichtHtml, laeufeHinweisText, laeufeFehlerText });
 })(typeof module !== 'undefined' ? module.exports : window);

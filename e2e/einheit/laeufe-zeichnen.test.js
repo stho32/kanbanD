@@ -3,7 +3,7 @@
 process.env.TZ = 'Europe/Berlin';
 const test = require('node:test');
 const assert = require('node:assert');
-const { laeufeAnsichtHtml, hinweisText, fehlerText } = require('../../web/laeufe.js');
+const { laeufeAnsichtHtml, laeufeHinweisText: hinweisText, laeufeFehlerText: fehlerText } = require('../../web/laeufe.js');
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const t = (kennung, column, zustand = 'vorhanden') => ({ kennung, at: kennung.split('@')[1].replace('T', ' '), role: kennung.split('@')[0], column, bytes: 2048, zustand });

@@ -147,3 +147,20 @@ test('kennungsmengeGeaendert: eine neue, eine entfernte oder eine ausgetauschte 
   assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1', 'c@3'), ['a@1', 'b@2']), true, 'gleich viele, andere');
   assert.strictEqual(kennungsmengeGeaendert(kennungen('a@1'), []), true);
 });
+
+test('web/laeufe.js überschreibt im Browser keinen Namen, den ein anderes Modul auf window legt (diff.js liest fehlerText aus commits.js)', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const ordner = path.join(__dirname, '../../web');
+  const namen = datei => {
+    const m = /Object\.assign\(ziel, \{([^}]*)\}\);/.exec(fs.readFileSync(path.join(ordner, datei), 'utf8'));
+    return m ? m[1].split(',').map(n => n.trim().split(':')[0].trim()).filter(Boolean) : [];
+  };
+  const eigene = namen('laeufe.js');
+  assert.ok(eigene.includes('laeufe'));
+  for (const datei of fs.readdirSync(ordner).filter(d => d.endsWith('.js') && d !== 'laeufe.js')) {
+    const doppelt = namen(datei).filter(n => eigene.includes(n));
+    assert.deepStrictEqual(doppelt, [], datei);
+  }
+  const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
+  for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
+});
