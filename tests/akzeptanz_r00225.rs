@@ -388,3 +388,38 @@ async fn ak08_readme_und_beschreibung_nennen_netto_unveraendert() {
     let zweck = liste.as_array().unwrap().iter().find(|e| e["methode"] == "GET" && e["pfad"] == "/api/aufgaben/{nr}/diff").unwrap()["zweck"].as_str().unwrap().to_string();
     assert!(zweck.contains("netto unverändert") && zweck.contains("fremd_dazwischen nur mit commits ≥ 1"), "{zweck}");
 }
+
+// ---- AK 7 (m2): ein unbelasteter Pfad aus einem verworfenen Netto-Eintrag bleibt Folge -----------------------------------
+
+// A0 `x` (zehn Zeilen); K0 legt `k.txt` an; F (fremd) ändert Zeile 1 von `x`; K1 löscht `x`; K2 legt `y` mit dem Inhalt von
+// `x` aus A0 an. Die Kartenschritte verbinden `x` und `y` nicht, der Netto-Lauf paart sie aber als `R100 x → y`: der Eintrag
+// ist verworfen (x belastet), und `y` steht nur in ihm. `y` muss Folge mit dem Schritt K2 sein, sonst verschwindet eine Datei,
+// die die Karte angelegt hat (Mutant m2 „nur belastete Pfade“; `b2_rest_zwilling_ausserhalb_der_netto_eintraege` tötet ihn
+// nicht, weil seine verworfenen Einträge nur belastete Pfade tragen).
+#[tokio::test]
+async fn ak07_unbelasteter_pfad_aus_verworfenem_netto_eintrag_bleibt_folge() {
+    let l = Lage::neu();
+    l.schreiben("x", X);
+    l.commit("A0");
+    l.schreiben("k.txt", "k1\n");
+    let k0 = l.commit("K0");
+    l.zeile("x", 1, "anders");
+    l.commit("F fremd");
+    l.loeschen("x");
+    let k1 = l.commit("K1 x weg");
+    l.schreiben("y", X);
+    let k2 = l.commit("K2 y neu");
+    l.karte(NR, &[&k0, &k1, &k2]);
+    let a0 = l.git(&["rev-parse", &format!("{k0}~")]);
+    assert!(l.git(&["diff", "-M50%", "--name-status", &a0, &k2]).lines().any(|z| z.starts_with('R') && z.ends_with("x\ty")), "Ausgangslage: Git paart x → y netto");
+    let lauf = l.starten();
+    let (d, _) = gesamt(&lauf.adresse, "").await;
+    assert_eq!(namen(&d), ["k.txt", "x", "y"], "{d}");
+    assert!(!ist_folge(eintrag(&d, "k.txt")));
+    assert_eq!(schritte(eintrag(&d, "x")), [format!("kd:{k1}")]);
+    assert_eq!(schritte(eintrag(&d, "y")), [format!("kd:{k2}")]);
+    assert_eq!(eintrag(&d, "y")["schritte"][0]["status"], json!("A"));
+    assert_eq!(d["hinweise"], json!([{"art": "fremd_dazwischen", "commits": 1, "dateien": 2}]));
+    let (e, _) = gesamt(&lauf.adresse, "datei=y").await;
+    assert_eq!(schritte(&dateien(&e)[0]), [format!("kd:{k2}")]);
+}
