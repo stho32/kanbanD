@@ -2310,6 +2310,8 @@ function render() {
   const tagVorher = document.getElementById(PERSONEN_TAG);
   const commitsStatusVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById(COMMITS_STATUS) : null;
   const laeufeKnotenVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? LAEUFE_KNOTEN.map(id => document.getElementById(id)).filter(Boolean) : [];
+  // die Live-Region am Kandidaten, der gerade schreibt (R00218 AK 10): sie steht vor dem Satz im Dokument und bleibt derselbe Knoten
+  const nfMeldungVorher = $('#over').dataset.offen === String(S.ui.offen || '') ? document.getElementById('nf-meld') : null;
   const personenwahlVorher = document.getElementById(PERSONENWAHL);
   const inselAlt = document.getElementById('rv-insel');
   inselGehalten = inselAlt && inselAlt.dataset.insel === reviewInselSchluessel() ? inselAlt : null;
@@ -2334,6 +2336,7 @@ function render() {
     datumsknotenBehalten(tagVorher);
     commitsStatusBehalten(commitsStatusVorher);
     laeufeKnotenBehalten(laeufeKnotenVorher);
+    ansageBehalten(nfMeldungVorher, 'nf-meld');
     ansageBehalten(reviewPosVorher, 'rv-pos');
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
   } finally {

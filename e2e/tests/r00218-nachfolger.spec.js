@@ -179,6 +179,13 @@ async function nachfolgerHalten(page, nr, antwort = null) {
   return { aufrufe, frei: () => { const f = freigaben; freigaben = []; f.forEach(r => r()); } };
 }
 
+/** Zählt `GET …/commits` der Aufgabe 1 (das Neulesen der Liste). */
+function zaehlen1(page) {
+  const aufrufe = [];
+  page.on('request', r => { if (r.method() === 'GET' && new URL(r.url()).pathname === '/api/aufgaben/1/commits') aufrufe.push(r.url()); });
+  return aufrufe;
+}
+
 /** Zählt `GET …/nachfolger` ohne zu halten. */
 function nachfolgerZaehlen(page) {
   const aufrufe = [];
@@ -447,5 +454,198 @@ test.describe('R00218 AK 7–11, 13 — Nachfolger in der Ansicht „Commits“'
     await expect(page.locator(`${GRUPPE} .nf-k`)).toHaveCount(1);
     await expect(page.locator('#commits-neu')).toBeFocused();
     expect(await ansagen()).toEqual([LAEDT]);
+  });
+
+  /* ── AK 9 Ersetzen und Entfernen, AK 10 Fehler und Sperre, AK 13 Ansage beim Erfolg (jeder Test mit eigenem R, er schreibt an der Karte) ── */
+
+  const zahl = () => +k.git('rev-list', '--count', 'HEAD');
+  const datei = nr => k.lies(`aufgaben/000${nr}-karte-${nr}.md`);
+  const ersetzenKnopf = page => page.locator(`${GRUPPE} .nf-k`).first().getByRole('button', { name: /^Ersetzen/ });
+  const entfernenKnopf = page => page.locator(GRUPPE).getByRole('button', { name: 'Verwaisten Verweis entfernen', exact: true });
+  /** Die Verweise der Aufgabendatei in ihrer Reihenfolge: „an Platz 1“ heißt an der Stelle des alten Verweises (R00203 FA 3). */
+  const verweiseDerDatei = nr => [...datei(nr).matchAll(/^  - (.+)$/gm)].map(m => m[1].replace(/"/g, ''));
+  /** Hält `methode` auf `muster`, bis `frei()`; zählt die Anfragen samt Rumpf. */
+  async function schreibenHalten(page, methode, muster) {
+    const aufrufe = []; let freigaben = [];
+    await page.route(muster, async route => {
+      if (route.request().method() !== methode) return route.continue();
+      aufrufe.push(route.request().postData());
+      await new Promise(r => freigaben.push(r));
+      await route.continue();
+    });
+    return { aufrufe, frei: () => { const f = freigaben; freigaben = []; f.forEach(r => r()); } };
+  }
+
+  test('AK 9, AK 13: „Ersetzen“ — genau ein POST mit dem Paar, ein Commit von sh, Liste neu mit K′ an Platz 1, „Ersetzt durch …“ als einzige Ansage, danach Fokus auf dem Kurz-Hash von K′', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    const vorher = zahl();
+    const dialoge = []; page.on('dialog', d => { dialoge.push(d.message()); d.dismiss(); });
+    await suchKnopf(page, rep.k).click();
+    await expect(gruppe(page)).toBeFocused();
+    const ansagen = await ansagenBeobachten(page);
+    const fokusBeimText = page.evaluate(() => new Promise(fertig => {
+      const st = document.getElementById('commits-status');
+      new MutationObserver((_, b) => { if (st.textContent.startsWith('Ersetzt')) { b.disconnect(); fertig(document.activeElement.className); } }).observe(st, { childList: true, characterData: true, subtree: true });
+    }));
+    const h = await schreibenHalten(page, 'POST', '**/api/aufgaben/1/commits/ersetzen');
+    const gelesen = zaehlen1(page);
+    await ersetzenKnopf(page).click();
+    await expect(page.locator('#commits-status')).toHaveText('');
+    expect(h.aufrufe.map(JSON.parse)).toEqual([{ ersetzungen: [{ alt: `kd:${rep.k}`, neu: `kd:${rep.k2}` }] }]);
+    h.frei();
+    await expect(page.locator('#commits-status')).toHaveText(`Ersetzt durch ${kurz(rep.k2)}.`);
+    await expect(page.locator('#commits-status')).toBeVisible();
+    const ziel = page.locator(`${ZEILEN} a.cl-hash`, { hasText: kurz(rep.k2) });
+    await expect(ziel).toBeFocused();
+    expect(await ziel.getAttribute('aria-label')).toMatch(new RegExp(`^Commit ${kurz(rep.k2)}`));
+    expect(await fokusBeimText, 'der Fokus springt erst, wenn der Satz steht').not.toContain('cl-hash');
+    expect(verweiseDerDatei(1)[0]).toBe(`kd:${rep.k2}`);
+    await expect(zeileMit(page, kurz(rep.k2)).locator('.cl-br')).toHaveText(['main']);
+    await expect(page.locator(`${PANEL}`).getByText('auf keinem Zweig')).toHaveCount(0);
+    expect(zahl()).toBe(vorher + 1);
+    expect(k.git('log', '-1', '--format=%an')).toBe('Stefan');
+    expect(gelesen.length, 'die Liste wird einmal neu gelesen').toBe(1);
+    expect(await ansagen()).toEqual([`Ersetzt durch ${kurz(rep.k2)}.`]);
+    expect(dialoge).toEqual([]);
+    expect(h.aufrufe.length).toBe(1);
+  });
+
+  test('AK 9: #3 „Verwaisten Verweis entfernen“ — genau ein DELETE, ein Commit, K′ allein, Satz im Statusbereich, Fokus auf dem Kurz-Hash von K′', async ({ page }) => {
+    await commitsOeffnen(page, 3, 2);
+    const vorher = zahl();
+    await suchKnopf(page, rep.k).click();
+    const ansagen = await ansagenBeobachten(page);
+    const h = await schreibenHalten(page, 'DELETE', /\/api\/aufgaben\/3\/commits\/[^/]+$/);
+    await entfernenKnopf(page).click();
+    h.frei();
+    await expect(page.locator('#commits-status')).toHaveText(`Verwaisten Verweis ${kurz(rep.k)} entfernt.`);
+    await expect(page.locator(ZEILEN)).toHaveCount(1);
+    await expect(page.locator(`${ZEILEN} a.cl-hash`, { hasText: kurz(rep.k2) })).toBeFocused();
+    expect(h.aufrufe.length).toBe(1);
+    expect(zahl()).toBe(vorher + 1);
+    expect(await ansagen()).toEqual([`Verwaisten Verweis ${kurz(rep.k)} entfernt.`]);
+  });
+
+  test('AK 9: ohne gewählte Person öffnet „Ersetzen“ „Ich bin …“ mit Hinweis und sendet nichts', async ({ page }) => {
+    // nach dem Setzen aus beforeEach: ohne Person
+    await page.addInitScript(() => sessionStorage.removeItem('kanbanD.ich'));
+    await commitsOeffnen(page, 1, 2);
+    const vorher = zahl();
+    const gesendet = []; page.on('request', r => { if (r.method() !== 'GET') gesendet.push(r.url()); });
+    await suchKnopf(page, rep.k).click();
+    await ersetzenKnopf(page).click();
+    await expect(page.locator('#pop .warnh')).toHaveText('Für diese Aktion zuerst wählen, wer du bist.');
+    expect(gesendet).toEqual([]);
+    expect(zahl()).toBe(vorher);
+  });
+
+  test('AK 10: hat eine zweite Sitzung K′ inzwischen hinterlegt, ergibt „Ersetzen“ 409 — Satz ohne Servertext, Wechsel nach „an der Aufgabe“, Fokus auf „Verwaisten Verweis entfernen“, kein DELETE, Datei byte-gleich; erst der Klick entfernt', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    await suchKnopf(page, rep.k).click();
+    await expect(ersetzenKnopf(page)).toBeVisible();
+    const r = await page.request.post(`${k.adresse}api/aufgaben/1/commits`, { headers: { 'X-KanbanD-Wer': 'entw1' }, data: { commits: [`kd:${rep.k2}`] } });
+    expect(r.status()).toBe(200);
+    const vorher = datei(1), anzahl = zahl();
+    const ansagen = await ansagenBeobachten(page);
+    const loeschen = []; page.on('request', q => { if (q.method() === 'DELETE') loeschen.push(q.url()); });
+    await ersetzenKnopf(page).click();
+    const kand = page.locator(`${GRUPPE} .nf-k`).first();
+    const satz = `Der Verweis ließ sich nicht ersetzen: ${kurz(rep.k2)} steht inzwischen schon an der Aufgabe (409).`;
+    await expect(kand.getByText(satz, { exact: true })).toBeVisible();
+    await expect(kand.locator('.nf-marke')).toHaveText('schon an der Aufgabe');
+    const entf = entfernenKnopf(page);
+    await expect(entf).toBeFocused();
+    const beschreibung = await entf.getAttribute('aria-describedby');
+    await expect(page.locator(`#${beschreibung}`)).toHaveText(satz);
+    expect(await kand.evaluate(e => e.querySelectorAll('[role=status],[role=alert],[aria-live]').length)).toBe(0);
+    await expect(page.locator(`${GRUPPE} .nf-kopf span`)).toHaveText(`neuester zuerst · „Verwaisten Verweis entfernen“ nimmt ${kurz(rep.k)} von der Aufgabe`);
+    expect(loeschen).toEqual([]);
+    expect(datei(1)).toBe(vorher);
+    expect(zahl()).toBe(anzahl);
+    expect(await ansagen(), 'beim 409 mit Wechsel keine Ansage').toEqual([]);
+    await entf.click();
+    await expect(page.locator('#commits-status')).toHaveText(`Verwaisten Verweis ${kurz(rep.k)} entfernt.`);
+    expect(loeschen.length).toBe(1);
+    expect(zahl()).toBe(anzahl + 1);
+  });
+
+  test('AK 10: jeder andere 409 (per page.route) zeigt die allgemeine Form in einer schon stehenden Live-Region, „Ersetzen“ bleibt, Fokus bleibt; 423 ebenso, die Datei bleibt byte-gleich', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    await suchKnopf(page, rep.k).click();
+    await expect(ersetzenKnopf(page)).toBeVisible();
+    const ansagen = await ansagenBeobachten(page);
+    let antwort = { status: 409, body: JSON.stringify({ fehler: 'etwas anderes', verweis: 'kd:anderer' }) };
+    let frei; const tor = () => new Promise(r => { frei = r; });
+    let warten = tor();
+    await page.route('**/api/aufgaben/1/commits/ersetzen', async route => { await warten; route.fulfill({ status: antwort.status, contentType: 'application/json', body: antwort.body }); });
+    await ersetzenKnopf(page).click();
+    const region = page.locator(`${GRUPPE} #nf-meld`);
+    await expect(region).toHaveAttribute('role', 'status');
+    await expect(region).toHaveText('');
+    frei();
+    await expect(region).toHaveText('Der Verweis ließ sich nicht ersetzen: etwas anderes (409).');
+    await expect(ersetzenKnopf(page)).toBeFocused();
+    expect(await ansagen()).toEqual(['Der Verweis ließ sich nicht ersetzen: etwas anderes (409).']);
+    antwort = { status: 409, body: JSON.stringify({ fehler: 'ohne verweis' }) };
+    warten = Promise.resolve();
+    await ersetzenKnopf(page).click();
+    await expect(region).toHaveText('Der Verweis ließ sich nicht ersetzen: ohne verweis (409).');
+    // 423: eine defekte Datei schaltete das Fenster über das Live-Ereignis in die Ansicht der defekten Datei; die Antwort kommt per page.route
+    // (wie R00205 AK 7), dass der Server dabei nichts schreibt, prüft R00203 an der API
+    const vorher = datei(1);
+    antwort = { status: 423, body: JSON.stringify({ fehler: 'Die Aufgabendatei ist defekt' }) };
+    await ersetzenKnopf(page).click();
+    await expect(region).toHaveText('Der Verweis ließ sich nicht ersetzen: Die Aufgabendatei ist defekt (423).');
+    await expect(ersetzenKnopf(page)).toBeFocused();
+    expect(datei(1)).toBe(vorher);
+  });
+
+  test('AK 10: 423 beim Entfernen nennt „ließ sich nicht entfernen“ (#3)', async ({ page }) => {
+    await commitsOeffnen(page, 3, 2);
+    await suchKnopf(page, rep.k).click();
+    await expect(entfernenKnopf(page)).toBeVisible();
+    await page.route(/\/api\/aufgaben\/3\/commits\/[^/]+$/, route => route.request().method() === 'DELETE' ? route.fulfill({ status: 423, contentType: 'application/json', body: JSON.stringify({ fehler: 'Die Aufgabendatei ist defekt' }) }) : route.continue());
+    await entfernenKnopf(page).click();
+    await expect(page.locator(`${GRUPPE} #nf-meld`)).toHaveText('Der Verweis ließ sich nicht entfernen: Die Aufgabendatei ist defekt (423).');
+    await expect(entfernenKnopf(page)).toBeFocused();
+  });
+
+  test('AK 10: solange „Ersetzen“ wartet, sind alle Knöpfe der Suche und jedes „Nachfolger suchen“ gesperrt; ein zweiter Klick ergibt keinen zweiten Aufruf und keinen zweiten Commit', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    const echt = await (await page.request.get(`${k.adresse}api/aufgaben/1/commits/kd:${rep.k}/nachfolger`)).json();
+    const zweiter = { ...echt.kandidaten[0], verweis: `kd:${rep.k2}`, an_der_karte: true };
+    await page.route(/\/nachfolger$/, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...echt, kandidaten: [echt.kandidaten[0], zweiter] }) }));
+    await suchKnopf(page, rep.k).click();
+    const vorher = zahl();
+    const h = await schreibenHalten(page, 'POST', '**/api/aufgaben/1/commits/ersetzen');
+    await ersetzenKnopf(page).click();
+    for (const knopf of [ersetzenKnopf(page), entfernenKnopf(page), suchKnopf(page, rep.k)]) {
+      await expect(knopf).toHaveAttribute('aria-disabled', 'true');
+      await expect(knopf).toHaveAttribute('data-sperrform', '');
+    }
+    await expect(ersetzenKnopf(page)).toHaveAttribute('aria-busy', 'true');
+    await ersetzenKnopf(page).click({ force: true });
+    await entfernenKnopf(page).click({ force: true });
+    expect(h.aufrufe.length).toBe(1);
+    h.frei();
+    await expect(page.locator('#commits-status')).toHaveText(`Ersetzt durch ${kurz(rep.k2)}.`);
+    expect(zahl()).toBe(vorher + 1);
+    expect(h.aufrufe.length).toBe(1);
+  });
+
+  test('AK 10: Ansichtswechsel während „Ersetzen“ — genau ein Commit, zurück in „Commits“ steht K′ an Platz 1', async ({ page }) => {
+    await commitsOeffnen(page, 1, 2);
+    await suchKnopf(page, rep.k).click();
+    const vorher = zahl();
+    const h = await schreibenHalten(page, 'POST', '**/api/aufgaben/1/commits/ersetzen');
+    await ersetzenKnopf(page).click();
+    await reiter(page, 'Inhalt');
+    h.frei();
+    await expect.poll(zahl).toBe(vorher + 1);
+    await reiter(page, 'Commits');
+    await expect(page.locator(ZEILEN)).toHaveCount(2);
+    await expect(zeileMit(page, kurz(rep.k2))).toHaveCount(1);
+    expect(verweiseDerDatei(1)[0]).toBe(`kd:${rep.k2}`);
+    expect(zahl()).toBe(vorher + 1);
   });
 });
