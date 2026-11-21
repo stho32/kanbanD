@@ -1029,3 +1029,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #227 R00223 | B1163 Berichte rechnen nur je Spalte: phasenRang/-Schwelle/-Stufen, Parameter phasen, nachPhasen weg, Ergebnis heißt bloecke; Node-Tests je Fall geprüft | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1164 Oberfläche: Feld „Phasen“, Leiste, Phasenname am Kopf, Wortlaute nach PO Z. 504, Tooltips Bindung weg; e2e-Specs je Fall angepasst | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-21 | Karte #227 R00223 | B1165 Namen ohne „Phase“ (.hinweisleiste, .wl-block, Etappe 1), README ohne Phasen, Durchsetzungsproben leer | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-21 | Karte #227 R00223 | B1166 Legacy-Probe JoinPuya (alt/neu), Factory test_auftrag gegen den Build, volles Gate, R00223 abgehakt | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
