@@ -7,6 +7,9 @@ use super::kosten::Felder;
 use super::kosteneintrag::{kennung, rolle_pruefen};
 use serde_yaml::Value;
 
+/// Ordner der Transkripte im Board-Ordner (ADR-0036 Regel 1) — hier, wo die Dienste und der Wächter ihn lesen,
+/// ohne voneinander abzuhängen (A00004 → A00008).
+pub const TRANSKRIPTE_ORDNER: &str = "transkripte";
 /// Schutzwert (ADR-0036 Regel 3): mehr Einträge nimmt eine Aufgabe über die API nicht auf.
 pub const HOECHSTZAHL_TRANSKRIPTE: usize = 1000;
 /// Größte gz-Datei in Byte (ADR-0036 Regel 5, PO Z. 375): 10 MiB.

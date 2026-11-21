@@ -8,15 +8,13 @@
 use super::{Kanban, Schritt};
 use crate::fehler::Fehler;
 use crate::format::aufgabe;
-use crate::modell::{Erfassung, GZIP_KENNBYTES, HOECHSTZAHL_TRANSKRIPTE, Person, TRANSKRIPT_HOECHSTENS, Transkripteintrag, Transkriptzeile, Transkriptzustand};
+use crate::modell::{Erfassung, GZIP_KENNBYTES, HOECHSTZAHL_TRANSKRIPTE, Person, TRANSKRIPT_HOECHSTENS, TRANSKRIPTE_ORDNER as ORDNER, Transkripteintrag, Transkriptzeile, Transkriptzustand};
 use super::antwortbudget::Rumpf;
 use std::io::Read;
 use chrono::Utc;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-/// Ordner der Transkripte im Board-Ordner (ADR-0036 Regel 1).
-pub const ORDNER: &str = "transkripte";
 /// Inhalt von `transkripte/.gitignore`: der Ordner ignoriert sich selbst, die `.gitignore` des Menschen bleibt unberührt.
 const GITIGNORE: &str = "*\n";
 

@@ -42,7 +42,7 @@ impl Eigene {
 
 /// Zählt eine Änderung an diesem Pfad (relativ zum Ordner)?
 pub fn relevant(rel: &str) -> bool {
-    let transkripte = crate::dienst::transkripte::ORDNER;
+    let transkripte = crate::modell::TRANSKRIPTE_ORDNER;
     // Transkripte (R00216, ADR-0036 Regel 8): die Sichten laden über den Commit der Aufgabendatei neu, nicht über 10 MB
     let unter_transkripte = rel == transkripte || rel.strip_prefix(transkripte).is_some_and(|r| r.starts_with('/'));
     !rel.is_empty() && rel != ".git" && !rel.starts_with(".git/") && !rel.ends_with(".kanbanD-tmp") && !unter_transkripte
