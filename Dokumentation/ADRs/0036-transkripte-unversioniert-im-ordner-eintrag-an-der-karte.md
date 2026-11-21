@@ -1,10 +1,10 @@
 # ADR-0036: Transkripte der Agentenläufe — gzip unversioniert unter `transkripte/<nr>/`, Dateiname aus der Kennung, Eintrag `transcripts` an der Karte, Schalter `record-transcripts`, Lesen im Antwortbudget
 
-**Status**: Akzeptiert
+**Status**: Akzeptiert; Nachtrag 2026-11-21 „Gebaut“ (G1–G9) Akzeptiert — gebaute Prüfreihenfolge des Hochladens (Regel 5), Ortszeit mit Versatz (Regel 3), leere `.gitignore` (Regel 1), Schalter formwidrig (Regel 4), gescheiterter Commit und Löschen unter einer Sperre (Regel 5), Lesen ohne Lücke zwischen Prüfen und Öffnen (Regel 7), Lesefelder (Regel 5)
 **Datum**: 2026-11-21
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #208, Lauf 208-architekt-1)
 **Kontext-Anforderung**: — (Karte #208, Scheibe C1 „Transkripte der Agentenläufe ablegen (API und Schalter in der Datei)“; Anforderung und WBS-Knoten folgen über den planer). Bezug: po-entscheidungen Z. 370–381, 387; ADR-0003, ADR-0006, ADR-0008, ADR-0024, ADR-0028, ADR-0031, ADR-0032 (Punkt 10, N2.2, N5.1)
-**Erprobt durch**: Probe 2026-11-21 in einem Wegwerf-Repository: ein Ordner `transkripte/` mit `.gitignore` = `*` erscheint weder in `git status --porcelain --untracked-files=all` noch in `git add -A`. Alles Übrige am Code gelesen, nicht gefahren (Stand `5e418f13`).
+**Erprobt durch**: Probe 2026-11-21 in einem Wegwerf-Repository: ein Ordner `transkripte/` mit `.gitignore` = `*` erscheint weder in `git status --porcelain --untracked-files=all` noch in `git add -A`. Alles Übrige am Code gelesen, nicht gefahren (Stand `5e418f13`). Nachtrag „Gebaut“: belegt durch den Bau auf main (`c37b74cc`), die Tests der Nacharbeit 1 an #208 (je Punkt erst rot, dann grün) und den Entwicklertest 208-entwicklertester-1 gegen einen Release-Build über die API.
 
 ## Kontext
 
@@ -113,8 +113,63 @@ Qualitätsziele: (Q1) kein Transkript gerät je in einen Commit; (Q2) eine Anfra
 - [ ] Factory (E2, `/factory lehren`): multipart-Upload je Lauf, 409 `erfassung` und 404 hinnehmen.
 - [ ] Modell nach dem Bau nachführen (A00003, A00004, A00005, A00008).
 
+## Nachtrag 2026-11-21 „Gebaut“: Was gebaut ist — Prüfreihenfolge, Ortszeit, `.gitignore`, Schalter, Rücknahme, Löschen, Lesen (Karte #208, R00216, Architektur-Review 208-1 und 208-2)
+
+**Status**: Akzeptiert (2026-11-21). **Entscheider**: Claude (autonom, architekt, Lauf 208-architekt-2). Der Nachtrag hält fest, wie #208 die Regeln umgesetzt hat. Wo der Bau genauer oder strenger ist als der Text oben, gilt dieser Nachtrag; die gewählten Optionen (A, N1, U1, L1) bleiben.
+
+### G1 Prüfreihenfolge beim Hochladen (ändert Regel 5, `POST`)
+
+Gebaut (`src/web/mod.rs:1351`, `:1421`; `src/dienst/transkripte.rs:178`, `:187`, `:200`):
+
+1. **Vor dem Körper**: `X-KanbanD-Wer` (Person) → 404 unbekannte Nummer → 423 defekte Datei → 409 `{fehler, erfassung: "aus", boards}` → **409 ab 1000 Einträgen** (neu vor dem Körper; oben erst unter der Sperre). Ein kaputter Multipart-Rahmen ist 400.
+2. **Vor der Datei, sobald `at`, `role` und `column` vorne stehen**: Form der Felder (400) und **Kennung bzw. gefalteter Name** (409 `{fehler, kennung}`), noch bevor ein Byte der Datei gelesen ist. Die Spalte wird hier nicht geprüft, nur unter der Sperre. Stehen die Felder hinter der Datei, entfällt diese Stufe.
+3. **Die Datei**: Die ersten drei Byte bleiben im Speicher, bis die Kennbytes `1f 8b 08` geprüft sind (sonst 400, ohne dass etwas auf der Platte entsteht). Erst danach entstehen Ordner und Zwischendatei `.hochladen-<pid>-<ns>-<n>.kanbanD-tmp` in `transkripte/<nr4>/`, ohne Sperre. 413 ab dem Byte über 10.485.760 und ebenso, wenn die Anfrage die Körpergrenze `KOERPERGRENZE` (10 MB + 64 KB) reißt. Unbekanntes Feld, doppeltes `datei`, ein Textfeld über 1024 Byte oder nicht UTF-8 und fehlendes `datei` sind 400.
+4. **Körperende**: leer oder kürzer als die Kennbytes → 400; `sync_all` der Zwischendatei **vor** der Sperre — die Sperre wartet nicht auf die Platte (ADR-0032).
+5. **Unter `gesperrt()` unverändert** (Prüfen, dann Handeln): Datei der Aufgabe frisch lesen (404/423), Schalter (409), Felder (400), Spalte eines Boards der Aufgabe (400), Höchstzahl (409), Kennung und Name (409), `transkripte/` und `transkripte/<nr4>/` sicher (500) → umbenennen → ein Commit nur mit der Aufgabendatei → 201.
+
+Grund: Was ohne Körper entscheidbar ist, soll den Körper nicht lesen lassen (Entwicklertest: 409 nach 0,05 s bei angekündigten 50 MB, bei 1000 Einträgen, gleicher Kennung und Schalter aus), und unter der Sperre läuft keine langsame Arbeit. Die Stufen 1 und 2 sind Vorprüfungen ohne Sperre; maßgeblich bleibt Stufe 5. Die Endpunkt-Liste (`src/web/endpunkte.rs:48`) nennt dieselbe Reihenfolge.
+
+### G2 Zeitpunkt in Ortszeit mit Versatz (ergänzt Regel 3)
+
+`at` wird in Ortszeit mit Versatz gespeichert, wie bei Kosteneinträgen (ADR-0028). Gebaut über dieselbe Funktion `kosteneintraege::zeitpunkt_der_anfrage` (`src/dienst/kosteneintraege.rs:126`, auch „nicht in der Zukunft“) und dieselben Regeln für Rolle und Kennung (`modell::kosteneintrag::rolle_pruefen`, `kennung`). So tragen Transkript und Kosteneintrag desselben Laufs dieselbe Kennung.
+
+### G3 Leere `.gitignore` (präzisiert Regel 1)
+
+„Eine vorhandene wird nie geändert“ gilt für jede `.gitignore` mit Inhalt. Eine **leere** (nur Leerraum, höchstens 64 Byte) wird durch `*` ersetzt, über Zwischendatei und Umbenennen, damit es nie eine leere oder halbe Datei gibt. Grund: Eine leere `.gitignore` — etwa der Rest eines Abbruchs — ignoriert nichts, und die Transkripte erschienen in `git status` (Q1).
+
+### G4 Schalter mit anderem Wert (präzisiert Regel 4)
+
+`record-transcripts` gilt nur als `true` oder `false`; fehlend oder `null` heißt „kein eigener Wert“. Jeder andere Wert ist ein Formatfehler beim Lesen der Board-Datei bzw. von `kanbanD.md`, wie bei anderen formwidrigen bekannten Schlüsseln. Grund: Still „aus“ zu lesen verlöre den Wert beim nächsten Schreiben, still „an“ schaltete ein, was niemand gewollt hat.
+
+### G5 Gescheiterter Commit (ändert Regel 5 „scheitert der Commit, wird die umbenannte Datei entfernt“)
+
+Die umbenannte Datei wird nur entfernt, wenn der Eintrag nach der Rücknahme nicht mehr in der Aufgabendatei steht. Misslingt die Rücknahme (etwa wegen `.git/index.lock`), bleiben Eintrag und Datei zusammen stehen — im Arbeitsbaum nie ein Eintrag ohne Datei. Der schmutzige Arbeitsbaum nach einer gescheiterten Rücknahme betrifft alle Schreibwege, nicht nur diesen, und ist eine eigene Karte.
+
+### G6 Löschen unter einer Sperre (präzisiert Regel 5, `DELETE`)
+
+Eintrag entfernen, Commit und Löschen der Datei laufen unter **einer** Sperre. Grund: Sonst konnte ein gleichzeitiger Upload derselben Kennung zwischen Commit und Löschen seine Datei ablegen und sie gleich wieder verlieren.
+
+### G7 Lesen ohne Lücke zwischen Prüfen und Öffnen (ergänzt Regel 7)
+
+Liste und Herunterladen öffnen die Datei über `lesend_oeffnen` (`src/dienst/transkripte.rs:377`): vor dem Öffnen eine gewöhnliche Datei laut `symlink_metadata`, danach dieselbe Datei laut Gerät und Inode am Handle; gelesen wird nur über das Handle. Tritt zwischen Prüfen und Öffnen ein Symlink oder eine andere Datei an die Stelle, ist der Zustand `unlesbar`. Ohne Unix bleibt nur der Vergleich der Größe. Beim Herunterladen belegt `Antwortbudget::platz` den Platz nach `bytes` vor dem Lesen (Regel 6), gelesen wird höchstens `bytes` (`take`), `Beleg::rumpf` macht daraus den Rumpf. Das weicht bewusst von ADR-0032 N5.1 Regel 2 ab („reserviert nach dem Bauen“): Eine Datei hat ihre Größe vorher, ein Diff nicht.
+
+### G8 Lesefelder (berichtigt Regel 5, letzter Punkt)
+
+`transkripte: [{kennung, at, role, column, bytes}]` liefern `GET /api/aufgaben/{nr}` und `GET /api/aufgaben` (dieselbe Darstellung der Aufgabe), ohne Dateisystemzugriff. `/api/zustand` trägt keine Aufgaben und auch die Vorgabe des Ordners nicht; die Nennung oben entfällt. `transkripte_erfassen` liefern `GET /api/boards` und `GET /api/boards/{slug}`.
+
+### G9 Wächter und Ordnername (präzisiert Regel 8)
+
+Der Name `transkripte` steht einmal, als `modell::TRANSKRIPTE_ORDNER`; Dienste und Wächter lesen ihn dort. Der Wächter hängt von keinem Dienst ab (Muss des Architektur-Reviews 208-1, ein Zwischenstand las die Konstante aus `dienst::transkripte` und schloss einen Importzyklus). Probe: `tests/fitness_waechter_importe.rs`, mit den bekannten Lücken `super::dienst` und verschachtelte Klammern (Architektur-Modell A00008).
+
+### Konsequenzen des Nachtrags
+
+- **Positiv**: Früh entscheidbare Abweisungen kosten keinen Körper; die Sperre hält nur kurze Arbeit; keine leere `.gitignore`, kein Eintrag ohne Datei, kein Lesen über einen untergeschobenen Symlink.
+- **Inkauf**: Die Vorprüfungen lesen die Aufgabendatei ein- bis zweimal zusätzlich ohne Sperre. Ein formwidriger Schalter macht das Lesen der Board-Datei oder von `kanbanD.md` zum Fehler, bis ein Mensch ihn berichtigt.
+- **Folgeaufgaben**: Die Anforderung ist R00216; das Modell ist nachgeführt (A00003, A00004, A00005, A00006, A00008, X00002, 2026-11-21). Offen bleiben #210, #218 und die Factory-Seite (E2), dazu die Karte für den schmutzigen Arbeitsbaum nach gescheiterter Rücknahme (G5).
+
 ## Quellen / Bezuege
 
 - Karte #208 mit Kommentaren 2026-11-19; po-entscheidungen Z. 370–381, 387; Vision Z. 169
 - ADR-0003, ADR-0006, ADR-0008, ADR-0024, ADR-0028, ADR-0031, ADR-0032 (Punkt 10 — Ablage und Schalter hier entschieden, N2.2, N5.1)
 - `src/modell/aufgabe.rs:458`, `src/modell/kosteneintrag.rs:82–103`, `src/dienst/anhaenge.rs`, `src/dienst/archiv.rs:46–90`, `src/dienst/antwortbudget.rs`, `src/git.rs:90–91`, `src/waechter.rs:44–46`, `src/web/mod.rs:126–127`, `:1336–1353`
+- Nachtrag „Gebaut“: Kartenkommentare an #208 vom 2026-11-21 (Architektur-Review 208-1 und 208-2, Nacharbeit 1, Entwicklertest); `src/dienst/transkripte.rs`, `src/modell/transkript.rs`, `src/web/mod.rs:132–136`, `:1351–1460`, `src/waechter.rs:44–49`, `src/dienst/archiv.rs:70`, `src/format/board.rs:94`, `tests/fitness_waechter_importe.rs` (Stand `c37b74cc`)
