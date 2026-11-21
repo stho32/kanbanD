@@ -75,7 +75,7 @@ Für das Lesen des Zustands:
 ## Folgeentscheidungen / Aufgaben
 
 - [ ] Anforderung über den planer (Punkte 1–9, Antworten des PO auf die Fragen).
-- [ ] Offen für #210 (D2, nicht hier entschieden): eigene Adresse der Laufansicht (Muster ADR-0029/ADR-0033?). Wie die Kennung in die Adresse kommt: sie enthält `@`, `:`, `+` und Leerzeichen, also kodieren, und auflösen nur über den Vergleich mit Einträgen, nie als Pfad. Grenze für Zeichen oder Zeilen beim Entpacken von bis zu 10 MB gz im Browser (`DecompressionStream`, ADR-0032 Punkt 10), Lesen im Strom oder als Ganzes, Darstellung defekter Zeilen. Mit `zustand ≠ vorhanden` hat eine Zeile kein Ziel (Punkt 9).
+- [x] Entschieden in [ADR-0041](0041-laufansicht-gzip-im-strom-mit-grenze-einmal-zeichnen-als-insel.md) (2026-11-21). Damals offen für #210 (D2, nicht hier entschieden): eigene Adresse der Laufansicht (Muster ADR-0029/ADR-0033?). Wie die Kennung in die Adresse kommt: sie enthält `@`, `:`, `+` und Leerzeichen, also kodieren, und auflösen nur über den Vergleich mit Einträgen, nie als Pfad. Grenze für Zeichen oder Zeilen beim Entpacken von bis zu 10 MB gz im Browser (`DecompressionStream`, ADR-0032 Punkt 10), Lesen im Strom oder als Ganzes, Darstellung defekter Zeilen. Mit `zustand ≠ vorhanden` hat eine Zeile kein Ziel (Punkt 9).
 - [ ] Offen für #218 (C2): ob der Reiter `erfassen: false` und `boards_aus` als Hinweis zeigt. Die Daten liefert die Antwort schon. Die Zeichnung für D1, D2 und C2 entsteht in einem Lauf des gestalters.
 - [ ] Modell nach dem Bau nachführen (A00009).
 
