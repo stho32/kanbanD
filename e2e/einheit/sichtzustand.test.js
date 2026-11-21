@@ -176,3 +176,38 @@ test('Fehlfall: ein mehrdeutiges href fällt auf die Klasse zurück; ohne href u
     assert.deepStrictEqual(gezeichnet.auswahl, [2, 2]);
   });
 }
+
+// R00221 Nacharbeit 1 (Architektur-Review S2): rollstaende fragt `scrollTop` nie in Teilbäumen, die nie scrollen und sehr groß
+// werden — `.dz-b` (Blöcke der Review-Seite) und `[data-ohne-rollstand]` (Einträge der Laufansicht); `.df-sc` zählt weiter.
+test('rollstaende liest scrollTop nie unter .dz-b oder [data-ohne-rollstand], wohl aber am Codebereich .df-sc', () => {
+  const { rollstaende } = require('../../web/sichtzustand.js');
+  const gelesen = new Map();
+  const knoten = (name, { klassen = [], attribute = {}, oben = 0 } = {}, ...kinder) => {
+    const k = { name, kinder, id: name, dataset: {}, classList: klassen, attribute,
+      getAttribute: a => (a in attribute ? attribute[a] : null),
+      matches: sel => sel.split(',').map(s => s.trim()).some(s => (s.startsWith('.') ? klassen.includes(s.slice(1)) : s.startsWith('[') && s.slice(1, -1) in attribute)),
+      get scrollTop() { gelesen.set(name, (gelesen.get(name) || 0) + 1); return oben; }, scrollLeft: 0,
+      querySelectorAll: () => [k] };
+    return k;
+  };
+  const block = i => knoten(`block${i}`, { klassen: ['dz-b'], oben: 3 }, knoten(`zeile${i}`, { oben: 3 }));
+  const eintrag = i => knoten(`eintrag${i}`, { oben: 3 }, knoten(`pre${i}`, { oben: 3 }));
+  const bereich = knoten('main', {},
+    knoten('df-sc', { klassen: ['df-sc'], oben: 40 }, block(1), block(2)),
+    knoten('lv-insel', { attribute: { 'data-ohne-rollstand': '' }, oben: 3 }, eintrag(1), eintrag(2)));
+  const alt = { NodeFilter: global.NodeFilter, document: global.document };
+  global.NodeFilter = { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_REJECT: 2 };
+  global.document = { createTreeWalker: (wurzel, _art, filter) => {
+    const folge = [];
+    const gehen = k => { for (const kind of k.kinder) { if (filter.acceptNode(kind) === 2) continue; folge.push(kind); gehen(kind); } };
+    gehen(wurzel);
+    return { nextNode: () => folge.shift() || null };
+  } };
+  try {
+    const staende = rollstaende(bereich);
+    assert.deepStrictEqual(staende.map(s => s.oben), [40]);
+  } finally {
+    Object.assign(global, alt);
+  }
+  assert.deepStrictEqual([...gelesen.keys()].sort(), ['df-sc'], 'gelesen nur am Codebereich');
+});

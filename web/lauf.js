@@ -83,45 +83,106 @@
     werkzeugergebnis: '<span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v9h12M14 9l4 4-4 4"/></svg></span>',
   };
 
-  /** Die Liste der Einträge `[{nr, eintrag}]` samt Schluss: „Ende des Transkripts“ oder, an der Grenze, Wortlaut 15. */
+  /* ── Budget für sichtbar gemachte Zeichen (FA 10, PO Z. 493): gezählt und gebucht nur in `zeichenBuchen`, gezeichnet wird nur,
+     was gebucht ist. Grund: jedes Zeichen wird zu einer Marke von gut 250 Byte HTML — ohne Budget wüchse ein Lauf aus 3 MiB
+     Steuerzeichen auf Millionen Knoten (Security-Review #210 Muss 1). ── */
+
+  const ZEICHEN_JE_TEXT = 1000;
+  const ZEICHEN_JE_LAUF = 10000;
+  /** Was `sichtbarTeile` (diff.js) sichtbar macht — ohne `\n`, das hier die Zeilen trennt; ein Node-Test hält beide gleich. */
+  const MARKIERBAR = '[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u0000-\u0008\u000B-\u001F\u007F-\u009F\u00AD\u200B-\u200D\u2028\u2029\u2060\uFEFF]';
+  const tausender = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const restText = n => (n === 1 ? '… und 1 weiteres Steuerzeichen' : `… und ${tausender(n)} weitere Steuerzeichen`);
+
+  /** Bucht die sichtbar zu machenden Zeichen eines Texts gegen `budget = {lauf, gebucht}`: höchstens 1.000 je Text und was der
+      Lauf noch hat. Liefert `{vorher, rest, nachher, gezeigt}`: `vorher` bis zum ersten Zeichen über dem Budget, `rest` die Zahl
+      der nicht gezeigten, `nachher` den übrigen Text ohne sie — kein nicht gezeigtes Zeichen bleibt im Text. */
+  function zeichenBuchen(text, budget) {
+    const frei = Math.min(ZEICHEN_JE_TEXT, budget.lauf);
+    const suche = new RegExp(MARKIERBAR, 'g');
+    let gezeigt = 0, schnitt = -1;
+    for (let m = suche.exec(text); m; m = suche.exec(text)) {
+      if (gezeigt === frei) { schnitt = m.index; break; }
+      gezeigt++;
+    }
+    budget.lauf -= gezeigt;
+    budget.gebucht += gezeigt;
+    if (schnitt < 0) return { vorher: text, rest: 0, nachher: '', gezeigt };
+    const ueber = text.slice(schnitt);
+    const nachher = ueber.replace(new RegExp(MARKIERBAR, 'g'), '');
+    return { vorher: text.slice(0, schnitt), rest: ueber.length - nachher.length, nachher, gezeigt };
+  }
+
+  /** Ein gebuchter Text: `teil(text)` zeichnet einen Abschnitt, dazwischen steht einmal die Zusammenfassung in der Farbe der Marken. */
+  function gebuchtHtml(b, teil, esc) {
+    if (!b.rest) return teil(b.vorher);
+    return `${teil(b.vorher)}<span class="mk-rest">${esc(restText(b.rest))}</span>${teil(b.nachher)}`;
+  }
+
+  /** Fremder Text einer Zeile mit Marken; ohne zu markierendes Zeichen nur maskiert (ein langer Text wird nicht zerlegt). */
+  const zeileHtml = (z, esc) => (new RegExp(MARKIERBAR).test(z) ? sichtbarHtml(z, esc) : esc(z));
+  const zeilenHtml = (text, esc) => text.split('\n').map(z => zeileHtml(z, esc)).join('\n');
+
+  /** Die Liste der Einträge `[{nr, eintrag}]` samt Schluss: „Ende des Transkripts“ oder, an der Grenze, Wortlaut 15. Je Aufruf
+      ein Lauf und ein frisches Budget. */
   function laufHtml(zeilen, grenze, esc) {
+    const budget = { lauf: ZEICHEN_JE_LAUF, gebucht: 0 };
     const schluss = grenze
       ? `<li class="lv-g meld warn" role="note">${GRENZE_SYMBOL}<p>${GRENZE_ERREICHT}</p></li>`
       : `<li class="lv-ende">${ENDE}</li>`;
-    return `<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(z => eintragHtml(z, esc)).join('')}${schluss}</ol>`;
+    return `<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(z => eintragHtml(z, esc, budget)).join('')}${schluss}</ol>`;
   }
 
-  function eintragHtml({ nr, eintrag }, esc) {
+  function eintragHtml({ nr, eintrag }, esc, budget) {
     if (!eintrag) return `<li class="lv-f meld fehl" role="note">${ACHTUNG}<p>${nichtLesbar(nr)}</p></li>`;
-    if (eintrag.art === 'nachricht') return nachrichtHtml(eintrag, esc);
-    return werkzeugHtml(eintrag, esc);
+    if (eintrag.art === 'nachricht') return nachrichtHtml(eintrag, esc, budget);
+    return werkzeugHtml(eintrag, esc, budget);
+  }
+
+  /** Name mit Marken, gebucht; leer ohne Namen. */
+  function nameHtml(name, esc, budget) {
+    if (name === null) return '';
+    return gebuchtHtml(zeichenBuchen(name, budget), z => zeileHtml(z, esc), esc);
   }
 
   /** Nachricht offen: Kürzel, Name, Wer, Uhrzeit; der Text je Zeile sichtbar gemacht, dann Markdown (maskiert, ADR-0030). */
-  function nachrichtHtml(e, esc) {
+  function nachrichtHtml(e, esc, budget) {
     const uhrzeit = uhrzeitText(e.zeit);
-    const name = e.name === null ? '' : `<b>${sichtbarHtml(e.name, esc)}</b>`;
+    const name = e.name === null ? '' : `<b>${nameHtml(e.name, esc, budget)}</b>`;
     const zeit = uhrzeit === null ? '' : `<span class="mono">${uhrzeit}</span>`;
-    const text = markdownHtml(e.text.split('\n').map(sichtbarText).join('\n'), 1);
+    const alsMarkdown = teil => (teil ? markdownHtml(teil.split('\n').map(sichtbarText).join('\n'), 1) : '');
+    const text = gebuchtHtml(zeichenBuchen(e.text, budget), alsMarkdown, esc);
     return `<li class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}</div><div class="lv-text">${text}</div></li>`;
   }
 
   const PK_KLASSE = { agent: 'pk-a', mensch: 'pk-m', werkzeug: 'pk-0' };
   /** Zwei Buchstaben aus dem Namen (zwei Wörter: je der erste), ohne Namen aus dem Wort für „wer“; nur Zierde, nie vorgelesen. */
   function kuerzel(e) {
-    const woerter = sichtbarText(e.name === null ? WER_WORT[e.wer] : e.name).split(/\s+/).filter(Boolean);
+    const quelle = e.name === null ? WER_WORT[e.wer] : e.name.slice(0, 200).replace(new RegExp(MARKIERBAR, 'g'), '');
+    const woerter = quelle.split(/\s+/).filter(Boolean);
     if (woerter.length > 1) return (Array.from(woerter[0])[0] + Array.from(woerter[1])[0]).toUpperCase();
     return Array.from(woerter[0] || '').slice(0, 2).join('').toUpperCase();
   }
 
   /** Werkzeugaufruf und -ergebnis eingeklappt: Name, Art, erste Zeile gekürzt, Uhrzeit; aufgeklappt der ganze Text, nie Markdown. */
-  function werkzeugHtml(e, esc) {
+  function werkzeugHtml(e, esc, budget) {
     const uhrzeit = uhrzeitText(e.zeit);
-    const name = e.name === null ? '' : sichtbarHtml(e.name, esc);
-    const zeilen = e.text.split('\n');
-    const zeit = uhrzeit === null ? '' : `<span class="zt">${uhrzeit}</span>`;
-    const summary = `<summary>${PFEIL}${ART_SYMBOL[e.art]}<span class="nm">${name}<span>${ART_WORT[e.art]}</span></span><span class="z1">${sichtbarHtml(gekuerzt(zeilen[0]), esc)}</span>${zeit}</summary>`;
-    return `<li class="lv-e"><details class="lv-w">${summary}<pre>${zeilen.map(z => sichtbarHtml(z, esc)).join('\n')}</pre></details></li>`;
+    const name = nameHtml(e.name, esc, budget);
+    const zeit = uhrzeit === null ? '' : `<span class="lv-zt">${uhrzeit}</span>`;
+    const gebucht = zeichenBuchen(e.text, budget);
+    const summary = `<summary>${PFEIL}${ART_SYMBOL[e.art]}<span class="nm">${name}<span>${ART_WORT[e.art]}</span></span><span class="z1">${ersteZeileHtml(gebucht, esc)}</span>${zeit}</summary>`;
+    return `<li class="lv-e"><details class="lv-w">${summary}<pre>${gebuchtHtml(gebucht, t => zeilenHtml(t, esc), esc)}</pre></details></li>`;
+  }
+
+  /** Die erste Zeile eingeklappt, gekürzt auf 200 Zeichen, aus dem gebuchten Text; endet sie am Budget, folgt die Zusammenfassung.
+      Ihre Zeichen sind schon im aufgeklappten Text als Marke gezählt: hier stehen sie nur als Text der Marke (`⟨U+202E⟩`), ohne
+      eigenes Markenelement — so bleibt es bei höchstens 1.000 Marken je Text. */
+  function ersteZeileHtml(b, esc) {
+    const zeile = b.vorher.split('\n')[0];
+    const amBudget = b.rest > 0 && zeile.length === b.vorher.length && Array.from(zeile).length <= ERSTE_ZEILE_ZEICHEN;
+    const anfang = esc(sichtbarText(gekuerzt(zeile)));
+    if (!amBudget) return anfang;
+    return `${anfang}<span class="mk-rest">${esc(restText(b.rest))}</span>`;
   }
 
   function gekuerzt(zeile) {
@@ -150,7 +211,19 @@
 
   /** Satz der Fehlermeldung (Wortlaut 19, PO Z. 490): Server mit `fehler` und Status; Verbindung und Frist; Entpacken und
       unbekannte Kennung ohne Status, ohne Text des Browsers und ohne Text der Adresse. */
+  /** Art eines Fehlers beim Lesen oder Zeichnen (FA 8): Server mit Status, Verbindung und Frist, Entpacken, `fehlt`; jede andere,
+      unerwartete Ausnahme heißt „verarbeiten“ — ihr Text (etwa „Invalid string length“) kommt nie auf die Seite (PO Z. 495). */
+  function laufFehlerArt(g) {
+    const fehler = g !== null && typeof g === 'object' ? g : {};
+    if (fehler.entpacken) return { art: 'entpacken' };
+    if (fehler.frist || fehler.status === 0) return { art: 'verbindung' };
+    if (typeof fehler.status !== 'number' || fehler.status < 400) return { art: 'verarbeiten' };
+    if (fehler.status === 404 && fehler.daten && fehler.daten.zustand === 'fehlt') return { art: 'fehlt' };
+    return { art: 'server', status: fehler.status, fehler: fehler.message };
+  }
+
   function laufFehlerText(fehler) {
+    if (fehler.art === 'verarbeiten') return NICHT_GELESEN + 'Die Datei lässt sich nicht verarbeiten.';
     if (fehler.art === 'unbekannt') return NICHT_GELESEN + 'An dieser Aufgabe steht kein Lauf mit dieser Kennung.';
     if (fehler.art === 'entpacken') return NICHT_GELESEN + 'Die Datei lässt sich nicht entpacken.';
     if (fehler.art === 'verbindung') return NICHT_GELESEN + 'keine Verbindung zum Programm.';
@@ -183,5 +256,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufAnsage, laufRumpfHtml, LAUF_GRENZEN });
+  Object.assign(ziel, { zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

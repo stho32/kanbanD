@@ -179,7 +179,15 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     expect(await page.locator(ZEILEN).evaluateAll(trs => trs.map(tr => tr.querySelectorAll('a[href]').length))).toEqual([0, 0, 1, 1, 0, 0]);
     await expect(page.locator(`${ANSICHT_LAEUFE} .lf-tab a[href]:not(.lf-an)`)).toHaveCount(0);
     const adresse = page.url();
-    for (let i = 0; i < 6; i++) await page.locator(ZEILEN).nth(i).locator('th').click();
+    // jede Zelle jeder Zeile; die Zelle mit „Ansehen“ wird an ihr selbst geklickt, nicht am Verweis (Code-Review #210 Sollte 2)
+    for (let i = 0; i < 6; i++) {
+      const zellen = page.locator(ZEILEN).nth(i).locator(':scope > th, :scope > td');
+      for (let j = 0; j < await zellen.count(); j++) {
+        const zelle = zellen.nth(j);
+        if (await zelle.locator('a[href]').count()) await zelle.dispatchEvent('click');
+        else await zelle.click();
+      }
+    }
     expect(page.url()).toBe(adresse);
     await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Läufe');
     await expect(page.locator(ZEILEN)).toHaveCount(6);

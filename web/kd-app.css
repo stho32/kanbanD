@@ -1785,7 +1785,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-w .nm{grid-area:nm;font-weight:600;white-space:nowrap}
 .lv-w .nm>span:last-child{font-weight:400;color:var(--kd-muted);margin-left:4px}
 .lv-w .z1{grid-area:z1;font:12px var(--kd-mono);color:var(--kd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.lv-w .zt{grid-area:zt;font:11.5px var(--kd-mono);color:var(--kd-muted);white-space:nowrap}
+.lv-w .lv-zt{grid-area:zt;font:11.5px var(--kd-mono);color:var(--kd-muted);white-space:nowrap}
 .lv-w>summary:hover{background:var(--kd-sunken)}
 .lv-w pre{margin:0;padding:6px var(--kd-s3) 8px 36px;border-top:1px solid var(--kd-line);font:12px/1.5 var(--kd-mono);white-space:pre-wrap;overflow-wrap:anywhere;background:var(--kd-bg)}
 .lv-f,.lv-g{display:flex;align-items:flex-start;gap:var(--kd-s3);margin-left:29px;padding:6px 10px;font-size:12.5px}
@@ -1793,6 +1793,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-f svg.i,.lv-g svg.i{flex:none;margin-top:2px}
 .lv-f{border:1px solid var(--kd-wbs-error);background:var(--kd-wbs-error-bg);color:var(--kd-wbs-error-ink)}
 .lv-g{margin-left:0;border:1px solid var(--kd-wbs-warn);background:var(--kd-wbs-warn-bg);color:var(--kd-wbs-warn-ink)}
+.mk-rest{display:inline;margin:0 1px;padding:0 3px;border:1px solid var(--kd-wbs-warn-ink);background:var(--kd-wbs-warn-bg);color:var(--kd-wbs-warn-ink);font:600 11px/1.3 var(--kd-mono);overflow-wrap:anywhere}
 .lv-ende{text-align:center;font-size:12px;color:var(--kd-muted);padding:4px 0 0}
 .lv-leer{max-width:640px;margin:0 auto}
 .lv-leer p{margin:4px 0;overflow-wrap:anywhere}

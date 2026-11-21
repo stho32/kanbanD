@@ -385,7 +385,103 @@ test.describe('R00221 Laufansicht', () => {
     const name = page.locator(`${EINTRAEGE} summary .nm`);
     await expect(name.locator('.mk-bidi')).toHaveCount(1);
     expect((await name.innerText()).indexOf('Bash')).toBeLessThan((await name.innerText()).indexOf('hs'));
-    await expect(page.locator(`${EINTRAEGE} summary .z1 .mk-bidi`)).toHaveCount(1);
+    // eingeklappt steht die Marke als Text, das Markenelement trägt der aufgeklappte Text (Budget, PO Z. 493)
+    await expect(page.locator(`${EINTRAEGE} summary .z1`)).toContainText('⟨U+202E⟩abc');
+    await expect(page.locator(`${EINTRAEGE} pre .mk-bidi`)).toHaveCount(1);
+  });
+
+  /* ── AK 8 Budget für sichtbar gemachte Zeichen (PO Z. 493), Links nur in Nachrichten (PO Z. 494), FA 8 „verarbeiten“ (PO Z. 495) ── */
+
+  const RLO = '\u202E';
+  /** Lauf ablegen: eine Zeile je Eintrag, gz über die API; liefert die Kennung. */
+  async function laufAblegen(rolle, stunde, eintraege) {
+    const kennung = `${rolle}@2026-11-21T${String(stunde).padStart(2, '0')}:00+01:00`;
+    await lv.hochladen(k.adresse, 1, kennung, 'Entwicklung', lv.gz(eintraege.map(lv.zeile).join('')));
+    return kennung;
+  }
+  /** Nach dem Lesen: Marken, Knoten, Zeit bis `setTimeout(0)`, rohe Steuerzeichen in Textknoten, Meldungstext. */
+  const seitenMass = page => page.evaluate(async () => {
+    const t0 = performance.now();
+    await new Promise(r => setTimeout(r, 0));
+    const warten = performance.now() - t0;
+    const alle = document.createTreeWalker(document, NodeFilter.SHOW_ALL);
+    let knoten = 0, roh = 0;
+    for (let n = alle.nextNode(); n; n = alle.nextNode()) { knoten++; if (n.nodeType === 3 && /[\u202E\u0001]/.test(n.data)) roh++; }
+    return { warten, knoten, roh, marken: document.querySelectorAll('#lauf .mk-z').length, rest: [...document.querySelectorAll('#lauf .mk-rest')].map(e => e.textContent), text: document.getElementById('lauf').innerText.slice(0, 3000) };
+  });
+
+  for (const [name, eintrag, rest] of [
+    ['A Werkzeugergebnis mit 1.000.000 × U+202E', { art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Bash', text: 'Anfang' + RLO.repeat(1000000) + 'Ende' }, '… und 999.000 weitere Steuerzeichen'],
+    ['B Werkzeugergebnis mit 2.700.000 × U+0001 (16 MiB entpackt)', { art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Bash', text: 'Anfang' + '\u0001'.repeat(2700000) + 'Ende' }, '… und 2.699.000 weitere Steuerzeichen'],
+    ['C Nachricht mit 262.144 × U+202E im Namen', { art: 'nachricht', wer: 'agent', name: 'Anfang' + RLO.repeat(262144) + 'Ende', text: 'Text' }, '… und 261.144 weitere Steuerzeichen'],
+  ]) {
+    test(`AK 8 · Security Muss 1: Lauf ${name} — Anfang, höchstens 1.000 Marken, Zusammenfassung, Ende; bedienbar, < 100.000 Knoten`, async ({ page }) => {
+      test.setTimeout(90000);
+      const kennung = await laufAblegen('budget', 8, [eintrag]);
+      await laufOeffnen(page, kennung);
+      await expect(page.locator(STATUS)).toHaveText(ENDE, { timeout: 30000 });
+      if (eintrag.art !== 'nachricht') await page.locator(`${EINTRAEGE} summary`).first().click();
+      const m = await seitenMass(page);
+      expect(m.marken).toBeLessThanOrEqual(1000);
+      expect(m.marken).toBeGreaterThan(0);
+      expect(m.rest).toEqual([rest]);
+      expect(m.text).toContain('Anfang');
+      expect(await page.locator(SEITE).evaluate((s, r) => s.textContent.includes(r + 'Ende'), rest)).toBe(true);
+      console.log('AK 8 Beobachtung', name.slice(0, 1), JSON.stringify({ warten: Math.round(m.warten), knoten: m.knoten, marken: m.marken }));
+      expect(m.warten).toBeLessThan(1000);
+      expect(m.knoten).toBeLessThan(100000);
+      expect(m.roh).toBe(0);
+      expect(await page.locator('body').innerText()).not.toMatch(/Invalid string length|undefined/);
+    });
+  }
+
+  test('AK 8: Kontrollpaar — gleich viel Text aus „a“ steht ganz da, ohne Zusammenfassung', async ({ page }) => {
+    const a = 'Anfang' + 'a'.repeat(1000000) + 'Ende';
+    const kennung = await laufAblegen('kontrolle', 9, [{ art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Bash', text: a }]);
+    await laufOeffnen(page, kennung);
+    await expect(page.locator(STATUS)).toHaveText(ENDE);
+    expect(await page.locator(`${EINTRAEGE} pre`).evaluate((p, erwartet) => p.textContent === erwartet, a)).toBe(true);
+    await expect(page.locator(`${SEITE} .mk-rest`)).toHaveCount(0);
+  });
+
+  test('AK 8: Lauf-Budget — bei 11 Werkzeugergebnissen mit je 1.000 × U+202E trägt das elfte nur „… und 1.000 weitere Steuerzeichen“', async ({ page }) => {
+    const kennung = await laufAblegen('elf', 10, Array.from({ length: 11 }, () => ({ art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Bash', text: RLO.repeat(1000) })));
+    await laufOeffnen(page, kennung);
+    await expect(page.locator(STATUS)).toHaveText(ENDE);
+    const je = await page.locator(`${EINTRAEGE} pre`).evaluateAll(pres => pres.map(p => [p.querySelectorAll('.mk-z').length, (p.querySelector('.mk-rest') || {}).textContent || '']));
+    expect(je.slice(0, 10)).toEqual(Array(10).fill([1000, '']));
+    expect(je[10]).toEqual([0, '… und 1.000 weitere Steuerzeichen']);
+  });
+
+  test('AK 8 · PO Z. 494: [x](https://example.org) ergibt in einer Nachricht genau ein a mit target=_blank rel=noopener, im Werkzeugtext keins', async ({ page }) => {
+    const md = '[x](https://example.org)';
+    const kennung = await laufAblegen('links', 11, [{ art: 'nachricht', wer: 'agent', text: md }, { art: 'werkzeugergebnis', wer: 'werkzeug', name: md, text: md }]);
+    await laufOeffnen(page, kennung);
+    await expect(page.locator(STATUS)).toHaveText(ENDE);
+    const nachricht = page.locator(EINTRAEGE).nth(0);
+    await expect(nachricht.locator('a')).toHaveCount(1);
+    await expect(nachricht.locator('a')).toHaveAttribute('target', '_blank');
+    await expect(nachricht.locator('a')).toHaveAttribute('rel', 'noopener');
+    await page.locator(`${EINTRAEGE} summary`).click();
+    await expect(page.locator(EINTRAEGE).nth(1).locator('a')).toHaveCount(0);
+  });
+
+  test('FA 8 (PO Z. 495): eine unerwartete Ausnahme beim Lesen zeigt „…: Die Datei lässt sich nicht verarbeiten.“ mit „Erneut versuchen“, ohne Text des Browsers', async ({ page }) => {
+    await page.addInitScript(() => { window.DecompressionStream = class { constructor() { throw new RangeError('Invalid string length'); } }; });
+    await laufOeffnen(page, L.L1);
+    await expect(page.locator(MELDUNG)).toHaveText('Das Transkript ließ sich nicht lesen: Die Datei lässt sich nicht verarbeiten.Erneut versuchen');
+    expect(await page.locator('body').innerText()).not.toMatch(/Invalid string length|undefined/);
+  });
+
+  test('UX S1: dunkel, Zeiger über dem ersten summary — die Uhrzeit trägt keinen eigenen Hintergrund', async ({ page }) => {
+    await laufOeffnen(page, L.L1);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await thema(page, 'dark');
+    const summary = page.locator(`${EINTRAEGE} summary`).first();
+    await summary.hover();
+    const r = await summary.evaluate(s => [s.matches(':hover'), getComputedStyle(s.querySelector('.lv-zt')).backgroundColor, getComputedStyle(s).backgroundColor]);
+    expect(r[0]).toBe(true);
+    expect(['rgba(0, 0, 0, 0)', r[2]]).toContain(r[1]);
   });
 
   /* ── AK 9 Live hält die Einträge ── */

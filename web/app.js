@@ -1997,19 +1997,19 @@ async function transkriptLesen(pfad, abbruchSignal) {
           if ('grenze' in s) grenze = s.grenze;
           else zeilen.push(s);
         }
-      } catch (_) {
+      } catch (g) {
         if (quelle.netz || abbruch.signal.aborted) throw netzFehler();
-        throw Object.assign(new Error('entpacken'), { entpacken: true });
+        throw g;
       }
       if (grenze) abbruch.abort();
       return { zeilen, grenze };
     });
-    return { art: 'eintraege', grenze: gelesen.grenze, html: laufHtml(gelesen.zeilen, gelesen.grenze, esc) };
+    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, html: laufHtml(gelesen.zeilen, gelesen.grenze, esc) };
   } catch (g) {
-    if (g.entpacken) return { art: 'fehler', fehler: { art: 'entpacken' } };
-    if (g.frist || g.status === 0) return { art: 'fehler', fehler: { art: 'verbindung' } };
-    if (g.status === 404 && g.daten && g.daten.zustand === 'fehlt') return { art: 'fehlt' };
-    return { art: 'fehler', fehler: { art: 'server', status: g.status, fehler: g.message } };
+    // FA 8: Server, Verbindung, Entpacken, `fehlt` — jede andere Ausnahme beim Lesen oder Zeichnen heißt „verarbeiten“ (PO Z. 495)
+    const fehler = laufFehlerArt(g);
+    if (fehler.art === 'fehlt') return { art: 'fehlt' };
+    return { art: 'fehler', fehler };
   }
 }
 
@@ -2030,9 +2030,11 @@ async function* entpacktLesen(rumpf, quelle) {
   let fertig = false;
   try {
     for (;;) {
-      const { done, value } = await leser.read();
-      if (done) { fertig = true; return; }
-      yield value;
+      let stueck;
+      // nur ein Fehler des Entpackens heißt „lässt sich nicht entpacken“ (abgeschnitten, Prüfsumme, zwei Glieder)
+      try { stueck = await leser.read(); } catch (g) { throw quelle.netz ? g : Object.assign(new Error('entpacken'), { entpacken: true }); }
+      if (stueck.done) { fertig = true; return; }
+      yield stueck.value;
     }
   } finally {
     if (!fertig) leser.cancel().catch(() => { });
@@ -2059,7 +2061,7 @@ function vLauf() {
   const zeile = laufZeile(v);
   const e = v.ergebnis;
   let insel = '';
-  if (e && e.art === 'eintraege') insel = laufInselGehalten ? LAUF_INSEL_PLATZHALTER : e.html;
+  if (e && e.art === 'eintraege') insel = laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e);
   return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${laufRumpfHtml(v, insel, esc)}</div>`;
 }
 
@@ -2074,9 +2076,17 @@ function laufInselVorher() {
 function laufInselNachher(gehalten, gehaltenGeblieben) {
   const v = S.ui.lauf;
   if (S.ui.view !== 'lauf' || !v) return;
-  if (gehalten && !gehaltenGeblieben && v.ergebnis && v.ergebnis.html) document.getElementById('lv-insel').outerHTML = v.ergebnis.html;
+  const e = v.ergebnis;
+  if (gehalten && !gehaltenGeblieben && e && e.art === 'eintraege') document.getElementById('lv-insel').outerHTML = laufInselText(e);
   const knoten = document.getElementById('lv-insel');
-  v.insel = knoten ? { knoten, ergebnis: v.ergebnis } : null;
+  v.insel = knoten ? { knoten, ergebnis: e } : null;
+  // eingesetzt: der Text fällt aus dem Zustand (ADR-0041 Punkt 5); muss die Insel neu entstehen, wird er aus den Einträgen gebaut
+  if (knoten && e && e.art === 'eintraege') e.html = null;
+}
+
+/** Der Text der Einträge: einmal beim Lesen gebaut; nach dem Einsetzen nur noch aus den Einträgen, wenn die Insel neu entsteht. */
+function laufInselText(e) {
+  return e.html === null ? laufHtml(e.zeilen, e.grenze, esc) : e.html;
 }
 
 /** Öffnet die Laufansicht aus „Läufe“ mit einem neuen Verlaufseintrag samt Marke (ADR-0041 Punkt 2). */

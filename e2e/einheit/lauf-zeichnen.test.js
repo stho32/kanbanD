@@ -27,9 +27,9 @@ test('AK 6: Datei G — Nachricht offen mit fett, Aufruf und Ergebnis eingeklapp
   assert.match(n1, /<strong>die Anforderung<\/strong>/);
   assert.doesNotMatch(n1, /<details/);
   assert.match(w2, /<details class="lv-w"><summary>/);
-  assert.match(w2, /<span class="nm">Read<span>Aufruf<\/span><\/span><span class="z1">Anforderungen\/R00219.md<\/span><span class="zt">10:00:42<\/span><\/summary>/);
+  assert.match(w2, /<span class="nm">Read<span>Aufruf<\/span><\/span><span class="z1">Anforderungen\/R00219.md<\/span><span class="lv-zt">10:00:42<\/span><\/summary>/);
   assert.strictEqual(ohneTags(f4), 'Zeile 4 des Transkripts ist nicht lesbar.');
-  assert.match(w5, /<span class="nm">Read<span>Ergebnis<\/span><\/span><span class="z1">---<\/span><span class="zt">10:00:43<\/span>/, 'Uhrzeit aus 09:00:43Z in Ortszeit');
+  assert.match(w5, /<span class="nm">Read<span>Ergebnis<\/span><\/span><span class="z1">---<\/span><span class="lv-zt">10:00:43<\/span>/, 'Uhrzeit aus 09:00:43Z in Ortszeit');
   assert.match(w5, /<pre>---\nid: R00219\nstatus: Neu<\/pre>/, 'aufgeklappt drei Zeilen in Mono, kein Markdown');
   assert.match(n6, /<span>Mensch<\/span>/);
   assert.doesNotMatch(n6, /class="mono"/, 'zeit in anderer Form entfällt');
@@ -72,7 +72,9 @@ test('AK 8: fremder Text bleibt Text — script, javascript:-Verweis, img, Bidi-
   assert.match(html, /<span class="nm">Bash<span class="mk-z mk-bidi" role="img" aria-label="sichtbar gemachtes Bidi-Steuerzeichen U\+202E">/);
   assert.ok(html.indexOf('Bash') < html.indexOf('hs<span>Aufruf'), 'Bash vor hs');
   const summary = html.split('<summary>')[1].split('</summary>')[0];
-  assert.match(summary, /<span class="z1">echo &lt;img src=x onerror=window.pwn=3&gt;<span class="mk-z mk-bidi"/);
+  // eingeklappt steht die Marke als Text, das Markenelement trägt der aufgeklappte Text (Budget, PO Z. 493)
+  assert.match(summary, /<span class="z1">echo &lt;img src=x onerror=window.pwn=3&gt;⟨U\+202E⟩abc<\/span>/);
+  assert.match(html, /<pre>echo &lt;img src=x onerror=window.pwn=3&gt;<span class="mk-z mk-bidi"/);
 });
 
 test('FA 10: Bidi- und Steuerzeichen in einer Nachricht werden vor dem Markdown sichtbar, der Name auch', () => {
@@ -109,4 +111,108 @@ test('web/lauf.js überschreibt im Browser keinen Namen, den ein anderes Modul a
   for (const datei of fs.readdirSync(ordner).filter(d => d.endsWith('.js') && d !== 'lauf.js')) assert.deepStrictEqual(namen(datei).filter(n => eigene.includes(n)), [], datei);
   const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
   for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
+});
+
+// R00221 Nacharbeit 1 (Security Muss 1, PO Z. 493–495): Budget für sichtbar gemachte Zeichen — 1.000 je Text, 10.000 je Lauf,
+// gezählt und gebucht an einer Stelle vor sichtbarHtml/sichtbarText; der Überschuss steht als eine Zusammenfassung.
+const { laufFehlerText, laufFehlerArt, zeichenBuchen, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF } = require('../../web/lauf.js');
+const { sichtbarTeile } = require('../../web/diff.js');
+const marken = html => [...html.matchAll(/class="mk-z mk-(bidi|st)"/g)].length;
+const RLO = '‮';
+const zusammenfassung = html => (/<span class="mk-rest">([^<]*)<\/span>/.exec(html) || [])[1];
+
+test('Budget: die Grenzen sind 1.000 je Text und 10.000 je Lauf', () => {
+  assert.deepStrictEqual([ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF], [1000, 10000]);
+});
+
+test('Budget: zeichenBuchen markiert genau die Zeichen, die sichtbarTeile sichtbar macht (außer \\n, das die Zeilen trennt)', () => {
+  for (let c = 0; c <= 0xFFFF; c++) {
+    if (c >= 0xD800 && c <= 0xDFFF) continue;
+    const z = String.fromCharCode(c);
+    const markiert = sichtbarTeile('a' + z + 'b').some(t => t.marke);
+    const gebucht = zeichenBuchen('a' + z + 'b', { lauf: 10000, gebucht: 0 });
+    assert.strictEqual(gebucht.gezeigt, markiert && c !== 10 ? 1 : 0, `U+${c.toString(16)}`);
+  }
+});
+
+test('AK 8 Lauf A: Werkzeugergebnis mit 1.000.000 × U+202E — Anfang, 1.000 Marken, „… und 999.000 weitere Steuerzeichen“, Ende', () => {
+  const html = laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', 'Anfang' + RLO.repeat(1000000) + 'Ende', { name: 'Bash' })], false, esc);
+  const pre = /<pre>([\s\S]*)<\/pre>/.exec(html)[1];
+  assert.strictEqual(marken(pre), 1000);
+  assert.strictEqual(zusammenfassung(pre), '… und 999.000 weitere Steuerzeichen');
+  assert.ok(pre.startsWith('Anfang') && pre.endsWith('Ende'));
+  assert.doesNotMatch(html, /‮/);
+  assert.ok(html.length < 400000, `${html.length} Zeichen HTML`);
+});
+
+test('AK 8 Lauf B: 2.700.000 × U+0001 — „… und 2.699.000 weitere Steuerzeichen“; Lauf C: Name mit 262.144 × U+202E', () => {
+  const b = laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', 'Anfang' + '\u0001'.repeat(2700000) + 'Ende')], false, esc);
+  assert.strictEqual(marken(b), 1000);
+  assert.strictEqual(zusammenfassung(b), '… und 2.699.000 weitere Steuerzeichen');
+  assert.doesNotMatch(b, /\u0001/);
+  const c = laufHtml([e(1, 'nachricht', 'agent', 'Text der Nachricht', { name: 'Anfang' + RLO.repeat(262144) + 'Ende' })], false, esc);
+  const name = /<b>([\s\S]*?)<\/b><span>Agent/.exec(c)[1];
+  assert.strictEqual(marken(name), 1000);
+  assert.strictEqual(zusammenfassung(name), '… und 261.144 weitere Steuerzeichen');
+  assert.ok(name.startsWith('Anfang') && name.endsWith('Ende'));
+  assert.doesNotMatch(c, /‮/);
+});
+
+test('Budget: Einzahl „… und 1 weiteres Steuerzeichen“; 1.000 Zeichen ganz ohne Zusammenfassung; Nachricht als Text', () => {
+  const eins = laufHtml([e(1, 'werkzeugaufruf', 'agent', RLO.repeat(1001))], false, esc);
+  assert.strictEqual(zusammenfassung(eins), '… und 1 weiteres Steuerzeichen');
+  const genau = laufHtml([e(1, 'werkzeugaufruf', 'agent', RLO.repeat(1000))], false, esc);
+  assert.strictEqual(zusammenfassung(genau), undefined);
+  const n = laufHtml([e(1, 'nachricht', 'agent', 'vor ' + '\u0007'.repeat(1500) + ' nach')], false, esc);
+  assert.strictEqual([...n.matchAll(/U\+0007/g)].length, 1000);
+  assert.strictEqual(zusammenfassung(n), '… und 500 weitere Steuerzeichen');
+  assert.match(n, /vor /);
+  assert.match(n, / nach/);
+  assert.doesNotMatch(n, /\u0007/);
+});
+
+test('Budget: Zähler der Marken über 1, 10 und 30 Texte — höchstens 1.000 je Text, 10.000 je Lauf; das elfte trägt nur die Zusammenfassung', () => {
+  for (const [anzahl, erwartet] of [[1, 1000], [10, 10000], [30, 10000]]) {
+    const zeilen = Array.from({ length: anzahl }, (_, i) => e(i + 1, 'werkzeugergebnis', 'werkzeug', RLO.repeat(1000)));
+    const html = laufHtml(zeilen, false, esc);
+    assert.strictEqual(marken(html), erwartet, `${anzahl} Texte`);
+  }
+  const elf = laufHtml(Array.from({ length: 11 }, (_, i) => e(i + 1, 'werkzeugergebnis', 'werkzeug', RLO.repeat(1000))), false, esc);
+  const elfter = elf.split('<li class="lv-e">')[11];
+  assert.strictEqual(marken(elfter), 0);
+  assert.strictEqual(zusammenfassung(elfter), '… und 1.000 weitere Steuerzeichen');
+  // ein neues Zeichnen (anderer Lauf) beginnt mit vollem Budget
+  assert.strictEqual(marken(laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', RLO.repeat(1000))], false, esc)), 1000);
+});
+
+test('Budget, Kontrollpaar: gleich viel Text aus „a“ steht ganz da', () => {
+  const a = 'Anfang' + 'a'.repeat(1000000) + 'Ende';
+  const html = laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', a)], false, esc);
+  assert.ok(html.includes(`<pre>${a}</pre>`));
+  assert.strictEqual(zusammenfassung(html), undefined);
+});
+
+test('PO Z. 494: Links nur in Nachrichten — [x](https://example.org) ergibt dort genau ein a mit target=_blank rel=noopener, im Werkzeugtext und Namen keins', () => {
+  const md = '[x](https://example.org)';
+  const n = laufHtml([e(1, 'nachricht', 'agent', md)], false, esc);
+  assert.strictEqual([...n.matchAll(/<a\b/g)].length, 1);
+  assert.match(n, /<a [^>]*href="https:\/\/example\.org"[^>]*>/);
+  assert.match(n, /target="_blank"/);
+  assert.match(n, /rel="noopener"/);
+  const w = laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', md, { name: md })], false, esc);
+  assert.doesNotMatch(w, /<a\b/);
+  const name = laufHtml([e(1, 'nachricht', 'agent', 'x', { name: md })], false, esc);
+  assert.strictEqual([...name.matchAll(/<a\b/g)].length, 0);
+});
+
+test('FA 8 (PO Z. 495): eine unerwartete Ausnahme heißt „…: Die Datei lässt sich nicht verarbeiten.“, nie Text des Browsers', () => {
+  assert.strictEqual(laufFehlerText({ art: 'verarbeiten' }), 'Das Transkript ließ sich nicht lesen: Die Datei lässt sich nicht verarbeiten.');
+  for (const g of [new RangeError('Invalid string length'), new TypeError('x is undefined'), Object.assign(new Error('Fehler'), { status: undefined }), 'kaputt', null]) {
+    assert.deepStrictEqual(laufFehlerArt(g), { art: 'verarbeiten' }, String(g));
+  }
+  assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('Antwortbudget erschöpft'), { status: 503, daten: { fehler: 'Antwortbudget erschöpft' } })), { art: 'server', status: 503, fehler: 'Antwortbudget erschöpft' });
+  assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('weg'), { status: 0 })), { art: 'verbindung' });
+  assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('Frist'), { status: 503, frist: true })), { art: 'verbindung' });
+  assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('e'), { entpacken: true })), { art: 'entpacken' });
+  assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('nicht da'), { status: 404, daten: { zustand: 'fehlt' } })), { art: 'fehlt' });
 });
