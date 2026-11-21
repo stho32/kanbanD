@@ -125,6 +125,7 @@ pub const LANGSAM_D: &str = "0.15";
 
 /// R00215: ein `git` vorn im `PATH` des Servers, das jeden Aufruf im Arbeits-Repository `r` um `d` Sekunden verzögert
 /// und dann das echte Git ausführt — so dauert eine Anfrage länger, ohne Rechenzeit zu kosten. Liefert den Wert für `PATH`.
+/// Nur Unix: Shell-Skript mit `sh`, Ausführungsrecht über `PermissionsExt`, Trenner `:` im `PATH`.
 pub fn langsames_git(r: &Path, d: &str) -> String {
     let echt = String::from_utf8(Command::new("sh").args(["-c", "command -v git"]).output().unwrap().stdout).unwrap().trim().to_string();
     let ordner = r.parent().unwrap().join("bin-langsam");
@@ -137,6 +138,7 @@ pub fn langsames_git(r: &Path, d: &str) -> String {
 
 // ---- R00215: viele Verbindungen, die nach der Statuszeile nichts mehr lesen (R00206 AK 20 b, R00208 AK 8) ------------
 
+// Nur Unix: `setsockopt` der libc auf dem rohen Dateideskriptor des Sockets.
 unsafe extern "C" {
     fn setsockopt(fd: i32, ebene: i32, name: i32, wert: *const std::ffi::c_void, laenge: u32) -> i32;
 }
