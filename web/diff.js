@@ -54,6 +54,34 @@
     });
   }
 
+  /* ── Syntaxfarben: Sprache und Grenze (R00217, ADR-0037 Punkte 3 und 7, ADR-0040 Punkt 1) ── */
+
+  /** Höchstens so viele UTF-16-Einheiten hat ein Patch, der gefärbt wird (256 × 1.024, die Grenze der ersten Antwort). */
+  const GRENZE_PATCH = 262144;
+  /** Höchstens so viele UTF-16-Einheiten hat jede Zeile eines gefärbten Patches, mit Vorzeichen, ohne `\n`. */
+  const GRENZE_ZEILE = 1000;
+
+  /** Endung des Dateinamens → Grammatik von Prism (ADR-0037 Punkt 3). */
+  const SPRACHEN = new Map(Object.entries({
+    rs: 'rust', js: 'javascript', mjs: 'javascript', cjs: 'javascript', json: 'json', css: 'css', html: 'markup', htm: 'markup',
+    xml: 'markup', svg: 'markup', md: 'markdown', py: 'python', sh: 'bash', bash: 'bash', yml: 'yaml', yaml: 'yaml', sql: 'sql',
+    cs: 'csharp', toml: 'toml', php: 'php', diff: 'diff', patch: 'diff',
+  }));
+
+  /** Pfad → Name der Grammatik oder null (ohne Endung, unbekannte Endung); Groß- und Kleinschreibung egal, nur der Dateiname zählt. */
+  function spracheZuPfad(pfad) {
+    const datei = String(pfad).slice(String(pfad).lastIndexOf('/') + 1);
+    const punkt = datei.lastIndexOf('.');
+    if (punkt < 0) return null;
+    return SPRACHEN.get(datei.slice(punkt + 1).toLowerCase()) ?? null;
+  }
+
+  /** Wird ein Patch gefärbt? Nur innerhalb beider Grenzen; darüber geht kein Auftrag an den Worker (R00217 FA 4). */
+  function faerbbar(patch) {
+    if (patch.length > GRENZE_PATCH) return false;
+    return patch.split('\n').every(zeile => zeile.length <= GRENZE_ZEILE);
+  }
+
   /** Richtungsändernde Zeichen: Einbettungen und Isolierungen, dazu LRM, RLM und ALM (Security-Review #209 S1). */
   const BIDI = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
   /** Steuerzeichen außer Tab, dazu Unsichtbares: weiches Trennzeichen, Nullbreiten, Zeilen- und Absatztrenner, Wortverbinder, BOM. */
@@ -397,6 +425,8 @@
   }
 
   Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+
+  Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE });
 
   Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, aufklappPlanSeite, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);
