@@ -81,6 +81,28 @@ impl Transkripteintrag {
     pub fn kennung(&self) -> String {
         kennung(&self.rolle, &self.zeitpunkt)
     }
+
+    /// Der Dateiname aus der Kennung (ADR-0036 Regel 2): `<rolle>@JJJJ-MM-TTTHHMM±HHMM.jsonl.gz` — die Rolle
+    /// kleingeschrieben, jede Folge von Zeichen außerhalb `[a-z0-9]` ein `-`, `-` am Rand entfällt, leer → `lauf`.
+    /// Ein Pfad entsteht daraus nur in `dienst::transkripte` (Regel 7).
+    pub fn dateiname(&self) -> String {
+        let zeit = crate::uhr::Zeitpunkt::lesen(&self.zeitpunkt).map(|z| z.moment().format("%Y-%m-%dT%H%M%z").to_string()).unwrap_or_default();
+        format!("{}@{zeit}.jsonl.gz", rolle_falten(&self.rolle))
+    }
+}
+
+/// `Code Reviewer` → `code-reviewer`, `../../x` → `x`, `..` → `lauf`.
+fn rolle_falten(rolle: &str) -> String {
+    let mut s = String::new();
+    for c in rolle.to_lowercase().chars() {
+        if c.is_ascii_lowercase() || c.is_ascii_digit() {
+            s.push(c);
+        } else if !s.ends_with('-') {
+            s.push('-');
+        }
+    }
+    let s = s.trim_matches('-');
+    if s.is_empty() { "lauf".to_string() } else { s.to_string() }
 }
 
 /// Für `GET`: `{kennung, at, role, column, bytes}` — ohne unbekannte Schlüssel.
@@ -159,6 +181,23 @@ mod tests {
     }
 
     const AN: Erfassung = Erfassung { erfassen: true, boards_aus: vec![] };
+
+    fn eintrag(at: &str, rolle: &str) -> Transkripteintrag {
+        Transkripteintrag::neu("t", Some(at), Some(rolle), Some("E"), 1).unwrap()
+    }
+
+    // R00216 AK 9a, FA 2: die Faltung nach der Tabelle, dazu Versatz in beide Richtungen und die längste Rolle
+    #[test]
+    fn dateiname_aus_der_kennung() {
+        for (rolle, name) in [("entwickler", "entwickler"), ("../../x", "x"), ("a/b", "a-b"), ("..", "lauf"), ("C:\\x", "c-x"), ("Code Reviewer", "code-reviewer"), ("  ÄÖü--x__y ", "x-y"), ("ß", "lauf"), ("-a-", "a"), ("A1 B2", "a1-b2")] {
+            assert_eq!(eintrag("2026-11-13 10:34+01:00", rolle).dateiname(), format!("{name}@2026-11-13T1034+0100.jsonl.gz"), "{rolle:?}");
+        }
+        assert_eq!(eintrag("2026-11-13 10:34-05:30", "x").dateiname(), "x@2026-11-13T1034-0530.jsonl.gz");
+        assert_eq!(eintrag("2026-11-13 10:34Z", "x").dateiname(), "x@2026-11-13T1034+0000.jsonl.gz");
+        let lang = "a".repeat(60);
+        assert_eq!(eintrag("2026-11-13 10:34+01:00", &lang).dateiname(), format!("{lang}@2026-11-13T1034+0100.jsonl.gz"));
+        assert_eq!(eintrag("2026-11-13 10:34+01:00", "Code Reviewer").dateiname(), eintrag("2026-11-13 10:34+01:00", "code-reviewer").dateiname(), "gleich gefaltet (AK 8)");
+    }
 
     // R00216 AK 3: die Tabelle Zeile für Zeile
     #[test]

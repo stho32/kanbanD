@@ -37,6 +37,7 @@ mod spalten;
 mod teilaufgaben;
 mod termine;
 mod timer;
+pub(crate) mod transkripte;
 mod verlauf;
 mod wbs;
 mod wirkungen;
