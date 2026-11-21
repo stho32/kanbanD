@@ -419,7 +419,7 @@ pub(crate) fn aufgabenordner(wurzel: &Path, nr: u32) -> Result<PathBuf, Pfadfehl
 }
 
 /// Legt `transkripte/` mit seiner `.gitignore` und `transkripte/<nr4>/` an, wo sie fehlen — eine vorhandene `.gitignore`
-/// bleibt, wie sie ist (Regel 1). Danach dieselbe Prüfung wie [`aufgabenordner`].
+/// bleibt, wie sie ist (Regel 1), außer sie ist leer. Danach dieselbe Prüfung wie [`aufgabenordner`].
 pub(crate) fn ordner_anlegen(wurzel: &Path, nr: u32) -> Result<PathBuf, Pfadfehler> {
     let unsicher = |e: std::io::Error| Pfadfehler::Unsicher(format!("{ORDNER}/ lässt sich nicht anlegen: {e}"));
     let oben = wurzel.join(ORDNER);
@@ -431,13 +431,12 @@ pub(crate) fn ordner_anlegen(wurzel: &Path, nr: u32) -> Result<PathBuf, Pfadfehl
     }
     ordner_pruefen(&oben, ORDNER)?;
     let ignorieren = oben.join(".gitignore");
-    if std::fs::symlink_metadata(&ignorieren).is_err() {
-        use std::io::Write;
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&ignorieren) {
-            Ok(mut f) => f.write_all(GITIGNORE.as_bytes()).map_err(unsicher)?,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(e) => return Err(unsicher(e)),
-        }
+    let fehlt_oder_leer = match std::fs::symlink_metadata(&ignorieren) {
+        Err(e) => e.kind() == std::io::ErrorKind::NotFound,
+        Ok(m) => m.is_file() && m.len() <= 64 && std::fs::read_to_string(&ignorieren).is_ok_and(|t| t.trim().is_empty()),
+    };
+    if fehlt_oder_leer {
+        gitignore_schreiben(&oben).map_err(unsicher)?;
     }
     let ordner = oben.join(format!("{nr:04}"));
     match std::fs::create_dir(&ordner) {
@@ -446,6 +445,21 @@ pub(crate) fn ordner_anlegen(wurzel: &Path, nr: u32) -> Result<PathBuf, Pfadfehl
         Err(e) => return Err(unsicher(e)),
     }
     aufgabenordner(wurzel, nr)
+}
+
+/// `transkripte/.gitignore` über eine Zwischendatei und Umbenennen: es gibt nie eine leere oder halbe `.gitignore`, auch
+/// wenn der Prozess oder der Plattenplatz mittendrin endet. Ersetzt eine leere (Rest eines Abbruchs der Vorversion).
+fn gitignore_schreiben(oben: &Path) -> std::io::Result<()> {
+    let zwischen = oben.join(format!("{}.kanbanD-tmp", zwischenname()));
+    let geschrieben = std::fs::OpenOptions::new().write(true).create_new(true).open(&zwischen).and_then(|mut f| {
+        f.write_all(GITIGNORE.as_bytes())?;
+        f.sync_all()
+    });
+    let ergebnis = geschrieben.and_then(|()| std::fs::rename(&zwischen, oben.join(".gitignore")));
+    if ergebnis.is_err() {
+        let _ = std::fs::remove_file(&zwischen);
+    }
+    ergebnis
 }
 
 /// Ein vorhandener Pfad muss ein echter Ordner sein (kein Symlink); ein fehlender ist in Ordnung.
@@ -588,6 +602,13 @@ mod tests {
         ordner_anlegen(w.path(), 2).unwrap();
         assert_eq!(std::fs::read_to_string(w.path().join("transkripte/.gitignore")).unwrap(), "# von Hand\n*\n");
         assert!(w.path().join("transkripte/0002").is_dir());
+        // Nacharbeit 1 #208: eine leere (Rest eines Abbruchs) wird ersetzt, ohne Zwischendatei zu hinterlassen
+        std::fs::write(w.path().join("transkripte/.gitignore"), "").unwrap();
+        ordner_anlegen(w.path(), 3).unwrap();
+        assert_eq!(std::fs::read_to_string(w.path().join("transkripte/.gitignore")).unwrap(), "*\n");
+        let mut namen: Vec<String> = std::fs::read_dir(w.path().join("transkripte")).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        namen.sort();
+        assert_eq!(namen, [".gitignore", "0001", "0002", "0003"]);
     }
 
     // R00216 AK 9c/9d, ADR-0036 Regel 7: ein Symlink auf jeder Ebene wird abgewiesen, ohne ihm zu folgen

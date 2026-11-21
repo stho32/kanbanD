@@ -622,3 +622,19 @@ async fn nacharbeit_rolle_mit_zweizeichigem_kleinbuchstaben() {
     assert_eq!(o.status(), "");
     assert!(o.transkriptdateien().iter().all(|d| !d.ends_with(".kanbanD-tmp")));
 }
+
+// Nacharbeit 1 #208 (code- und security-reviewer, Sollte): eine vorhandene leere `transkripte/.gitignore` — etwa nach
+// einem Abbruch zwischen Anlegen und Schreiben — schützt nicht; der Upload schreibt sie neu, `git status -uall` bleibt leer.
+// Eine nicht leere (von Hand) bleibt byte-gleich (AK 2, `ak02_ablage_ohne_eingriff_in_fremde_dateien`).
+#[tokio::test]
+async fn nacharbeit_leere_gitignore_wird_neu_geschrieben() {
+    for (was, inhalt) in [("leer", ""), ("nur Leerraum", " \n\n")] {
+        let o = an();
+        std::fs::create_dir(o.pfad.join("transkripte")).unwrap();
+        std::fs::write(o.pfad.join("transkripte/.gitignore"), inhalt).unwrap();
+        let (s, e) = hochladen(o.adresse(), 1, "entwickler", AT, G1.to_vec()).await;
+        assert_eq!(s, 201, "{was}: {e}");
+        assert_eq!(lies(&o.pfad, "transkripte/.gitignore"), "*\n", "{was}");
+        assert_eq!(o.status(), "", "{was}: git status --untracked-files=all leer");
+    }
+}
