@@ -173,4 +173,4 @@ function geteiltesRepository() {
   return geteilt;
 }
 
-module.exports = { geteiltesRepository, arbeitsRepositoryBauen, ausgangslage, ausgangslageVorbereiten, basisAnlegen, gitAls, dateiCommit, aufgabeDatei, AUTOR_LANG, EINSTELLUNGEN_KOPF };
+module.exports = { geteiltesRepository, arbeitsRepositoryBauen, ausgangslage, ausgangslageVorbereiten, basisAnlegen, langerOrdner, gitAls, dateiCommit, aufgabeDatei, AUTOR_LANG, EINSTELLUNGEN_KOPF };
