@@ -215,8 +215,10 @@ async fn ak04_braucht_im_rumpf_wird_abgewiesen() {
     let lage = Lage::neu();
     let commits = lage.commits();
     let datei = lage.datei(5);
-    let antwort = lage.aendern(5, json!({"braucht": [{"nummer": 1}]})).await;
-    assert_eq!((antwort.0, fehler(&antwort)), (400, FELD), "PATCH: {}", antwort.1);
+    for rumpf in [json!({"braucht": [{"nummer": 1}]}), json!({"braucht": null}), json!({"braucht": []})] {
+        let antwort = lage.aendern(5, rumpf.clone()).await;
+        assert_eq!((antwort.0, fehler(&antwort)), (400, FELD), "PATCH {rumpf}: {}", antwort.1);
+    }
     let dateien = lage.aufgabendateien();
     let antwort = lage.rufen(Method::POST, "api/aufgaben", json!({"titel": "Neu", "braucht": [{"nummer": 1}]})).await;
     assert_eq!(antwort.0, 400, "POST: {}", antwort.1);
@@ -390,7 +392,7 @@ async fn ak13_openapi_und_endpunkte_beschreiben_braucht_und_wartet() {
     assert!(beschreibung("GET", "/api/aufgaben").contains("wartet=ja|nein"));
     for (methode, pfad) in [("POST", "/api/aufgaben"), ("PATCH", "/api/aufgaben/{nr}")] {
         let text = beschreibung(methode, pfad);
-        for teil in ["braucht:", "selbst", "gibt es nicht", "Kreis", "braucht über labels setzen"] {
+        for teil in ["braucht:", "selbst", "gibt es nicht", "Kreis", "braucht über labels setzen", "auch braucht: null oder []"] {
             assert!(text.contains(teil), "{methode} {pfad} nennt „{teil}“: {text}");
         }
     }
