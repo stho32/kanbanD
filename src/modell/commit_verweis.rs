@@ -141,7 +141,7 @@ mod tests {
 
     const K1: &str = "3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e";
 
-    /// Register mit `kd` und `xx`; mit `standard` dazu die Standardanwendung (sources.wbs).
+    /// Register mit `kd` und `xx`; mit `standard` dazu die Standardanwendung (Lese-Rückfall aus der Altform, ADR-0034 Regel 1).
     fn register(standard: bool) -> Anwendungen {
         let anwendung = |k: &str| Anwendung { kuerzel: k.into(), name: k.into(), repository: String::new(), wbs: format!("/{k}/app.md"), anforderungen: String::new() };
         let wbs = if standard { "/r/Dokumentation/Planung/app.md" } else { "" };

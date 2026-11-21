@@ -35,9 +35,9 @@ pub struct Signal {
 /// Der Schlüssel des gerechneten Standardsignals „fällig“ — nicht einrichtbar, nicht setzbar.
 pub const SIGNAL_FAELLIG: &str = "due";
 
-/// Eine registrierte Anwendung, angesprochen über das Kürzel: ihr Repository (ADR-0034 Regel 1). Die Pfade eines Registers in
-/// Altform (`wbs`, `requirements` in `kanbanD.md`) liest kanbanD nur als Lese-Rückfall für den Startordner (ADR-0034 Regel 1,
-/// N2 Regel 4); sie stehen in keiner Antwort, ein mitgeschicktes Feld wird überlesen, geschrieben wird nur `repository`.
+/// Eine registrierte Anwendung, angesprochen über das Kürzel: ihr Repository (ADR-0034 Regel 1). Die übrigen Pfade eines
+/// Registers in Altform liest kanbanD nur als Lese-Rückfall für den Startordner (ADR-0034 Regel 1, N2 Regel 4); sie stehen in
+/// keiner Antwort, ein mitgeschicktes Feld wird überlesen, geschrieben wird nur `repository`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Anwendung {
     pub kuerzel: String,

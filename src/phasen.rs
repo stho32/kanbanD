@@ -126,7 +126,7 @@ impl Phasenfolge {
 }
 
 /// Die Anwendungen, an die ein Board gebunden ist: die genannten, soweit registriert; fehlt `applications`, gilt bei genau
-/// einer registrierten Anwendung diese; `applications: []` bindet keine (R00062, wie `gebundeneAnwendungen` in `web/wbs.js`).
+/// einer registrierten Anwendung diese; `applications: []` bindet keine (R00062, wie `gebundeneAnwendungen` in `web/register.js`).
 pub fn gebundene_anwendungen<'a>(board: &Board, register: &'a [Anwendung]) -> Vec<&'a Anwendung> {
     let Some(genannt) = &board.anwendungen else {
         return if let [einzige] = register { vec![einzige] } else { vec![] };

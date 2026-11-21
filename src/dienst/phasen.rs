@@ -7,7 +7,8 @@ use crate::phasen::{Phasenfolge, gebundene_anwendungen};
 use crate::warnung::unbekannte;
 use serde::Serialize;
 
-/// Die Phasen eines Boards: die Folge der ersten gebundenen Anwendung mit erreichbarer WBS und was am Board nicht stimmt.
+/// Die Phasen eines Boards: die Folge der ersten gebundenen Anwendung mit Phasen-Datei bzw. Standardmodell (bis S3, #227)
+/// und was am Board nicht stimmt.
 #[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Phasenstand {
     /// Kürzel der Anwendung, deren Folge gilt

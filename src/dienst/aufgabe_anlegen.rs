@@ -270,7 +270,7 @@ impl Kanban {
 
 /// Die Angaben, die eine Kopie von ihrer Quelle übernimmt (R00142): `key` bleibt leer, die Teilaufgaben kommen als
 /// Texte ohne Haken. Verlauf, Zeiten, Kommentare, Durchläufe, Anhänge, Archivstand, Reservierung, Preisetikett,
-/// Signale, WBS-Wirkungen, Phasen-Übersprung und Berichts-Zählung hängen an der Quelle und stehen deshalb nicht hier.
+/// Signale, Phasen-Übersprung, Berichts-Zählung und unbekannte Schlüssel hängen an der Quelle und stehen deshalb nicht hier.
 fn angaben_der_quelle(quelle: &Aufgabe) -> Angaben {
     Angaben {
         key: None,
