@@ -37,14 +37,24 @@ pub enum Fehler {
     /// Zu diesem Commit-Verweis gibt es keinen Diff (404, R00206 FA 3, ADR-0032 N4.2) — Rumpf `{fehler, zustand, grund?}`
     /// mit dem Zustand, den auch die Commit-Liste nennt.
     Commitzustand { meldung: String, zustand: crate::modell::Commitzustand, grund: Option<String> },
+    /// Für die Aufgabe ist „Transkripte erfassen“ wirksam aus (409, R00216 AK 3, ADR-0036 Regel 5) — Rumpf
+    /// `{fehler, erfassung: "aus", boards}` mit den Boards der Aufgabe, die aus sind.
+    ErfassungAus { meldung: String, boards: Vec<String> },
+    /// Die Kennung oder der gefaltete Dateiname eines Transkripts ist an der Aufgabe schon belegt (409, ADR-0036 Regel 2)
+    /// — Rumpf `{fehler, kennung}` mit der Kennung des Eintrags, der im Weg steht.
+    KennungBelegt { meldung: String, kennung: String },
+    /// Das Transkript lässt sich nicht ausliefern (404, ADR-0036 Regel 5) — Rumpf `{fehler, zustand}`.
+    Transkriptzustand { meldung: String, zustand: crate::modell::Transkriptzustand },
+    /// Der Körper ist größer als erlaubt (413, ADR-0036 Regel 5).
+    ZuGross(String),
 }
 
 impl Fehler {
     pub fn meldung(&self) -> &str {
         match self {
-            Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) | Fehler::Ausgelastet(m) => m,
+            Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) | Fehler::Ausgelastet(m) | Fehler::ZuGross(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
-            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } | Fehler::Commitzustand { meldung, .. } => meldung,
+            Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } | Fehler::Commitzustand { meldung, .. } | Fehler::ErfassungAus { meldung, .. } | Fehler::KennungBelegt { meldung, .. } | Fehler::Transkriptzustand { meldung, .. } => meldung,
         }
     }
 

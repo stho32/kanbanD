@@ -129,6 +129,10 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         })
         .routes(routes!(anhang_lesen, anhang_entfernen))
         .routes(routes!(zeit_korrigieren, zeit_loeschen))
+        .routes({
+            let (schemas, pfade, methoden) = routes!(transkript_ablegen);
+            (schemas, pfade, methoden.layer(axum::extract::DefaultBodyLimit::max(crate::dienst::transkripte::KOERPERGRENZE)))
+        })
         .routes(routes!(kosteneintrag_anlegen))
         .routes(routes!(kosteneintrag_aendern, kosteneintrag_loeschen))
         .routes(routes!(commits_lesen, commits_hinterlegen))
@@ -177,7 +181,9 @@ impl IntoResponse for Fehler {
             Fehler::Verweis { fehlt: false, .. } => StatusCode::BAD_REQUEST,
             Fehler::VerweisKonflikt { .. } => StatusCode::CONFLICT,
             Fehler::Zeitgrenze(_) | Fehler::Ausgelastet(_) => StatusCode::SERVICE_UNAVAILABLE,
-            Fehler::Commitzustand { .. } => StatusCode::NOT_FOUND,
+            Fehler::Commitzustand { .. } | Fehler::Transkriptzustand { .. } => StatusCode::NOT_FOUND,
+            Fehler::ErfassungAus { .. } | Fehler::KennungBelegt { .. } => StatusCode::CONFLICT,
+            Fehler::ZuGross(_) => StatusCode::PAYLOAD_TOO_LARGE,
         };
         match &self {
             Fehler::GrenzeErreicht { spalte, grenze, anzahl } => {
@@ -202,6 +208,18 @@ impl IntoResponse for Fehler {
             }
             Fehler::Commitzustand { meldung, zustand, grund } => {
                 let rumpf = openapi::Zustandsfehler { fehler: meldung.clone(), zustand: *zustand, grund: grund.clone() };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::ErfassungAus { meldung, boards } => {
+                let rumpf = openapi::ErfassungAus { fehler: meldung.clone(), erfassung: "aus", boards: boards.clone() };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::KennungBelegt { meldung, kennung } => {
+                let rumpf = openapi::KennungBelegt { fehler: meldung.clone(), kennung: kennung.clone() };
+                (status, Json(rumpf)).into_response()
+            }
+            Fehler::Transkriptzustand { meldung, zustand } => {
+                let rumpf = openapi::Transkriptzustandsfehler { fehler: meldung.clone(), zustand: *zustand };
                 (status, Json(rumpf)).into_response()
             }
             _ => fehlerantwort(status, self.meldung()),
@@ -1318,6 +1336,81 @@ async fn anhang_ablegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u3
     })
     .await?;
     Ok((StatusCode::CREATED, Json(a)).into_response())
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/aufgaben/{nr}/transkripte",
+    tag = "Aufgaben",
+    description = "Transkript eines Agentenlaufs ablegen (R00216, ADR-0036; multipart: at, role, column, Datei datei) — die schon gezippte Datei (.jsonl.gz, beginnt mit 1f 8b 08) bis 10.485.760 Byte liegt danach unversioniert unter transkripte/<nr>/ mit einem Namen aus der Kennung, die Aufgabe trägt den Eintrag unter transcripts, ein Commit nur mit der Aufgabendatei; Kennung role@JJJJ-MM-TTTHH:MM±HH:MM wie beim Kosteneintrag desselben Laufs; at nicht in der Zukunft, column eine Spalte eines Boards der Aufgabe; Reihenfolge: 404 unbekannte Nummer → 423 defekte Datei → 409 {fehler, erfassung: \"aus\", boards}, wenn record-transcripts für die Aufgabe wirksam aus ist, noch bevor der Körper gelesen wird → 413 über 10 MB → 400 keine gzip-Datei, leer, ein Feld fehlt oder ist ungültig → 409 {fehler, kennung} gleiche Kennung oder gleicher Dateiname (Rolle gefaltet auf a-z0-9-), 409 ab 1000 Einträgen → 500 transkripte/ ist ein Symlink",
+    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
+    request_body(content_type = "multipart/form-data", description = "Felder at (JJJJ-MM-TT HH:MM±HH:MM), role (1 bis 60 Zeichen ohne @), column (Spalte eines Boards der Aufgabe) und Datei datei (.jsonl.gz)"),
+    responses((status = 201, description = "abgelegt — der Eintrag mit kennung", body = crate::modell::Transkripteintrag), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "erfassung aus ({fehler, erfassung, boards}) oder Kennung belegt ({fehler, kennung}) oder 1000 Einträge", body = crate::web::openapi::ErfassungAus), (status = 413, description = "größer als 10.485.760 Byte", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem, transkripte/ ist ein Symlink", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn transkript_ablegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, teile: Result<axum::extract::Multipart, axum::extract::multipart::MultipartRejection>) -> Result<Response, Fehler> {
+    use crate::dienst::transkripte::Empfang;
+    // vor dem Körper: Person, 404, 423, 409 aus (ADR-0036 Regel 5)
+    let (person, wurzel) = blockierend(&app, move |k| {
+        let p = k.handelnder(wer.as_deref())?;
+        k.transkript_vorpruefen(nr)?;
+        Ok((p, k.ordner().wurzel().to_path_buf()))
+    })
+    .await?;
+    let mut teile = teile.map_err(|e| Fehler::Ungueltig(format!("Hochladen: {}", e.body_text())))?;
+    let mut empfang = Empfang::neu(&wurzel, nr);
+    let gelesen = transkript_empfangen(&mut teile, &mut empfang).await;
+    let eintrag = blockierend(&app, move |k| match gelesen {
+        Ok(angaben) => k.transkript_einhaengen(&person, nr, &angaben, empfang),
+        Err(f) => {
+            k.transkript_verwerfen(empfang);
+            Err(f)
+        }
+    })
+    .await?;
+    Ok((StatusCode::CREATED, Json(eintrag)).into_response())
+}
+
+/// Liest die Felder und schreibt die Datei Stück für Stück in den Empfang — nie den ganzen Körper in den Speicher.
+async fn transkript_empfangen(teile: &mut axum::extract::Multipart, empfang: &mut crate::dienst::transkripte::Empfang) -> Result<crate::dienst::transkripte::Ablageangaben, Fehler> {
+    use crate::dienst::transkripte::FELD_HOECHSTENS;
+    let lesefehler = |e: axum::extract::multipart::MultipartError| match e.status() {
+        StatusCode::PAYLOAD_TOO_LARGE => Fehler::ZuGross("Die Anfrage ist größer als 10 MB und 64 KB".into()),
+        _ => Fehler::Ungueltig(format!("Hochladen: {}", e.body_text())),
+    };
+    let mut angaben = crate::dienst::transkripte::Ablageangaben::default();
+    let mut mit_datei = false;
+    while let Some(mut feld) = teile.next_field().await.map_err(lesefehler)? {
+        let name = feld.name().unwrap_or_default().to_string();
+        if name == "datei" {
+            if mit_datei {
+                return Err(Fehler::Ungueltig("Feld „datei“ doppelt".into()));
+            }
+            mit_datei = true;
+            angaben.form_pruefen()?;
+            while let Some(stueck) = feld.chunk().await.map_err(lesefehler)? {
+                tokio::task::block_in_place(|| empfang.stueck(&stueck))?;
+            }
+            continue;
+        }
+        let ziel = match name.as_str() {
+            "at" => &mut angaben.at,
+            "role" => &mut angaben.role,
+            "column" => &mut angaben.column,
+            _ => return Err(Fehler::Ungueltig(format!("unbekanntes Feld „{}“ — erwartet at, role, column, datei", crate::nachricht::wert(&name)))),
+        };
+        let mut text = Vec::new();
+        while let Some(stueck) = feld.chunk().await.map_err(lesefehler)? {
+            text.extend_from_slice(&stueck);
+            if text.len() > FELD_HOECHSTENS {
+                return Err(Fehler::Ungueltig(format!("Feld „{name}“ ist länger als {FELD_HOECHSTENS} Byte")));
+            }
+        }
+        *ziel = Some(String::from_utf8(text).map_err(|_| Fehler::Ungueltig(format!("Feld „{name}“ ist kein UTF-8")))?);
+    }
+    if !mit_datei {
+        return Err(Fehler::Ungueltig("Feld „datei“ fehlt".into()));
+    }
+    Ok(angaben)
 }
 
 fn inhaltstyp(name: &str) -> &'static str {

@@ -61,13 +61,13 @@ fn anlegen(a: &mut Aufgabe, mut roh: Roheintrag, jetzt: DateTime<Utc>, boards: i
     if a.kosteneintraege.len() >= HOECHSTZAHL_KOSTENEINTRAEGE {
         return Err(Fehler::Konflikt(format!("#{nr} trägt schon {HOECHSTZAHL_KOSTENEINTRAEGE} Kosteneinträge — mehr nimmt eine Aufgabe nicht auf")));
     }
-    roh.zeitpunkt = zeitpunkt_der_anfrage(roh.zeitpunkt, jetzt)?;
+    roh.zeitpunkt = zeitpunkt_der_anfrage(PFAD, roh.zeitpunkt, jetzt)?;
     if roh.waehrung.is_none() {
         let etikett = a.kosten.as_ref().ok_or_else(|| Fehler::Ungueltig(format!("{PFAD}: currency fehlt, und #{nr} trägt kein cost.currency")))?;
         roh.waehrung = Some(etikett.waehrung.clone());
     }
     let neu = Kosteneintrag::pruefen(PFAD, roh).map_err(Fehler::Ungueltig)?;
-    spalte_pruefen(&neu.spalte, nr, &boards()?)?;
+    spalte_pruefen(PFAD, &neu.spalte, nr, &boards()?)?;
     kennung_frei(a.kosteneintraege.iter(), &neu, nr)?;
     let nachricht = format!("#{nr} Kosteneintrag angelegt: {}", kurz(&neu));
     a.kosteneintraege.push(neu);
@@ -83,7 +83,7 @@ fn aendern(a: &mut Aufgabe, kennung: &str, roh: Roheintrag, tokens_entfernen: bo
     let neu = Kosteneintrag::pruefen(
         PFAD,
         Roheintrag {
-            zeitpunkt: zeitpunkt_der_anfrage(roh.zeitpunkt, jetzt)?.or(Some(alt.zeitpunkt.clone())),
+            zeitpunkt: zeitpunkt_der_anfrage(PFAD, roh.zeitpunkt, jetzt)?.or(Some(alt.zeitpunkt.clone())),
             rolle: roh.rolle.or(Some(alt.rolle.clone())),
             spalte: roh.spalte.or(Some(alt.spalte.clone())),
             cent: roh.cent.or(Some(alt.cent)),
@@ -95,7 +95,7 @@ fn aendern(a: &mut Aufgabe, kennung: &str, roh: Roheintrag, tokens_entfernen: bo
     .map_err(Fehler::Ungueltig)?;
     // die Spalte eines bestehenden Eintrags ist eine Tatsache (AK 8) — geprüft wird nur eine neue
     if neu.spalte != alt.spalte {
-        spalte_pruefen(&neu.spalte, nr, &boards()?)?;
+        spalte_pruefen(PFAD, &neu.spalte, nr, &boards()?)?;
     }
     if neu.kennung() != alt.kennung() {
         kennung_frei(a.kosteneintraege.iter().enumerate().filter(|(j, _)| *j != i).map(|(_, e)| e), &neu, nr)?;
@@ -123,25 +123,25 @@ fn stelle(a: &Aufgabe, kennung: &str) -> Result<usize, Fehler> {
 
 /// `at` einer Anfrage: nicht in der Zukunft, gespeichert in Ortszeit mit Versatz (R00084). Ein unlesbarer Wert
 /// bleibt stehen — der Konstruktor weist ihn mit dem Feldnamen ab.
-fn zeitpunkt_der_anfrage(at: Option<String>, jetzt: DateTime<Utc>) -> Result<Option<String>, Fehler> {
+pub(super) fn zeitpunkt_der_anfrage(pfad: &str, at: Option<String>, jetzt: DateTime<Utc>) -> Result<Option<String>, Fehler> {
     let Some(z) = at.as_deref().and_then(Zeitpunkt::lesen) else {
         return Ok(at);
     };
     if z.utc() > jetzt {
-        return Err(Fehler::Ungueltig(format!("{PFAD}.at: Der Zeitpunkt liegt in der Zukunft")));
+        return Err(Fehler::Ungueltig(format!("{pfad}.at: Der Zeitpunkt liegt in der Zukunft")));
     }
     Ok(Some(z.in_ortszeit().datei()))
 }
 
 /// ADR-0028 Punkt 3: der Name ist eine Spalte eines Boards, auf dem die Aufgabe liegt — liegt sie auf keinem, eines
 /// Boards des Ordners.
-fn spalte_pruefen(spalte: &str, nr: u32, boards: &[Board]) -> Result<(), Fehler> {
+pub(super) fn spalte_pruefen(pfad: &str, spalte: &str, nr: u32, boards: &[Board]) -> Result<(), Fehler> {
     let liegt_irgendwo = boards.iter().any(|b| b.spalte_von(nr).is_some());
     let gemeint = |b: &&Board| !liegt_irgendwo || b.spalte_von(nr).is_some();
     if boards.iter().filter(gemeint).any(|b| b.spalten.iter().any(|s| s.name == spalte)) {
         return Ok(());
     }
-    Err(Fehler::Ungueltig(format!("{PFAD}.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", nachricht::wert(spalte))))
+    Err(Fehler::Ungueltig(format!("{pfad}.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", nachricht::wert(spalte))))
 }
 
 /// ADR-0028 Punkt 4: gleiche Kennung an derselben Aufgabe → 409. Zwei Läufe derselben Rolle in derselben Minute

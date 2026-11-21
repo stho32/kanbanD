@@ -42,7 +42,10 @@ impl Eigene {
 
 /// Zählt eine Änderung an diesem Pfad (relativ zum Ordner)?
 pub fn relevant(rel: &str) -> bool {
-    !rel.is_empty() && rel != ".git" && !rel.starts_with(".git/") && !rel.ends_with(".kanbanD-tmp")
+    let transkripte = crate::dienst::transkripte::ORDNER;
+    // Transkripte (R00216, ADR-0036 Regel 8): die Sichten laden über den Commit der Aufgabendatei neu, nicht über 10 MB
+    let unter_transkripte = rel == transkripte || rel.strip_prefix(transkripte).is_some_and(|r| r.starts_with('/'));
+    !rel.is_empty() && rel != ".git" && !rel.starts_with(".git/") && !rel.ends_with(".kanbanD-tmp") && !unter_transkripte
 }
 
 pub fn relativ(wurzel: &Path, pfad: &Path) -> Option<String> {
@@ -186,6 +189,17 @@ mod tests {
         assert!(!relevant(""));
         assert_eq!(relativ(Path::new("/a/b"), Path::new("/a/b/boards/x.md")), Some("boards/x.md".into()));
         assert_eq!(relativ(Path::new("/a/b"), Path::new("/c/x.md")), None);
+    }
+
+    // R00216 AK 15, ADR-0036 Regel 8: unter `transkripte/` zählt nichts — auch nicht der Ordner selbst
+    #[test]
+    fn transkripte_zaehlen_nicht() {
+        for rel in ["transkripte", "transkripte/.gitignore", "transkripte/0001", "transkripte/0001/x@2026-11-13T1034+0100.jsonl.gz"] {
+            assert!(!relevant(rel), "{rel}");
+        }
+        for rel in ["transkripte.md", "transkriptex/a", "aufgaben/transkripte/a"] {
+            assert!(relevant(rel), "{rel}");
+        }
     }
 
     #[test]

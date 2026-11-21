@@ -5,13 +5,241 @@
 //! Namen, den [`Transkripteintrag::dateiname`] aus der geprüften Kennung faltet. Vor jedem Öffnen, Umbenennen und Löschen
 //! prüft sie den Namen gegen das Muster und weist Symlinks auf `transkripte/`, `transkripte/<nr>/` und die Datei ab.
 
-use crate::modell::Transkripteintrag;
+use super::{Kanban, Schritt};
+use crate::fehler::Fehler;
+use crate::format::aufgabe;
+use crate::modell::{Erfassung, GZIP_KENNBYTES, HOECHSTZAHL_TRANSKRIPTE, Person, TRANSKRIPT_HOECHSTENS, Transkripteintrag, Transkriptzeile};
+use chrono::Utc;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 /// Ordner der Transkripte im Board-Ordner (ADR-0036 Regel 1).
 pub const ORDNER: &str = "transkripte";
 /// Inhalt von `transkripte/.gitignore`: der Ordner ignoriert sich selbst, die `.gitignore` des Menschen bleibt unberührt.
 const GITIGNORE: &str = "*\n";
+
+/// Körpergrenze der Route `POST …/transkripte` (ADR-0036 Regel 5): die größte Datei und 64 KB für Felder und Rahmen.
+pub const KOERPERGRENZE: usize = TRANSKRIPT_HOECHSTENS as usize + 64 * 1024;
+/// Steht in jeder Meldung zu den Feldern vorn, z. B. `transkript.role: …`.
+const PFAD: &str = "transkript";
+/// Höchstlänge eines Textfelds der Anfrage in Byte — die Rolle hat höchstens 60 Zeichen, ein Zeitpunkt etwa 25.
+pub const FELD_HOECHSTENS: usize = 1024;
+
+/// Die Textfelder des Hochladens, wie sie in der Anfrage standen.
+#[derive(Debug, Clone, Default)]
+pub struct Ablageangaben {
+    pub at: Option<String>,
+    pub role: Option<String>,
+    pub column: Option<String>,
+}
+
+impl Ablageangaben {
+    /// Die Form der Felder (400), sobald alle drei da sind — damit eine falsche Anfrage abgewiesen wird, bevor die Datei
+    /// geschrieben ist. Die Spalte und die Kennung prüft erst [`Kanban::transkript_einhaengen`] unter der Sperre.
+    pub fn form_pruefen(&self) -> Result<(), Fehler> {
+        if self.at.is_some() && self.role.is_some() && self.column.is_some() {
+            self.eintrag(0)?;
+        }
+        Ok(())
+    }
+
+    /// Der Eintrag nach ADR-0028 Punkt 2: `at` nicht in der Zukunft, gespeichert in Ortszeit mit Versatz — wie beim
+    /// Kosteneintrag desselben Laufs, damit beide dieselbe Kennung tragen.
+    fn eintrag(&self, bytes: u64) -> Result<Transkripteintrag, Fehler> {
+        let at = super::kosteneintraege::zeitpunkt_der_anfrage(PFAD, self.at.clone(), Utc::now())?;
+        Transkripteintrag::neu(PFAD, at.as_deref(), self.role.as_deref(), self.column.as_deref(), bytes).map_err(Fehler::Ungueltig)
+    }
+}
+
+/// Was ein Upload unter `transkripte/` angelegt hat — beim Verwerfen wird nur das zurückgebaut.
+#[derive(Debug, Default)]
+struct Angelegt {
+    oben: bool,
+    ordner: bool,
+}
+
+/// Die Datei eines Uploads auf dem Weg auf die Platte (ADR-0036 Regel 5, konstanter Speicher): die ersten drei Byte im
+/// Speicher, bis die Kennbytes geprüft sind; erst dann entstehen Ordner und Zwischendatei `<…>.kanbanD-tmp` in
+/// `transkripte/<nr>/`, in die jedes weitere Stück direkt geht. Fällt der Empfang, ohne eingehängt zu werden, löscht er
+/// seine Zwischendatei; Ordner baut nur [`Kanban::transkript_verwerfen`] unter der Sperre zurück.
+#[derive(Debug)]
+pub struct Empfang {
+    wurzel: PathBuf,
+    nr: u32,
+    anfang: Vec<u8>,
+    datei: Option<std::fs::File>,
+    zwischen: Option<PathBuf>,
+    bytes: u64,
+    angelegt: Angelegt,
+}
+
+impl Empfang {
+    pub fn neu(wurzel: &Path, nr: u32) -> Empfang {
+        Empfang { wurzel: wurzel.to_path_buf(), nr, anfang: vec![], datei: None, zwischen: None, bytes: 0, angelegt: Angelegt::default() }
+    }
+
+    /// Ein Stück der Datei: 413 ab dem Byte über 10.485.760, 400 bei falschen Kennbytes, 500, wenn der Ordner nicht sicher ist.
+    pub fn stueck(&mut self, stueck: &[u8]) -> Result<(), Fehler> {
+        self.bytes += stueck.len() as u64;
+        if self.bytes > TRANSKRIPT_HOECHSTENS {
+            return Err(Fehler::ZuGross(format!("Das Transkript ist größer als {TRANSKRIPT_HOECHSTENS} Byte (10 MB, gezippt)")));
+        }
+        if let Some(datei) = &mut self.datei {
+            return Ok(datei.write_all(stueck)?);
+        }
+        self.anfang.extend_from_slice(stueck);
+        if self.anfang.len() < GZIP_KENNBYTES.len() {
+            return Ok(());
+        }
+        if self.anfang[..GZIP_KENNBYTES.len()] != GZIP_KENNBYTES {
+            return Err(kein_gzip());
+        }
+        self.oeffnen()?;
+        let anfang = std::mem::take(&mut self.anfang);
+        Ok(self.datei.as_mut().expect("eben geöffnet").write_all(&anfang)?)
+    }
+
+    fn oeffnen(&mut self) -> Result<(), Fehler> {
+        let oben_da = self.wurzel.join(ORDNER).exists();
+        let ordner_da = self.wurzel.join(ORDNER).join(format!("{:04}", self.nr)).exists();
+        let ordner = ordner_anlegen(&self.wurzel, self.nr).map_err(|f| Fehler::Intern(f.meldung().to_string()))?;
+        self.angelegt = Angelegt { oben: !oben_da, ordner: !ordner_da };
+        let pfad = ordner.join(format!("{}.kanbanD-tmp", zwischenname()));
+        let datei = std::fs::OpenOptions::new().write(true).create_new(true).open(&pfad)?;
+        self.zwischen = Some(pfad);
+        self.datei = Some(datei);
+        Ok(())
+    }
+
+    /// Der Körper ist vollständig: leer oder kürzer als die Kennbytes → 400.
+    fn abschliessen(&mut self) -> Result<(PathBuf, u64), Fehler> {
+        let datei = self.datei.take().ok_or_else(kein_gzip)?;
+        datei.sync_all()?;
+        Ok((self.zwischen.clone().expect("mit der Datei angelegt"), self.bytes))
+    }
+}
+
+impl Drop for Empfang {
+    fn drop(&mut self) {
+        if let Some(z) = self.zwischen.take() {
+            let _ = std::fs::remove_file(z);
+        }
+    }
+}
+
+fn kein_gzip() -> Fehler {
+    Fehler::Ungueltig("datei: keine gzip-Datei — erwartet .jsonl.gz, beginnend mit 1f 8b 08".into())
+}
+
+/// Eindeutig je Prozess und Upload: Prozess, Zeit in Nanosekunden und ein Zähler.
+fn zwischenname() -> String {
+    static ZAEHLER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = ZAEHLER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let zeit = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or_default();
+    format!(".hochladen-{}-{zeit}-{n}", std::process::id())
+}
+
+impl Kanban {
+    /// Der wirksame Schalter für die Aufgabe (ADR-0036 Regel 4) aus allen Boards (auch archivierten) und `kanbanD.md`.
+    pub fn transkripte_erfassung(&self, nr: u32) -> Result<Erfassung, Fehler> {
+        let (boards, _) = self.ordner().boards()?;
+        let vorgabe = self.ordner().einstellungen()?.and_then(|e| e.transkripte_erfassen);
+        Ok(crate::modell::erfassung(nr, &boards, vorgabe))
+    }
+
+    /// Stufe 1, **bevor der Körper gelesen wird** (ADR-0036 Regel 5): 404 unbekannte Nummer → 423 defekte Datei →
+    /// 409 `{fehler, erfassung: "aus", boards}`.
+    pub fn transkript_vorpruefen(&self, nr: u32) -> Result<(), Fehler> {
+        self.ordner().aufgabe(nr)?;
+        erfassung_verlangen(nr, self.transkripte_erfassung(nr)?)
+    }
+
+    /// Stufe 3 unter der Sperre (Prüfen-dann-Handeln): gegen die frisch gelesene Datei erneut Schalter (409), Felder und
+    /// Spalte (400), Höchstzahl (409), Kennung und gefalteter Name (409 `{fehler, kennung}`); dann die Zwischendatei
+    /// umbenennen, den Eintrag schreiben und **einen** Commit nur mit der Aufgabendatei. Jeder Fehler räumt die
+    /// Zwischendatei und, was dieser Upload angelegt hat; scheitert der Commit, wird die umbenannte Datei entfernt.
+    pub fn transkript_einhaengen(&self, wer: &Person, nr: u32, angaben: &Ablageangaben, mut empfang: Empfang) -> Result<Transkripteintrag, Fehler> {
+        let _sperre = self.gesperrt();
+        let ergebnis = self.einhaengen_gesperrt(wer, nr, angaben, &mut empfang);
+        if ergebnis.is_err() {
+            verwerfen_gesperrt(&mut empfang);
+        }
+        ergebnis
+    }
+
+    /// Ein Upload, der vor dem Einhängen scheitert: Zwischendatei und, was er angelegt hat, unter der Sperre zurückbauen.
+    pub fn transkript_verwerfen(&self, mut empfang: Empfang) {
+        let _sperre = self.gesperrt();
+        verwerfen_gesperrt(&mut empfang);
+    }
+
+    fn einhaengen_gesperrt(&self, wer: &Person, nr: u32, angaben: &Ablageangaben, empfang: &mut Empfang) -> Result<Transkripteintrag, Fehler> {
+        let (zwischen, bytes) = empfang.abschliessen()?;
+        let mut a = self.ordner().aufgabe(nr)?;
+        erfassung_verlangen(nr, self.transkripte_erfassung(nr)?)?;
+        let neu = angaben.eintrag(bytes)?;
+        super::kosteneintraege::spalte_pruefen(PFAD, &neu.spalte, nr, &self.ordner().boards()?.0)?;
+        if a.transkripte.len() >= HOECHSTZAHL_TRANSKRIPTE {
+            return Err(Fehler::Konflikt(format!("#{nr} trägt schon {HOECHSTZAHL_TRANSKRIPTE} Transkripte — mehr nimmt eine Aufgabe nicht auf")));
+        }
+        kennung_frei(&a.transkripte, &neu, nr)?;
+        let unsicher = |f: Pfadfehler| Fehler::Intern(format!("Transkript nicht abgelegt: {}", f.meldung()));
+        ordner_anlegen(self.ordner().wurzel(), nr).map_err(unsicher)?;
+        let ziel = datei(self.ordner().wurzel(), nr, &neu).map_err(unsicher)?;
+        std::fs::rename(&zwischen, &ziel)?;
+        empfang.zwischen = None;
+        let nachricht = format!("#{nr} Transkript abgelegt: {}", crate::nachricht::wert(&neu.kennung()));
+        a.transkripte.push(Transkriptzeile::Lesbar(neu.clone()));
+        let pfad = format!("{}/{}", aufgabe::ORDNER, a.datei);
+        if let Err(f) = self.aktion(wer, &nachricht, &[Schritt::schreiben(pfad, aufgabe::schreiben(&a))]) {
+            let _ = std::fs::remove_file(&ziel);
+            return Err(f);
+        }
+        Ok(neu)
+    }
+}
+
+fn erfassung_verlangen(nr: u32, e: Erfassung) -> Result<(), Fehler> {
+    if e.erfassen {
+        return Ok(());
+    }
+    let wo = if e.boards_aus.is_empty() { "in der Vorgabe des Ordners (kanbanD.md)".to_string() } else { format!("auf {}", e.boards_aus.join(", ")) };
+    Err(Fehler::ErfassungAus { meldung: format!("Transkripte erfassen ist für #{nr} aus ({wo}) — nichts abgelegt"), boards: e.boards_aus })
+}
+
+/// ADR-0036 Regel 2: gleiche Kennung oder gleicher gefalteter Name an derselben Aufgabe → 409 mit der Kennung des
+/// Eintrags, der im Weg steht. Ein Durchgang über die Einträge, je Eintrag einmal Kennung und Name.
+fn kennung_frei(zeilen: &[Transkriptzeile], neu: &Transkripteintrag, nr: u32) -> Result<(), Fehler> {
+    let (kennung, name) = (neu.kennung(), neu.dateiname());
+    for e in zeilen.iter().filter_map(Transkriptzeile::lesbar) {
+        let k = e.kennung();
+        if k == kennung || e.dateiname() == name {
+            let wie = if k == kennung { "hat schon ein Transkript".to_string() } else { format!("hat schon ein Transkript mit demselben Dateinamen ({name})") };
+            return Err(Fehler::KennungBelegt { meldung: format!("#{nr} {wie} {k} — einen zweiten Lauf derselben Rolle in derselben Minute eine Minute später ablegen"), kennung: k });
+        }
+    }
+    Ok(())
+}
+
+/// Zwischendatei löschen; Ordner, die dieser Upload angelegt hat, entfernen, wenn sie leer sind — `transkripte/` nur,
+/// wenn darin nichts außer der eigenen `.gitignore` liegt. Nur unter der Sperre: ein gleichzeitiger Upload legt seine
+/// Datei erst unter ihr ab und prüft die `.gitignore` dort erneut.
+fn verwerfen_gesperrt(empfang: &mut Empfang) {
+    if let Some(z) = empfang.zwischen.take() {
+        let _ = std::fs::remove_file(z);
+    }
+    let oben = empfang.wurzel.join(ORDNER);
+    if empfang.angelegt.ordner {
+        let _ = std::fs::remove_dir(oben.join(format!("{:04}", empfang.nr)));
+    }
+    if empfang.angelegt.oben {
+        let nur_gitignore = std::fs::read_dir(&oben).is_ok_and(|d| d.flatten().all(|e| e.file_name() == ".gitignore"));
+        if nur_gitignore {
+            let _ = std::fs::remove_file(oben.join(".gitignore"));
+            let _ = std::fs::remove_dir(&oben);
+        }
+    }
+}
 
 /// Warum zu einem Eintrag kein sicherer Pfad entsteht. Für die Liste heißt jeder Fall `unlesbar`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,6 +339,68 @@ mod tests {
 
     fn eintrag(rolle: &str) -> Transkripteintrag {
         Transkripteintrag::neu("t", Some("2026-11-13 10:34+01:00"), Some(rolle), Some("E"), 1).unwrap()
+    }
+
+    /// Ein Board-Ordner mit #1 in fabrik/Entwicklung, `entwickler` (Agent) und der Vorgabe `record-transcripts: true`.
+    fn ordner() -> (tempfile::TempDir, Kanban, Person) {
+        let w = tempfile::tempdir().unwrap();
+        let p = w.path();
+        std::fs::create_dir_all(p.join("aufgaben")).unwrap();
+        std::fs::create_dir_all(p.join("boards")).unwrap();
+        std::fs::write(p.join("kanbanD.md"), "---\nrecord-transcripts: true\npeople:\n  entwickler: {name: Entwickler, kind: agent}\n---\n").unwrap();
+        std::fs::write(p.join("aufgaben/0001-a.md"), "---\nid: 1\ntitle: a\n---\n").unwrap();
+        std::fs::write(p.join("boards/fabrik.md"), "# Fabrik\n\n## Entwicklung\n\n- [#1](../aufgaben/0001-a.md)\n").unwrap();
+        for args in [&["init", "-q"][..], &["add", "-A"], &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "a"]] {
+            std::process::Command::new("git").arg("-C").arg(p).args(args).output().unwrap();
+        }
+        let k = Kanban::neu(p.to_path_buf());
+        let wer = k.handelnder(Some("entwickler")).unwrap();
+        (w, k, wer)
+    }
+
+    fn angaben() -> Ablageangaben {
+        Ablageangaben { at: Some("2026-11-13 10:34+01:00".into()), role: Some("entwickler".into()), column: Some("Entwicklung".into()) }
+    }
+
+    fn empfangen(k: &Kanban) -> Empfang {
+        k.transkript_vorpruefen(1).unwrap();
+        let mut e = Empfang::neu(k.ordner().wurzel(), 1);
+        e.stueck(&[0x1f, 0x8b, 0x08, 1, 2, 3]).unwrap();
+        e
+    }
+
+    fn dateien(w: &Path) -> Vec<String> {
+        let mut d: Vec<String> = std::fs::read_dir(w.join("transkripte/0001")).map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect()).unwrap_or_default();
+        d.sort();
+        d
+    }
+
+    // Prüfen-dann-Handeln (ADR-0036 Regel 5): zwei Uploads derselben Kennung haben beide die Vorprüfung und die
+    // Zwischendatei hinter sich; unter der Sperre gewinnt genau einer, der zweite räumt seine Zwischendatei
+    #[test]
+    fn zwei_uploads_derselben_kennung_ergeben_genau_einen_eintrag() {
+        let (w, k, wer) = ordner();
+        let (erster, zweiter) = (empfangen(&k), empfangen(&k));
+        assert_eq!(dateien(w.path()).iter().filter(|d| d.ends_with(".kanbanD-tmp")).count(), 2, "beide Zwischendateien liegen");
+        assert!(k.transkript_einhaengen(&wer, 1, &angaben(), erster).is_ok());
+        let f = k.transkript_einhaengen(&wer, 1, &angaben(), zweiter).unwrap_err();
+        assert!(matches!(&f, Fehler::KennungBelegt { kennung, .. } if kennung == "entwickler@2026-11-13T10:34+01:00"), "{f:?}");
+        assert_eq!(dateien(w.path()), ["entwickler@2026-11-13T1034+0100.jsonl.gz"]);
+        assert_eq!(k.ordner().aufgabe(1).unwrap().transkripte.len(), 1);
+    }
+
+    // Prüfen-dann-Handeln: wird der Schalter zwischen Vorprüfung und Sperre ausgeschaltet, gilt der frisch gelesene Wert —
+    // 409, und der Upload baut zurück, was er angelegt hat (auch transkripte/ mit seiner .gitignore)
+    #[test]
+    fn ausgeschaltet_zwischen_vorpruefung_und_sperre() {
+        let (w, k, wer) = ordner();
+        let e = empfangen(&k);
+        assert!(w.path().join("transkripte/.gitignore").exists());
+        std::fs::write(w.path().join("kanbanD.md"), "---\nrecord-transcripts: false\npeople:\n  entwickler: {name: Entwickler, kind: agent}\n---\n").unwrap();
+        let f = k.transkript_einhaengen(&wer, 1, &angaben(), e).unwrap_err();
+        assert!(matches!(&f, Fehler::ErfassungAus { boards, .. } if boards == &["fabrik".to_string()]), "{f:?}");
+        assert!(!w.path().join("transkripte").exists(), "zurückgebaut");
+        assert!(k.ordner().aufgabe(1).unwrap().transkripte.is_empty());
     }
 
     #[test]

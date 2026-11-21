@@ -141,6 +141,23 @@ impl utoipa::PartialSchema for Transkripteintrag {
 
 impl utoipa::ToSchema for Transkripteintrag {}
 
+/// Zustand eines Transkripts in der Liste (ADR-0036 Regel 5) — aus einem `symlink_metadata` und drei Byte, ohne Entpacken.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum Transkriptzustand {
+    /// reguläre Datei, Größe gleich `bytes`, beginnt mit `1f 8b 08`
+    Vorhanden,
+    /// liegt nicht auf diesem Rechner
+    Fehlt,
+    /// Größe ungleich `bytes`
+    Abweichend,
+    /// Eintrag formwidrig, keine reguläre Datei, Symlink, über 10 MB oder Kennbytes falsch
+    Unlesbar,
+}
+
+/// Die Kennbytes einer gzip-Datei mit Deflate (RFC 1952): `1f 8b 08`.
+pub const GZIP_KENNBYTES: [u8; 3] = [0x1f, 0x8b, 0x08];
+
 /// Ob für eine Aufgabe Transkripte abgelegt werden dürfen (ADR-0036 Regel 4) und welche Boards „aus“ sind.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
 pub struct Erfassung {

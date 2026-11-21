@@ -96,6 +96,32 @@ pub struct Zustandsfehler {
     pub grund: Option<String>,
 }
 
+/// 409 von `POST …/transkripte` (R00216 AK 3, ADR-0036 Regel 5): „Transkripte erfassen“ ist für die Aufgabe aus — vor dem
+/// Lesen des Körpers; `boards` nennt die Boards der Aufgabe, die aus sind (auf keinem Board `[]`, dann gilt die Vorgabe).
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct ErfassungAus {
+    pub fehler: String,
+    /// immer „aus“
+    #[schema(value_type = String, example = "aus")]
+    pub erfassung: &'static str,
+    pub boards: Vec<String>,
+}
+
+/// 409 von `POST …/transkripte` (ADR-0036 Regel 2): Kennung oder gefalteter Dateiname schon belegt.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct KennungBelegt {
+    pub fehler: String,
+    /// Kennung des Eintrags, der im Weg steht
+    pub kennung: String,
+}
+
+/// 404 von `GET …/transkripte/{kennung}` (ADR-0036 Regel 5): das Transkript ist nicht `vorhanden`.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct Transkriptzustandsfehler {
+    pub fehler: String,
+    pub zustand: crate::modell::Transkriptzustand,
+}
+
 /// Antwort von `GET …/commits` (R00204): je Verweis der Aufgabe ein Eintrag.
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct Commitliste {
