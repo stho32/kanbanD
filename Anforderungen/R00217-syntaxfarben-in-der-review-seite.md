@@ -1,6 +1,6 @@
 ---
 id: R00217
-status: Erledigt
+status: In Arbeit
 datum: 2026-11-21
 ---
 
@@ -34,7 +34,7 @@ Wer eine Aufgabe in der Abnahme prüft, liest heute Code ohne Farbe. Ein auskomm
 
 ## Nicht-funktionale Anforderungen
 
-- **Performance (Messziel, ADR-0040 Punkt 6):** Solange eine Datei innerhalb der Grenzen gefärbt wird, gleich mit welchem Inhalt, dauert keine Aufgabe des Hauptfadens länger als 150 ms — Startpunkt ist das Aufklappen bzw. „Änderungen anzeigen“, Ende `data-farbe="ja"` oder `"nein"`; geprüft über die Long Tasks API im E2E (AK 1). Gemessen (Probe des architekts, ADR-0040): längste Lücke im Hauptfaden 10–22 ms, längster Block der Auflage 28 ms — Abstand zur Grenze über 80 %. Wann die Farbe erscheint (gemessen 33–129 ms nach dem Text), ist Lastbeobachtung, kein Kriterium.
+- **Performance (Messziel, ADR-0040 Punkt 6):** Solange eine Datei innerhalb der Grenzen gefärbt wird, gleich mit welchem Inhalt, dauert keine Aufgabe des Hauptfadens länger als 150 ms — Startpunkt ist das Aufklappen, für nachgeladene Dateien („Änderungen anzeigen“) der Zeitpunkt, an dem die Datei `data-farbe="laeuft"` erhält (PO Z. 489), Ende `data-farbe="ja"` oder `"nein"`; geprüft über die Long Tasks API im E2E (AK 1). Gemessen (Probe des architekts, ADR-0040): längste Lücke im Hauptfaden 10–22 ms, längster Block der Auflage 28 ms — Abstand zur Grenze über 80 %. Wann die Farbe erscheint (gemessen 33–129 ms nach dem Text), ist Lastbeobachtung, kein Kriterium.
 - **Frist 1.000 ms:** gutartige Prüffälle liegen weit darunter (Worker 33–84 ms), feindliche weit darüber (≥ 5,3 s im Chromium); dazwischen hängt das Ergebnis an Maschine und Last, deshalb prüft kein Test einen Fall nahe der Frist (ADR-0040 Konsequenzen). Im Unit-Test ist die Frist injizierbar, im Code bleibt sie 1.000.
 - **Sicherheit:** Kein HTML stammt von Prism oder aus dem Dateiinhalt; der Worker gibt nur Zahlen zurück, Typnamen der Grammatik verlassen ihn nie; jeder Token-Text geht maskiert in ein festes Element, Klassen nur aus der Tabelle; im Worker steht `self.Prism = {disableWorkerMessageHandler: true}` vor `importScripts`; Prism nie per `<script>` auf der Seite (ADR-0040 „Review-Punkt für `security-reviewer`“).
 - **Barrierefreiheit:** Kontrast jeder Rolle ≥ 4,5:1 gegen alle drei Zeilenhintergründe in allen Themenlagen; Strg+F, Bildschirmleser und Textauswahl sehen denselben Text wie ohne Farbe.
@@ -65,7 +65,7 @@ Dazu ein Kommentar an Aufgabe #2 mit einem Markdown-Codeblock ` ```rust ` / `fn 
 
 ### Messziel
 
-- [x] **1.** Gegeben Aufgabe #3, wenn `sh` `feindlich.md` aufklappt, dann stehen alle 64 Zeilen mit ihrem Text da, solange die Datei `data-farbe="laeuft"` trägt, die Datei endet mit `data-farbe="nein"`, und vom Aufklappen bis dahin meldet die Seite keinen Long Task über 150 ms (`PerformanceObserver` mit `longtask`); ebenso für `feindlich.html` und `feindlich.js`. Klappt `sh` danach `gut.rs` auf, trägt `fn` die Rolle Schlüsselwort (`data-farbe="ja"`, ein neuer Worker hat den abgebrochenen ersetzt). Gegeben Aufgabe #4, wenn `sh` an `lang.rs` „Änderungen anzeigen“ wählt, dann endet die Datei mit `data-farbe="ja"`, `let` trägt in der ersten und in der 10.000. Zeile die Rolle Schlüsselwort, und von „Änderungen anzeigen“ bis `data-farbe="ja"` meldet die Seite keinen Long Task über 150 ms (20 Blöcke zu 500 Zeilen, je ein Block je Aufgabe).
+- [ ] **1.** Gegeben Aufgabe #3, wenn `sh` `feindlich.md` aufklappt, dann stehen alle 64 Zeilen mit ihrem Text da, solange die Datei `data-farbe="laeuft"` trägt, die Datei endet mit `data-farbe="nein"`, und vom Aufklappen bis dahin meldet die Seite keinen Long Task über 150 ms (`PerformanceObserver` mit `longtask`); ebenso für `feindlich.html` und `feindlich.js`. Klappt `sh` danach `gut.rs` auf, trägt `fn` die Rolle Schlüsselwort (`data-farbe="ja"`, ein neuer Worker hat den abgebrochenen ersetzt). Gegeben Aufgabe #4, wenn `sh` an `lang.rs` „Änderungen anzeigen“ wählt, dann endet die Datei mit `data-farbe="ja"`, `let` trägt in der ersten und in der 10.000. Zeile die Rolle Schlüsselwort, und von dem Zeitpunkt, an dem die Datei `data-farbe="laeuft"` erhält (alle 10.000 Zeilen stehen ungefärbt), bis `data-farbe="ja"` meldet die Seite keinen Long Task über 150 ms (20 Blöcke zu 500 Zeilen, je ein Block je Aufgabe). Ein Long Task, dessen `startTime` vor diesem Zeitpunkt liegt, gehört zum ungefärbten Zeichnen (R00207). Er wird gemessen und im Bericht genannt, ohne Grenze.
 
 ### Farbe
 
