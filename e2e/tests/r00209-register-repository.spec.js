@@ -225,6 +225,56 @@ test.describe('R00209 Einrichten mit Repository', () => {
     expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}/neu, requirements: ${anf}}`);
   });
 
+  // R00215 AK 11 (Entwicklertest #231 Muss S1): wer speichert und gleich die Ansicht wechselt, sieht keine technische Meldung
+  for (const ms of [100, 300, 600]) {
+    test(`R00215 AK 11: Ansicht wechseln 100 ms nach dem Speichern, Nachladen ${ms} ms — keine technische Meldung, genau ein Commit`, async ({ page }) => {
+      const anf = `${r}/Requirements`;
+      k = await kanbanStarten(einrichten({ 'kanbanD.md': register('  wbs: ""\n  requirements: ""\n', [`jopu: {name: JoinPuya, requirements: ${anf}}`]) }));
+      const meldungen = [];
+      page.on('pageerror', e => meldungen.push(`pageerror: ${e.message}`));
+      page.on('console', m => { if (['error', 'warning'].includes(m.type())) meldungen.push(`${m.type()}: ${m.text()}`); });
+      const api = await langsameApi(page);
+      await alsPerson(page, 'st');
+      await page.goto(k.adresse + '#/einrichten');
+      await bereit(page, zeileVon(page, 'jopu'));
+      api.verzoegerung(ms);
+      await page.getByLabel('Repository jopu', { exact: true }).fill(r);
+      const vorher = +k.git('rev-list', '--count', 'HEAD');
+      await speichern(page);
+      await page.waitForTimeout(100);
+      await page.evaluate(() => { location.hash = '#/board/entwicklung'; });
+      await page.waitForTimeout(3000);
+      await api.ruhig();
+      await expect(page.locator('#stat')).not.toContainText('Cannot');
+      await expect(page.locator('#stat .fehl')).toHaveCount(0);
+      expect(meldungen).toEqual([]);
+      await commitSteht(k, vorher + 1);
+      expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, repository: ${r}, requirements: ${anf}}`);
+      expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher + 1);
+    });
+  }
+
+  test('R00215 AK 11: scheitert das Speichern erst nach dem Ansichtswechsel, steht die Meldung der Anfrage in der Fußzeile, nichts gespeichert', async ({ page }) => {
+    const anf = `${r}/Requirements`;
+    k = await kanbanStarten(einrichten({ 'kanbanD.md': register('  wbs: ""\n  requirements: ""\n', [`jopu: {name: JoinPuya, requirements: ${anf}}`]) }));
+    await alsPerson(page, 'st');
+    await page.route('**/api/einstellungen', async route => {
+      if (route.request().method() !== 'PUT') return route.fallback();
+      await new Promise(ok => setTimeout(ok, 600));
+      return route.fulfill({ status: 500, contentType: 'application/json', body: '{"fehler":"Git oder Dateisystem: Probe"}' });
+    });
+    await page.goto(k.adresse + '#/einrichten');
+    await bereit(page, zeileVon(page, 'jopu'));
+    await page.getByLabel('Repository jopu', { exact: true }).fill(r);
+    const vorher = +k.git('rev-list', '--count', 'HEAD');
+    await speichern(page);
+    await page.waitForTimeout(100);
+    await page.evaluate(() => { location.hash = '#/board/entwicklung'; });
+    await expect(page.locator('#stat .fehl')).toHaveText('Git oder Dateisystem: Probe');
+    expect(+k.git('rev-list', '--count', 'HEAD')).toBe(vorher);
+    expect(zeileInDatei(k, 'jopu').trim()).toBe(`jopu: {name: JoinPuya, requirements: ${anf}}`);
+  });
+
   test('AK 12: scheitert das Speichern (400 doppeltes Kürzel, 500), bleibt der Entwurf, die Meldung steht über den Knöpfen und hat den Fokus', async ({ page }) => {
     k = await kanbanStarten(einrichten({ 'kanbanD.md': register('  wbs: ""\n  requirements: ""\n', []) }));
     await alsPerson(page, 'st');

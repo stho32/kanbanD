@@ -3713,6 +3713,8 @@ async function aktion(a, arg, wert) {
         try {
           await durchDieSchlange(() => api('PUT', '/api/einstellungen', daten));
           u.palFuer = null;
+          // Wer die Ansicht inzwischen verlassen hat, hat keinen Entwurf mehr; das Speichern ist angekommen (R00215 AK 11)
+          if (!u.einr) break;
           // Die Schlange hat schon nachgeladen; der Entwurf bleibt dabei bis hier stehen, damit keine Eingabe ins Leere geht.
           // Wer während des Speicherns weitergetippt hat, behält seine Eingabe, ungespeichert (R00215 AK 8).
           const weitergetippt = einstellungenText(u.einr) !== gesendet;
@@ -3723,6 +3725,8 @@ async function aktion(a, arg, wert) {
           render();
           break;
         } catch (f) {
+          // Ansicht schon verlassen: die Meldung der Anfrage geht in die Fußzeile wie bei jeder anderen Aktion (R00215 AK 11)
+          if (!u.einr) throw f;
           // Der Entwurf bleibt stehen; der Fokus liegt auf der Meldung, nie auf body (R00209 AK 12)
           u.einr.fehler = f.message; u.fokus = '#einr-fehler';
           break;
