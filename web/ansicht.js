@@ -465,7 +465,9 @@ function vVerlaufWer(wer) {
 function vCommitsPanel() {
   const basis = S.ui.view === 'aufgaben' ? 'aufgaben' : 'board';
   const ziel = verweis => reviewAdresseBilden({ basis, slug: S.ui.slug, nummer: S.ui.offen, commit: verweis });
-  return commitsAnsichtHtml(S.ui.commits || { status: 'laedt', stand: null }, esc, ziel);
+  const c = S.ui.commits;
+  // Nachfolger suchen und ersetzen (R00218): der Zustand der Suche steht in app.js, gezeichnet wird in web/commits.js
+  return commitsAnsichtHtml(c ? { ...c, nfAnsicht: c.status === 'liste' ? nachfolgerAnsicht(c) : null } : { status: 'laedt', stand: null }, esc, ziel);
 }
 /** Die Ansicht „Läufe“ (R00219): nur lesend; Zusammenführen und Zeichnen in web/laeufe.js, gelesen wird in app.js (laeufeLesen).
     Die Kosten kommen aus dem aktuellen Stand der Aufgabe, der Zustand der Transkripte aus der letzten Antwort. */

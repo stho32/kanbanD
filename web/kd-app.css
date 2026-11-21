@@ -1462,6 +1462,62 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .lf-tab tbody tr:last-child{border-bottom:1px solid var(--kd-line)}
   .lf-tab .lf-zp{font-size:11.5px;color:var(--kd-muted)}
   .lf-tab .lf-zs{padding-top:3px}
+/* ── Nachfolger eines verwaisten Commits (R00218, D0009 `#nachfolger`, PO Z. 455–465): Knopf am Eintrag „auf keinem Zweig“, Ergebnis als eigene
+   Zeile darunter, Kandidaten als Liste; Knöpfe auf `.btn` (Rand `--kd-line-strong`, Z. 418), gesperrt nach Z. 216 über `data-sperrform`. ── */
+.cl-tab .nf-such{position:relative;z-index:1;margin-top:6px;height:auto;min-block-size:max(26px,var(--kd-ziel));font-size:12px;padding:0 var(--kd-s3)}
+.cl-tab .nf-such svg.i{width:13px;height:13px}
+.nf .btn,.nf-erneut{height:auto;min-block-size:max(26px,var(--kd-ziel));font-size:12px;padding:0 var(--kd-s3);white-space:normal;text-align:left}
+.cl-tab tr.nfz>td{background:var(--kd-bg);padding:4px var(--kd-s3) 10px 40px;border-bottom:1px solid var(--kd-line)}
+.cl-tab tbody tr.nfz:hover>*{background:var(--kd-bg)}
+.nf-laedt{display:flex;align-items:center;gap:var(--kd-s3);margin:4px 0;color:var(--kd-muted);font-size:12.5px}
+.nf-laedt::before{content:"";width:12px;height:12px;border:2px solid var(--kd-line-strong);border-top-color:var(--kd-accent);border-radius:50%;flex:none}
+@media (prefers-reduced-motion:no-preference){.nf-laedt::before{animation:cl-dreh 1s linear infinite}}
+.nf{border-left:2px solid var(--kd-line-strong);padding:2px 0 2px var(--kd-s4);display:flex;flex-direction:column;align-items:flex-start;gap:var(--kd-s3);min-width:0}
+.nf:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
+.nf-kopf{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px var(--kd-s3);margin:0}
+.nf-kopf b{font-size:12.5px;font-weight:600}
+.nf-kopf span{font-size:12px;color:var(--kd-muted);overflow-wrap:anywhere}
+.nf-satz{margin:0;font-size:12.5px;overflow-wrap:anywhere}
+.nf-fehler .nf-satz{color:var(--kd-wbs-error-ink)}
+.nf-l{list-style:none;margin:0;padding:0;border:1px solid var(--kd-line);background:var(--kd-surface);align-self:stretch;min-width:0}
+.nf-k{display:grid;grid-template-columns:96px minmax(200px,1fr) 112px 112px minmax(0,180px) max-content;grid-template-areas:"hash titel autor datum zweige akt" ". zwo zwo zwo zwo zwo" ". fehl fehl fehl fehl fehl";column-gap:var(--kd-s3);align-items:start;padding:5px var(--kd-s3);border-bottom:1px solid var(--kd-line);font-size:12.5px;min-width:0}
+.nf-k:last-child{border-bottom:0}
+.nf-k>.nf-h{grid-area:hash;font:12px var(--kd-mono);padding-top:2px;overflow-wrap:anywhere}
+.nf-k>.nf-t{grid-area:titel;min-width:0;overflow-wrap:anywhere;padding-top:1px}
+.nf-k>.nf-t .nf-marke{display:flex;width:max-content;margin-top:4px}
+.nf-k>.nf-a{grid-area:autor;min-width:0;overflow-wrap:anywhere;padding-top:1px}
+.nf-k>.nf-d{grid-area:datum;font:12px var(--kd-mono);white-space:nowrap;padding-top:2px}
+.nf-k>.nf-z{grid-area:zweige;min-width:0}
+.nf-k>.nf-akt{grid-area:akt;justify-self:end;min-width:0}
+.nf-k>.nf-meld{grid-area:fehl;margin:6px 0 0;font-size:12.5px;color:var(--kd-wbs-error-ink);overflow-wrap:anywhere}
+.nf-k>.nf-meld:empty{display:none}
+.nf-zw{grid-area:zwo;margin-top:6px;padding:6px var(--kd-s3);background:var(--kd-bg);font-size:12px;min-width:0}
+.nf-zw p{margin:2px 0}
+.nf-zw b{font-weight:600;font-size:11px;letter-spacing:.03em;color:var(--kd-muted)}
+.nf-zw .cl-br{margin:0 4px 4px 0}
+.cl-panel .nf-ok{display:flex;align-items:center;gap:6px;padding:0 var(--kd-s2);font-size:12.5px;font-weight:500;color:var(--kd-wbs-ok-ink)}
+.cl-panel .nf-ok:empty{display:none}
+@media (min-width:641px) and (max-width:1099px){
+  .cl-tab tbody tr.nfz{display:block;padding:4px var(--kd-s3) 10px calc(112px + 2 * var(--kd-s3));background:var(--kd-bg)}
+  .cl-tab tbody tr.nfz:hover{background:var(--kd-bg)}
+  .nf-k{grid-template-columns:96px auto minmax(0,1fr);grid-template-areas:"hash titel titel" ". autor datum" ". zweige zweige" ". zwo zwo" ". akt akt" ". fehl fehl";row-gap:2px}
+  .nf-k>.nf-a{font-size:12px;color:var(--kd-muted)}
+  .nf-k>.nf-d{font-size:11.5px;color:var(--kd-muted)}
+  .nf-k>.nf-z{padding-top:4px}
+  .nf-k>.nf-akt{justify-self:start;padding-top:6px}
+}
+@media (max-width:640px){
+  .cl-tab tbody tr.nfz{display:block;padding:4px var(--kd-s4) 10px;background:var(--kd-bg);margin-bottom:-1px;border:1px solid var(--kd-line)}
+  .cl-tab tbody tr.nfz:hover{background:var(--kd-bg)}
+  .cl-tab tr.nfz>td{padding:0!important}
+  .nf{padding-left:var(--kd-s3)}
+  .nf-k{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"hash datum" "titel titel" "autor autor" "zweige zweige" "zwo zwo" "akt akt" "fehl fehl";padding:6px var(--kd-s3) 8px;row-gap:2px}
+  .nf-k>.nf-a{font-size:12px;color:var(--kd-muted)}
+  .nf-k>.nf-d{font-size:11.5px;color:var(--kd-muted);justify-self:end}
+  .nf-k>.nf-z{padding-top:4px}
+  .nf-k>.nf-akt{justify-self:start;padding-top:6px}
+}
+
 /* Mittlere Form 641–1099 px (R00218 FA 12, D0009 `#nachfolger`, PO Z. 463–464): nur an der Breite, Grenze wie `.rv-abs-rumpf`. Je Verweis links
    der Hash, rechts untereinander Titel (mit +/− oben rechts), Autor · Datum, Zustand bzw. Zweige; die Spaltenköpfe bleiben vorlesbar, der
    Rahmen scrollt nicht mehr quer. Die aufgeklappte Zweigliste nimmt die ganze rechte Spalte ein. */
@@ -1482,7 +1538,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .cl-c-zst{grid-area:zst;padding-top:4px!important}
   .cl-tab tr.cl-ohne .cl-c-titel,.cl-tab tr.cl-ohne .cl-c-autor,.cl-tab tr.cl-ohne .cl-c-datum,.cl-tab tr.cl-ohne .cl-c-pm{display:none}
   .cl-tab tbody tr.cl-zw{display:block;padding:6px var(--kd-s3) 8px calc(112px + 2 * var(--kd-s3));background:var(--kd-bg)}
-  .cl-tab tr.cl-zw>td{padding:0!important}
+  .cl-tab tr.cl-zw>td,.cl-tab tr.nfz>td{padding:0!important}
 }
 
 /* ── Review-Seite eines Commits (R00207, ADR-0033, Artboard D0009 #diff-fenster, #diff-raender). Knöpfe nur `.btn` (PO Z. 418). ── */

@@ -210,6 +210,8 @@
     zweig: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 5-8 3-12 7"/>',
     weiter: '<path d="M9 5l7 7-7 7"/>',
     neu: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+    lupe: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+    ok: '<path d="M5 12l5 5 9-10"/>',
   };
   const symbol = name => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[name]}</svg>`;
 
@@ -220,24 +222,75 @@
   /** Ein Zweig als Marke; entfernte gestrichelt und mit Lesetext. Der volle Name steht im `title`. */
   const zweigMarke = (z, esc) => `<span class="cl-br${z.entfernt ? ' cl-fern' : ''}" title="${esc(z.name)}">${symbol('zweig')}<span>${esc(z.name)}</span>${z.entfernt ? '<span class="vh"> (entfernt)</span>' : ''}</span>`;
 
-  function zweigeZelle(z, i, offen, esc) {
+  function zweigeZelle(z, i, offen, esc, act = 'commits-klappe', kennung = `cl-zw-${i}`) {
     if (!z.sichtbar.length && !z.weitere) return '';
-    const knopf = z.weitere ? `<button type="button" class="cl-mehr" data-act="commits-klappe" data-arg="${i}" aria-expanded="${offen}" aria-controls="cl-zw-${i}" aria-label="${z.weitere === 1 ? '1 weiteren Zweig' : `${z.weitere} weitere Zweige`} ${offen ? 'verbergen' : 'zeigen'}">${symbol('weiter')}+${z.weitere} weitere</button>` : '';
+    const knopf = z.weitere ? `<button type="button" class="cl-mehr" data-act="${act}" data-arg="${i}" aria-expanded="${offen}" aria-controls="${kennung}" aria-label="${z.weitere === 1 ? '1 weiteren Zweig' : `${z.weitere} weitere Zweige`} ${offen ? 'verbergen' : 'zeigen'}">${symbol('weiter')}+${z.weitere} weitere</button>` : '';
     return `<span class="vh">auf Zweigen: </span><div class="cl-zweige">${z.sichtbar.map(m => zweigMarke(m, esc)).join('')}${knopf}</div>`;
   }
 
-  /** Die volle Zweigliste unter der Zeile: je Liste eine Überschrift mit Zahl (eine leere entfällt), dazu der Satz zum Rest. */
-  function zweigeKlappe(z, i, esc) {
+  /** Inhalt der vollen Zweigliste: je Liste eine Überschrift mit Zahl (eine leere entfällt), dazu der Satz zum Rest. */
+  function zweigeZeilen(z, esc) {
     const liste = (titel, namen, entfernt) => namen.length ? `<p><b>${titel} ${namen.length}</b></p><p>${namen.map(name => zweigMarke({ name, entfernt }, esc)).join('')}</p>` : '';
     const rest = z.satzRest ? `<p class="cl-rest">${esc(z.satzRest)}</p>` : '';
-    return `<tr class="cl-zw" id="cl-zw-${i}"><td colspan="6"><div class="cl-zeilen">${liste('LOKALE ZWEIGE', z.lokal, false)}${liste('ENTFERNTE ZWEIGE', z.entfernt, true)}${rest}</div></td></tr>`;
+    return `<div class="cl-zeilen">${liste('LOKALE ZWEIGE', z.lokal, false)}${liste('ENTFERNTE ZWEIGE', z.entfernt, true)}${rest}</div>`;
   }
 
-  function zustandsZelle(w, i, offen, esc) {
+  /** Die volle Zweigliste unter der Zeile. */
+  function zweigeKlappe(z, i, esc) {
+    return `<tr class="cl-zw" id="cl-zw-${i}"><td colspan="6">${zweigeZeilen(z, esc)}</td></tr>`;
+  }
+
+  function zustandsZelle(w, i, offen, esc, nf) {
     if (w.zweige) return zweigeZelle(w.zweige, i, offen, esc);
     const m = w.zustand;
-    return `<span class="cl-zs cl-${m.ton}">${symbol(m.symbol)}${esc(m.wort)}</span><p class="cl-zh">${esc(m.hinweis)}</p>`;
+    const suchen = m.zustand === 'verwaist' && nf ? suchKnopf(w.verweis, i, nf, esc) : '';
+    // die Kennung der Hinweiszeile nur mit Knopf: er nennt sie als Beschreibung
+    return `<span class="cl-zs cl-${m.ton}">${symbol(m.symbol)}${esc(m.wort)}</span><p class="cl-zh"${suchen ? ` id="cl-zh-${i}"` : ''}>${esc(m.hinweis)}</p>${suchen}`;
   }
+
+  /** Ein Auslöser in der gesperrten Form nach Z. 216: ohne `data-act` (ein Klick hat keine Wirkung, `sperrenMarkieren` nimmt nichts weg),
+      `aria-disabled`, die Form sofort über `data-sperrform`; der Auslöser, der gerade arbeitet, dazu `aria-busy`. */
+  const gesperrt = (aktiv) => ` aria-disabled="true" data-sperrform=""${aktiv ? ' aria-busy="true"' : ''}`;
+
+  /** „Nachfolger suchen“ am Eintrag „auf keinem Zweig“ (R00218 FA 9): gesperrt, solange an der Aufgabe gesucht oder geschrieben wird. */
+  function suchKnopf(verweis, i, nf, esc) {
+    const sucht = nf.laedt === verweis;
+    const zustand = nf.gesperrt ? gesperrt(sucht) : ` data-act="nf-suchen" data-arg="${esc(verweis)}"`;
+    return `<button type="button" class="btn nf-such" id="nf-such-${i}"${zustand} aria-describedby="cl-zh-${i}">${symbol('lupe')}Nachfolger suchen</button>`;
+  }
+
+  /** Ein Kandidat: Kurz-Hash, Titel, Autor, Datum, Zweige wie in der Liste, Knopf „Ersetzen“ bzw. „Verwaisten Verweis entfernen“. */
+  function kandidatHtml(k, j, nf, esc) {
+    const offen = nf.klappen.has(j);
+    const meld = nf.meldung && nf.meldung.kandidat === k.verweis ? nf.meldung : null;
+    const schreibtHier = nf.schreibt && nf.schreibt.kandidat === k.verweis;
+    const textId = `nf-mt-${j}`;
+    const beschreibung = meld && !meld.live ? ` aria-describedby="${textId}"` : '';
+    const zustand = nf.gesperrt ? gesperrt(schreibtHier) : ` data-act="${k.knopf === 'entfernen' ? 'nf-entfernen' : 'nf-ersetzen'}" data-arg="${j}"`;
+    const name = k.knopf === 'entfernen' ? '' : ` aria-label="${esc(k.name)}"`;
+    const knopf = `<button type="button" class="btn nf-knopf" id="nf-knopf-${j}"${zustand}${name}${beschreibung}>${k.knopf === 'entfernen' ? 'Verwaisten Verweis entfernen' : 'Ersetzen'}</button>`;
+    const marke = k.marke ? `<span class="cl-zs cl-warn nf-marke">${esc(k.marke)}</span>` : '';
+    const titel = `<span class="nf-t">${esc(k.titel)}${k.gekuerzt ? `<span class="cl-kurz" title="${esc(GEKUERZT_HINWEIS)}">gekürzt</span>` : ''}${marke}</span>`;
+    const zweige = `<span class="nf-z">${zweigeZelle(k.zweige, j, offen, esc, 'nf-klappe', `nf-zw-${j}`)}</span>`;
+    const klappe = offen ? `<div class="nf-zw" id="nf-zw-${j}">${zweigeZeilen(k.zweige, esc)}</div>` : '';
+    // Live-Region nur, solange geschrieben wird oder ein Fehler am Auslöser steht (AK 13); der Satz nach dem 409-Wechsel ist Beschreibung
+    const liveRegion = schreibtHier || (meld && meld.live) ? `<p class="nf-meld" id="nf-meld" role="status">${meld && meld.live ? esc(meld.text) : ''}</p>` : '';
+    const satz = meld && !meld.live ? `<p class="nf-meld" id="${textId}">${esc(meld.text)}</p>` : '';
+    return `<li class="nf-k"><span class="nf-h">${esc(k.kurz)}</span>${titel}<span class="nf-a">${esc(k.autor)}</span><span class="nf-d"><span title="${esc(k.datumTitel)}">${esc(k.datum)}</span></span>${zweige}${klappe}<span class="nf-akt">${knopf}</span>${liveRegion}${satz}</li>`;
+  }
+
+  /** Das Ergebnis der Suche als eigene Zeile unter dem Eintrag (Zeichnung D0009 `#nachfolger`): beim Laden nur der Satz (angesagt wird er im
+      Statusbereich der Liste), sonst die Gruppe „Nachfolger von …“ mit dem ersten Satz als Beschreibung und ohne Live-Region (AK 13). */
+  function nachfolgerZeile(nf, esc) {
+    if (nf.laedt) return `<tr class="nfz"><td colspan="6"><p class="nf-laedt">${esc(NACHFOLGER_LAEDT)}</p></td></tr>`;
+    const d = nf.deutung;
+    const erster = d.kopf ? `<p class="nf-kopf" id="nf-erster"><b>${esc(d.kopf)}</b><span>${esc(d.zusatz)}</span></p>` : `<p class="nf-satz" id="nf-erster">${esc(d.saetze[0])}</p>`;
+    const liste = d.kandidaten.length ? `<ul class="nf-l" aria-label="Kandidaten">${d.kandidaten.map((k, j) => kandidatHtml(k, j, nf, esc)).join('')}</ul>` : '';
+    const saetze = (d.kopf ? d.saetze : d.saetze.slice(1)).map(t => `<p class="nf-satz">${esc(t)}</p>`).join('');
+    const erneut = d.art === 'fehler' ? `<button type="button" class="btn nf-erneut" id="nf-erneut"${nf.gesperrt ? gesperrt(false) : ` data-act="nf-suchen" data-arg="${esc(nf.verweis)}"`}>Erneut versuchen</button>` : '';
+    return `<tr class="nfz"><td colspan="6"><div class="nf${d.art === 'fehler' ? ' nf-fehler' : ''}" id="nf-gruppe" role="group" aria-label="${esc(d.gruppe)}" aria-describedby="nf-erster" tabindex="-1">${erster}${liste}${saetze}${erneut}</div></td></tr>`;
+  }
+
 
   /** Zustandswort im Namen des Verweises (R00207 FA 1): „auf Zweig <name>“, „auf <n> Zweigen“ oder das Wort des Zustands. */
   function zustandImNamen(w) {
@@ -259,21 +312,22 @@
     return `<span class="cl-hash${e.hash ? '' : ' cl-roh'}" title="${esc(w.verweis)}">${esc(w.kurz)}</span>`;
   }
 
-  function zeileHtml(e, i, offen, esc, ziel) {
+  function zeileHtml(e, i, offen, esc, ziel, nf) {
     const w = zeilenwerte(e);
     const wert = text => (w.ohneMetadaten ? KEINE_ANGABE : text);
     const titel = wert(`${esc(w.titel)}${w.gekuerzt ? `<span class="cl-kurz" title="${esc(GEKUERZT_HINWEIS)}">gekürzt</span>` : ''}`);
     const datum = wert(`<span title="${esc(w.datumTitel)}">${esc(w.datum)}</span>`);
     const zahlen = wert(w.zahlen && `<span class="cl-pl">+${tausender(e.plus)}</span> <span class="cl-mi">−${tausender(e.minus)}</span><span class="vh"> Zeilen</span>`);
     const hash = hashHtml(e, w, esc, ziel);
-    const zeile = `<tr class="cl-z${w.ohneMetadaten ? ' cl-ohne' : ''}"><th scope="row" class="cl-c-hash">${hash}</th><td class="cl-c-titel">${titel}</td><td class="cl-c-autor">${wert(esc(w.autor))}</td><td class="cl-c-datum">${datum}</td><td class="cl-c-pm cl-r">${zahlen}</td><td class="cl-c-zst">${zustandsZelle(w, i, offen, esc)}</td></tr>`;
-    return offen && w.zweige ? zeile + zweigeKlappe(w.zweige, i, esc) : zeile;
+    const zeile = `<tr class="cl-z${w.ohneMetadaten ? ' cl-ohne' : ''}"><th scope="row" class="cl-c-hash">${hash}</th><td class="cl-c-titel">${titel}</td><td class="cl-c-autor">${wert(esc(w.autor))}</td><td class="cl-c-datum">${datum}</td><td class="cl-c-pm cl-r">${zahlen}</td><td class="cl-c-zst">${zustandsZelle(w, i, offen, esc, nf)}</td></tr>`;
+    const mitKlappe = offen && w.zweige ? zeile + zweigeKlappe(w.zweige, i, esc) : zeile;
+    return nf && nf.verweis === e.verweis && (nf.laedt || nf.deutung) ? mitKlappe + nachfolgerZeile(nf, esc) : mitKlappe;
   }
 
   /** Die Tabelle der Liste im querscrollbaren Rahmen (Gruppe mit Namen, per Tab fokussierbar). `klappen` nennt die Zeilen mit offener Zweigliste. */
-  function commitsListeHtml(eintraege, klappen, esc, ziel = null) {
+  function commitsListeHtml(eintraege, klappen, esc, ziel = null, nf = null) {
     const kopf = SPALTEN.map(name => `<th scope="col"${name === '+ / −' ? ' class="cl-r"' : ''}>${name}</th>`).join('');
-    const zeilen = eintraege.map((e, i) => zeileHtml(e, i, klappen.has(i), esc, ziel)).join('');
+    const zeilen = eintraege.map((e, i) => zeileHtml(e, i, klappen.has(i), esc, ziel, nf)).join('');
     return `<div class="cl-rahmen" tabindex="0" role="group" aria-label="Commits dieser Aufgabe, ältester zuerst"><table class="cl-tab"><thead><tr>${kopf}</tr></thead><tbody>${zeilen}</tbody></table></div>`;
   }
 
@@ -304,9 +358,11 @@
       const knopf = '<button type="button" class="cl-knopf" id="commits-erneut" data-act="commits-lesen">Erneut versuchen</button>';
       return `<div class="cl-meld">${symbol('achtung')}${statusBereich('cl-meldtext', fehlerText(c.fehler), esc)}${knopf}</div>`;
     }
-    const ansage = statusBereich('vh', gelesenText(c.eintraege.length), esc);
+    // Der eine Statusbereich trägt in der Liste „… gelesen“, beim Suchen „Sucht …“ und nach dem Ersetzen oder Entfernen den Erfolg — sichtbar im
+    // Kopf der Liste (R00218 AK 9, 13); still nachgelesen bleibt sein Text (kein „… Commits gelesen“ nach dem Ersetzen)
+    const ansage = statusBereich(c.erfolg ? 'nf-ok' : 'vh', c.ansage != null ? c.ansage : gelesenText(c.eintraege.length), esc);
     if (!c.eintraege.length) return `${ansage}<div class="cl-leer">An dieser Aufgabe sind keine Commits hinterlegt.<br><span>${LEER_SATZ}</span></div>`;
-    return ansage + commitsListeHtml(c.eintraege, c.klappen, esc, ziel);
+    return ansage + commitsListeHtml(c.eintraege, c.klappen, esc, ziel, c.nfAnsicht || null);
   }
 
   /** Die ganze Ansicht „Commits“ aus dem Zustand der Oberfläche (`S.ui.commits`): `{status, eintraege, stand, fehler, klappen}`;

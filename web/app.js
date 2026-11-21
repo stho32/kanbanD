@@ -953,7 +953,8 @@ function commitsStatusBehalten(vorher) {
   if (!vorher || !neu || vorher === neu) return;
   neu.replaceWith(vorher);
   vorher.className = neu.className;
-  vorher.textContent = neu.textContent;
+  // nur ein neuer Text ist eine Ansage: derselbe Text bei jedem Neuzeichnen hieße für einen Beobachter jedes Mal eine (R00218 AK 13)
+  if (vorher.textContent !== neu.textContent) vorher.textContent = neu.textContent;
 }
 
 /* ── Ansicht „Läufe“ (R00219, ADR-0039 L2): gelesen wird beim Öffnen, über „Neu lesen“ / „Erneut versuchen“ und genau einmal,
@@ -1049,9 +1050,11 @@ function commitsAnstossen() {
 
 /** Liest `GET /api/aufgaben/{nr}/commits` und zeichnet das Ergebnis — aber nur, wenn die Aufgabe noch dieselbe offen und
     „Commits“ noch dieselbe Ansicht ist und niemand inzwischen neu gelesen hat; sonst wird die Antwort verworfen (R00205 AK 6). */
-async function commitsLesen(nr) {
+async function commitsLesen(nr, { still = false, fokusAuf = null, ausloeser = null } = {}) {
   const vorher = S.ui.commits && S.ui.commits.nr === nr ? S.ui.commits : null;
-  const lauf = S.ui.commits = { nr, status: 'laedt', eintraege: [], stand: vorher ? vorher.stand : null, klappen: new Set() };
+  // still (nach Ersetzen oder Entfernen, R00218 AK 9): die Liste bleibt stehen, der Statusbereich behält den Satz des Erfolgs
+  const lauf = S.ui.commits = still && vorher && vorher.status === 'liste' ? { ...vorher, nf: null }
+    : { nr, status: 'laedt', eintraege: [], stand: vorher ? vorher.stand : null, klappen: new Set() };
   let ergebnis;
   try {
     const antwort = await api('GET', `/api/aufgaben/${nr}/commits`);
@@ -1061,7 +1064,11 @@ async function commitsLesen(nr) {
   }
   const a = S.ui.offen === nr && aufgabe(nr);
   if (S.ui.commits !== lauf || !a || ansichtDerAufgabe(a) !== 'commits') return;
-  S.ui.commits = { nr, klappen: new Set(), ...ergebnis };
+  S.ui.commits = still ? { nr, klappen: new Set(), ...ergebnis, ansage: lauf.ansage, erfolg: lauf.erfolg } : { nr, klappen: new Set(), ...ergebnis };
+  // Fokus auf den Kurz-Hash-Verweis des Nachfolgers — erst jetzt, da der Satz im Statusbereich steht, und nur vom Auslöser oder body (AK 13)
+  if (fokusAuf && ergebnis.status === 'liste' && ergebnis.eintraege.some(e => e.verweis === fokusAuf) && fokusNochAm(ausloeser)) {
+    S.ui.fokus = `#fenster a.cl-ziel[data-arg="${CSS.escape(fokusAuf)}"]`;
+  }
   // Zurück von der Review-Seite (R00207 FA 13): Fokus auf den Verweis, von dem sie geöffnet wurde, sonst auf die Ansichtswahl
   const zurueck = S.ui.fokusNachListe;
   if (zurueck && zurueck.nr === nr) {
@@ -1166,6 +1173,101 @@ function reviewDiffWiederholen(r) {
   r.diff = null;
   if (verweis.includes(':')) reviewDiffLesen(r, verweis);
   else reviewPraefixAufloesen(r);
+}
+
+/* ── Nachfolger eines verwaisten Commits (R00218 FA 9–13): gesucht wird nur auf Klick, höchstens eine Suche und ein Ergebnis je Aufgabe;
+   Zustand in `S.ui.commits.nf`, eine späte Antwort gilt nur, solange Aufgabe, Ansicht, Liste und Suche dieselben sind. ── */
+
+/** Liegt der Fokus noch auf dem Auslöser (Kennung) oder auf `body`? Nur dann führt die Oberfläche ihn weiter (AK 13). Ein Auslöser, der beim
+    Neuzeichnen wegfiel, hat den Fokus auf `body` zurückgelassen und zählt so mit. */
+function fokusNochAm(kennung) {
+  const aktiv = document.activeElement;
+  return !aktiv || aktiv === document.body || (kennung && aktiv.id === kennung);
+}
+
+/** Wird an der Aufgabe gerade gesucht oder geschrieben? Dann sind alle Auslöser der Suche gesperrt (AK 7, AK 10). */
+const nachfolgerGesperrt = c => Boolean(c.nf && (c.nf.status === 'laedt' || c.nf.schreibt));
+
+/** Die Werte, mit denen web/commits.js das Ergebnis zeichnet. */
+function nachfolgerAnsicht(c) {
+  const nf = c.nf;
+  if (!nf) return { verweis: null, laedt: null, deutung: null, klappen: new Set(), schreibt: null, meldung: null, gesperrt: false };
+  return {
+    verweis: nf.verweis, laedt: nf.status === 'laedt' ? nf.verweis : null,
+    deutung: nf.status === 'da' ? nachfolgerDeuten(nf.antwort, nf.verweis, nf.gewechselt) : null,
+    klappen: nf.klappen, schreibt: nf.schreibt, meldung: nf.meldung, gesperrt: nachfolgerGesperrt(c),
+  };
+}
+
+/** Gilt die Antwort noch? Dieselbe Aufgabe offen, „Commits“ gezeigt, dieselbe Liste und dieselbe Suche. */
+function nachfolgerNoch(c, nf) {
+  const a = S.ui.offen === c.nr && aufgabe(c.nr);
+  return Boolean(a && ansichtDerAufgabe(a) === 'commits' && S.ui.commits === c && c.nf === nf);
+}
+
+/** „Nachfolger suchen“ und „Erneut versuchen“: genau ein `GET …/nachfolger`; ein angezeigtes Ergebnis verschwindet. */
+async function nachfolgerSuchen(verweis) {
+  const c = S.ui.commits;
+  if (!c || c.status !== 'liste' || nachfolgerGesperrt(c)) return;
+  const i = c.eintraege.findIndex(e => e.verweis === verweis && e.zustand === 'verwaist');
+  if (i < 0) return;
+  const ausloeser = `nf-such-${i}`;
+  const nf = c.nf = { verweis, status: 'laedt', ausloeser, klappen: new Set(), gewechselt: new Set(), meldung: null, schreibt: null };
+  // angesagt wird „Sucht …“ im einen Statusbereich der Liste, nicht am Fokusziel (AK 13); der Fokus bleibt am Auslöser des Eintrags
+  c.ansage = NACHFOLGER_LAEDT;
+  c.erfolg = false;
+  if (fokusNochAm(ausloeser) || document.activeElement.id === 'nf-erneut') S.ui.fokus = '#' + ausloeser;
+  render();
+  let antwort;
+  try {
+    antwort = { status: 200, rumpf: await api('GET', `/api/aufgaben/${c.nr}/commits/${encodeURIComponent(verweis)}/nachfolger`) };
+  } catch (g) {
+    antwort = { status: g.status || 0, fehler: g.message };
+  }
+  if (!nachfolgerNoch(c, nf)) return;
+  nf.status = 'da';
+  nf.antwort = antwort;
+  if (fokusNochAm(ausloeser)) S.ui.fokus = '#nf-gruppe';
+  render();
+}
+
+/** „Ersetzen“ (`POST …/commits/ersetzen` mit genau dem Paar) und „Verwaisten Verweis entfernen“ (`DELETE …/commits/<verwaist>`) über den
+    einen Schreibweg (ADR-0025 Regel 6), ohne Dialog. Danach liest die Ansicht die Liste einmal still neu; ein 409 mit dem Verweis des
+    verwaisten Eintrags wechselt den Kandidaten in die Form „an der Aufgabe“ (Z. 460). */
+async function nachfolgerSchreiben(aktion, j) {
+  const c = S.ui.commits, nf = c && c.nf;
+  if (!nf || nf.status !== 'da' || nf.schreibt) return;
+  const k = nachfolgerDeuten(nf.antwort, nf.verweis, nf.gewechselt).kandidaten[j];
+  if (!k) return;
+  const ausloeser = `nf-knopf-${j}`;
+  nf.schreibt = { kandidat: k.verweis, aktion };
+  nf.meldung = null;
+  // der Statusbereich steht leer im Dokument, bevor der Satz des Erfolgs hineinkommt (AK 13)
+  c.ansage = '';
+  c.erfolg = false;
+  S.ui.fokus = '#' + ausloeser;
+  render();
+  let fehler = null;
+  try {
+    if (aktion === 'ersetzen') await durchDieSchlange(() => api('POST', `/api/aufgaben/${c.nr}/commits/ersetzen`, { ersetzungen: [{ alt: nf.verweis, neu: k.verweis }] }));
+    else await durchDieSchlange(() => api('DELETE', `/api/aufgaben/${c.nr}/commits/${encodeURIComponent(nf.verweis)}`));
+  } catch (f) {
+    fehler = f;
+  }
+  if (!nachfolgerNoch(c, nf)) return;
+  nf.schreibt = null;
+  if (fehler) {
+    const m = schreibfehlerText(aktion, { status: fehler.status || 0, verweis: fehler.daten && fehler.daten.verweis, fehler: fehler.message }, nf.verweis, k.verweis);
+    if (m.wechsel) nf.gewechselt.add(k.verweis);
+    nf.meldung = { kandidat: k.verweis, text: m.text, live: !m.wechsel };
+    if (fokusNochAm(ausloeser)) S.ui.fokus = '#' + ausloeser;
+    render();
+    return;
+  }
+  c.ansage = erfolgText(aktion, nf.verweis, k.verweis);
+  c.erfolg = true;
+  render();
+  await commitsLesen(c.nr, { still: true, fokusAuf: k.verweis, ausloeser });
 }
 
 /** Liest `GET …/commits`; die Antwort gilt nur, solange dieselbe Seite steht und niemand inzwischen neu gelesen hat. */
@@ -3131,6 +3233,19 @@ async function aktion(a, arg, wert) {
         reviewNachladen(r, i);
         u.fokus = '#rv-dk' + i;
         break;
+      }
+      case 'nf-suchen': nachfolgerSuchen(arg); return;
+      case 'nf-klappe': {
+        const nf = u.commits && u.commits.nf;
+        if (!nf) break;
+        if (!nf.klappen.delete(+arg)) nf.klappen.add(+arg);
+        break;
+      }
+      case 'nf-ersetzen':
+      case 'nf-entfernen': {
+        if (ichNoetig()) break;
+        await nachfolgerSchreiben(a === 'nf-ersetzen' ? 'ersetzen' : 'entfernen', +arg);
+        return;
       }
       case 'commits-klappe': {
         const klappen = u.commits && u.commits.klappen;
