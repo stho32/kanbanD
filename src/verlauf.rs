@@ -57,21 +57,11 @@ pub struct Bewegung {
     pub reporting: crate::modell::Berichtszaehlung,
 }
 
-/// Welche Phasen ein gebundenes Board hat und welche Spalte welche darstellt (`column-phases`, N:1).
-#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
-pub struct Phasenkarte {
-    pub anwendung: String,
-    pub folge: crate::phasen::Phasenfolge,
-    pub spaltenphasen: BTreeMap<String, String>,
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Bewegungen {
     pub spalten: Vec<String>,
     pub jetzt: String,
     pub aufgaben: Vec<Bewegung>,
-    /// `None` bei einem reinen Kanban — dann rechnen die Berichte je Spalte
-    pub phasen: Option<Phasenkarte>,
 }
 
 /// Je Aufgabe die Wechsel zwischen aufeinanderfolgenden Ständen; `staende` in zeitlicher Folge.
@@ -82,7 +72,7 @@ pub fn bewegungen(staende: &[(NaiveDateTime, Board)], spalten: Vec<String>, jetz
         je.entry(zug.nummer).or_default().push(Wechsel { zeitpunkt: fmt(&zug.zeitpunkt), spalte: zug.nach });
     }
     let aufgaben = je.into_iter().map(|(nummer, wechsel)| Bewegung { nummer, wechsel, labels: vec![], uebersprungen: vec![], reporting: Default::default() }).collect();
-    Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben, phasen: None }
+    Bewegungen { spalten, jetzt: fmt(&jetzt), aufgaben }
 }
 
 /// Je Aufgabe die Züge zwischen aufeinanderfolgenden Ständen; `staende` in zeitlicher Folge. Ein Zug nennt `von` und
@@ -317,7 +307,7 @@ mod tests {
     use crate::modell::Spalte;
 
     fn b(a: &[u32], z: &[u32]) -> Board {
-        Board { slug: "b".into(), titel: "B".into(), spalten: vec![Spalte { name: "A".into(), grenze: None, aufgaben: a.to_vec(), phase: None, ..Default::default() }, Spalte { name: "Z".into(), grenze: None, aufgaben: z.to_vec(), phase: None, ..Default::default() }], termine: vec![], anwendungen: None, klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None, transkripte_erfassen: None }
+        Board { slug: "b".into(), titel: "B".into(), spalten: vec![Spalte { name: "A".into(), grenze: None, aufgaben: a.to_vec(), ..Default::default() }, Spalte { name: "Z".into(), grenze: None, aufgaben: z.to_vec(), ..Default::default() }], termine: vec![], anwendungen: None, klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None, transkripte_erfassen: None }
     }
 
     fn zp(s: &str) -> NaiveDateTime {

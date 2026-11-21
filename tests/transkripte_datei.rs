@@ -135,8 +135,11 @@ async fn ak14b_echter_altbestand_bleibt_zeichengleich_bis_auf_die_aenderung() {
         assert!(!nachher.contains("\ntranscripts:"), "{name}");
     }
     let zeile = "- [#208](../aufgaben/0208-transkripte-der-agenten-laeufe-an-der-ka.md)\n";
-    let erwartet = board_vorher.replacen(&format!("## Entwicklung\n\n{zeile}\n"), "## Entwicklung\n\n", 1).replacen("## Nacharbeit\n\n", &format!("## Nacharbeit\n\n{zeile}\n"), 1);
-    assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), erwartet, "Board zeichengleich bis auf den Zug");
+    // bis auf den Zug — und `column-phases`, das seit S3 (R00223, ADR-0034 N4 Regel 3) im Commit der ersten schreibenden Aktion fehlt
+    let phasen = "column-phases:\n  Entwicklung: Entwicklung\n  Entwicklertest: Entwicklertest\n";
+    assert!(board_vorher.contains(phasen), "der Altbestand trägt column-phases");
+    let erwartet = board_vorher.replacen(phasen, "", 1).replacen(&format!("## Entwicklung\n\n{zeile}\n"), "## Entwicklung\n\n", 1).replacen("## Nacharbeit\n\n", &format!("## Nacharbeit\n\n{zeile}\n"), 1);
+    assert_eq!(lies(tmp.path(), "boards/entwicklung.md"), erwartet, "Board zeichengleich bis auf den Zug und column-phases");
     assert!(!lies(tmp.path(), "boards/entwicklung.md").contains("record-transcripts"));
     assert_eq!(lies(tmp.path(), "kanbanD.md"), vorgabe_vorher);
 }

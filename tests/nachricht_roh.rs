@@ -20,7 +20,6 @@ const FREIE_FELDER: &[&str] = &[".titel", ".name", ".spalte", ".kuerzel"];
 /// Warn-, Anzeige- und Fachdaten-Zeilen (keine Commit-Nachricht, kein `wert`): Datei und ein Merkmal.
 const KEINE_NACHRICHT: &[(&str, &str)] = &[
     ("src/dienst/aufgabe_anlegen.rs", "Eintrag::MitAngaben"), // Kopietitel als Fachdatum, kein Commit
-    ("src/dienst/phasen.rs", "hat die Phasenfolge"), // Hinweis auf eine abweichende Phasenfolge (nur Anzeige)
     ("src/dienst/wirkungen.rs", "w.aktion.schluessel()"), // Anzeigename einer Wirkung
     ("src/dienst/wirkungen.rs", "let grund = format!"), // Beschreibung in der WBS-Datei (dort wird nie committet)
     ("src/dienst/zugregeln.rs", "Grenze erreicht"), // Warnung an den Menschen, kein Commit

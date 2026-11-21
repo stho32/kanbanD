@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn unbekannter_eigentuemer_wird_je_spalte_genannt() {
-        let spalte = |name: &str, roh: Option<&str>| Spalte { eigentuemer_unbekannt: roh.map(Into::into), name: name.into(), grenze: None, aufgaben: vec![], phase: None, ..Default::default() };
+        let spalte = |name: &str, roh: Option<&str>| Spalte { eigentuemer_unbekannt: roh.map(Into::into), name: name.into(), grenze: None, aufgaben: vec![], ..Default::default() };
         let b = Board { slug: "b".into(), titel: "B".into(), spalten: vec![spalte("Eingang", Some("chef")), spalte("Erledigt", None)], termine: vec![], anwendungen: None, klassen: None, start: None, fieber: Default::default(), berichtsfilter: Default::default(), bestand: None, eigentuemer_roh: vec![], archiviert: None, transkripte_erfassen: None };
         assert_eq!(unbekannte(&b), ["Spalte „Eingang“: unbekannter Eigentümer „chef“ — bekannt sind human, agent"]);
     }
@@ -66,7 +66,7 @@ mod tests {
     // R00120 AK 5 und US-1: je verwaistem oder ungültigem Eintrag ein Hinweis
     #[test]
     fn verwaiste_und_ungueltige_column_owner_werden_gemeldet() {
-        let spalte = |name: &str| Spalte { name: name.into(), grenze: None, aufgaben: vec![], phase: None, ..Default::default() };
+        let spalte = |name: &str| Spalte { name: name.into(), grenze: None, aufgaben: vec![], ..Default::default() };
         let b = Board {
             slug: "b".into(),
             titel: "B".into(),

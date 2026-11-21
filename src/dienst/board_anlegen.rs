@@ -23,7 +23,7 @@ impl Kanban {
         let b = Board {
             slug: slug(&neu.titel),
             titel: neu.titel.trim().into(),
-            spalten: spalten.iter().map(|s| Spalte { name: s.trim().into(), grenze: None, aufgaben: vec![], phase: None, ..Default::default() }).collect(),
+            spalten: spalten.iter().map(|s| Spalte { name: s.trim().into(), grenze: None, aufgaben: vec![], ..Default::default() }).collect(),
             termine: vec![],
             anwendungen: None, klassen: None,
             start: None,

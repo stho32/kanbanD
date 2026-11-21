@@ -18,7 +18,9 @@ async fn leere_liste_loest_die_bindung_mit_einem_commit() {
     mit_register(board.path(), &arbeit);
     let lauf = gemeinsam::starten(board.path(), &["--port", "0"]);
     let (_, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "st", json!(null)).await;
-    assert_eq!(b["phasen"]["anwendung"], "kc", "ohne applications: die einzige registrierte");
+    // seit S3 (R00223, ADR-0034 Regel 4) hat die Bindung keine eigene Wirkung mehr: ohne applications steht der Standard (null)
+    assert_eq!((&b["anwendungen"], b.get("phasen")), (&json!(null), None), "{b}");
+    let spalten_vorher = b["spalten"].clone();
     let vorher = commits(board.path());
 
     let (s, v) = senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/anwendungen", "st", json!([])).await;
@@ -28,9 +30,9 @@ async fn leere_liste_loest_die_bindung_mit_einem_commit() {
     assert!(lies(board.path(), "boards/entwicklung.md").starts_with("---\napplications: []\n"));
 
     let (_, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "st", json!(null)).await;
-    assert_eq!(b["phasen"], json!(null));
+    assert_eq!(b.get("phasen"), None);
     assert_eq!(b["anwendungen"], json!([]));
-    assert!(b["spalten"].as_array().unwrap().iter().any(|s| s["name"] == "Entwicklertest"), "nachgetragene Phasen-Spalten bleiben stehen");
+    assert_eq!(b["spalten"], spalten_vorher, "die Spalten bleiben, wie sie sind");
     assert_eq!(commits(board.path()), vorher + 1, "kein Commit beim Lesen");
 
     let (_, v) = senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/anwendungen", "st", json!([])).await;
@@ -42,7 +44,7 @@ async fn leere_liste_loest_die_bindung_mit_einem_commit() {
     senden(Method::PUT, &lauf.adresse, "api/boards/entwicklung/anwendungen", "st", json!(["kc"])).await;
     assert_eq!(git(board.path(), &["log", "-1", "--format=%s"]), "Anwendungen von „Entwicklung“: kc");
     let (_, b) = senden(Method::GET, &lauf.adresse, "api/boards/entwicklung", "st", json!(null)).await;
-    assert_eq!(b["phasen"]["anwendung"], "kc");
+    assert_eq!(b["anwendungen"], json!(["kc"]));
     assert_eq!(senden(Method::PUT, &lauf.adresse, "api/boards/gibtsnicht/anwendungen", "st", json!([])).await.0, 404);
 }
 

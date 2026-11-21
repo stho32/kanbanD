@@ -4,7 +4,7 @@ use crate::fehler::Fehler;
 use crate::format::board;
 use crate::git;
 use crate::modell::Board;
-use crate::verlauf::{Aufgabenstand, Bewegungen, Kartenverlauf, Phasenkarte, Verlauf, bewegungen, kartenverlauf, spuren_wechsel, verlauf};
+use crate::verlauf::{Aufgabenstand, Bewegungen, Kartenverlauf, Verlauf, bewegungen, kartenverlauf, spuren_wechsel, verlauf};
 
 impl Kanban {
     /// Verlauf eines Boards aus den committeten Ständen seiner Datei, dazu der aktuelle Stand, falls er abweicht.
@@ -60,8 +60,8 @@ impl Kanban {
         Ok(kartenverlauf(nummer, &aufgabe, &brett, loeschung, luecke))
     }
 
-    /// Spaltenwechsel je Aufgabe aus denselben Ständen; Spalten in heutiger Reihenfolge. Bei einem gebundenen Board dazu
-    /// Phasenfolge und Spaltenphasen von heute; je Aufgabe Labels, entfallende Phasen und `reporting` aus ihrer Datei.
+    /// Spaltenwechsel je Aufgabe aus denselben Ständen; Spalten in heutiger Reihenfolge. Je Aufgabe Labels, entfallende
+    /// Phasen und `reporting` aus ihrer Datei.
     pub fn bewegungen(&self, slug: &str) -> Result<Bewegungen, Fehler> {
         let (staende, jetzt) = self.staende(slug)?;
         let spalten = staende.last().map(|(_, b)| b.spalten.iter().map(|s| s.name.clone()).collect()).unwrap_or_default();
@@ -73,13 +73,6 @@ impl Kanban {
                 b.uebersprungen = a.phasen.uebersprungen.clone();
                 b.reporting = a.zaehlung.clone();
             }
-        }
-        if let Some((_, heute)) = staende.last() {
-            bew.phasen = self.phasenstand(heute).map(|s| Phasenkarte {
-                anwendung: s.anwendung,
-                folge: s.folge,
-                spaltenphasen: heute.spalten.iter().filter_map(|sp| sp.phase.clone().map(|p| (sp.name.clone(), p))).collect(),
-            });
         }
         Ok(bew)
     }

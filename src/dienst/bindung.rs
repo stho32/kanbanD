@@ -5,7 +5,7 @@ use crate::modell::Person;
 
 impl Kanban {
     /// Bindet das Board an die genannten registrierten Anwendungen; `[]` löst es (`applications: []`, reines Kanban, R00062).
-    /// Schon nachgetragene Phasen-Spalten bleiben stehen. Unbekanntes Kürzel → 400, ohne Änderung kein Commit.
+    /// Die Bindung hat keine eigene Wirkung (ADR-0034 Regel 4). Unbekanntes Kürzel → 400, ohne Änderung kein Commit.
     pub fn bindung_setzen(&self, wer: &Person, slug: &str, kuerzel: &[String]) -> Result<bool, Fehler> {
         let register = self.ordner().einstellungen().ok().flatten().unwrap_or_default().quellen.anwendungen;
         let mut neu: Vec<String> = vec![];

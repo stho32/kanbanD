@@ -7,9 +7,6 @@ pub struct Spalte {
     pub name: String,
     pub grenze: Option<u32>,
     pub aufgaben: Vec<u32>,
-    /// Phase der Anwendung, die diese Spalte darstellt (`column-phases`); keine heißt an keine Phase gebunden.
-    #[serde(default)]
-    pub phase: Option<String>,
     /// Kommentar zur Spalte (`column-notes`), im Spaltenkopf als ⓘ mit Tooltip.
     #[serde(default)]
     pub notiz: Option<String>,
@@ -626,7 +623,7 @@ impl Board {
                 Spalte { name: n.name.trim().into(), grenze: match n.grenze {
                         Some(g) => g.filter(|g| *g > 0),
                         None => alt.and_then(|s| s.grenze),
-                    }, aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), phase: alt.and_then(|s| s.phase.clone()), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())), eigentuemer: match &n.eigentuemer {
+                    }, aufgaben: alt.map(|s| s.aufgaben.clone()).unwrap_or_default(), notiz: gesetzt_oder_alt(&n.notiz, alt.and_then(|s| s.notiz.clone())), farbe: gesetzt_oder_alt(&n.farbe, alt.and_then(|s| s.farbe.clone())), eigentuemer: match &n.eigentuemer {
                         Some(e) => e.as_deref().and_then(|e| Eigentuemer::aus(e.trim())),
                         None => alt.and_then(|s| s.eigentuemer),
                     },
@@ -968,8 +965,8 @@ mod tests {
             slug: "b".into(),
             titel: "B".into(),
             spalten: vec![
-                Spalte { name: "A".into(), grenze: None, aufgaben: vec![1, 2], phase: None, ..Default::default() },
-                Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3], phase: None, ..Default::default() },
+                Spalte { name: "A".into(), grenze: None, aufgaben: vec![1, 2], ..Default::default() },
+                Spalte { name: "Z".into(), grenze: None, aufgaben: vec![3], ..Default::default() },
             ],
             termine: vec![],
             anwendungen: None, klassen: None,
@@ -1055,7 +1052,7 @@ mod tests {
     #[test]
     fn spalten_umbenennen_ergaenzen_begrenzen() {
         let mut b = b();
-        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: None, ..Default::default() });
+        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], ..Default::default() });
         let neu = [aend("Offen", Some("A"), None), aend("Neu", None, Some(0)), aend("Z", Some("Z"), Some(2))];
         assert_eq!(b.spalten_setzen(&neu), Ok(true));
         let namen: Vec<(&str, Vec<u32>, Option<u32>)> = b.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone(), s.grenze)).collect();
@@ -1114,15 +1111,6 @@ mod tests {
         assert_eq!(leer.spalten_setzen(&[zeile("A", None), zeile("Neu", None)]), Ok(true));
         let stand: Vec<(&str, Vec<u32>)> = leer.spalten.iter().map(|s| (s.name.as_str(), s.aufgaben.clone())).collect();
         assert_eq!(stand, vec![("A", vec![]), ("Neu", vec![])]);
-    }
-
-    #[test]
-    fn umbenennen_nimmt_die_phase_mit_entfernen_nimmt_sie_weg() {
-        let mut b = b();
-        b.spalten[0].phase = Some("Entwicklung".into());
-        b.spalten.insert(1, Spalte { name: "B".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), ..Default::default() });
-        assert_eq!(b.spalten_setzen(&[aend("Bau", Some("A"), None), aend("Neu", None, None), aend("Z", Some("Z"), None)]), Ok(true));
-        assert_eq!(b.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None, None]);
     }
 
     #[test]
@@ -1346,8 +1334,8 @@ mod tests {
     fn mit_grenze() -> Board {
         let mut b = b();
         b.spalten = vec![
-            Spalte { name: "Bereit".into(), grenze: None, aufgaben: vec![7, 8], phase: None, ..Default::default() },
-            Spalte { name: "In Arbeit".into(), grenze: Some(2), aufgaben: vec![5, 6], phase: None, ..Default::default() },
+            Spalte { name: "Bereit".into(), grenze: None, aufgaben: vec![7, 8], ..Default::default() },
+            Spalte { name: "In Arbeit".into(), grenze: Some(2), aufgaben: vec![5, 6], ..Default::default() },
         ];
         b
     }
@@ -1422,7 +1410,7 @@ mod tests {
 
     /// Ausgangsboard der Akzeptanzkriterien: Eingang (human), In Arbeit (Grenze 2, leer), Erledigt.
     fn ausgang() -> Board {
-        let spalte = |name: &str, grenze, eigentuemer| Spalte { notiz: None, farbe: None, eigentuemer, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben: vec![], phase: None, datums_trenner: None };
+        let spalte = |name: &str, grenze, eigentuemer| Spalte { notiz: None, farbe: None, eigentuemer, eigentuemer_unbekannt: None, name: name.into(), grenze, aufgaben: vec![], datums_trenner: None };
         Board { spalten: vec![spalte("Eingang", None, Some(Eigentuemer::Human)), spalte("In Arbeit", Some(2), None), spalte("Erledigt", None, None)], ..b() }
     }
 

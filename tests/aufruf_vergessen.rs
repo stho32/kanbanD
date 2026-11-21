@@ -21,12 +21,12 @@ const BEWEGEND: [(&str, &str, &str); 7] = [
     ("src/dienst/archiv.rs", "", "zurueckholen_pruefen"),
 ];
 
-/// Alle Dienst-Dateien, die `board_pfad(` führen — die 19 Board-Datei-Schreiber (17 aus X00001 (R00128: `board_verwalten.rs`
+/// Alle Dienst-Dateien, die `board_pfad(` führen — die 18 Board-Datei-Schreiber (17 aus X00001 (R00128: `board_verwalten.rs`
 /// für Umbenennen/Archivieren und den Löschweg; R00141: `archiv.rs::endgueltig_loeschen`; R00195: `klassen.rs` setzt nur
 /// `classes` im Frontmatter und bewegt keine Karte; R00220: `schalter.rs` setzt nur `record-transcripts` und bewegt keine
-/// Karte)). `verlauf.rs` liest die
+/// Karte), ohne das Nachtragen der Spalten beim Lesen, das mit S3 entfallen ist (ADR-0034 N4 Regel 3)). `verlauf.rs` liest die
 /// Board-Datei nur; ein neuer Eintrag hier ist ein neuer Schreiber, den X00001 und diese Liste einordnen müssen.
-const SCHREIBER: [&str; 19] = [
+const SCHREIBER: [&str; 18] = [
     "archiv.rs",
     "aufgabe_anlegen.rs",
     "berichtsfilter.rs",
@@ -39,7 +39,6 @@ const SCHREIBER: [&str; 19] = [
     "erledigen.rs",
     "fieber.rs",
     "klassen.rs",
-    "phasen.rs",
     "reservierung.rs",
     "schalter.rs",
     "spalten.rs",

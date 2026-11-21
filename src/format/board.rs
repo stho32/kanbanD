@@ -13,7 +13,6 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
     let (y, koerper) = frontmatter::trennen(text)?;
     let m = yaml::lesen(y)?;
     let grenzen = yaml::zuordnung(&m, "limits");
-    let phasen = yaml::zuordnung(&m, "column-phases");
     let notizen = yaml::zuordnung(&m, "column-notes");
     let farben = yaml::zuordnung(&m, "column-colors");
     let eigentuemer = yaml::zuordnung(&m, "column-owner");
@@ -55,7 +54,6 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
                 return Err(Formatfehler(format!("Spalte „{name}“ steht doppelt in der Board-Datei")));
             }
             let grenze = grenzen.and_then(|g| g.get(name.as_str())).and_then(|v| v.as_u64()).map(|v| v as u32);
-            let phase = phasen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).filter(|p| !p.trim().is_empty());
             let notiz = notizen.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
             let farbe = farben.and_then(|p| p.get(name.as_str())).and_then(yaml::wert_als_text).map(|t| t.trim().to_string()).filter(|f| ist_hexfarbe(f));
             let (eigentuemer, eigentuemer_unbekannt) = match eigentuemer.and_then(|e| e.get(name.as_str())) {
@@ -72,7 +70,7 @@ pub fn lesen(slug: &str, text: &str) -> Result<Board, Formatfehler> {
                 None => (None, None),
             };
             let trenner = datums.and_then(|t| t.get(name.as_str())).and_then(Value::as_bool);
-            spalten.push(Spalte { name, grenze, aufgaben: vec![], phase, notiz, farbe, eigentuemer, eigentuemer_unbekannt, datums_trenner: trenner });
+            spalten.push(Spalte { name, grenze, aufgaben: vec![], notiz, farbe, eigentuemer, eigentuemer_unbekannt, datums_trenner: trenner });
         } else if let Some(nr) = aufgabennummer(z) {
             let Some(spalte) = spalten.last_mut() else {
                 return Err(Formatfehler(format!("Aufgabe #{nr} steht vor der ersten Spalte")));
@@ -356,7 +354,6 @@ pub(crate) fn aufgabennummer(zeile: &str) -> Option<u32> {
 pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let mut s = String::new();
     let grenzen: Vec<&Spalte> = b.spalten.iter().filter(|sp| sp.grenze.is_some()).collect();
-    let phasen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.phase.as_deref().map(|p| (sp.name.as_str(), p))).collect();
     let notizen: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.notiz.as_deref().map(|n| (sp.name.as_str(), n))).collect();
     let farben: Vec<(&str, &str)> = b.spalten.iter().filter_map(|sp| sp.farbe.as_deref().map(|f| (sp.name.as_str(), f))).collect();
     let daten: Vec<(&str, bool)> = b.spalten.iter().filter_map(|sp| sp.datums_trenner.map(|t| (sp.name.as_str(), t))).collect();
@@ -377,7 +374,7 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
     let fieber = fieber_zeile(&b.fieber);
     let berichtsfilter = berichtsfilter_zeile(&b.berichtsfilter);
     let bestand = bestand_zeile(&b.bestand);
-    if !grenzen.is_empty() || !phasen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !daten.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.klassen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() || b.transkripte_erfassen.is_some() {
+    if !grenzen.is_empty() || !notizen.is_empty() || !farben.is_empty() || !daten.is_empty() || !besitzer.is_empty() || schluessellos.is_some() || !b.termine.is_empty() || b.anwendungen.is_some() || b.klassen.is_some() || b.start.is_some() || b.archiviert.is_some() || fieber.is_some() || berichtsfilter.is_some() || bestand.is_some() || b.transkripte_erfassen.is_some() {
         s.push_str("---\n");
         if let Some(klassen) = &b.klassen {
             s.push_str(&super::einstellungen::klassen_schreiben(klassen));
@@ -390,12 +387,6 @@ pub fn schreiben(b: &Board, datei: impl Fn(u32) -> Option<String>) -> String {
             s.push_str("limits:\n");
             for sp in grenzen {
                 s.push_str(&format!("  {}: {}\n", yaml::skalar(&sp.name), sp.grenze.unwrap_or_default()));
-            }
-        }
-        if !phasen.is_empty() {
-            s.push_str("column-phases:\n");
-            for (spalte, phase) in phasen {
-                s.push_str(&format!("  {}: {}\n", yaml::skalar(spalte), yaml::skalar(phase)));
             }
         }
         for (schluessel, eintraege) in [("column-notes", &notizen), ("column-colors", &farben)] {
@@ -475,9 +466,9 @@ mod tests {
             slug: "entwicklung".into(),
             titel: "Entwicklung".into(),
             spalten: vec![
-                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], phase: None, ..Default::default() },
-                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], phase: None, ..Default::default() },
-                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], phase: None, ..Default::default() },
+                Spalte { name: "Zu erledigen".into(), grenze: None, aufgaben: vec![1, 2], ..Default::default() },
+                Spalte { name: "In Arbeit".into(), grenze: Some(3), aufgaben: vec![3], ..Default::default() },
+                Spalte { name: "Erledigt".into(), grenze: None, aufgaben: vec![], ..Default::default() },
             ],
             termine: vec![],
             anwendungen: None, klassen: None,
@@ -590,17 +581,17 @@ mod tests {
         assert!(lesen("b", "---\nmilestones: 3\n---\n## A\n").unwrap_err().0.contains("keine Liste"));
     }
 
+    // ADR-0034 Regel 2, N4 Regel 3 (R00223): `column-phases` ist ein unbekannter Schlüssel des Boards — überlesen, und beim
+    // nächsten Schreiben fehlt er; auch eine Form, die keine Zuordnung ist, ist kein Fehler.
     #[test]
-    fn spaltenphasen_im_frontmatter_rundlauf() {
-        let mut b = beispiel();
-        b.spalten[1].phase = Some("Entwicklung".into());
-        b.spalten.insert(2, Spalte { name: "Abnahme: Mia".into(), grenze: None, aufgaben: vec![], phase: Some("Abnahme".into()), ..Default::default() });
-        let t = schreiben(&b, datei);
-        assert!(t.starts_with("---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n"), "{t}");
-        assert_eq!(lesen("entwicklung", &t).unwrap(), b);
-        assert_eq!(schreiben(&lesen("entwicklung", &t).unwrap(), datei), t);
-        let g = lesen("b", "---\ncolumn-phases: {A: Entwicklung, Fehlt: Abnahme}\n---\n## A\n## B\n").unwrap();
-        assert_eq!(g.spalten.iter().map(|s| s.phase.as_deref()).collect::<Vec<_>>(), [Some("Entwicklung"), None], "Eintrag ohne Spalte fällt weg");
+    fn column_phases_wird_ueberlesen_und_fehlt_beim_schreiben() {
+        let mit = "---\nlimits:\n  In Arbeit: 3\ncolumn-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n---\n\n# Entwicklung\n\n## Zu erledigen\n\n## In Arbeit\n\n## Abnahme: Mia\n";
+        let ohne = mit.replace("column-phases:\n  In Arbeit: Entwicklung\n  \"Abnahme: Mia\": Abnahme\n", "");
+        let g = lesen("entwicklung", mit).unwrap();
+        assert_eq!(g, lesen("entwicklung", &ohne).unwrap(), "gelesen wie ohne den Schlüssel");
+        let t = schreiben(&g, datei);
+        assert!(!t.contains("column-phases") && t.starts_with("---\nlimits:\n  In Arbeit: 3\n---\n"), "{t}");
+        assert!(lesen("b", "---\ncolumn-phases: [Abnahme]\n---\n## A\n").is_ok());
     }
 
     // R00222 (ADR-0034 Regel 2): `column-checks` wird überlesen und fällt beim nächsten Schreiben des Boards weg.

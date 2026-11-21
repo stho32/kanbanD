@@ -152,9 +152,8 @@ const WIRKUNGEN: &str = "wbs-effects:\n  - {application: kd, action: create, nod
 /// `R/Anforderungen` und den Commits `C1`, `C2`; kanbanD-Ordner `K` mit dem Register `kd` (repository, wbs, requirements),
 /// Board `entwicklung` (Offen, In Arbeit, Review, Erledigt; `applications: [kd]`, `column-checks` an „Review“, WIP-Grenze 1
 /// an „In Arbeit“), #1 in „Review“ mit `kd:<C1>` und zwei Wirkungen in Flussform, #2 in „Offen“.
-/// Dazu `column-phases` für alle drei Phasen des Standardmodells: die Phasen bleiben bis S3 (#227, PO Z. 499) — ohne sie
-/// trüge kanbanD beim ersten Öffnen eines gebundenen Boards die fehlenden Phasen-Spalten mit eigenem Commit nach, vor wie
-/// nach der Karte; AK 6 („Öffnen ohne Commit“) setzt ein Board voraus, das seine Phasen schon trägt, wie alle 5 im Bestand.
+/// Dazu `column-phases` für alle drei Phasen des Standardmodells, wie alle 5 Boards im Bestand: seit S3 (R00223, ADR-0034
+/// N4) ein unbekannter Schlüssel, den kanbanD überliest — die Fixture belegt jetzt das Überlesen.
 struct Lage {
     _tmp: tempfile::TempDir,
     basis: PathBuf,
@@ -465,7 +464,7 @@ async fn ak06_bewegen_ohne_pruefwarnung_column_checks_faellt_im_commit_der_beweg
     assert_eq!(l.commits_k(), vorher + 1, "genau ein Commit");
     let im_commit = git(&l.k, &["show", "HEAD:boards/entwicklung.md"]);
     assert!(!im_commit.contains("column-checks"), "column-checks fehlt im Commit der Bewegung:\n{im_commit}");
-    assert!(im_commit.contains("column-phases"), "Phasen bleiben bis S3:\n{im_commit}");
+    assert!(!im_commit.contains("column-phases"), "seit S3 (R00223 AK 2) fehlt auch column-phases im Commit der Bewegung:\n{im_commit}");
     assert_eq!(git(&l.k, &["show", "--name-only", "--format=", "HEAD"]), "boards/entwicklung.md", "nur die Board-Datei im Commit");
 }
 
@@ -670,7 +669,8 @@ async fn ak13_legacy_probe_joinpuya_kopie() {
         assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new(), "{log}");
     }
     assert_eq!(zustaende[0], zustaende[1], "jopu:<hash> in beiden Läufen gleich");
-    assert_eq!(phasen[0], phasen[1], "phasen wie vor der Karte, solange das Register wbs trägt");
+    // R00222 AK 13 „phasen wie vor der Karte“ gilt seit S3 nicht mehr (R00223, ADR-0034 N4): das Board liefert kein phasen
+    assert!(phasen[1].is_null(), "seit S3 kein phasen: {}", phasen[1]);
     let lauf = Instanz::starten(Path::new(env!("CARGO_BIN_EXE_kanbanD")), &kopie, ablage.join("log-schreiben.txt"));
     let a = lauf.adresse();
     let datei = &mit_wirkung[0];
@@ -684,7 +684,7 @@ async fn ak13_legacy_probe_joinpuya_kopie() {
     let (nummer, ziel) = spalten.iter().zip(spalten.iter().skip(1)).find_map(|(s, t)| s["aufgaben"][0].as_u64().map(|n| (n, t["name"].clone()))).expect("eine Aufgabe zum Bewegen");
     let (s, v) = gemeinsam::senden(reqwest::Method::POST, a, &format!("api/boards/{slug}/bewegen"), &wer, json!({"nummer": nummer, "spalte": ziel})).await;
     assert_eq!(s, 200, "{v}");
-    assert!(std::fs::read_to_string(kopie.join(format!("boards/{slug}.md"))).unwrap().contains("column-phases"), "column-phases bleibt nach der Bewegung");
+    assert!(!std::fs::read_to_string(kopie.join(format!("boards/{slug}.md"))).unwrap().contains("column-phases"), "column-phases fehlt nach der Bewegung (R00223 AK 16)");
     let e = lesen(a, "api/einstellungen").await;
     let (s, v) = gemeinsam::senden(reqwest::Method::PUT, a, "api/einstellungen", &wer, e).await;
     assert_eq!(s, 200, "{v}");
