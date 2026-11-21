@@ -24,8 +24,9 @@ const alleZellen = page => page.locator(ZEILEN).evaluateAll(trs => trs.map(tr =>
 const SECHS = [
   ['20.11.2026 12:00', 'entwicklertester', 'Entwicklertest', '0,30 $', 'kein Transkript abgelegt'],
   ['20.11.2026 11:00', 'code-reviewer', 'Reviews', '—', 'liegt nicht auf diesem Rechner'],
-  ['20.11.2026 10:00', 'entwickler', 'EntwicklungKosten gebucht in Reviews', '1,80 $', ''],
-  ['20.11.2026 09:00', 'planer', 'Detailplanung', '0,42 $', ''],
+  // R00221 FA 1: Zeilen mit `vorhanden` tragen „Ansehen“
+  ['20.11.2026 10:00', 'entwickler', 'EntwicklungKosten gebucht in Reviews', '1,80 $', 'Ansehen'],
+  ['20.11.2026 09:00', 'planer', 'Detailplanung', '0,42 $', 'Ansehen'],
   ['20.11.2026 08:00', 'architekt', 'Architektur', '0,55 $', 'Datei weicht vom abgelegten Stand ab'],
   ['—', '—', '—', '—', 'Eintrag nicht lesbar'],
 ];
@@ -338,7 +339,7 @@ test.describe('R00219 Ansicht „Läufe“', () => {
   test('AK 6: wird die Datei von L2 im Ordner gelöscht, zeigt L2 „liegt nicht auf diesem Rechner“ erst nach „Neu lesen“', async ({ page }) => {
     const h = await gehaltenOeffnen(page);
     require('fs').rmSync(require('path').join(k.ordner, 'transkripte/0001', lauf.dateiname(lauf.L.L2)));
-    await expect(zeileVon(page, 'entwickler').locator('.lf-zs')).toHaveText('Transkript vorhanden');
+    await expect(zeileVon(page, 'entwickler').locator('.lf-zs .vh').first()).toHaveText('Transkript vorhanden');
     await page.locator(NEU).click();
     await h.freigeben();
     await expect(zeileVon(page, 'entwickler').locator('.lf-zs')).toHaveText('liegt nicht auf diesem Rechner');

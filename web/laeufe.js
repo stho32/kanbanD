@@ -113,10 +113,10 @@
 
   const AUGE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   /** „Ansehen“ (R00221 FA 1, ADR-0041 Punkt 2): echter Verweis auf die Laufansicht der gespeicherten Kennung, nur bei `vorhanden`
-      und nur mit Ziel; ein einfacher Linksklick läuft über `act`, Mittelklick und neuer Tab bleiben Verweis. */
+      und nur mit Ziel; ein einfacher Linksklick läuft über `act`, Mittelklick und neuer Tab bleiben Verweis. Vorgelesen ohne „—“ (R00219 AK 4). */
   function ansehenHtml(z, esc, ansehen) {
     if (!ansehen || typeof z.kennung !== 'string') return '';
-    const vorgelesen = ` — Transkript ${esc(ohneSteuerzeichen(z.role))}, ${zeitpunktText(z.kennung) || ''}`;
+    const vorgelesen = `: Transkript ${esc(ohneSteuerzeichen(z.role))}, ${zeitpunktText(z.kennung) || ''}`;
     return `<a class="lf-an" href="${esc(ansehen(z.kennung))}" data-act="lauf-oeffnen" data-arg="${esc(z.kennung)}">${AUGE}Ansehen<span class="vh">${vorgelesen}</span></a>`;
   }
 
