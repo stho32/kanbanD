@@ -3719,7 +3719,10 @@ async function aktion(a, arg, wert) {
           // Wer während des Speicherns weitergetippt hat, behält seine Eingabe, ungespeichert (R00215 AK 8).
           const weitergetippt = einstellungenText(u.einr) !== gesendet;
           if (!weitergetippt) {
+            // Ein neues S.zustand heißt: die Schlange hat nachgeladen, der Entwurf entsteht aus dem geladenen Stand.
+            // Sonst bleibt der Entwurf, der dem Gesendeten gleicht — ohne die Meldung eines früheren, gescheiterten Versuchs.
             if (S.zustand !== standVorher) u.einr = kopie(S.zustand.einstellungen);
+            u.einr.fehler = null;
             u.einr.gespeichert = true;
           }
           render();
