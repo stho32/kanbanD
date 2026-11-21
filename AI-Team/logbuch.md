@@ -1455,3 +1455,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #231 | Entwicklertest | entwicklertester | befund | 24 min | Muss S1 (rote Fußzeile nach Ansichtswechsel), anforderung_falsch AK 5 Z. 2 · claude · sonnet · Lauf 231-entwicklertester-1 · 0,84 $ · Karte gesamt 13,45 $ |
 | 2026-11-21 | #231 | Detailplanung | planer | bestanden | 2 min | R00215 AK 5 Z. 2, d=0,15 s, AK 11/US-6, B1096 · claude · opus · Lauf 231-planer-2 · 1,19 $ · Karte gesamt 14,64 $ |
 | 2026-11-21 | #208 | Architektur | architekt | bestanden | 7 min | ADR-0036 Transkripte · claude · opus · Lauf 208-architekt-1 · 2,56 $ · Karte gesamt 2,56 $ |
+| 2026-11-21 | #208 | Detailplanung | planer | bestanden | 7 min | I0206 B1097–B1104, R00216 · claude · opus · Lauf 208-planer-1 · 2,68 $ · Karte gesamt 5,24 $ |
+| 2026-11-21 | #208 | Entwicklung | product-owner | bestanden | 2 min | keine Plattengrenze; #231 Fix in der Karte bestätigt · claude · opus · Lauf 208-product-owner-1 · 1,07 $ · Karte gesamt 6,31 $ |
