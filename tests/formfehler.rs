@@ -9,7 +9,7 @@ use std::path::Path;
 const JSON: Option<&str> = Some("application/json");
 
 /// R00153 AK 2: Methode, Pfad der Beschreibung, Rumpf mit falschem Typ, Feldname in `fehler`.
-const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 43] = [
+const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 41] = [
     ("POST", "/api/einrichten", r#"{"ich": 7}"#, "ich"),
     ("PATCH", "/api/boards/{slug}", r#"{"archiviert": "ja"}"#, "archiviert"),
     ("POST", "/api/aufgaben", r#"{"titel": 7}"#, "titel"),
@@ -34,8 +34,6 @@ const MIT_JSON_RUMPF: [(&str, &str, &str, &str); 43] = [
     ("PATCH", "/api/aufgaben/{nr}/teilaufgaben/{i}", r#"{"text": 7}"#, "text"),
     ("POST", "/api/aufgaben/{nr}/kommentare", r#"{"text": 7}"#, "text"),
     ("POST", "/api/aufgaben/erledigen", r#"{"key": 7}"#, "key"),
-    ("PATCH", "/api/aufgaben/{nr}/wbs-effects", r#"{"application": 7}"#, "application"),
-    ("POST", "/api/aufgaben/{nr}/wbs-effects/{i}/eintritt", r#"{"an": "ja"}"#, "an"),
     ("POST", "/api/aufgaben/{nr}/zeiten", r#"{"dauer": 30}"#, "dauer"),
     ("PATCH", "/api/aufgaben/{nr}/zeiten/{kennung}", r#"{"beginn": 7}"#, "beginn"),
     ("POST", "/api/aufgaben/{nr}/kosteneintraege", r#"{"at": "2026-11-13 10:34+01:00", "role": "entwickler", "column": "Zu erledigen", "amount": "3.46", "currency": "USD"}"#, "amount"),
@@ -68,7 +66,7 @@ const MIT_BYTES_RUMPF: [(&str, &str); 5] = [
 ];
 
 /// R00153 AK 3: ohne Rumpf oder Multipart.
-const OHNE_JSON_RUMPF: [(&str, &str); 19] = [
+const OHNE_JSON_RUMPF: [(&str, &str); 18] = [
     ("DELETE", "/api/boards/{slug}"),
     ("DELETE", "/api/boards/{slug}/fieber/cache"),
     ("DELETE", "/api/personen/{kuerzel}"),
@@ -76,7 +74,6 @@ const OHNE_JSON_RUMPF: [(&str, &str); 19] = [
     ("PUT", "/api/aufgaben/{nr}/signale/{signal}"),
     ("DELETE", "/api/aufgaben/{nr}/signale/{signal}"),
     ("DELETE", "/api/aufgaben/{nr}/teilaufgaben/{i}"),
-    ("DELETE", "/api/aufgaben/{nr}/wbs-effects/{i}"),
     ("POST", "/api/aufgaben/{nr}/timer/start"),
     ("DELETE", "/api/aufgaben/{nr}/zeiten/{kennung}"),
     ("DELETE", "/api/aufgaben/{nr}/kosteneintraege/{kennung}"),
@@ -173,9 +170,9 @@ async fn die_tabelle_nennt_jeden_schreibenden_endpunkt_der_beschreibung_genau_ei
     let liste: serde_json::Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let beschrieben: Vec<String> = liste.as_array().unwrap().iter().filter(|e| e["methode"] != "GET").map(|e| format!("{} {}", e["methode"].as_str().unwrap(), e["pfad"].as_str().unwrap())).collect();
     let benannt: Vec<String> = MIT_JSON_RUMPF.iter().map(|(m, p, _, _)| (m, p)).chain(MIT_WAHLFREIEM_JSON_RUMPF.iter().map(|(m, p)| (m, p))).chain(MIT_BYTES_RUMPF.iter().map(|(m, p)| (m, p))).chain(OHNE_JSON_RUMPF.iter().map(|(m, p)| (m, p))).map(|(m, p)| format!("{m} {p}")).collect();
-    assert_eq!((beschrieben.len(), benannt.len()), (68, 68), "68 = 43 + 1 + 5 + 19");
+    assert_eq!((beschrieben.len(), benannt.len()), (65, 65), "65 = 41 + 1 + 5 + 18 (R00222: ohne die drei schreibenden Wirkungs-Endpunkte)");
     let (beschrieben, benannt): (BTreeSet<_>, BTreeSet<_>) = (beschrieben.into_iter().collect(), benannt.into_iter().collect());
-    assert_eq!(benannt.len(), 68, "kein Endpunkt steht in zwei Listen");
+    assert_eq!(benannt.len(), 65, "kein Endpunkt steht in zwei Listen");
     assert_eq!(beschrieben.difference(&benannt).collect::<Vec<_>>(), Vec::<&String>::new(), "schreibender Endpunkt in keiner der vier Listen — in die Tabelle zu AK 2 aufnehmen oder benennen");
     assert_eq!(benannt.difference(&beschrieben).collect::<Vec<_>>(), Vec::<&String>::new(), "benannter Endpunkt fehlt in der Beschreibung");
 }
@@ -339,7 +336,7 @@ async fn die_beschreibung_nennt_400_mit_fehlerantwort_und_keinen_code_des_transp
             }
         }
     }
-    assert_eq!(schreibend, 68);
+    assert_eq!(schreibend, 65);
     // 413: nur POST …/transkripte (R00216 AK 6 und AK 15, ADR-0036 Regel 5) — die Datei ist der Körper; jeder JSON-Rumpf bleibt ohne 413
     assert_eq!(api["paths"].as_object().unwrap().iter().flat_map(|(p, m)| m.as_object().unwrap().iter().filter(|(_, b)| b["responses"].get("413").is_some()).map(move |(m, _)| format!("{m} {p}"))).collect::<Vec<_>>(), ["post /api/aufgaben/{nr}/transkripte"]);
     // 304: GET …/diff mit If-None-Match (R00206 FA 12) — die einzige Route mit ETag

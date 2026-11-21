@@ -430,14 +430,15 @@ test.describe('US-7, US-8: Feldbeschriftungen deutsch, Schlüssel als eigener Hi
     await expect(neu.getByLabel('Herkunft der neuen Aufgabe', { exact: true })).toHaveValue('');
   });
 
-  test('US-8: Wirkungen, Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel als eigenes Element', async ({ page }) => {
+  test('US-8: Phasen, Reservierung, WBS und Anforderungen deutsch beschriftet, Schlüssel als eigenes Element (Wirkungen entfallen mit R00222)', async ({ page }) => {
     await starten(page);
     const eins = await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
     await eins.locator('.felder .k').first().waitFor();
     const inEins = await beschriftungenPruefen(eins, FELDER);
     expect(verstoesse(inEins)).toEqual([]);
-    expect(beschriftungen(inEins)).toEqual(expect.arrayContaining(['Wirkungen', 'Phasen']));
+    expect(beschriftungen(inEins)).toEqual(expect.arrayContaining(['Phasen']));
+    expect(beschriftungen(inEins)).not.toContain('Wirkungen');
     await schliessen(page);
     const zwei = await fensterOeffnen(page, 2);
     await reiter(page, 'Details');
@@ -495,7 +496,7 @@ test.describe('US-9: ohne Herkunft', () => {
     await expect(page.locator('.ka[data-id="1"] .org')).toHaveText('I0001');
     await fensterOeffnen(page, 1);
     await reiter(page, 'Details');
-    // .ochip tragen auch die WBS-Wirkungen; je Herkunft gibt es genau einen Entfernen-Knopf
+    // je Herkunft gibt es genau einen Entfernen-Knopf
     await expect(fenster(page).getByRole('button', { name: /^Herkunft .* entfernen$/ })).toHaveCount(1);
     await page.getByLabel('Neue Herkunft').fill('THIN AIR');
     await page.keyboard.press('Enter');

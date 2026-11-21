@@ -176,7 +176,6 @@ button,input,select,textarea{font:inherit;color:inherit}
    'der Titel wird unter 90 px gedrückt', ohne Platznot passt alles in eine Zeile und nichts bricht um */
 .ka .r0 .t{flex:1 1 auto;min-width:90px}
 .ka .r0 .umbenennen{flex:1;min-width:90px}
-.ka .r0 .wpunkt{align-self:flex-start;margin:5px -2px 0 0}
 .ka .r1{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .ka .id{flex:none;font-family:var(--kd-mono);font-size:11px;color:var(--kd-muted);margin-right:2px}
 /* break-word statt anywhere (R00115, ADR-0019 N4): der Umbruch fällt zwischen die Wörter; nur ein Wort, das allein
@@ -230,29 +229,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ka .ein{font-size:11px;color:var(--kd-agent-ink);border-top:1px solid var(--kd-line);padding-top:3px}
 .orgs{display:inline-flex;gap:3px;flex-wrap:wrap}
 .org{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:11px;background:var(--kd-accent-weak);color:var(--kd-accent-ink);white-space:nowrap}
-.wchips{display:inline-flex;gap:3px;flex-wrap:wrap}
-.wchip{display:inline-flex;align-items:center;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:11px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);color:var(--kd-text);white-space:nowrap}
-.wchip:hover{text-decoration:none;border-color:var(--kd-accent);color:var(--kd-accent-ink)}
-.wchip.remove{color:var(--kd-muted)}
-/* Eintritt einer Wirkung (R00071) */
-.ochip.wirkung{align-items:center;gap:3px;margin-right:6px}
-.ampel{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--kd-wbs-error);flex:none}
-.ampel.an{background:var(--kd-wbs-ok)}
-.ampel.grau{background:var(--kd-wbs-neutral)}
-/* Wirkungsstand der Karte (R00072): ein Punkt, kein Link */
-.wpunkt{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;align-self:center;background:var(--kd-wbs-error);cursor:default}
-.wpunkt.an{background:var(--kd-wbs-ok)}
-.wpunkt.grau{background:var(--kd-wbs-neutral)}
-.as.schalter{height:18px;padding:0 5px;font-size:10.5px}
 .wbs-aufgaben{display:inline-flex;gap:3px;margin-left:var(--kd-s2)}
 .wbs-aufgabe{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-strong);background:var(--kd-surface);padding:0 4px;line-height:15px}
 .wbs-aufgabe[data-aktion="create"]::before{content:"+ "}
 .wbs-aufgabe[data-aktion="rework"]::before{content:"↻ "}
 .wbs-aufgabe[data-aktion="remove"]::before{content:"− "}
 .wbs-aufgabe.arch{color:var(--kd-muted);border-style:dashed}
-.felder>.wirkung-form{display:block;min-height:0;grid-column:1/-1;border:1px solid var(--kd-line);background:var(--kd-sunken);padding:var(--kd-s2) var(--kd-s3);margin:0 0 var(--kd-s2)}
-.wirkung-form .fuss{display:flex;gap:var(--kd-s2);align-items:center;flex-wrap:wrap;margin-top:var(--kd-s2)}
-.wirkung-form .fuss .muted{margin-right:auto;font-size:11px}
 .org.leer{background:none;border:1px dashed var(--kd-line-strong);color:var(--kd-muted)}
 /* auf der Karte tritt die Herkunft zurück: Text ohne Grund, ohne Zeige-Zustand (R00212) */
 .ka .org{background:none;color:var(--kd-muted)}

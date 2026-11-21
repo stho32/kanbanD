@@ -243,7 +243,7 @@ function gewaehltesBoard(zustand) {
 let geladenerStand = null;
 /** Der Grund, den `/api/zustand` unter `defekte` für die Board-Datei nennt — sonst leer. */
 const defekterGrund = (slug, zustand) => ((zustand.defekte || []).find(d => d.pfad === 'boards/' + slug + '.md') || {}).fehler;
-const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.transkripteVorgabe, S.wbs, S.wbsFehler, S.pruefWbs, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
+const serverStand = () => JSON.stringify([location.hash, S.zustand, S.board, S.boardDefekt, S.aufgaben, S.boards, S.bew, S.fieberCache, S.anwendungen, S.quellenStand, S.transkripteVorgabe, S.wbs, S.wbsFehler, S.ui.datei, S.ui.anhaenge, S.ui.defektDatei]);
 
 /** Nur die neueste Antwort wird übernommen (R00110, ADR-0014): jedes Laden zieht beim Start eine Nummer aus dem Takt; übernommen
     wird nur, was neuer ist als das zuletzt übernommene desselben Ziels — Hauptstand oder Fenster — und als die Marke der Schlange. */
@@ -320,10 +320,7 @@ async function sichtLaden(zustand) {
   const transkripteVorgabe = einstellungen ? einstellungen.transkripte_erfassen ?? null : S.transkripteVorgabe;
   let wbs = null, wbsFehler = null;
   if (view === 'wbs' && wbsKuerzel()) wbs = await api('GET', '/api/wbs/' + encodeURIComponent(wbsKuerzel())).catch(f => { wbsFehler = f.message; return null; });
-  // die WBS der Anwendungen, deren Wirkungen der Punkt am Chip zeigt (R00071)
-  const pruefWbs = {};
-  if (view === 'board') await Promise.all([...new Set(wirkungsAnwendungen(board, aufgaben.aufgaben))].map(k => api('GET', '/api/wbs/' + encodeURIComponent(k)).then(w => { pruefWbs[k] = w; }, () => { pruefWbs[k] = null; })));
-  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, transkripteVorgabe, wbs, wbsFehler, pruefWbs } };
+  return { view, slug, hash, fbFehler, haupt: { boardDefekt, board, aufgaben: aufgaben.aufgaben, boards, bew, fieberCache, anwendungen, quellenStand, transkripteVorgabe, wbs, wbsFehler } };
 }
 
 /** Aus `GET /api/einstellungen`: das gespeicherte Repository der Quellen und ob sein Ordner da ist. */
@@ -557,7 +554,7 @@ async function defektLaden(start = naechsterTakt()) {
   }
 }
 
-/** Lädt Datei, Anhänge und WBS-Eintritt des Fensters; übernommen nur, solange dieselbe Aufgabe offen ist und keine neuere Antwort
+/** Lädt Datei und Anhänge des Fensters; übernommen nur, solange dieselbe Aufgabe offen ist und keine neuere Antwort
     des Fensters übernommen wurde (R00110, ADR-0014 Regel 6). Innerhalb von `laden` unter dessen Nummer `start`. `gleicherTakt`: das
     Umschalten aus der Reparatur hat das Fenster unter derselben Nummer schon übernommen — sie gilt dann als nicht überholt. */
 async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}) {
@@ -566,7 +563,6 @@ async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}
   try {
     const datei = await api('GET', '/api/aufgaben/' + nummer);
     const anhaenge = await api('GET', `/api/aufgaben/${nummer}/anhaenge`);
-    const eintritt = await api('GET', `/api/aufgaben/${nummer}/wbs-effects`).catch(() => []);
     // Der Reiter „Verlauf“ (R00123) rechnet bei jeder Änderung neu; ein Fehler trifft nur den Reiter, nicht die Datei
     let verlauf = null, verlaufFehler = null;
     if (S.ui.tab === 'verlauf') {
@@ -575,13 +571,13 @@ async function dateiLaden(start = naechsterTakt(), { gleicherTakt = false } = {}
     }
     if (!aktuell()) return;
     zuletztFenster = start;
-    S.ui.datei = datei; S.ui.anhaenge = anhaenge; S.ui.eintritt = eintritt;
+    S.ui.datei = datei; S.ui.anhaenge = anhaenge;
     S.ui.verlauf = verlauf; S.ui.verlaufFehler = verlaufFehler;
   } catch (f) {
     if (!aktuell()) return;
     zuletztFenster = start;
     if (f.status === 404) S.ui.offen = null;
-    S.ui.datei = null; S.ui.anhaenge = []; S.ui.eintritt = [];
+    S.ui.datei = null; S.ui.anhaenge = [];
     S.ui.verlauf = null; S.ui.verlaufFehler = null;
   }
 }
@@ -2259,11 +2255,11 @@ async function linkInDieZwischenablage(text) {
 /** Räumt weg, was das Fenster für die vorige Aufgabe hielt — vor jedem Öffnen einer Aufgabe. */
 function fensterZuruecksetzen() {
   const u = S.ui;
-  u.pop = null; u.wirkungNeu = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.titelBearbeiten = false;
+  u.pop = null; u.zeitEdit = null; u.beschreibungBearbeiten = false; u.titelBearbeiten = false;
   // Die gewählte Ansicht bleibt beim Öffnen einer anderen Aufgabe (R00145 FA 9); führt die Aufgabe sie nicht, fällt sie
   // in vFenster über reiterSchluessel auf „Inhalt“. Die Inhalte der vorigen Aufgabe fallen sofort weg (R00110/R00123).
   u.fensterMenue = null; u.gespeichert = null; fensterMelden(null);
-  u.entwurf = null; u.datei = null; u.anhaenge = []; u.eintritt = [];
+  u.entwurf = null; u.datei = null; u.anhaenge = [];
   u.verlauf = null; u.verlaufFehler = null; u.commits = null;
   // ein Ziel aus der Adresse, das noch auf seine Antwort wartet, gilt nicht mehr (R00174)
   u.offenDefekt = null; u.defektDatei = null; u.linkZiel = null;
@@ -3880,38 +3876,6 @@ async function aktion(a, arg, wert) {
         render();
         return;
       }
-      case 'wirkung-neu': {
-        if (ichNoetig()) break;
-        const register = S.zustand.einstellungen.quellen.anwendungen || [];
-        u.wirkungNeu = { action: 'create', application: (gebunden()[0] || register[0] || {}).kuerzel || '', node: '', parent: '', level: 'Interaction', name: '', done_criterion: '', fehler: null };
-        u.fokus = '#wirkung-parent';
-        break;
-      }
-      case 'wirkung-zu': u.wirkungNeu = null; break;
-      case 'wirkung-setzen': {
-        const f = u.wirkungNeu;
-        if (!f || ichNoetig()) break;
-        return durchDieSchlange(async () => {
-          try { await api('PATCH', `/api/aufgaben/${u.offen}/wbs-effects`, wirkungEingabe(f)); }
-          catch (fehler) { f.fehler = fehler.message; u.fokus = f.action === 'create' ? '#wirkung-parent' : '#wirkung-node'; return GESCHEITERT; }
-          u.wirkungNeu = null; gespeichertMelden();
-        });
-      }
-      case 'wirkung-eintritt': {
-        if (ichNoetig()) break;
-        const [i, an] = arg.split('|');
-        return durchDieSchlange(async () => {
-          try { await api('POST', `/api/aufgaben/${u.offen}/wbs-effects/${i}/eintritt`, { an: an === 'true' }); gespeichertMelden(null, `wirkung-eintritt ${i}`); }
-          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-eintritt ${i}`); return GESCHEITERT; }
-        });
-      }
-      case 'wirkung-weg': {
-        if (ichNoetig()) break;
-        return durchDieSchlange(async () => {
-          try { await api('DELETE', `/api/aufgaben/${u.offen}/wbs-effects/${arg}`); gespeichertMelden(null, `wirkung-weg ${arg}`); }
-          catch (fehler) { fensterMelden(fehler.message, null, `wirkung-weg ${arg}`); return GESCHEITERT; }
-        });
-      }
       case 'wbs-zu': u.offen = null; u.pop = null; u.wbsGesprungen = null; if (location.hash === arg) return laden(); location.hash = arg; return;
       case 'wbs-gehe': {
         const kl = wbsKlapp(), nach = new Map(S.wbs.knoten.map(k => [k.id, k]));
@@ -4474,8 +4438,6 @@ document.addEventListener('change', e => {
   if (meldetBeimVerlassen(e)) { aenderungAufschieben(e.target); return; }
   aenderungGemeldet(e.target);
   if (e.target.matches(DATUMSFELD_OHNE_KNOPF) && !datumsaenderungWirkt(e.target)) return;
-  // Aktion und Ebene einer Wirkung ändern, welche Felder das Formular zeigt
-  if (e.target.dataset && e.target.dataset.wf && e.target.tagName === 'SELECT' && S.ui.wirkungNeu) { S.ui.wirkungNeu[e.target.dataset.wf] = e.target.value; S.ui.wirkungNeu.fehler = null; render(); return; }
   const tf = e.target.dataset && e.target.dataset.tf;
   if (tf) {
     // nicht neu zeichnen: das Formular behält Fokus und Eingaben, nur die Vorschau folgt
@@ -4580,8 +4542,6 @@ document.addEventListener('click', e => {
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });
 document.addEventListener('input', e => {
-  const wf = e.target.dataset && e.target.dataset.wf;
-  if (wf && S.ui.wirkungNeu) { S.ui.wirkungNeu[wf] = e.target.value; return; }
   const wn = e.target.dataset && e.target.dataset.wn;
   if (wn && S.ui.wbsNeu && wn !== 'ebene') { S.ui.wbsNeu[wn] = e.target.value; return; }
   if (e.target.dataset && (e.target.dataset.tf === 'name' || e.target.dataset.tf === 'datum')) { S.ui.tf[e.target.dataset.tf] = e.target.value; return; }

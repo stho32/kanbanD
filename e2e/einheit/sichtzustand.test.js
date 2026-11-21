@@ -18,10 +18,9 @@ test('data-halt ist der Schlüssel, wenn keine id da ist', () => {
   assert.strictEqual(schluessel(element({ daten: { halt: 'leiste' }, klassen: ['mod-side'] }), bereichMit({})), '[data-halt="leiste"]');
 });
 
-test('Feldschlüssel samt Wert, in der Reihenfolge af, nf, wf, wn, tf', () => {
+test('Feldschlüssel samt Wert, in der Reihenfolge af, nf, wn, tf (wf entfällt mit den Wirkungen, R00222)', () => {
   assert.strictEqual(schluessel(element({ daten: { af: 'titel' }, klassen: ['titel'] }), bereichMit({})), '[data-af="titel"]');
   assert.strictEqual(schluessel(element({ daten: { nf: 'board' } }), bereichMit({})), '[data-nf="board"]');
-  assert.strictEqual(schluessel(element({ daten: { wf: 'aktion' } }), bereichMit({})), '[data-wf="aktion"]');
   assert.strictEqual(schluessel(element({ daten: { wn: 'ebene' } }), bereichMit({})), '[data-wn="ebene"]');
   assert.strictEqual(schluessel(element({ daten: { tf: 'name' } }), bereichMit({})), '[data-tf="name"]');
   assert.strictEqual(schluessel(element({ daten: { tf: 'name', af: 'labels' } }), bereichMit({})), '[data-af="labels"]', 'af vor tf');

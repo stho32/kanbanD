@@ -65,7 +65,7 @@
   /** Sichtbare Beschriftung je Schlüssel der Datei; der Schlüssel selbst bleibt Hilfstext (FA 10). */
   const FELDER = Object.freeze({
     board: 'Board', column: 'Spalte', class: 'Klasse', origins: 'Herkunft', assignees: 'Zuständig', labels: 'Labels', due: 'Fällig', estimate: 'Geschätzt',
-    'wbs-effects': 'Wirkungen', phases: 'Phasen', reservation: 'Reservierung', repository: 'Repository', wbs: 'WBS', requirements: 'Anforderungen',
+    phases: 'Phasen', reservation: 'Reservierung', repository: 'Repository', wbs: 'WBS', requirements: 'Anforderungen',
     ich: 'Ich', agents: 'Agenten', spalten: 'Spalten',
     reporting: 'Zählt in Berichten', signals: 'Signale', key: 'Schlüssel',
   });

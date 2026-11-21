@@ -113,9 +113,6 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(teilaufgaben_anlegen))
         .routes(routes!(kommentieren))
         .routes(routes!(erledigen))
-        .routes(routes!(wirkung_setzen, wirkungen_stand))
-        .routes(routes!(wirkung_eintritt))
-        .routes(routes!(wirkung_entfernen))
         .routes(routes!(signal_setzen, signal_zuruecknehmen))
         .routes(routes!(timer_starten))
         .routes(routes!(timer_stoppen))
@@ -1104,61 +1101,6 @@ async fn kommentieren(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>
 )]
 async fn erledigen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(e): JsonKoerper<crate::dienst::Erledigung>) -> Result<Response, Fehler> {
     als_person(&app, wer, move |k, p| k.erledigen(p, &e)).await
-}
-
-#[utoipa::path(
-    patch,
-    path = "/api/aufgaben/{nr}/wbs-effects",
-    tag = "Aufgaben",
-    description = "Wirkung auf die WBS vermerken, ohne sie auszuführen {application, action: create|rework|remove, node?, parent?, level?, name?, done_criterion?} → Aufgabe; executed: false, die WBS bleibt; geprüft gegen die WBS (Knoten fehlt, Datei defekt oder nicht erreichbar 409, falsche Angaben 400); dieselbe Wirkung zweimal: kein Commit",
-    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    request_body = crate::dienst::WirkungEingabe,
-    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wirkung_setzen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, JsonKoerper(w): JsonKoerper<crate::dienst::WirkungEingabe>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.wirkung_setzen(p, nr, &w)).await
-}
-
-#[utoipa::path(
-    get,
-    path = "/api/aufgaben/{nr}/wbs-effects",
-    tag = "Aufgaben",
-    description = "Wirkungen mit Eintritt [{i, application, action, node?, …, executed, eingetreten: true|false|null, erfuellt: true|false|null}] — erfuellt (Zielzustand): create/rework Knoten gerechnet gruen, remove verworfen oder fehlt; eingetreten — create: Knoten steht und ist nicht verworfen; remove: Knoten verworfen oder fehlt; rework: executed gesetzt (fehlt = vor R00071, gilt als eingetreten); null: WBS nicht lesbar",
-    params(("nr" = u32, Path, description = "Nummer der Aufgabe")),
-    responses((status = 200, description = "Erfolg", body = Vec<crate::dienst::Wirkungsstand>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wirkungen_stand(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Response, Fehler> {
-    Ok(Json(blockierend(&app, move |k| k.wirkungen_stand(nr)).await?).into_response())
-}
-
-#[derive(serde::Deserialize, utoipa::ToSchema)]
-struct Eintritt {
-    an: bool,
-}
-
-#[utoipa::path(
-    post,
-    path = "/api/aufgaben/{nr}/wbs-effects/{i}/eintritt",
-    tag = "Aufgaben",
-    description = "Eintritt schalten {an: true|false} → Aufgabe; an: create legt an (ID wird eingetragen), rework setzt den Teilbaum rot, remove verwirft; aus: create verwirft den Knoten, remove hebt das Verwerfen auf (Blätter rot), rework nimmt nur den Vermerk zurück; schon so: keine Änderung; die WBS ohne Commit, ein Commit im Board-Repository",
-    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("i" = usize, Path, description = "Position in der Liste, ab 0"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    request_body = Eintritt,
-    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wirkung_eintritt(State(app): State<App>, Wer(wer): Wer, Pfad((nr, i)): Pfad<(u32, usize)>, JsonKoerper(e): JsonKoerper<Eintritt>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.wirkung_eintritt(p, nr, i, e.an)).await
-}
-
-#[utoipa::path(
-    delete,
-    path = "/api/aufgaben/{nr}/wbs-effects/{i}",
-    tag = "Aufgaben",
-    description = "Wirkung aus der Aufgabe entfernen — die WBS bleibt, wie sie ist",
-    params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("i" = usize, Path, description = "Position in der Liste, ab 0"), ("X-KanbanD-Wer" = String, Header, description = "Kürzel der handelnden Person aus kanbanD.md")),
-    responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
-)]
-async fn wirkung_entfernen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, i)): Pfad<(u32, usize)>) -> Result<Response, Fehler> {
-    als_person(&app, wer, move |k, p| k.wirkung_entfernen(p, nr, i)).await
 }
 
 #[utoipa::path(

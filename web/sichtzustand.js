@@ -3,8 +3,8 @@
 // Die Schlüsselregel ist rein: Das Element kommt als { id, daten, klassen, href }, der Bereich als Zählfunktion je Selektor.
 // Sichern und Zurücksetzen arbeiten auf dem DOM eines Bereichs, dessen Inhalt neu gezeichnet wird.
 (function (ziel) {
-  // Aufgabe, Neu, Wirkung, WBS-Knoten, Termin, Fieber-Chart, Berichtsfilter, Durchlaufzeit, Einrichtung, Spalten, Erststart
-  const FELDSCHLUESSEL = ['af', 'nf', 'wf', 'wn', 'tf', 'fb', 'bf', 'dl', 'ef', 'sf', 'fr'];
+  // Aufgabe, Neu, WBS-Knoten, Termin, Fieber-Chart, Berichtsfilter, Durchlaufzeit, Einrichtung, Spalten, Erststart
+  const FELDSCHLUESSEL = ['af', 'nf', 'wn', 'tf', 'fb', 'bf', 'dl', 'ef', 'sf', 'fr'];
   const EINFACHE_KLASSE = /^[A-Za-z_][\w-]*$/;
   // Felder, deren getippter Wert zurückgesetzt und noch nicht per „change“ gemeldet ist. Der Browser misst „geändert“
   // ab dem Fokussieren — nach dem Zurücksetzen meldet er beim Verlassen ohne Weitertippen deshalb nichts.

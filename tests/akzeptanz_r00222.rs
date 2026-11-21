@@ -405,7 +405,8 @@ async fn ak04_api_zeigt_keine_wirkungen() {
     let lauf = l.starten();
     let a = lesen(lauf.adresse(), "api/aufgaben/1").await;
     assert!(a.get("wirkungen").is_none(), "{a}");
-    assert!(!a.to_string().contains("I0048"), "{a}");
+    let ausser_text: Vec<&String> = a.as_object().unwrap().iter().filter(|(k, v)| *k != "text" && v.to_string().contains("I0048")).map(|(k, _)| k).collect();
+    assert!(ausser_text.is_empty(), "nur der Rohtext der Datei nennt den Knoten, kein Feld der API: {ausser_text:?}");
 }
 
 #[tokio::test]

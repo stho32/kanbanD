@@ -223,113 +223,6 @@ pub struct Kommentar {
     pub text: String,
 }
 
-/// Was eine Aufgabe an einem WBS-Knoten bewirkt (R00057); in der Datei englisch wie der Namensraum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
-pub enum Aktion {
-    #[serde(rename = "create")]
-    Anlegen,
-    #[serde(rename = "rework")]
-    Ueberarbeiten,
-    #[serde(rename = "remove")]
-    Verwerfen,
-}
-
-impl Aktion {
-    pub const ALLE: [Aktion; 3] = [Aktion::Anlegen, Aktion::Ueberarbeiten, Aktion::Verwerfen];
-
-    pub fn schluessel(self) -> &'static str {
-        match self {
-            Aktion::Anlegen => "create",
-            Aktion::Ueberarbeiten => "rework",
-            Aktion::Verwerfen => "remove",
-        }
-    }
-
-    pub fn aus(schluessel: &str) -> Option<Aktion> {
-        Aktion::ALLE.into_iter().find(|a| a.schluessel() == schluessel)
-    }
-}
-
-/// Eine Zeile in `wbs-effects`: Anwendung (Kürzel aus dem Register), Aktion, Knoten und — bei `create` — die Angaben zum neuen Knoten.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct Wirkung {
-    #[serde(rename = "application")]
-    pub anwendung: String,
-    #[serde(rename = "action")]
-    pub aktion: Aktion,
-    #[serde(rename = "node", skip_serializing_if = "Option::is_none")]
-    pub knoten: Option<String>,
-    #[serde(rename = "parent", skip_serializing_if = "Option::is_none")]
-    pub eltern: Option<String>,
-    #[serde(rename = "level", skip_serializing_if = "Option::is_none")]
-    pub ebene: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(rename = "done_criterion", skip_serializing_if = "Option::is_none")]
-    pub fertig_kriterium: Option<String>,
-    /// `executed` — ob und wann die Wirkung in der WBS ausgeführt wurde (R00071).
-    #[serde(rename = "executed", default, skip_serializing_if = "Ausfuehrung::ist_frueher")]
-    #[schema(value_type = Option<serde_json::Value>)]
-    pub ausgefuehrt: Ausfuehrung,
-    /// Schlüssel, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
-    #[serde(skip)]
-    pub weitere: Vec<(String, serde_yaml::Value)>,
-}
-
-/// `executed` einer Wirkung (R00071): fehlt — aus der Zeit vor R00071, als jede Wirkung mit dem Setzen ausgeführt wurde;
-/// `false` — nur vermerkt; ein Datum — an diesem Tag ausgeführt.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub enum Ausfuehrung {
-    #[default]
-    Frueher,
-    Offen,
-    Am(String),
-}
-
-impl Ausfuehrung {
-    pub fn ist_frueher(&self) -> bool {
-        *self == Ausfuehrung::Frueher
-    }
-
-    /// Ausgeführt gilt auch, was aus der Zeit vor R00071 stammt.
-    pub fn ausgefuehrt(&self) -> bool {
-        *self != Ausfuehrung::Offen
-    }
-}
-
-impl Serialize for Ausfuehrung {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Ausfuehrung::Frueher => s.serialize_bool(true),
-            Ausfuehrung::Offen => s.serialize_bool(false),
-            Ausfuehrung::Am(datum) => s.serialize_str(datum),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for Ausfuehrung {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize, utoipa::ToSchema)]
-        #[serde(untagged)]
-        enum Roh {
-            Ja(bool),
-            Datum(String),
-        }
-        Ok(match Roh::deserialize(d)? {
-            Roh::Ja(false) => Ausfuehrung::Offen,
-            Roh::Ja(true) => Ausfuehrung::Frueher,
-            Roh::Datum(datum) => Ausfuehrung::Am(datum),
-        })
-    }
-}
-
-impl Wirkung {
-    /// `kd:I0048` — der Knoten, auf den die Wirkung wirkt; ein `create` vor der Ausführung hat noch keinen.
-    pub fn schluessel(&self) -> Option<String> {
-        self.knoten.as_deref().map(|k| Herkunftsschluessel::qualifiziert(&self.anwendung, k))
-    }
-}
-
 /// `phases`: wie die Aufgabe die Phasen ihrer Anwendung durchläuft (R00058); in der Datei englisch wie der Namensraum.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Phasenangaben {
@@ -399,8 +292,6 @@ pub struct Aufgabe {
     /// Zeilen im Block `kanbanD-runs`, die kein Durchlauf sind, mit ihrer Stelle im Block — sie bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub durchlaeufe_fremd: Vec<(usize, String)>,
-    /// `wbs-effects`: wie die Aufgabe auf Knoten einer Anwendung gewirkt hat (R00057)
-    pub wirkungen: Vec<Wirkung>,
     pub phasen: Phasenangaben,
     #[serde(rename = "reporting")]
     pub zaehlung: Berichtszaehlung,
@@ -455,7 +346,6 @@ impl Aufgabe {
             kommentare: vec![],
             durchlaeufe: vec![],
             durchlaeufe_fremd: vec![],
-            wirkungen: vec![],
             phasen: Phasenangaben::default(),
             zaehlung: Berichtszaehlung::default(),
             kosten: None,

@@ -184,7 +184,9 @@ test.describe('R00222 ohne WBS', () => {
     await karte(page, 1).click();
     const fenster = page.getByRole('dialog', { name: 'Aufgabe #1' });
     await expect(fenster).toBeVisible();
-    await bereit(page, fenster);
+    await reiter(page, 'Details');
+    // die Details stehen, sobald die Zeile „Herkunft“ gezeichnet ist — davor lag die Zeile „Wirkungen“ (R00057)
+    await expect(fenster.locator('.felder-details .k', { hasText: 'Herkunft' })).toBeVisible();
     await expect(fenster.getByText('Wirkungen', { exact: true })).toHaveCount(0);
     await expect(fenster.getByRole('button', { name: /Wirkung/ })).toHaveCount(0);
     await expect(fenster.locator('.ampel, .wirkung, [data-act^="wirkung"]')).toHaveCount(0);

@@ -1014,3 +1014,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #210 R00221 | Nacharbeit 1: Budget für sichtbar gemachte Zeichen, FA 8 „verarbeiten“, Links-Probe, UX S1, Code S2, Architektur S1/S2 | Standard | 1-2h | 1,0h | 1,0h | autonom |
 | 2026-11-21 | Karte #224 R00222 | B1150 Abnahme-Proben rot, Farben gemessen | Standard | 1-2h | 0,8h | 0,8h | autonom |
 | 2026-11-21 | Karte #224 R00222 | B1151 Plausibilität column-checks entfernt | Standard | 1-2h | 0,5h | 0,5h | autonom |
+| 2026-11-21 | Karte #224 R00222 | B1152 Wirkungen entfernt, wbs-effects unbekannter Schlüssel | Standard | 1-2h | 0,8h | 0,8h | autonom |

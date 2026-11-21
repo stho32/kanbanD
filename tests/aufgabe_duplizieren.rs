@@ -105,7 +105,7 @@ async fn kopie_traegt_die_grundfelder_und_nichts_von_der_quelle() {
     assert!(a["reservierung"].is_null(), "Reservierung kopiert");
     assert!(a["cost"].is_null(), "Preisetikett kopiert");
     assert_eq!(a["signale"], json!([]), "Signale kopiert");
-    assert_eq!(a["wirkungen"], json!([]), "WBS-Wirkungen kopiert");
+    assert!(a.get("wirkungen").is_none(), "Wirkungen gibt es seit R00222 nicht mehr in der API: {a}");
     assert_eq!(a["phasen"]["uebersprungen"], json!([]), "Phasen-Übersprung kopiert");
     assert!(a["reporting"].as_object().unwrap().is_empty(), "Berichts-Zählung kopiert: {}", a["reporting"]);
     assert!(!tmp.path().join("aufgaben/0002-rechnung-pruefen-kopie").exists(), "Anhangsordner kopiert");
