@@ -1462,6 +1462,27 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .lf-tab tbody tr:last-child{border-bottom:1px solid var(--kd-line)}
   .lf-tab .lf-zp{font-size:11.5px;color:var(--kd-muted)}
   .lf-tab .lf-zs{padding-top:3px}
+/* Mittlere Form 641–1099 px (R00218 FA 12, D0009 `#nachfolger`, PO Z. 463–464): nur an der Breite, Grenze wie `.rv-abs-rumpf`. Je Verweis links
+   der Hash, rechts untereinander Titel (mit +/− oben rechts), Autor · Datum, Zustand bzw. Zweige; die Spaltenköpfe bleiben vorlesbar, der
+   Rahmen scrollt nicht mehr quer. Die aufgeklappte Zweigliste nimmt die ganze rechte Spalte ein. */
+@media (min-width:641px) and (max-width:1099px){
+  .cl-rahmen{overflow-x:visible}
+  .cl-tab,.cl-tab tbody{display:block}
+  .cl-tab thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .cl-tab tbody tr{display:grid;grid-template-columns:112px auto minmax(0,1fr) auto;grid-template-areas:"hash titel titel pm" ". autor datum ." ". zst zst zst";column-gap:var(--kd-s3);row-gap:2px;padding:5px var(--kd-s3) 7px;border-bottom:1px solid var(--kd-line);background:var(--kd-surface)}
+  .cl-tab tbody tr:last-child{border-bottom:0}
+  .cl-tab tbody tr>*{display:block;width:auto;padding:0;border:0;background:none!important;min-width:0}
+  .cl-tab tbody tr.cl-z:hover{background:var(--kd-accent-weak)}
+  .cl-tab tbody tr.cl-ohne:hover{background:var(--kd-surface)}
+  .cl-c-hash{grid-area:hash}
+  .cl-c-titel{grid-area:titel;min-width:0}
+  .cl-c-autor{grid-area:autor;font-size:12px;color:var(--kd-muted)}
+  .cl-c-datum{grid-area:datum;font-size:11.5px;color:var(--kd-muted);padding-top:1px}
+  .cl-c-pm{grid-area:pm}
+  .cl-c-zst{grid-area:zst;padding-top:4px!important}
+  .cl-tab tr.cl-ohne .cl-c-titel,.cl-tab tr.cl-ohne .cl-c-autor,.cl-tab tr.cl-ohne .cl-c-datum,.cl-tab tr.cl-ohne .cl-c-pm{display:none}
+  .cl-tab tbody tr.cl-zw{display:block;padding:6px var(--kd-s3) 8px calc(112px + 2 * var(--kd-s3));background:var(--kd-bg)}
+  .cl-tab tr.cl-zw>td{padding:0!important}
 }
 
 /* ── Review-Seite eines Commits (R00207, ADR-0033, Artboard D0009 #diff-fenster, #diff-raender). Knöpfe nur `.btn` (PO Z. 418). ── */

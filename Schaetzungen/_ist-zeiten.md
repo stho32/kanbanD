@@ -990,3 +990,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #220 R00218 | B1116 Dienst `nachfolger`: Zulassung, Zustand, Gesamtgrenze, Antwort | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1117 Route, `ETag`, Beschreibung, API-Probe im echten Programm | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-21 | Karte #220 R00218 | B1118 Antwort deuten: Zustände und Wortlaute, rein | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-21 | Karte #220 R00218 | B1123 Ansicht „Commits“: mittlere Form 641–1099 px | Standard | 1-2h | 0,3h | 0,3h | autonom |
