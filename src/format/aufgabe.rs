@@ -1,20 +1,19 @@
 //! `aufgaben/<nr>-<slug>.md` — Frontmatter, Beschreibung, Teilaufgaben, Zeiten, Kommentare.
 
 use super::{Formatfehler, frontmatter, yaml};
-use crate::modell::{Aufgabe, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Kosteneintrag, Phasenangaben, Position, Wert, Reservierung, Teilaufgabe, Transkriptzeile, Zeiteintrag, geschaetzte_minuten_pruefen, slug};
+use crate::modell::{Aufgabe, Berichtszaehlung, Durchlauf, Ergebnis, Fremdschluessel, Gesamt, Kommentar, Kosten, Kosteneintrag, Position, Wert, Reservierung, Teilaufgabe, Transkriptzeile, Zeiteintrag, geschaetzte_minuten_pruefen, slug};
 use serde_yaml::Value;
 
 pub const ORDNER: &str = "aufgaben";
 pub const ZEITEN: &str = "kanbanD-time";
 pub const KOMMENTARE: &str = "kanbanD-comments";
 pub const DURCHLAEUFE: &str = "kanbanD-runs";
-const BEKANNT: [&str; 16] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, PHASEN, BERICHTE, KOSTEN, KOSTENEINTRAEGE, GESCHAETZT, "archived", RESERVIERUNG];
+const BEKANNT: [&str; 15] = ["id", "title", SCHLUESSEL, "class", "assignees", "labels", "due", "origins", SIGNALE, BERICHTE, KOSTEN, KOSTENEINTRAEGE, GESCHAETZT, "archived", RESERVIERUNG];
 /// Gesetzte Signale (R00076).
 pub const SIGNALE: &str = "signals";
 pub const RESERVIERUNG: &str = "reservation";
 /// Schlüssel eines fremden Systems (R00098)
 pub const SCHLUESSEL: &str = "key";
-pub const PHASEN: &str = "phases";
 pub const BERICHTE: &str = "reporting";
 /// Preisetikett (R00105, ADR-0009)
 pub const KOSTEN: &str = "cost";
@@ -65,9 +64,6 @@ pub fn lesen(datei: &str, text: &str) -> Result<Aufgabe, Formatfehler> {
     a.herkunft = yaml::textliste(&m, "origins");
     a.signale = yaml::textliste(&m, SIGNALE);
     a.archiviert = yaml::text(&m, "archived").filter(|d| !d.is_empty());
-    if let Some(p) = m.get(PHASEN) {
-        a.phasen = phasen_lesen(p)?;
-    }
     if let Some(r) = m.get(BERICHTE) {
         a.zaehlung = zaehlung_lesen(r)?;
     }
@@ -215,27 +211,6 @@ fn flusswert(v: &Value) -> String {
         Value::Number(_) | Value::Bool(_) => yaml::wert_als_text(v).unwrap_or_default(),
         _ => serde_json::to_string(v).unwrap_or_else(|_| "null".into()),
     }
-}
-
-/// `phases: {skipped: [Abnahme], …}` — `skipped` als Liste oder einzelner Text; andere Schlüssel bleiben erhalten.
-fn phasen_lesen(v: &Value) -> Result<Phasenangaben, Formatfehler> {
-    match v {
-        Value::Null => Ok(Phasenangaben::default()),
-        Value::Mapping(m) => Ok(Phasenangaben {
-            uebersprungen: yaml::textliste(m, "skipped"),
-            weitere: m.iter().filter_map(|(k, w)| k.as_str().filter(|k| *k != "skipped").map(|k| (k.to_string(), w.clone()))).collect(),
-        }),
-        _ => Err(Formatfehler(format!("{PHASEN} ist keine Zuordnung — erwartet {{skipped: [...]}}"))),
-    }
-}
-
-fn phasen_schreiben(p: &Phasenangaben) -> String {
-    let mut s = String::new();
-    if !p.uebersprungen.is_empty() {
-        s.push_str(&format!("  skipped: {}\n", yaml::liste(&p.uebersprungen)));
-    }
-    s.extend(p.weitere.iter().map(|(k, v)| format!("  {}: {}\n", yaml::skalar(k), flusswert(v))));
-    if s.is_empty() { s } else { format!("{PHASEN}:\n{s}") }
 }
 
 /// `reporting: {burndown: false, forecast: false, …}` — je Bericht true/false; andere Schlüssel bleiben erhalten.
@@ -487,7 +462,6 @@ pub fn schreiben(a: &Aufgabe) -> String {
     if !a.signale.is_empty() {
         s.push_str(&format!("{SIGNALE}: {}\n", yaml::liste(&a.signale)));
     }
-    s.push_str(&phasen_schreiben(&a.phasen));
     s.push_str(&zaehlung_schreiben(&a.zaehlung));
     if let Some(k) = &a.kosten {
         s.push_str(&kosten_schreiben(k));
@@ -777,24 +751,21 @@ mod tests {
         }
     }
 
+    // R00223 (ADR-0034 Regel 2, N4 Regel 2, ADR-0028 Option B): `phases` ist ein unbekannter Schlüssel — die Aufgabe öffnet in
+    // jeder Form, auch `phases: [Abnahme]` (früher ein Formatfehler), und der Inhalt bleibt beim Schreiben gleich (Blockform).
     #[test]
-    fn entfallende_phasen_im_namensraum_phases_unbekanntes_bleibt() {
-        let mut a = Aufgabe::neu(3, "0003-x.md".into(), "X".into());
-        a.phasen.uebersprungen = vec!["Entwicklertest".into(), "Abnahme".into()];
-        let t = schreiben(&a);
-        assert_eq!(t, "---\nid: 3\ntitle: X\nphases:\n  skipped: [Entwicklertest, Abnahme]\n---\n");
-        assert_eq!(lesen("0003-x.md", &t).unwrap(), a);
-        let hand = "---\nid: 3\ntitle: X\nphases:\n  skipped: Abnahme\n  reason: kein Kunde\n  owners: [mi]\n---\n";
-        let h = lesen("0003-x.md", hand).unwrap();
-        assert_eq!((h.phasen.uebersprungen.clone(), h.weitere.len()), (vec!["Abnahme".to_string()], 0));
-        let neu = schreiben(&h);
-        assert!(neu.contains("phases:\n  skipped: [Abnahme]\n  reason: kein Kunde\n  owners: [\"mi\"]\n"), "{neu}");
-        assert_eq!(lesen("0003-x.md", &neu).unwrap(), h, "der Rundlauf verliert nichts");
-        let mut nur_fremd = h.clone();
-        nur_fremd.phasen.uebersprungen.clear();
-        assert!(schreiben(&nur_fremd).contains("phases:\n  reason: kein Kunde\n"), "ohne skipped bleibt der Namensraum mit seinem Rest");
-        assert!(lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases: [Abnahme]\n---\n").unwrap_err().0.contains("phases ist keine Zuordnung"));
-        assert_eq!(lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases:\n---\n").unwrap(), Aufgabe::neu(3, "0003-x.md".into(), "X".into()));
+    fn phases_ist_unbekannt_und_bleibt_inhaltlich_gleich() {
+        let wert = |text: &str| -> Value { serde_yaml::from_str::<Value>(text.trim_start_matches("---\n").split("\n---").next().unwrap()).unwrap()["phases"].clone() };
+        for form in ["{skipped: [Reviews]}", "[Abnahme]", "{skipped: Abnahme, reason: kein Kunde, owners: [mi]}", ""] {
+            let t = format!("---\nid: 3\ntitle: X\nphases: {form}\n---\n");
+            let a = lesen("0003-x.md", &t).unwrap_or_else(|f| panic!("{form}: {}", f.0));
+            assert_eq!(a.weitere.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), ["phases"], "{form}");
+            let neu = schreiben(&a);
+            assert_eq!(wert(&neu), wert(&t), "{form}: inhaltlich gleich:\n{neu}");
+            assert_eq!(schreiben(&lesen("0003-x.md", &neu).unwrap()), neu, "{form}: ein zweites Schreiben ändert kein Byte");
+        }
+        let block = schreiben(&lesen("0003-x.md", "---\nid: 3\ntitle: X\nphases: {skipped: [Reviews]}\n---\n").unwrap());
+        assert!(block.contains("phases:\n  skipped:\n  - Reviews\n"), "Blockform beim ersten Schreiben:\n{block}");
     }
 
     #[test]

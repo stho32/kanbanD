@@ -223,16 +223,6 @@ pub struct Kommentar {
     pub text: String,
 }
 
-/// `phases`: wie die Aufgabe die Phasen ihrer Anwendung durchläuft (R00058); in der Datei englisch wie der Namensraum.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct Phasenangaben {
-    /// `skipped`: Phasen, die für diese Aufgabe entfallen — sie zählt dort weder in Zähler und Nenner noch im Durchsatz
-    pub uebersprungen: Vec<String>,
-    /// Schlüssel im Namensraum, die kanbanD nicht kennt — bleiben beim Schreiben erhalten.
-    #[serde(skip)]
-    pub weitere: Vec<(String, serde_yaml::Value)>,
-}
-
 /// `reporting`: ob die Aufgabe in Berichten zählt (R00060); fehlt ein Schlüssel, gilt der Standard — sie zählt.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Berichtszaehlung {
@@ -292,7 +282,6 @@ pub struct Aufgabe {
     /// Zeilen im Block `kanbanD-runs`, die kein Durchlauf sind, mit ihrer Stelle im Block — sie bleiben beim Schreiben erhalten.
     #[serde(skip)]
     pub durchlaeufe_fremd: Vec<(usize, String)>,
-    pub phasen: Phasenangaben,
     #[serde(rename = "reporting")]
     pub zaehlung: Berichtszaehlung,
     /// `cost` (R00105): Preisetikett, geschätzte API-Kosten; null ohne Etikett
@@ -346,7 +335,6 @@ impl Aufgabe {
             kommentare: vec![],
             durchlaeufe: vec![],
             durchlaeufe_fremd: vec![],
-            phasen: Phasenangaben::default(),
             zaehlung: Berichtszaehlung::default(),
             kosten: None,
             kosteneintraege: vec![],
@@ -378,7 +366,6 @@ pub struct Aufgabenaenderung {
     pub herkunft: Option<Vec<String>>,
     /// ersetzt die Signale; jedes muss in `kanbanD.md` eingerichtet sein
     pub signale: Option<Vec<String>>,
-    pub phasen: Option<Phasenaenderung>,
     pub reporting: Option<Zaehlungsaenderung>,
     /// `cost` (R00105) roh, damit jeder Fehler 400 wird und nie 422; ein Wert ersetzt den Abschnitt, `null` entfernt ihn
     #[serde(default, deserialize_with = "entfernbar")]
@@ -440,13 +427,6 @@ pub struct Zaehlungsaenderung {
     pub burndown: Option<Option<bool>>,
     #[serde(default, deserialize_with = "entfernbar")]
     pub forecast: Option<Option<bool>>,
-}
-
-/// `{"uebersprungen": [...]}` (auch `skipped` wie in der Datei) ersetzt die entfallenden Phasen.
-#[derive(Debug, Clone, Default, Deserialize, utoipa::ToSchema)]
-pub struct Phasenaenderung {
-    #[serde(alias = "skipped")]
-    pub uebersprungen: Option<Vec<String>>,
 }
 
 pub const OHNE_HERKUNFT: &str = "thin air";
@@ -555,9 +535,6 @@ impl Aufgabe {
             }
             neu.signale = eindeutig(s);
         }
-        if let Some(u) = a.phasen.as_ref().and_then(|p| p.uebersprungen.as_ref()) {
-            neu.phasen.uebersprungen = eindeutig(u.iter().map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect());
-        }
         if let Some(z) = &a.reporting {
             if let Some(b) = z.burndown {
                 neu.zaehlung.burndown = b;
@@ -584,7 +561,6 @@ impl Aufgabe {
             ("Fälligkeit", neu.faellig != self.faellig),
             ("Herkunft", neu.herkunft != self.herkunft),
             ("Signale", neu.signale != self.signale),
-            ("Phasen", neu.phasen != self.phasen),
             ("Zählen in Berichten", neu.zaehlung != self.zaehlung),
             ("Kosten", neu.kosten != self.kosten),
             ("Geschätzte Zeit", neu.geschaetzte_minuten != self.geschaetzte_minuten),
@@ -765,15 +741,17 @@ mod tests {
         assert_eq!(a.herkunft, vec!["kd:I0007", "R00014"]);
     }
 
+    // R00223 (ADR-0034 N4 Regel 2): `phasen` im PATCH ist ein unbekanntes Feld und wird überlesen — keine Änderung, und ein
+    // `phases`, das die Datei trägt, bleibt unter den unbekannten Schlüsseln stehen.
     #[test]
-    fn entfallende_phasen_setzen() {
+    fn phasen_im_patch_wird_ueberlesen() {
         let mut a = Aufgabe::neu(1, "0001-x.md".into(), "x".into());
-        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[" Abnahme ","","Abnahme","Entwicklertest"]}}"#), &e(), &geltung()).unwrap(), vec!["Phasen"]);
-        assert_eq!(a.phasen.uebersprungen, vec!["Abnahme", "Entwicklertest"]);
-        assert!(a.aendern(&aend(r#"{"phasen":{"skipped":["Abnahme","Entwicklertest"]}}"#), &e(), &geltung()).unwrap().is_empty(), "skipped wie in der Datei, gleich ist keine Änderung");
-        assert_eq!(a.aendern(&aend(r#"{"phasen":{"uebersprungen":[]}}"#), &e(), &geltung()).unwrap(), vec!["Phasen"]);
-        assert!(a.phasen.uebersprungen.is_empty());
-        assert!(a.aendern(&aend(r#"{"phasen":{}}"#), &e(), &geltung()).unwrap().is_empty(), "ohne Liste bleibt alles");
+        a.weitere.push(("phases".into(), serde_yaml::from_str("{skipped: [Reviews]}").unwrap()));
+        let vorher = a.clone();
+        for rumpf in [r#"{"phasen":{"uebersprungen":["Abnahme"]}}"#, r#"{"phasen":{"uebersprungen":[]}}"#, r#"{"phasen":{"skipped":["Abnahme"]}}"#] {
+            assert!(a.aendern(&aend(rumpf), &e(), &geltung()).unwrap().is_empty(), "{rumpf}");
+            assert_eq!(a, vorher, "{rumpf}");
+        }
     }
 
     #[test]

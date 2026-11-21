@@ -106,7 +106,7 @@ async fn kopie_traegt_die_grundfelder_und_nichts_von_der_quelle() {
     assert!(a["cost"].is_null(), "Preisetikett kopiert");
     assert_eq!(a["signale"], json!([]), "Signale kopiert");
     assert!(a.get("wirkungen").is_none(), "Wirkungen gibt es seit R00222 nicht mehr in der API: {a}");
-    assert_eq!(a["phasen"]["uebersprungen"], json!([]), "Phasen-Übersprung kopiert");
+    assert!(a.get("phasen").is_none(), "phasen gibt es seit R00223 nicht mehr in der API: {a}");
     assert!(a["reporting"].as_object().unwrap().is_empty(), "Berichts-Zählung kopiert: {}", a["reporting"]);
     assert!(!tmp.path().join("aufgaben/0002-rechnung-pruefen-kopie").exists(), "Anhangsordner kopiert");
     let text = lies(tmp.path(), "aufgaben/0002-rechnung-pruefen-kopie.md");
