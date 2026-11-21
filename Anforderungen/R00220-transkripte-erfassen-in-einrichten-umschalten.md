@@ -1,0 +1,147 @@
+---
+id: R00220
+status: Neu
+datum: 2026-11-21
+---
+
+# R00220: „Transkripte erfassen“ in „Einrichten“ umschalten
+
+## Beschreibung
+
+Karte #218, Scheibe C2 des Feinschnitts. Die Technik steht in [ADR-0036](../Dokumentation/ADRs/0036-transkripte-unversioniert-im-ordner-eintrag-an-der-karte.md), Nachtrag „Umschalten“ (Akzeptiert, 611dab20). Das Produkt steht in `AI-Team/po-entscheidungen.md`: Z. 473 (sofort, ein Commit je Umschalten), Z. 476 (Freigabe der Zeichnung) und Z. 472 (Wortlaute 21–24). Dazu gelten die stehenden Regeln Z. 481 (ein Ereignis, eine Ansage) und Z. 484 (gesperrte Bedienelemente ≥ 3:1).
+
+**Umfang:** Ein Mensch schaltet in „Einrichten“ um, ob Transkripte erfasst werden, ohne eine Datei zu bearbeiten: einmal die [Vorgabe des Ordners](../Dokumentation/Domaenenwissen/D00011-vorgabe-des-ordners.md) („an · aus“) und je Board „wie Vorgabe · an · aus“. Jeder Klick gilt sofort und erzeugt höchstens einen Commit an genau einer Datei. Ein Agent kann nicht umschalten. „Speichern“ und „Verwerfen“ der übrigen Abschnitte ändern den Schalter nie, auch nicht mit einem Stand, der vor dem Umschalten geladen wurde. Der Hinweis in „Läufe“ ([R00219](R00219-ansicht-laeufe-im-aufgabenfenster.md) FA 6) bekommt den Verweis „In „Einrichten“ umschalten“. Dazu kommen zwei Routen und ein Lesefeld. Das Format von `record-transcripts` ([R00216](R00216-transkripte-der-agentenlaeufe-ablegen.md)) bleibt unverändert.
+
+**Zeichnung:** D0009 `#transkripte-schalter`, vom product-owner freigegeben (Z. 476). Die Wortlaute 21–24 stehen hier so, wie sie freigegeben sind. Die Zeichnung ist die Quelle für Aussehen und Abstände; diese Anforderung legt Verhalten und Inhalte fest.
+
+Zahlt ein auf: [Vision](R00000-vision.md) — Zielbild „Die Arbeit hinter der Karte nachvollziehen“ (Z. 109–110), mit dem Schutz, dass niemand Daten erfasst bekommt, die er nicht bestellt hat (PO Z. 377: Vorgabe „aus“, nur Menschen schalten).
+
+### Domänenbezug
+
+- [Vorgabe des Ordners](../Dokumentation/Domaenenwissen/D00011-vorgabe-des-ordners.md) — der Wert in `kanbanD.md` gilt für Boards ohne eigenen Wert
+- [Live-Ereignis](../Dokumentation/Domaenenwissen/D00005-live-ereignis.md) — der Commit des Umschaltens erreicht alle offenen Fenster
+- [Hinweis](../Dokumentation/Domaenenwissen/D00007-hinweis.md) — der Erklärtext des Abschnitts
+- [Schmales Layout](../Dokumentation/Domaenenwissen/D00004-schmales-layout.md) — bis einschließlich 640 px
+- Transkript, Lauf, Schalter und „wirksamer Wert“ stehen nicht im Glossar. Bis dahin gelten die Wörter aus R00216 und ADR-0036.
+
+## Geschäftlicher Nutzen
+
+Heute lässt sich das Erfassen nur von Hand in der Board-Datei oder in `kanbanD.md` einschalten, und keine Route setzt den Wert (R00216 AK 5). Wer die Factory auf ihrem Board erfassen lassen will, muss deshalb Frontmatter bearbeiten. Danach schaltet ein Mensch in „Einrichten“ mit einem Klick um und sieht je Board, was gilt. Ein Agent kann sich das Erfassen nicht selbst einschalten. Sonst wäre der Schutz „aus als Vorgabe“ wirkungslos (PO Z. 377).
+
+## Funktionale Anforderungen
+
+1. **Board umschalten:** `PUT /api/boards/{slug}/transkripte` mit `{erfassen: true | false | null}`. `true` und `false` werden ausdrücklich geschrieben. `null` entfernt `record-transcripts` aus der Board-Datei, danach gilt die Vorgabe. Fehlt `erfassen` oder ist es weder Wahrheitswert noch `null`, kommt 400. Ein unbekanntes Board ergibt 404 (Nachtrag Punkt 1).
+2. **Vorgabe umschalten:** `PUT /api/einstellungen/transkripte` mit `{erfassen: true | false}`. Mit `null`, ohne `erfassen` oder mit einem anderen Wert kommt 400. Verglichen wird der wirksame Wert: Fehlt der Schlüssel und wird `false` gewählt, ändert sich nichts (Nachtrag Punkt 2).
+3. **Nur Menschen:** Nennt `X-KanbanD-Wer` einen Agenten, antworten beide Routen 403 mit `{fehler: "Den Schalter „Transkripte erfassen“ stellen nur Menschen um", einstellung: "record-transcripts"}` (ohne Schlusspunkt wie die übrigen Meldungen in `src/fehler.rs`). Das gilt auch, wenn sich nichts ändern würde. Geprüft wird vor Rumpf, Board und Sperre (Nachtrag Punkt 3).
+4. **Schreiben:** Unter der Sperre wird die Datei frisch gelesen, und nur dieser Schlüssel ändert sich. Es entsteht genau ein Commit an genau dieser Datei. Seine Nachricht lautet „Transkripte auf „<Board>“: an | aus | wie Vorgabe“ bzw. „Transkripte, Vorgabe des Ordners: an | aus“. Ohne Änderung gibt es keinen Commit, und die Datei bleibt zeichengleich. Die Antwort ist 200 `{erfassen, wirksam}`. Dabei ist `erfassen` der gespeicherte Wert (am Board `true | false | null`) und `wirksam` der Wert, der danach gilt (Nachtrag Punkt 4).
+5. **Getrennt von „Speichern“ und „Verwerfen“:** `PUT /api/einstellungen` und die übrigen Board-Routen (`…/spalten`, `…/klassen`, `…/anwendungen`) nehmen den Schalter nicht an. Sie übernehmen ihn aus der frisch gelesenen Datei, auch wenn der Rumpf `transkripte_erfassen` oder `record-transcripts` enthält. In der Oberfläche gehört der Schalter nicht zum Entwurf. „Verwerfen“ setzt nur den Entwurf zurück und ruft keine Schalter-Route auf. „Speichern“ schickt keinen Schalterwert (Nachtrag Punkt 5, PO Z. 473).
+6. **Lesen:** `GET /api/einstellungen` trägt das Lesefeld `transkripte_erfassen: true | false | null`, so wie es in `kanbanD.md` steht. Am Board steht `transkripte_erfassen` schon heute (`GET /api/boards`). Endpunkt-Liste und OpenAPI ersetzen den Zusatz „nur von Hand in der Datei gesetzt“ durch „umschalten nur Menschen über `PUT …/transkripte`“ (Nachtrag Punkte 6–7).
+7. **Abschnitt TRANSKRIPTE in „Einrichten“** (Zeichnung Teil 1): Er steht unter den übrigen Abschnitten und beginnt mit dem Erklärtext (Wortlaut 21): „Ein Transkript hält den ganzen Lauf eines Agenten fest, auch die Ausgaben seiner Werkzeuge. Es liegt gezippt im Board-Ordner, bleibt auf diesem Rechner und reist nicht mit dem Repository; Löschen löscht es wirklich. Ausschalten gilt nur für neue Läufe; abgelegte Transkripte bleiben. Umschalten können nur Menschen. Jeder Klick gilt sofort, ohne „Speichern“.“ Darunter folgen „Vorgabe des Ordners“ mit dem Zusatz „für Boards ohne eigenen Wert“ und der Wahl „an · aus“ (fehlt der Schlüssel, ist „aus“ gewählt) und je offenem Board eine Zeile mit „wie Vorgabe · an · aus“ und rechts der Wirkung „erfasst“ bzw. „erfasst nicht“ (Wortlaut 22). Die Boards stehen in der Reihenfolge der Antwort von `GET /api/boards`. Ein langer Name bricht um, Wahl und Wirkung bleiben ganz.
+8. **Umschalten** (Zeichnung Teile 2–4): Eine neue Wahl schreibt sofort. Bis zur Antwort ist nur dieser eine Schalter gesperrt, und zwar in der Sperrform Z. 216 (`aria-disabled="true"`, fokussierbar). Die neue Wahl steht schon da, rechts steht „stellt um …“, und der Fokus bleibt auf der gedrückten Wahl. **Erfolg:** Die Wirkung kommt aus der Antwort, und an der Zeile steht bis zum nächsten Umschalten der Satz aus Wortlaut 23. Am Board lautet er „Auf „<Board>“ werden jetzt Transkripte erfasst.“ bzw. „Auf „<Board>“ werden keine Transkripte mehr erfasst.“, nach der wirksamen Lage, auch bei „wie Vorgabe“. An der Vorgabe lautet er „Für Boards ohne eigenen Wert werden jetzt Transkripte erfasst.“ bzw. „Für Boards ohne eigenen Wert werden keine Transkripte mehr erfasst.“. Ändert die Vorgabe die Wirkung von Boards mit „wie Vorgabe“, ist das sofort an deren Wirkung sichtbar. **Fehler:** Die Wahl springt zurück, an der Zeile steht „Der Schalter ließ sich nicht umstellen: <`fehler` der Antwort> (<Status>).“ (Wortlaut 24), und der Fokus bleibt auf dem Schalter. Ohne Verbindung lautet der Satz „Der Schalter ließ sich nicht umstellen: keine Verbindung zum Programm.“ (Zeichnung Teil 4), und nur dann steht „Erneut versuchen“ daneben. Wählt eine Person ohne Recht (ein Agent), zeigt die Zeile die Abweisung des Servers in dieser Form. Einen eigenen Zustand dafür gibt es nicht (Z. 476).
+9. **Vorschau:** Die Vorschau von `kanbanD.md` zeigt `record-transcripts` so, wie der Wert geschrieben ist: nach der Antwort des Umschaltens und danach nach dem Live-Ereignis. Eine gewählte, noch nicht bestätigte Wahl zeigt sie nie, und ein offener Entwurf ändert daran nichts (Nachtrag Punkt 6). Ein offener Entwurf der übrigen Abschnitte bleibt nach dem Live-Ereignis des Umschaltens stehen.
+10. **Verweis aus „Läufe“** (Zeichnung Teil 6, Wortlaut 13): Hinter dem Hinweis bei ausgeschaltetem Erfassen (R00219 FA 6) steht der Verweis „In „Einrichten“ umschalten“. Er öffnet „Einrichten“ am Abschnitt TRANSKRIPTE.
+11. **Fremder Text bleibt Text:** Boardnamen stammen aus Dateien, die jeder bearbeiten kann. Sie werden nie als HTML gedeutet, und Bidi-Steuerzeichen werden entfernt (ADR-0030, wie R00219 FA 9).
+
+## Nicht-funktionale Anforderungen
+
+- **Sicherheit:** Die 403 hängt an `X-KanbanD-Wer`. Das ist ein Schutz vor Versehen, nicht vor Absicht, also die bekannte Grenze aus ADR-0006 (Nachtrag, Konsequenzen). Ein Agent kann den Schalter über keine Route ändern, auch nicht über einen eingeschmuggelten Rumpf.
+- **Last:** Schreiben bedeutet ein Commit an einer kleinen Datei, weit unter p95 500 ms. Das Lesefeld kostet nichts, denn `kanbanD.md` wird für die Antwort ohnehin gelesen (Nachtrag, Lastprofil). Eine Messprobe ist nicht nötig.
+- **Breite, Ziele, Themen:** wie AK 10, nach den Leitplanken des Projekts (Lehren #212, #217, #220).
+
+## Akzeptanzkriterien
+
+**Ausgangslage** (herstellbar über die API und die Dateien des Board-Ordners, wie R00216): Mensch `sh`, Agent `entw1`, Browser headless in `Europe/Berlin`. `kanbanD.md` ohne `record-transcripts` (die Vorgabe ist also „aus“). Board `fabrik` mit `record-transcripts: true`. Board `zweit` ohne Schlüssel. Board `zweites-board-mit-einem-sehr-langen-namen-aus-sechzig-zeiche` (60 Zeichen ohne Leerzeichen) ohne Schlüssel. Aufgabe #3 auf `zweit` mit einem Kosteneintrag ohne Transkript (wie R00219 #3). „Ein Commit“ heißt: `git rev-list --count HEAD` im Board-Ordner steigt um genau 1, und `git show --name-only HEAD` nennt genau eine Datei.
+
+### Umschalten über die API
+
+- [ ] **AK 1 Board:** Gegeben die Ausgangslage, wenn `sh` `PUT /api/boards/zweit/transkripte {erfassen: true}` schickt, dann kommt 200 `{erfassen: true, wirksam: true}`, und es entsteht ein Commit nur an `boards/zweit.md`, die jetzt `record-transcripts: true` trägt. Ein zweites gleiches `PUT` ergibt 200 ohne Commit. Danach ergibt `{erfassen: null}` 200 `{erfassen: null, wirksam: false}` mit einem Commit, und der Schlüssel fehlt in `boards/zweit.md`. Ein weiteres `{erfassen: null}` ergibt keinen Commit. Rumpf `{}`, `{erfassen: "an"}` oder `{erfassen: 1}` ergibt 400, `PUT /api/boards/gibtsnicht/transkripte {erfassen: true}` ergibt 404. In allen vier Fällen bleiben die Dateien zeichengleich, und es entsteht kein Commit.
+- [ ] **AK 2 Vorgabe und Lesefeld:** Gegeben die Ausgangslage, wenn `sh` `PUT /api/einstellungen/transkripte {erfassen: false}` schickt, dann kommt 200 `{erfassen: false, wirksam: false}` ohne Commit, und `kanbanD.md` bleibt zeichengleich (der Schlüssel fehlt weiter). Mit `{erfassen: true}` kommt 200 `{erfassen: true, wirksam: true}` und ein Commit nur an `kanbanD.md`, und `GET /api/einstellungen` meldet `transkripte_erfassen: true`. Danach schreibt `{erfassen: false}` ausdrücklich `record-transcripts: false` (ein Commit), und `GET` meldet `false`. `{erfassen: null}`, `{}` und `{erfassen: "aus"}` ergeben 400 ohne Commit. In der Ausgangslage meldet `GET /api/einstellungen` `transkripte_erfassen: null`.
+- [ ] **AK 3 Nur Menschen:** Gegeben die Ausgangslage, wenn `entw1` `PUT /api/boards/fabrik/transkripte {erfassen: true}` schickt (gleicher Wert), dann kommt 403 `{fehler: "Den Schalter „Transkripte erfassen“ stellen nur Menschen um", einstellung: "record-transcripts"}`. Dieselbe 403 kommt für `{erfassen: false}` an `fabrik`, für `{erfassen: "an"}` (ungültiger Rumpf, nicht 400), für `PUT /api/boards/gibtsnicht/transkripte` (unbekanntes Board, nicht 404) und an `PUT /api/einstellungen/transkripte` mit `{erfassen: true}` und mit `{erfassen: null}`. In keinem Fall entsteht ein Commit, und `boards/fabrik.md` und `kanbanD.md` bleiben zeichengleich. Mutation: Fehlt die Prüfung auf den Agenten, wird die Probe rot.
+- [ ] **AK 4 Veralteter Stand:** Gegeben der Stand S0 aus der Ausgangslage (Antworten von `GET /api/einstellungen` und `GET /api/boards/zweit`, Schalter aus), wenn `sh` danach `PUT /api/boards/zweit/transkripte {erfassen: true}` und `PUT /api/einstellungen/transkripte {erfassen: true}` schickt und dann nacheinander `PUT /api/einstellungen`, `PUT /api/boards/zweit/spalten`, `…/klassen` und `…/anwendungen` mit dem Rumpf aus S0 schickt, je einmal unverändert und einmal mit eingeschmuggeltem `transkripte_erfassen: false` und `record-transcripts: false` (bei einem Rumpf als Liste an jedem Element), dann tragen `boards/zweit.md` und `kanbanD.md` nach jedem dieser Aufrufe weiter `record-transcripts: true`, gleich welche Antwort der Aufruf bekommt. `GET /api/einstellungen` und `GET /api/boards/zweit` melden `true`. **Gegenprobe:** Der Mutant `*e = neu` ohne Übernahme in `einstellungen_setzen` macht die Probe rot.
+
+### Umschalten in „Einrichten“
+
+- [ ] **AK 5 Abschnitt und Wirkung:** Gegeben die Ausgangslage, wenn `sh` „Einrichten“ öffnet, dann steht unter den übrigen Abschnitten TRANSKRIPTE mit dem Erklärtext aus FA 7 (zeichengleich), die Vorgabe des Ordners auf „aus“ und darunter drei Zeilen in der Reihenfolge der Antwort von `GET /api/boards`: `fabrik` „an“ mit der Wirkung „erfasst“, `zweit` „wie Vorgabe“ mit „erfasst nicht“ und das Board mit 60 Zeichen „wie Vorgabe“ mit „erfasst nicht“. Vorgelesen ist jede Wahl eine Gruppe mit dem Namen „Vorgabe: Transkripte erfassen“ bzw. „Transkripte erfassen auf <Board>“ (Playwright `getByRole('radiogroup')`), und genau eine Wahl je Gruppe ist gewählt.
+- [ ] **AK 6 Sofort und ein Commit:** Gegeben die Ausgangslage, „Einrichten“ offen und die Antwort gehalten, wenn `sh` bei `zweit` „an“ wählt, dann geht genau ein `PUT /api/boards/zweit/transkripte {erfassen: true}` hinaus und kein `PUT /api/einstellungen`. Bis zur Freigabe ist nur die Gruppe von `zweit` gesperrt (`aria-disabled="true"`, die Gruppen von Vorgabe, `fabrik` und dem langen Board sind frei), „an“ ist gewählt, rechts steht „stellt um …“, und der Fokus steht auf „an“. Eine weitere Wahl in der gesperrten Gruppe schickt kein zweites `PUT`. Nach der Freigabe mit 200 steht rechts „erfasst“, an der Zeile steht „Auf „zweit“ werden jetzt Transkripte erfasst.“, und der Board-Ordner hat genau einen Commit mehr. Wählt `sh` danach an der Vorgabe „an“, dann steht an deren Zeile „Für Boards ohne eigenen Wert werden jetzt Transkripte erfasst.“, das lange Board zeigt sofort „erfasst“, und die Vorschau zeigt `record-transcripts: true`. Wählt `sh` dann bei `zweit` „wie Vorgabe“, steht dort „Auf „zweit“ werden jetzt Transkripte erfasst.“ (wirksame Lage).
+- [ ] **AK 7 Fehler und Agent:** Gegeben die Ausgangslage, wenn `sh` bei `zweit` „an“ wählt und die Antwort mit 503 `{fehler: "Git ist beschäftigt"}` freigegeben wird, dann ist wieder „wie Vorgabe“ gewählt, rechts steht „erfasst nicht“, an der Zeile steht „Der Schalter ließ sich nicht umstellen: Git ist beschäftigt (503).“ ohne „Erneut versuchen“, der Fokus liegt in der Gruppe von `zweit` (`document.activeElement` ist eine ihrer Wahlen, nie `body`), und es entsteht kein Commit. Ohne Verbindung (Abbruch über `page.route`) steht „Der Schalter ließ sich nicht umstellen: keine Verbindung zum Programm.“ mit „Erneut versuchen“, und „Erneut versuchen“ schickt dasselbe `PUT` noch einmal. Ist `entw1` im Ich-Menü gewählt und wählt bei `fabrik` „aus“, dann steht wieder „an“, und an der Zeile steht „Der Schalter ließ sich nicht umstellen: Den Schalter „Transkripte erfassen“ stellen nur Menschen um (403).“
+- [ ] **AK 8 Getrennt vom Entwurf, Vorschau zeigt den geschriebenen Stand:** Gegeben „Einrichten“ offen, `sh` hat im Abschnitt PERSONEN den Namen von `sh` geändert, ohne zu speichern, wenn `sh` danach an der Vorgabe „an“ wählt, dann steht der geänderte Name nach dem Live-Ereignis des Commits weiter im Entwurf. Bei gehaltener Antwort zeigt die Vorschau kein `record-transcripts: true`; erst nach der Antwort zeigt sie `record-transcripts: true`. Drückt `sh` dann „Verwerfen“, geht kein Aufruf an `…/transkripte`, die Vorgabe bleibt auf „an“, und `kanbanD.md` trägt `true`. Ändert `sh` danach den Namen erneut und drückt „Speichern“, dann enthält der Rumpf von `PUT /api/einstellungen` weder `transkripte_erfassen` noch `record-transcripts`, und `kanbanD.md` trägt danach weiter `record-transcripts: true`. Dasselbe gilt für einen Entwurf, der vor dem Umschalten in einem zweiten Fenster geöffnet und dort nach dem Umschalten gespeichert wird: die Datei trägt `true`, und die Vorschau beider Fenster zeigt `true`.
+- [ ] **AK 9 Verweis aus „Läufe“:** Gegeben #3 auf `zweit` (Schalter aus) offen in „Läufe“, dann steht hinter dem Hinweis „Auf „zweit“ werden keine Transkripte erfasst; neue Läufe erscheinen ohne Transkript.“ der Verweis „In „Einrichten“ umschalten“. Wenn `sh` ihn aktiviert (Klick oder Enter), dann ist „Einrichten“ offen, die Überschrift TRANSKRIPTE liegt im sichtbaren Bereich ihres Bildlaufbehälters (`getBoundingClientRect` innerhalb des Behälters), und der Fokus steht auf ihr. An #1 auf `fabrik` (erfassend) steht weder Hinweis noch Verweis.
+- [ ] **AK 10 Breite, Ziele, Themen, Kontrast, Tastatur und Ansage:** Gegeben die Ausgangslage, dann gilt bei 320, 414, 640, 641, 768, 900, 901, 980, 1099, 1100 und 1280 px, hell und dunkel, in den Zuständen Grundstand, „stellt um …“, Erfolg, Fehler mit Status und ohne Verbindung:
+  - `scrollWidth ≤ clientWidth` am Dokument **und** am Bildlaufbehälter von „Einrichten“ (dem Element mit `overflow: auto`, das TRANSKRIPTE enthält; Lehre #217: den Behälter messen, nicht nur das Fenster). Jedes Rechteck aus `Range.getClientRects()` über dem Namen aus 60 Zeichen liegt in `getBoundingClientRect()` seiner eigenen Zeile (Toleranz 1 px), und Wahl und Wirkung derselben Zeile sind ganz sichtbar. Mutation: `white-space: nowrap` am Boardnamen macht die Probe rot.
+  - Bei grobem Zeiger ist jede Wahl, „Erneut versuchen“ und der Verweis aus AK 9 mindestens 48 × 48 px.
+  - Text hat mindestens 4,5:1, Symbole und Ränder der Wahl mindestens 3:1. Ausgenommen ist der Text des gesperrten Schalters (`aria-disabled="true"`). Er steht mit mindestens 3:1 gegen die Fläche (PO Z. 484). Der Fokusring hat berechnet `outline-style: solid`, `outline-width` mindestens 2 px und `outline-color` mindestens 3:1 gegen die Fläche, auch am gesperrten, fokussierten Schalter.
+  - Mit der Tastatur erreicht Tab jede Gruppe, und Pfeiltasten wechseln die Wahl innerhalb der Gruppe, was wie ein Klick schreibt (genau ein `PUT` je Wechsel).
+  - **Genau eine Ansage** (PO Z. 481): Ein `MutationObserver` zählt Textänderungen in Elementen, die auf `[role=status],[role=alert],[aria-live]` passen. Je Umschalten zählt er von der Wahl bis zum gezeichneten Ergebnis genau **eine** Textänderung, und die liegt im `role="status"` der umgeschalteten Zeile: der Satz bei Erfolg, bei 503, ohne Verbindung und bei 403. „stellt um …“ und die Wirkung liegen in keiner Live-Region. Mutation: `role="alert"` am Fehlersatz macht die Zählung rot.
+
+## Betroffene Verzeichnisstruktur
+
+- Server: Dienst neben `board_klassen_setzen` (`src/dienst/klassen.rs`) bzw. in `src/dienst/einstellungen.rs`. Die Routen kommen in `src/web/mod.rs`, ihre Beschreibung in `src/web/endpunkte.rs`, der Wortlaut des `fehler` an einem Ort in `src/fehler.rs`, das Lesefeld in `Einstellungsantwort` (`src/dienst/anwendungen.rs`).
+- Oberfläche: neu `web/transkripte-schalter.js` (reine Funktionen, im Browser und in Node nutzbar). Abschnitt und Umschalten liegen in `web/app.js` bei `vEinrichten()`, der Verweis in „Läufe“ bei der Hinweiszeile aus R00219. Stil nur mit Tokens aus `kd-tokens.css`.
+- Tests: Rust-Tests für Dienst und Routen neben den Tests von `PUT …/klassen`. Neu kommen `e2e/einheit/transkripte-schalter.test.js` und `e2e/tests/r00220-transkripte-schalter.spec.js` dazu.
+
+## Technische Überlegungen
+
+### Ablauf (Vorplanung: welche Bubbles es am Ende werden, entscheidet der entwickler)
+
+1. **F0162 Umschalten über die API**
+   1.1 **B1133 Dienst:** `wer`, Board bzw. Vorgabe und Wert führen zu 403 für einen Agenten. Sonst wird unter der Sperre gelesen, ein Schlüssel geändert und ein Commit erzeugt, ohne Änderung keiner (AK 1–3).
+   1.2 **B1134 Routen, Lesefeld, Beschreibung, API-Probe:** Die 403 kommt vor der Rumpfprüfung. Dazu kommen 400 und 404, `{erfassen, wirksam}` und `transkripte_erfassen` an `GET /api/einstellungen` (AK 1–3).
+   1.3 **B1135 Veralteter Stand:** Die Probe über vier Schreibwege läuft mit Mutant (AK 4).
+2. **F0163 Umschalten in „Einrichten“ und Verweis aus „Läufe“**
+   2.1 **B1136 Wahl und Wirkung, rein** (AK 5, 6).
+   2.2 **B1137 Abschnitt zeichnen** nach der freigegebenen Zeichnung (AK 5).
+   2.3 **B1138 Umschalten:** Dazu gehören Sperre, Erfolg und Fehler, die Trennung vom Entwurf und die Vorschau (AK 6–8).
+   2.4 **B1139 Verweis aus „Läufe“** (AK 9).
+   2.5 **B1140 Breite, Ziele, Themen, Kontrast, Tastatur und Ansage** (AK 10).
+   2.6 **B1141 Probe im echten Programm, Gate, Anforderung abschließen** (AK 1–10).
+
+### Grobentwurf
+
+**Einstiegsstellen:** zwei Routen neben `PUT /api/boards/{slug}/klassen`. Dazu kommen das Lesefeld in `GET /api/einstellungen`, der Abschnitt in `vEinrichten()` (`web/app.js:208`) und die Hinweiszeile der Ansicht „Läufe“.
+
+- `Kanban::board_transkripte_setzen(wer, slug, Option<bool>)` und `Kanban::vorgabe_transkripte_setzen(wer, bool)` (Operation, wirft `Fehler`) liefern `(geaendert, Schalterantwort)`. `Schalterantwort` ist ein immutables DTO `{erfassen, wirksam}`.
+- `wahlUndWirkung(vorgabe, wert)` (rein) liefert `{wahl, wirkung}`. `erfolgsSatz(board | null, wirksam)` (rein) liefert den Satz nach Wortlaut 23.
+
+### Hinweise
+
+- **Artboard:** `Dokumentation/Wireframes/D0009.dc.html`, Bereich `#transkripte-schalter` (Teile 1–6, hell und dunkel, freigegeben PO Z. 476). Die Zeichnung ist die Quelle für das Aussehen. Kriterien entstehen nicht aus ihr.
+- **Vorbild:** `PUT …/klassen` (Prüfung, Sperre, ein Commit, ohne Änderung keiner) und die Ansicht „Commits“ bzw. „Läufe“ (gehaltene Antwort, ein Statusbereich, Fokus).
+
+## Tests
+
+Nach `~/.claude/skills/test-pyramide/SKILL.md`: Test zuerst je Bubble.
+
+- **Unit (Node):** `wahlUndWirkung` (alle neun Paare aus Vorgabe und Board-Wert), `erfolgsSatz`.
+- **Integration (Rust):** Dienst und Routen gegen einen echten Board-Ordner mit Git (Commits zählen, Dateien zeichengleich), mit den Mutanten „Agent-Prüfung entfernt“ (AK 3) und „Übernahme in `einstellungen_setzen` entfernt“ (AK 4).
+- **E2E:** AK 5–10 gegen das gestartete Programm (Playwright, headless), mit gehaltenen Antworten über `page.route`, elf Breiten, beiden Themen, grobem Zeiger und Tastatur.
+
+## Abhängigkeiten
+
+- Abhängig von: [R00216](R00216-transkripte-der-agentenlaeufe-ablegen.md) (I0206, Karte #208, Erledigt: `record-transcripts` in Datei und Board-Antwort, `braucht:208`) und [R00219](R00219-ansicht-laeufe-im-aufgabenfenster.md) (I0209, Karte #217, Erledigt: Hinweiszeile in „Läufe“, `braucht:217`). Dazu kommt die Zeichnung D0009 `#transkripte-schalter`, freigegeben samt Wortlauten 21–24 (PO Z. 472, 476).
+- Löst ab: R00216 AK 5 zweiter Satz („keine Route setzt ihn“). Der erste Satz (der Schalter übersteht jedes andere Schreiben) gilt weiter und wird hier in AK 4 geschärft.
+- Blockiert: keine Karte.
+
+## Offene Fragen
+
+Keine, die den Bau aufhalten. Mit Empfehlung entschieden (im Bericht des planer):
+
+1. **Fokus nach dem Verweis aus „Läufe“:** Die Zeichnung sagt „öffnet am Abschnitt TRANSKRIPTE“ und legt kein Fokusziel fest. Gewählt ist die Überschrift TRANSKRIPTE (AK 9), denn so ist der Fokus nie auf `body` und kein Schalter ist vorgewählt. Prüfen sollen das ux-reviewer und product-owner.
+2. **Text ohne Verbindung:** Wortlaut 24 nennt „Erneut versuchen nur ohne Verbindung“. Der Satz „…: keine Verbindung zum Programm.“ steht in der Zeichnung (Teil 4, 320 px) und folgt der Form von Wortlaut 10.
+
+## Manuelle Vorbereitungstätigkeiten
+
+- Keine.
+
+## Manuelle Nachbereitungstätigkeiten
+
+- Modell nachführen: A00003 Zeile „Keine Route nimmt den Schalter an“ und A00004 `einstellungen_setzen` (Folgeaufgabe des Nachtrags „Umschalten“).
+
+## Warum löst diese Anforderung das Problem? (Pflicht)
+
+Seit R00216 entscheidet `record-transcripts`, ob kanbanD ein Transkript annimmt, aber umschalten kann man nur durch Bearbeiten von Frontmatter, und das tut im Alltag niemand. Mit einem Schalter je Board und einem für die Vorgabe in „Einrichten“ schaltet ein Mensch mit einem Klick um und sieht rechts, was je Board gilt. Die Factory kann ihr Board deshalb einschalten, ohne dass jemand Dateien anfasst. Der Hebel liegt am Server und nicht in der Oberfläche: Nur die neuen Routen nehmen den Wert an, und alle übrigen Schreibwege übernehmen ihn aus der frisch gelesenen Datei. Darum kann weder ein Agent noch ein alter Entwurf von „Speichern“ den Schalter still ändern (PO Z. 473). Weil jeder Klick sofort genau einen Commit an genau einer Datei schreibt, steht jedes Umschalten im Verlauf und kommt als Live-Ereignis überall an, und zwischen Wahl und Wirkung wird nichts still erfasst.
+
+## Notizen
+
+- **Verworfene Alternativen** (ADR-0036 Nachtrag „Umschalten“): S2, der Schalter in `PUT /api/einstellungen` mit ETag. Dabei bekäme ein alter Entwurf 412, und der Mensch verlöre Änderungen an einem Schalter, den er nicht angefasst hat. S3, eine Route für alle Boards: Zwei Fenster überschrieben sich gegenseitig mit veraltetem Stand, und es entstünden mehrere Dateien in einem Commit. S4, der Schalter im Entwurf über „Speichern“: vom PO verworfen (Z. 473), weil Läufe zwischen Wahl und Speichern still erfasst würden.
+- **Nicht in C2:** ein Sammel-Löschen abgelegter Transkripte (PO Z. 379), ein Schalter je Aufgabe und ein Schutz gegen einen gefälschten `X-KanbanD-Wer` (ADR-0006).
+- **Zehn Kriterien** (Auftrag: etwa zehn). Grenzfälle über die genannten Beispiele hinaus gehören dem entwickler.
