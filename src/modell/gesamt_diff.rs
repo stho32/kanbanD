@@ -189,12 +189,14 @@ pub fn namen_lesen(aus: &[u8], koepfe: &[&str]) -> Option<HashMap<String, Vec<Ei
 /// (Code-Review B1, #214): eine Gruppe ist ganz netto oder ganz Folge. Berührt ein fremder Commit einen Pfad der Gruppe,
 /// ist sie **belastet**: kein Pfad von ihr erscheint netto, denn der Netto-Diff zeigte die fremden Zeilen, die die
 /// Umbenennung mitgenommen hat, als Arbeit der Karte.
+/// Eine Gruppe ist **verdorben**, wenn sie belastet ist oder ein Pfad von ihr in einem Eintrag der Netto-Liste steht, der
+/// nicht netto ist (ADR-0032 N8.6 Punkt 1); [`Einteilung::teilen`] rechnet das bis zum Fixpunkt.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Einteilung {
     pub karte: BTreeSet<Vec<u8>>,
     pub fremd: HashSet<Vec<u8>>,
     gruppe: HashMap<Vec<u8>, usize>,
-    belastet: HashSet<usize>,
+    verdorben: HashSet<usize>,
 }
 
 impl Einteilung {
@@ -230,30 +232,62 @@ impl Einteilung {
         for (p, i) in &stelle {
             let g = wurzel(&mut oben, *i);
             if e.fremd.contains(*p) {
-                e.belastet.insert(g);
+                e.verdorben.insert(g);
             }
             e.gruppe.insert(p.to_vec(), g);
         }
         e
     }
 
-    /// Liegt der Pfad in `D_fremd` oder in einer belasteten Gruppe?
-    fn belastet(&self, p: &[u8]) -> bool {
-        self.fremd.contains(p) || self.gruppe.get(p).is_some_and(|g| self.belastet.contains(g))
+    /// Liegt der Pfad in `D_fremd` oder in einer verdorbenen Gruppe?
+    fn verdorben(&self, p: &[u8]) -> bool {
+        self.fremd.contains(p) || self.gruppe.get(p).is_some_and(|g| self.verdorben.contains(g))
     }
 
-    /// Netto genau dann, wenn alle Pfade des Eintrags in `D_karte` und keiner in `D_fremd` oder in einer belasteten
-    /// Gruppe liegt.
+    /// Netto genau dann, wenn alle Pfade des Eintrags in `D_karte` und keiner in `D_fremd` oder in einer verdorbenen
+    /// Gruppe liegt (vor [`Einteilung::teilen`]: in einer belasteten).
     pub fn netto(&self, d: &Diffdatei) -> bool {
-        d.pfade_roh.iter().all(|p| self.karte.contains(p) && !self.belastet(p))
+        d.pfade_roh.iter().all(|p| self.karte.contains(p) && !self.verdorben(p))
     }
 
-    /// Die Folge-Pfade (ADR-0032 N8.3 Punkt 1): Kartenpfade, die kein Netto-Eintrag trägt (`gedeckt`) und die belastet sind
-    /// oder in einem Netto-Eintrag stehen, den [`Einteilung::netto`] verworfen hat (`verworfen`). Jeder andere Kartenpfad ohne
-    /// Netto-Eintrag ist netto unverändert (die Karte nimmt ihre Änderung selbst zurück) oder ein Zwischenname (K1 benennt `a`
-    /// nach `m`, K2 `m` nach `z`; netto steht `a → z`) und erscheint nirgends.
-    pub fn folgepfade(&self, gedeckt: &HashSet<&[u8]>, verworfen: &HashSet<&[u8]>) -> HashSet<Vec<u8>> {
-        self.karte.iter().filter(|p| !gedeckt.contains(p.as_slice()) && (self.belastet(p) || verworfen.contains(p.as_slice()))).cloned().collect()
+    /// Teilt die Netto-Liste in netto und verworfen (ADR-0032 N8.6 Punkt 1, 3): jeder verworfene Eintrag verdirbt die
+    /// Gruppen seiner Pfade, und jede neu verdorbene Gruppe verwirft die Einträge, die einen ihrer Pfade tragen — bis nichts
+    /// mehr dazukommt. Monoton, jede Gruppe und jeder Eintrag kommt höchstens einmal dran. Danach lesen [`Einteilung::netto`]
+    /// und [`Einteilung::folgepfade`] dieselbe Menge der verdorbenen Gruppen. Beide Teile in der Reihenfolge der Liste.
+    pub fn teilen(&mut self, liste: Vec<Diffdatei>) -> (Vec<Diffdatei>, Vec<Diffdatei>) {
+        let mut je_gruppe: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (i, d) in liste.iter().enumerate() {
+            for g in d.pfade_roh.iter().filter_map(|p| self.gruppe.get(p)) {
+                je_gruppe.entry(*g).or_default().push(i);
+            }
+        }
+        let mut verworfen: Vec<bool> = liste.iter().map(|d| !self.netto(d)).collect();
+        let mut offen: Vec<usize> = (0..liste.len()).filter(|i| verworfen[*i]).collect();
+        while let Some(i) = offen.pop() {
+            for p in &liste[i].pfade_roh {
+                let Some(&g) = self.gruppe.get(p) else { continue };
+                if self.verdorben.insert(g) {
+                    for &j in je_gruppe.get(&g).into_iter().flatten() {
+                        if !verworfen[j] {
+                            verworfen[j] = true;
+                            offen.push(j);
+                        }
+                    }
+                }
+            }
+        }
+        let (netto, weg): (Vec<(Diffdatei, bool)>, Vec<(Diffdatei, bool)>) = liste.into_iter().zip(verworfen).partition(|(_, v)| !v);
+        (netto.into_iter().map(|(d, _)| d).collect(), weg.into_iter().map(|(d, _)| d).collect())
+    }
+
+    /// Die Folge-Pfade (ADR-0032 N8.6 Punkt 2): Kartenpfade, die kein Netto-Eintrag trägt (`gedeckt`) und die in `D_fremd`
+    /// liegen oder zu einer verdorbenen Gruppe gehören — verdorben ist eine Gruppe auf zwei Wegen: ein fremder Commit berührt
+    /// einen ihrer Pfade (belastet), oder ein Pfad von ihr steht in einem Eintrag der Netto-Liste, den [`Einteilung::teilen`]
+    /// verworfen hat. Damit ist jede Gruppe ganz netto oder ganz Folge. Jeder andere Kartenpfad ohne Netto-Eintrag ist netto
+    /// unverändert (die Karte nimmt ihre Änderung selbst zurück) oder ein Zwischenname (K1 benennt `a` nach `m`, K2 `m` nach
+    /// `z`; netto steht `a → z`) und erscheint nirgends.
+    pub fn folgepfade(&self, gedeckt: &HashSet<&[u8]>) -> HashSet<Vec<u8>> {
+        self.karte.iter().filter(|p| !gedeckt.contains(p.as_slice()) && self.verdorben(p)).cloned().collect()
     }
 
     /// Liegt jeder Pfad des Eintrags in `D_karte`? Sonst trifft ihn nur eine Pfadangabe `foo` als `foo/…` (N6.3).
@@ -541,38 +575,86 @@ mod tests {
         assert!(!e.netto(&rohdatei('A', &["w"])), "w hängt über v an u");
         assert!(e.netto(&rohdatei('R', &["x", "z"])) && e.netto(&rohdatei('A', &["k"])));
         let gedeckt: HashSet<&[u8]> = [b"x".as_slice(), b"z", b"k"].into();
-        let mut folge: Vec<Vec<u8>> = e.folgepfade(&gedeckt, &HashSet::new()).into_iter().collect();
+        let mut folge: Vec<Vec<u8>> = e.folgepfade(&gedeckt).into_iter().collect();
         folge.sort();
         assert_eq!(folge, pfade(&["c", "f", "u", "v", "w"]), "m ist ein Zwischenname der gedeckten Gruppe x → m → z");
     }
 
-    // R00225, ADR-0032 N8.3 Punkt 1: Folge sind nur Kartenpfade ohne Netto-Eintrag, die belastet sind oder in einem verworfenen
-    // Netto-Eintrag stehen; netto unveränderte Pfade und Zwischennamen erscheinen nirgends
+    fn rohdatei(status: char, p: &[&str]) -> Diffdatei {
+        crate::modell::diffdatei(crate::modell::Rohdatei { modus_alt: "100644".into(), modus_neu: "100644".into(), hash_alt: A.into(), hash_neu: B.into(), status, zahl: None, pfade: pfade(p) }, Some((1, 1)))
+    }
+
+    /// Teilt die Netto-Liste und liefert die Namen beider Teile und die Folge-Pfade (sortiert).
+    fn geteilt(e: &mut Einteilung, liste: Vec<Diffdatei>) -> (Vec<String>, Vec<String>, Vec<String>) {
+        let (netto, verworfen) = e.teilen(liste);
+        let gedeckt: HashSet<&[u8]> = netto.iter().flat_map(|d| d.pfade_roh.iter().map(Vec::as_slice)).collect();
+        let mut folge: Vec<String> = e.folgepfade(&gedeckt).into_iter().map(|p| String::from_utf8(p).unwrap()).collect();
+        folge.sort();
+        (netto.iter().map(|d| d.name().to_string()).collect(), verworfen.iter().map(|d| d.name().to_string()).collect(), folge)
+    }
+
+    // R00225, ADR-0032 N8.6 Punkt 1–2: Folge sind nur Kartenpfade ohne Netto-Eintrag, die in D_fremd liegen oder zu einer
+    // verdorbenen Gruppe gehören; netto unveränderte Pfade und Zwischennamen erscheinen nirgends. Je Pfad die Gruppe.
     #[test]
-    fn folge_nur_belastet_oder_verworfen() {
-        // A, C Karte: x → m → z (unbelastet, netto x → z), d gelöscht und wieder angelegt, u, v, w, g; B fremd: g
+    fn folge_nur_belastet_oder_verdorben() {
+        // A, C Karte: x → m → z (unbelastet, netto x → z), d gelöscht und wieder angelegt, u, v, w, g; B fremd: g.
+        // Netto paart Git `R g → v` (g belastet: verworfen), dazu `R x → z` und `A w`
         let je: HashMap<String, Vec<Eintragspfade>> = [
             (A.to_string(), vec![pfade(&["x", "m"]), pfade(&["d"]), pfade(&["u"]), pfade(&["v"]), pfade(&["g"])]),
             (B.to_string(), vec![pfade(&["g"])]),
             (C.to_string(), vec![pfade(&["m", "z"]), pfade(&["d"]), pfade(&["w"])]),
         ].into();
-        let e = Einteilung::aus(&je, &menge(&[A, C]));
-        let gedeckt: HashSet<&[u8]> = [b"x".as_slice(), b"z", b"w"].into();
-        let verworfen: HashSet<&[u8]> = [b"v".as_slice(), b"g"].into();
-        let tabelle: [(&str, bool, &str); 7] = [
-            ("g", true, "belastet (D_fremd)"),
-            ("v", true, "unbelastet, aber in einem verworfenen Netto-Eintrag"),
-            ("d", false, "netto unverändert: kein Netto-Eintrag, unbelastet"),
-            ("u", false, "netto unverändert"),
-            ("m", false, "Zwischenname der gedeckten Gruppe x → m → z"),
-            ("x", false, "gedeckt"),
-            ("w", false, "gedeckt"),
+        let mut e = Einteilung::aus(&je, &menge(&[A, C]));
+        let (netto, verworfen, folge) = geteilt(&mut e, vec![rohdatei('R', &["g", "v"]), rohdatei('R', &["x", "z"]), rohdatei('A', &["w"])]);
+        assert_eq!((netto, verworfen), (vec!["z".to_string(), "w".into()], vec!["v".to_string()]));
+        let tabelle: [(&str, &str, bool, &str); 7] = [
+            ("g", "{g}", true, "belastet (D_fremd)"),
+            ("v", "{v}", true, "unbelastet, aber in einem verworfenen Netto-Eintrag: Gruppe verdorben"),
+            ("d", "{d}", false, "netto unverändert: kein Netto-Eintrag, Gruppe unverdorben"),
+            ("u", "{u}", false, "netto unverändert"),
+            ("m", "{x, m, z}", false, "Zwischenname der gedeckten Gruppe x → m → z"),
+            ("x", "{x, m, z}", false, "gedeckt"),
+            ("w", "{w}", false, "gedeckt"),
         ];
-        let folge = e.folgepfade(&gedeckt, &verworfen);
-        for (pfad, soll, warum) in tabelle {
-            assert_eq!(folge.contains(pfad.as_bytes()), soll, "{pfad}: {warum}");
+        for (pfad, gruppe, soll, warum) in tabelle {
+            assert_eq!(folge.contains(&pfad.to_string()), soll, "{pfad} in {gruppe}: {warum}");
         }
-        assert_eq!(folge.len(), 2);
+        assert_eq!(folge, ["g", "v"]);
+    }
+
+    // Code-Review #234 Muss 1, ADR-0032 N8.6 (G1, G2): eine Gruppe ist ganz netto oder ganz Folge. K1 `p → q`, F (fremd) legt
+    // `b` an, K2 ändert `b` und löscht `q` (G1) oder schreibt `q` neu (G2). Netto paart Git `R p → b` (verworfen, b belastet)
+    // und in G2 `A q`. Mutant „(b) je Pfad“ lässt q heraus (G1), Mutant „ein Durchgang“ lässt `A q` netto (G2)
+    #[test]
+    fn gruppe_ganz_netto_oder_ganz_folge() {
+        for (fall, liste) in [("G1", vec![rohdatei('R', &["p", "b"])]), ("G2", vec![rohdatei('R', &["p", "b"]), rohdatei('A', &["q"])])] {
+            let je: HashMap<String, Vec<Eintragspfade>> = [
+                (A.to_string(), vec![pfade(&["p", "q"])]),
+                (B.to_string(), vec![pfade(&["b"])]),
+                (C.to_string(), vec![pfade(&["q"]), pfade(&["b"])]),
+            ].into();
+            let mut e = Einteilung::aus(&je, &menge(&[A, C]));
+            let (netto, _, folge) = geteilt(&mut e, liste);
+            assert!(netto.is_empty(), "{fall}: kein Netto-Eintrag, auch nicht q in der verdorbenen Gruppe {{p, q}}: {netto:?}");
+            assert_eq!(folge, ["b", "p", "q"], "{fall}: b belastet, {{p, q}} verdorben über R p → b");
+        }
+    }
+
+    // ADR-0032 N8.6 Punkt 1, bis zum Fixpunkt: R f → a1 ist verworfen (f fremd) und verdirbt {a1, a2}; damit ist R a2 → b1
+    // verworfen und verdirbt {b1, b2}; damit ist A b2 verworfen. Ein, zwei Runden reichen nicht (Mutant „ohne Fixpunkt“);
+    // die unbeteiligte Gruppe {c} bleibt netto
+    #[test]
+    fn verdorben_bis_zum_fixpunkt() {
+        let je: HashMap<String, Vec<Eintragspfade>> = [
+            (A.to_string(), vec![pfade(&["a1", "a2"]), pfade(&["b1", "b2"]), pfade(&["c"])]),
+            (B.to_string(), vec![pfade(&["f"])]),
+            (C.to_string(), vec![pfade(&["a2"]), pfade(&["b2"])]),
+        ].into();
+        let mut e = Einteilung::aus(&je, &menge(&[A, C]));
+        let (netto, verworfen, folge) = geteilt(&mut e, vec![rohdatei('A', &["b2"]), rohdatei('R', &["a2", "b1"]), rohdatei('A', &["c"]), rohdatei('R', &["f", "a1"])]);
+        assert_eq!(netto, ["c"]);
+        assert_eq!(verworfen, ["b2", "b1", "a1"], "in der Reihenfolge der Liste");
+        assert_eq!(folge, ["a1", "a2", "b1", "b2"]);
     }
 
     // Code-Review B2 (#214): die Pfadangabe nimmt jeden Eintrag ganz, dessen Pfad sie trifft — `d/x` trifft `d/x/inner`,

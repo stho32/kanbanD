@@ -1042,3 +1042,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #234 R00225 | B1176 404-Text für netto unveränderte Pfade (PO Z. 509), README und Endpunktbeschreibung | Standard | 0,5h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #234 R00225 | B1177 Seite im echten Programm, Mutanten m1–m5, Lastprobe, volles Gate, R00225 abgeschlossen | Standard | 0,5-1h | 0,8h | 0,8h | autonom |
 | 2026-11-22 | Karte #234 R00225 | B1189 Nacharbeit 1: Abnahme-Proben G1, G2, D1 und ETag des Vorgängers rot (D2 in B1191, braucht die Testnaht) | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-22 | Karte #234 R00225 | B1190 Nacharbeit 1: verdorbene Gruppen bis zum Fixpunkt (Arbeitsliste je Gruppe), `teilen` mit `partition`, Modultests mit Gruppe je Pfad und Kette | Standard | 1-2h | 0,4h | 0,4h | autonom |

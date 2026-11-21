@@ -240,7 +240,7 @@ impl Gesamtlauf<'_> {
         };
         // Obergrenze der Einträge, wenn die Namen unvollständig sind: die Dateien der Kartenschritte zusammen (B3)
         let obergrenze = |schritte: &[Kartencommit]| -> Result<u64, Fehler> { schritte.iter().map(|c| Ok(m(&c.hash)?.dateien)).sum() };
-        let einteilung = match (grund, einteilung) {
+        let mut einteilung = match (grund, einteilung) {
             (None, Some(e)) => e,
             _ => {
                 // ganz als Folge: D_karte aus einem Namenslauf nur über die Kartencommits
@@ -282,17 +282,16 @@ impl Gesamtlauf<'_> {
             abgeschnitten |= roh.abgeschnitten || zahlen.abgeschnitten;
             netto_vollstaendig = !abgeschnitten;
             netto_liste = verbinden(&roh, &zahlen)?;
-            netto = netto_liste.iter().filter(|d| alles_netto || einteilung.netto(d)).cloned().collect();
+            netto = if alles_netto { netto_liste.clone() } else { einteilung.teilen(netto_liste.clone()).0 };
             diff.spanne = Some(Spanne { basis: basis.clone(), letzter: letzter.clone() });
         }
-        // Folge (N8.3 Punkt 1): Kartenpfade ohne Netto-Eintrag, die belastet sind oder in einem verworfenen Netto-Eintrag stehen;
-        // netto unveränderte Pfade erscheinen nirgends. Unbelastete Pfade hinter einer abgeschnittenen Liste sind netto und
+        // Folge (N8.6 Punkt 2): Kartenpfade ohne Netto-Eintrag in D_fremd oder in einer verdorbenen Gruppe (belastet oder mit
+        // einem Pfad in einem verworfenen Netto-Eintrag, bis zum Fixpunkt in `teilen`); netto unveränderte Pfade erscheinen nirgends. Unbelastete Pfade hinter einer abgeschnittenen Liste sind netto und
         // zählen über `gesamt` (N8.3 Punkt 2, B3). Ganz als Folge: jeder Kartenpfad (N6.4)
         let gedeckt: HashSet<&[u8]> = netto.iter().flat_map(|d| d.pfade_roh.iter().map(Vec::as_slice)).collect();
-        let verworfen: HashSet<&[u8]> = netto_liste.iter().filter(|d| !(alles_netto || einteilung.netto(d))).flat_map(|d| d.pfade_roh.iter().map(Vec::as_slice)).collect();
         let folgepfade: HashSet<Vec<u8>> = match grund {
             Some(_) => einteilung.karte.iter().cloned().collect(),
-            None => einteilung.folgepfade(&gedeckt, &verworfen),
+            None => einteilung.folgepfade(&gedeckt),
         };
         let mut plan = Folgeplan { commits: vec![], pfade: vec![] };
         for c in &schritte {
