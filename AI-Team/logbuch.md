@@ -1637,3 +1637,34 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - `Zweiggraph` wird zweimal geparst.
   - `GRENZEN_VERSION` deckt die neuen Grenzen nicht ab.
   - Ein Satz im README zu Unterschieden, die nur aus Leerraum bestehen.
+| 2026-11-21 | #218 | Entwicklung | entwickler | bestanden | 1 h 26 min | B1133–B1141 grün, Gate im Worktree grün · claude · Lauf 218-entwickler-1 |
+| 2026-11-21 | #218 | Auto-Reviews | code-reviewer | befund | 3 min | Muss 1: Vorgabe schreibt kanbanD.md komplett neu, Handgepflegtes geht verloren · claude · sonnet · Lauf 218-code-reviewer-1 |
+| 2026-11-21 | #218 | Auto-Reviews | security-reviewer | bestanden | 3 min | kein Muss; 26 Agent-Aufrufe 403 ohne Commit · claude · sonnet · Lauf 218-security-reviewer-1 |
+| 2026-11-21 | #218 | Auto-Reviews | ux-reviewer | bestanden | 8 min | kein Muss; Rand --kd-muted vertretbar · claude · sonnet · Lauf 218-ux-reviewer-3 |
+| 2026-11-21 | #218 | Nacharbeit | product-owner | bestanden | 2 min | PO Z. 492 (d539d558): Board in Normalform, kanbanD.md zeilengenau · claude · opus · Lauf 218-product-owner-1 |
+| 2026-11-21 | #218 | Nacharbeit | entwickler | bestanden | 5 min | Nacharbeit 1: kanbanD.md zeilengenau, Board-Proben, betroffene Tests grün · claude · Lauf 218-entwickler-2 |
+| 2026-11-21 | #218 | Auto-Reviews | planer | bestanden | 1 min | R00220 nach PO Z. 492 (c720a934) · claude · opus · Lauf 218-planer-3 |
+| 2026-11-21 | #210 | Entwicklung | entwickler | bestanden | 1 h 37 min | B1142–B1149 grün; Gate im Worktree mit 6 rot, 5 eigene behoben, 1 fremder Wackler; Tempo bei Last 4 offen · claude · Lauf 210-entwickler-1 |
+| 2026-11-21 | #218 | Auto-Reviews | code-reviewer | bestanden | 2 min | Nachprüfung 1: Muss 1 behoben · claude · sonnet · Lauf 218-code-reviewer-2 |
+| 2026-11-21 | #210 | Auto-Reviews | rechtschreib-reviewer | bestanden | 2 min | kein Muss, kein Sollte · claude · sonnet · Lauf 210-rechtschreib-reviewer-1 |
+| 2026-11-21 | #210 | Auto-Reviews | architektur-reviewer | bestanden | 3 min | ADR-0041 gehalten, kein Muss · claude · sonnet · Lauf 210-architektur-reviewer-1 |
+| 2026-11-21 | #210 | Auto-Reviews | code-reviewer | bestanden | 6 min | kein Muss; AK-7-Mutant nicht über die Oberfläche erreichbar (Frage) · claude · sonnet · Lauf 210-code-reviewer-1 |
+| 2026-11-21 | #210 | Auto-Reviews | security-reviewer | befund | 7 min | Muss 1: Sichtbarmachen von Steuer-/Bidi-Zeichen bläht 100–260-fach auf, Tab friert bis 22 s · claude · sonnet · Lauf 210-security-reviewer-1 |
+| 2026-11-21 | #218 | Entwicklertest | entwicklertester | bestanden | 7 min | US-1 bis US-7 bestanden, keine Befunde · claude · sonnet · Lauf 218-entwicklertester-1 |
+| 2026-11-21 | #210 | Auto-Reviews | product-owner | bestanden | 3 min | PO Z. 493–496 (0a327316): Budget mit Zusammenfassungsmarke, Links nur in Nachrichten, AK-7-Satz gestrichen · claude · opus · Lauf 210-product-owner-3 |
+| 2026-11-21 | #210 | Auto-Reviews | planer | bestanden | 1 min | R00221 nach PO Z. 493–496 (3413517d) · claude · opus · Lauf 210-planer-3 |
+| 2026-11-21 | #210 | Auto-Reviews | gestalter | bestanden | 1 min | D0009 Notiz Budget (0fa2f8f9), ohne Bild · claude · sonnet · Lauf 210-gestalter-2 |
+| 2026-11-21 | #210 | Auto-Reviews | ux-reviewer | bestanden | 16 min | kein Muss; Ansehen-Name vertretbar; Sollte .zt-Kollision · claude · sonnet · Lauf 210-ux-reviewer-3 |
+
+**Retrospektive #218** (Schalter „Transkripte erfassen“ in Einrichten, Scheibe C2, R00220 und ADR-0036 Nachtrag „Umschalten“; 2026-11-21; ausgeliefert 0fa2f8f9; gemessene Kosten unvollständig, die fortgesetzten Läufe fehlen)
+- **Gut:**
+  - **architekt:** In 4 Minuten entschieden: getrennte Felder je Route unter der Sperre statt ETag. Damit kann „Speichern“ aus einem alten Stand den Schalter nie überschreiben. Der Entwicklertest bestätigte das mit 8 Aufrufen mit altem Rumpf und mit zwei Fenstern.
+  - **UX-Vorprüfung:** Sie fand zwei fehlende Kriterien (Fokus nach dem Verweis, gesperrte Gruppe bei Pfeiltasten). Beide waren vor dem Bau eingearbeitet. Das UX-Review des Baus fand kein Muss.
+  - **Security:** Mit 26 Aufrufen eines Agenten probte es 403 ohne Commit, dazu den Kopf `X-KanbanD-Wer` in allen Formen.
+- **Lehre (Test-Lüge durch Testlage aus dem Schreiber):** Der Test „nur dieser Schlüssel ändert sich“ lief auf Dateien, die der Schreiber selbst erzeugt hatte, und war darum immer grün. Erst eine handgeschriebene `kanbanD.md` zeigte, dass Kommentare, fremde Schlüssel und eigener Text verloren gingen (Code-Review Muss 1). Proben für „unverändert“ brauchen eine Testlage, die nicht aus dem Produktionspfad stammt.
+- **Lehre (Datei je Pflegeart):** `kanbanD.md` pflegen Menschen von Hand, deshalb wird sie zeilengenau geschrieben. Board-Dateien sind die Normalform von kanbanD (PO Z. 492). Kriterien der Form „nur dieser Schlüssel“ nennen je Datei die Art.
+- **Vorfall:** Ein Reviewer startete auf einem festen Port, den schon die UX-Instanz belegte, und schrieb zwei Proben in deren Ordner. Der ux-reviewer setzte zurück und fuhr neu. Ein Vorschlag an die Factory ist gemacht: nur `--port 0`.
+- **Neue Karte:** #248 „Speichern“ in Einrichten schreibt `kanbanD.md` neu und verliert Handgepflegtes. Das ist Bestand und wurde im Entwicklertest gefunden.
+- **Offen für den architekt:** X00001 kennt `schalter.rs` als neuen Board-Datei-Schreiber noch nicht, außerdem A00003 und A00004.
+- **Härtung, nicht gebaut:** Ein Schlüssel in Anführungszeichen führt beim Umschalten zu 500 (Sollte, Code-Review). Rand `--kd-line-strong` projektweit 2,12:1 (UX).
+- **Wackler:** r00127:332 war im Gate rot und lief allein 3 von 3 grün. Steht in #240.
