@@ -123,6 +123,9 @@ const PAARE = [
   { name: 'Linie Abschluss Modusleiste', flaechen: kd(['modus', 'sunken']), vorne: kd(['modus-linie']), mass: LINIE },
   { name: 'Linie Fokusring Modusleiste', flaechen: kd(['modus']), vorne: kd(['accent']), mass: LINIE },
   { name: 'Linie Zustand .bf-chip', flaechen: kd(['bg']), vorne: kd(['faint']), mass: LINIE },
+  // R00220 (PO Z. 484, Z. 491): Schrift der gesperrten Wahl auf der Fläche und die gewählte gesperrte Fläche mit ihrer Schrift ≥ 3:1
+  { name: 'Gesperrte Wahl des Schalters', flaechen: kd(['surface']), vorne: kd(['faint']), mass: LINIE },
+  { name: 'Gesperrte gewählte Wahl des Schalters', flaechen: kd(['faint']), vorne: kd(['surface']), mass: LINIE },
   // R00114 (ADR-0019 Regel 6): Fläche und Schrift des vergessenen Laufchips; der Punkt davor trägt die Schriftfarbe
   { name: 'Vergessener Laufchip', flaechen: kd(['fehler-flaeche']), vorne: kd(['fehler-text']), mass: SCHRIFT },
   { name: 'Punkt des vergessenen Laufchips', flaechen: kd(['fehler-flaeche']), vorne: kd(['fehler-text']), mass: LINIE },
@@ -207,7 +210,9 @@ const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz',
   '.btn-sym[data-sperrform]', '.btn-sym[data-sperrform]:hover',
   '.naechste-ziel[data-sperrform]', '.naechste-ziel[data-sperrform]:hover',
   '.chk.ok i[data-sperrform]',
-  '.ochip button[data-sperrform],.ochip button[data-sperrform]:hover'];
+  '.ochip button[data-sperrform],.ochip button[data-sperrform]:hover',
+  // R00220: die gesperrte Gruppe des Schalters „Transkripte erfassen“ (Z. 216, PO Z. 484 und Z. 491)
+  '.ts-seg[aria-disabled="true"]>button,.ts-seg[aria-disabled="true"]>button:hover', '.ts-seg[aria-disabled="true"]>button[aria-checked="true"]'];
 /** Regeln mit --kd-faint außerhalb der Erlaubt-Liste, als `datei:zeile selektor`. */
 function faintStellen(datei, text) {
   return regeln(text).filter(regel => regel.rumpf.includes('var(--kd-faint)') && !FAINT_ERLAUBT.includes(regel.selektor)).map(regel => `${datei}:${regel.zeile} ${regel.selektor}`);
