@@ -156,3 +156,18 @@ test('ADR-0039 N1: laeufeAnsichtHtml setzt den übergebenen Text der Tabelle ein
   assert.strictEqual(status(html), '6 Läufe · Stand 09:14:07');
   assert.strictEqual(laeufeAnsichtHtml(liste(), KOSTEN, esc), laeufeAnsichtHtml(liste(), KOSTEN, esc, laeufeTabelleHtml(liste(), KOSTEN, esc)));
 });
+
+// R00221 B1145 (FA 1, ADR-0041 Punkt 2): mit einem Ziel trägt jede Zeile mit `vorhanden` genau ein „Ansehen“ als a[href]
+test('R00221: „Ansehen“ nur an Zeilen mit vorhanden, als a[href] auf das Ziel der gespeicherten Kennung; fremder Text maskiert', () => {
+  const ziel = kennung => `#/board/fabrik/aufgabe/1/lauf?kennung=${encodeURIComponent(kennung)}`;
+  const l = liste();
+  const z = zeilen(laeufeTabelleHtml(l, KOSTEN, esc, ziel));
+  const anzahl = html => [...html.matchAll(/<a class="lf-an" href="/g)].length;
+  assert.deepStrictEqual(z.map(anzahl), [0, 0, 1, 1, 0, 0]);
+  assert.match(z[2], new RegExp(`<a class="lf-an" href="${ziel(L2).replace(/[?.+]/g, '\\$&')}" data-act="lauf-oeffnen" data-arg="${L2.replace(/[+]/g, '\\$&')}">`));
+  assert.match(z[2], /Ansehen<span class="vh"> — Transkript entwickler, 20\.11\.2026 10:00<\/span><\/a>/);
+  assert.doesNotMatch(laeufeTabelleHtml(l, KOSTEN, esc), /<a\b/, 'ohne Ziel kein Verweis');
+  const fremd = 'x"><img src=x>@2026-11-20T10:00+01:00';
+  const html = laeufeTabelleHtml({ laedt: false, ergebnis: { art: 'liste', antwort: { erfassen: true, boards_aus: [], transkripte: [t(fremd, 'E')] }, stand: '1' } }, [], esc, ziel);
+  assert.doesNotMatch(html, /<img/);
+});

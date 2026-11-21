@@ -172,11 +172,13 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     expect(new Set(pfade).size).toBe(3);
   });
 
-  test('AK 4 · US-1: keine Zeile ist ein Ziel — kein a[href] in der Liste, ein Klick ändert weder Adresse noch Ansicht', async ({ page }) => {
+  // R00221 FA 1 (ADR-0041 Punkt 2) löst „keine Zeile ist ein Ziel“ ab: nur „Ansehen“ an Zeilen mit `vorhanden` ist ein Verweis
+  test('AK 4 · US-1 (mit R00221 FA 1): die Zeile selbst ist kein Ziel — a[href] nur als „Ansehen“ bei vorhanden, ein Klick auf die Zeile ändert weder Adresse noch Ansicht', async ({ page }) => {
     await laeufeOeffnen(page);
-    await expect(page.locator(`${ANSICHT_LAEUFE} .lf-tab a[href]`)).toHaveCount(0);
+    expect(await page.locator(ZEILEN).evaluateAll(trs => trs.map(tr => tr.querySelectorAll('a[href]').length))).toEqual([0, 0, 1, 1, 0, 0]);
+    await expect(page.locator(`${ANSICHT_LAEUFE} .lf-tab a[href]:not(.lf-an)`)).toHaveCount(0);
     const adresse = page.url();
-    for (let i = 0; i < 6; i++) await page.locator(ZEILEN).nth(i).click();
+    for (let i = 0; i < 6; i++) await page.locator(ZEILEN).nth(i).locator('th').click();
     expect(page.url()).toBe(adresse);
     await expect(ausloeser(page)).toHaveAttribute('aria-label', 'Ansicht: Läufe');
     await expect(page.locator(ZEILEN)).toHaveCount(6);
@@ -309,7 +311,8 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs')).toHaveText('kein Transkript abgelegt');
     await h.freigeben();
     await expect(page.locator(STATUS)).toHaveText(/^6 Läufe · Stand /);
-    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs')).toHaveText('Transkript vorhanden');
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs .vh').first()).toHaveText('Transkript vorhanden');
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs a.lf-an')).toHaveCount(1);
     await expect(zeileVon(page, 'entwicklertester').locator('.lf-ohne')).toHaveCount(0);
     await page.waitForFunction(() => window.kdTest.gezeichnet());
     expect(h.anzahl()).toBe(2);
@@ -385,7 +388,8 @@ test.describe('R00219 Ansicht „Läufe“', () => {
     await expect.poll(() => h.gehalten()).toBe(2);
     await h.freigeben('weiter', 1);
     await expect(zeileVon(page, 'planer').locator('.lf-zs')).toHaveText('kein Transkript abgelegt');
-    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs')).toHaveText('Transkript vorhanden');
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs .vh').first()).toHaveText('Transkript vorhanden');
+    await expect(zeileVon(page, 'entwicklertester').locator('.lf-zs a.lf-an')).toHaveCount(1);
     await spaetBeantwortet(page, 1, () => h.freigeben(503));
     await expect(page.locator(MELDUNG)).toHaveCount(0);
     await expect(page.locator(STATUS)).toHaveText(/^6 Läufe · Stand /);

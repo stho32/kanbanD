@@ -146,3 +146,32 @@ test('reviewAdresseBilden: beide Formen, Verweis URL-kodiert; gelesen ergibt sie
   const r = adresseLesen(reviewAdresseBilden(ziel));
   assert.deepStrictEqual([r.slug, r.review.basis, r.review.nummer, r.review.commit], ['zweit', 'board', 12, `kd:${V1}`]);
 });
+
+// R00221 B1145 (FA 2, ADR-0041 Punkt 1): Laufadresse lesen und bilden — die Kennung ist nur Suchtext
+const { laufAdresseBilden } = require('../../web/adresse.js');
+const K1 = 'entwickler@2026-11-20T10:00+01:00', K4 = 'a/b c%?@2026-11-20T13:00+01:00';
+
+test('R00221: Laufadresse in Board- und Aufgabenform → Sicht lauf, Fensternummer null, Kennung dekodiert', () => {
+  assert.deepStrictEqual(adresseLesen('#/board/fabrik/aufgabe/1/lauf?kennung=entwickler%402026-11-20T10%3A00%2B01%3A00'),
+    { sicht: 'lauf', slug: 'fabrik', nummer: null, lauf: { basis: 'board', nummer: 1, kennung: K1 } });
+  assert.deepStrictEqual(adresseLesen('#/aufgaben/aufgabe/12/lauf?kennung=a%2Fb%20c%25%3F%402026-11-20T13%3A00%2B01%3A00'),
+    { sicht: 'lauf', slug: null, nummer: null, lauf: { basis: 'aufgaben', nummer: 12, kennung: K4 } });
+});
+
+test('R00221: Bilden ist die Umkehrung des Lesens, mit encodeURIComponent (AK 4)', () => {
+  assert.strictEqual(laufAdresseBilden({ basis: 'board', slug: 'fabrik', nummer: 1, kennung: K1 }), '#/board/fabrik/aufgabe/1/lauf?kennung=entwickler%402026-11-20T10%3A00%2B01%3A00');
+  const l4 = laufAdresseBilden({ basis: 'aufgaben', slug: null, nummer: 1, kennung: K4 });
+  assert.ok(l4.endsWith('kennung=a%2Fb%20c%25%3F%402026-11-20T13%3A00%2B01%3A00'), l4);
+  for (const k of [K1, K4, 'x&y=z#w@1', 'ü @2']) assert.strictEqual(adresseLesen(laufAdresseBilden({ basis: 'board', slug: 's', nummer: 3, kennung: k })).lauf.kennung, k, k);
+});
+
+test('R00221: Kennung über 100 Zeichen, mit Steuerzeichen, fehlend oder leer → null; ein + wird Leerzeichen (Inkauf)', () => {
+  const lies = roh => adresseLesen('#/board/fabrik/aufgabe/1/lauf' + roh).lauf;
+  assert.strictEqual(lies('?kennung=' + 'a'.repeat(100)).kennung, 'a'.repeat(100));
+  assert.strictEqual(lies('?kennung=' + 'a'.repeat(101)).kennung, null);
+  assert.strictEqual(lies('?kennung=' + 'ü'.repeat(100)).kennung, 'ü'.repeat(100));
+  for (const roh of ['?kennung=a%0Ab', '?kennung=a%00b', '?kennung=a%7Fb', '?kennung=a%C2%85b', '', '?', '?kennung=', '?x=1']) assert.strictEqual(lies(roh).kennung, null, roh);
+  assert.strictEqual(lies('?kennung=a+b').kennung, 'a b');
+  assert.strictEqual(adresseLesen('#/board/fabrik/aufgabe/0/lauf?kennung=x').sicht, 'board');
+  assert.strictEqual(adresseLesen('#/board/fabrik/aufgabe/1/laufx?kennung=x').sicht, 'board');
+});

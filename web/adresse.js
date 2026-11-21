@@ -12,6 +12,8 @@
     const text = String(hash || '');
     const review = reviewLesen(text);
     if (review) return { sicht: 'review', slug: slugLesen(text), nummer: null, review };
+    const lauf = laufLesen(text);
+    if (lauf) return { sicht: 'lauf', slug: slugLesen(text), nummer: null, lauf };
     return { sicht: ansichtAusAdresse(text), slug: slugLesen(text), nummer: nummerLesen(text) };
   }
 
@@ -36,6 +38,26 @@
     const seite = adresseBilden({ sicht: basis, slug, nummer });
     if (!commit) return seite + '/review';
     return seite + '/review?commit=' + encodeURIComponent(commit);
+  }
+
+  /** Laufansicht `…/aufgabe/<nr>/lauf?kennung=<kodiert>` (R00221 FA 2, ADR-0041 Punkt 1): `nummer` ist die der Seite, das Fenster
+      bleibt zu. Die Kennung ist nur Suchtext für einen Textvergleich mit `a.transkripte`: höchstens 100 Zeichen ohne Steuerzeichen,
+      sonst null — dann gibt es keinen Treffer und keine Anfrage. */
+  function laufLesen(text) {
+    const m = /^#\/(board\/[^/]+|aufgaben)\/aufgabe\/([0-9]{1,9})\/lauf(?:\?(.*))?$/.exec(text);
+    const nummer = m && Number(m[2]);
+    if (!nummer) return null;
+    const basis = m[1] === 'aufgaben' ? 'aufgaben' : 'board';
+    const roh = new URLSearchParams(m[3] || '').get('kennung');
+    const gueltig = Boolean(roh) && Array.from(roh).length <= KENNUNG_ZEICHEN && !STEUERZEICHEN.test(roh);
+    return { basis, nummer, kennung: gueltig ? roh : null };
+  }
+  const KENNUNG_ZEICHEN = 100;
+  const STEUERZEICHEN = /[\u0000-\u001F\u007F-\u009F]/;
+
+  /** Die Adresse der Laufansicht; die gespeicherte Kennung geht kodiert hinein. */
+  function laufAdresseBilden({ basis, slug, nummer, kennung }) {
+    return adresseBilden({ sicht: basis, slug, nummer }) + '/lauf?kennung=' + encodeURIComponent(kennung);
   }
 
   /** Der Router der Ansichten: Unbekanntes zeigt das Board. */
@@ -75,5 +97,5 @@
     return text + ' — gilt nur auf diesem Rechner';
   }
 
-  Object.assign(ziel, { adresseLesen, adresseBilden, reviewAdresseBilden, linkRueckmeldung });
+  Object.assign(ziel, { adresseLesen, adresseBilden, reviewAdresseBilden, laufAdresseBilden, linkRueckmeldung });
 })(typeof module !== 'undefined' ? module.exports : window);

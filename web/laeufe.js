@@ -104,11 +104,20 @@
 
   /** Zustandszelle: Marke mit Symbol, „vorhanden“ nur vorgelesen, ohne Transkript ein gedämpftes Wort ohne Marke —
       „Transkript nicht gelesen“, solange die Seite das Transkript nicht kennt, sonst „kein Transkript abgelegt“. */
-  function zustandHtml(z, gelesen) {
+  function zustandHtml(z, gelesen, esc, ansehen) {
     if (!z.transkript) return `<span class="lf-ohne">${gelesen ? OHNE_TRANSKRIPT : NICHT_GELESEN}</span>`;
     const marke = MARKEN[z.transkript.zustand];
-    if (!marke) return `<span class="vh">${VORHANDEN}</span>`;
+    if (!marke) return `<span class="vh">${VORHANDEN}</span>${ansehenHtml(z, esc, ansehen)}`;
     return `<span class="cl-zs ${marke.ton}" data-zustand="${z.transkript.zustand}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">${marke.symbol}</svg>${marke.wort}</span>`;
+  }
+
+  const AUGE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  /** „Ansehen“ (R00221 FA 1, ADR-0041 Punkt 2): echter Verweis auf die Laufansicht der gespeicherten Kennung, nur bei `vorhanden`
+      und nur mit Ziel; ein einfacher Linksklick läuft über `act`, Mittelklick und neuer Tab bleiben Verweis. */
+  function ansehenHtml(z, esc, ansehen) {
+    if (!ansehen || typeof z.kennung !== 'string') return '';
+    const vorgelesen = ` — Transkript ${esc(ohneSteuerzeichen(z.role))}, ${zeitpunktText(z.kennung) || ''}`;
+    return `<a class="lf-an" href="${esc(ansehen(z.kennung))}" data-act="lauf-oeffnen" data-arg="${esc(z.kennung)}">${AUGE}Ansehen<span class="vh">${vorgelesen}</span></a>`;
   }
 
   /** Spalte des Transkripts; weicht die des Kosteneintrags ab, steht sie als Nebentext darunter (FA 3). */
@@ -119,20 +128,20 @@
     return `${spalte}<span class="lf-neben">Kosten gebucht in ${esc(ohneSteuerzeichen(z.kosten.column))}</span>`;
   }
 
-  function zeileHtml(z, gelesen, esc) {
+  function zeileHtml(z, gelesen, esc, ansehen) {
     const zeitpunkt = zeitpunktText(z.kennung);
     const zelle = (klasse, inhalt) => `<td role="cell" class="${klasse}">${inhalt}</td>`;
     return `<tr role="row"${z.kennung === null ? ' class="ohnek"' : ''}><th scope="row" role="rowheader" class="lf-zp">${zeitpunkt === null ? ohneWert('kein Zeitpunkt') : zeitpunkt}</th>`
       + zelle('lf-ro', z.role == null ? ohneWert('keine Rolle') : esc(ohneSteuerzeichen(z.role)))
       + zelle('lf-sp', spalteHtml(z, esc))
       + zelle('lf-be r', z.kosten ? esc(geld(inCent(z.kosten.amount), z.kosten.currency)) : ohneWert('kein Betrag'))
-      + zelle('lf-zs', zustandHtml(z, gelesen)) + '</tr>';
+      + zelle('lf-zs', zustandHtml(z, gelesen, esc, ansehen)) + '</tr>';
   }
 
   /** Die Tabelle; die Rollen stehen ausdrücklich, damit die Blockform schmaler Breiten (CSS `display`) sie nicht nimmt. */
-  function tabelleHtml(zeilen, gelesen, esc) {
+  function tabelleHtml(zeilen, gelesen, esc, ansehen) {
     const kopf = SPALTEN.map(name => `<th scope="col" role="columnheader"${name === 'Betrag' ? ' class="r"' : ''}>${name}</th>`).join('');
-    return `<div class="lf-rahmen" id="lf-insel"><table class="lf-tab" role="table" aria-label="Läufe dieser Aufgabe, neueste zuerst"><thead role="rowgroup"><tr role="row">${kopf}</tr></thead><tbody role="rowgroup">${zeilen.map(z => zeileHtml(z, gelesen, esc)).join('')}</tbody></table></div>`;
+    return `<div class="lf-rahmen" id="lf-insel"><table class="lf-tab" role="table" aria-label="Läufe dieser Aufgabe, neueste zuerst"><thead role="rowgroup"><tr role="row">${kopf}</tr></thead><tbody role="rowgroup">${zeilen.map(z => zeileHtml(z, gelesen, esc, ansehen)).join('')}</tbody></table></div>`;
   }
 
   /** Boards in „…“, mit Komma, vor dem letzten „und“ ohne Komma; alle genannt (PO Z. 480). */
@@ -168,11 +177,12 @@
     return laeufe(l.ergebnis.antwort.transkripte, kosteneintraege);
   }
 
-  /** Die Tabelle allein (ADR-0039 N1: die Insel und ihr Schlüssel); ohne Zeilen leer. */
-  function laeufeTabelleHtml(l, kosteneintraege, esc) {
+  /** Die Tabelle allein (ADR-0039 N1: die Insel und ihr Schlüssel); ohne Zeilen leer. `ansehen(kennung)` bildet die Adresse der
+      Laufansicht; ohne sie trägt keine Zeile ein Ziel. */
+  function laeufeTabelleHtml(l, kosteneintraege, esc, ansehen = null) {
     const zeilen = sichtbareZeilen(l, kosteneintraege);
     if (!zeilen.length) return '';
-    return tabelleHtml(zeilen, Boolean(l.ergebnis && l.ergebnis.art === 'liste'), esc);
+    return tabelleHtml(zeilen, Boolean(l.ergebnis && l.ergebnis.art === 'liste'), esc, ansehen);
   }
 
   /** Die ganze Ansicht aus dem Zustand `l = {laedt, ergebnis: null | {art: 'liste', antwort, stand} | {art: 'fehler', fehler}}`
@@ -181,7 +191,7 @@
   function laeufeAnsichtHtml(l, kosteneintraege, esc, tabelle = laeufeTabelleHtml(l, kosteneintraege, esc)) {
     const zeilen = sichtbareZeilen(l, kosteneintraege);
     const liste = l.ergebnis && l.ergebnis.art === 'liste';
-    const kopf = `<div class="cl-kopf"><h3>LÄUFE ${l.ergebnis ? `<span class="mono">${tausender(zeilen.length)}</span>` : ''}</h3><span class="cl-hin">neueste zuerst · Kosten und Transkript eines Laufs in einer Zeile</span></div>`;
+    const kopf = `<div class="cl-kopf"><h3 id="laeufe-kopf" tabindex="-1">LÄUFE ${l.ergebnis ? `<span class="mono">${tausender(zeilen.length)}</span>` : ''}</h3><span class="cl-hin">neueste zuerst · Kosten und Transkript eines Laufs in einer Zeile</span></div>`;
     let oben = '';
     if (l.ergebnis && l.ergebnis.art === 'fehler') {
       const erneut = `<button type="button" class="cl-knopf" id="laeufe-erneut"${l.laedt ? ' aria-disabled="true"' : ' data-act="laeufe-lesen"'}>Erneut versuchen</button>`;
@@ -197,5 +207,20 @@
     return `<div class="mod-main lf-panel">${kopf}${oben}${mitte}${fuss}</div>`;
   }
 
+  /* ── Kopf und Leiste der Laufansicht (R00221 FA 4, ADR-0041 Punkt 3): aus der Zeile von `laeufe()`, ohne eigenes Lesen ── */
+
+  /** „<Rolle> · <Zeitpunkt>“ hinter „Lauf“; Rolle ohne Bidi-Steuerzeichen, maskiert. */
+  const laeufeTitelHtml = (z, esc) => `${esc(ohneSteuerzeichen(z.role))} · ${zeitpunktText(z.kennung) || ''}`;
+
+  /** Rolle, Zeitpunkt, Spalte samt Nebentext, Betrag und Größe der Datei (`groesse` wie bei den Anhängen). */
+  function laeufeLeisteHtml(z, esc, groesse) {
+    const feld = (name, inhalt) => `<span><span class="k">${name}</span>${inhalt}</span>`;
+    const betrag = z.kosten ? `<span class="mono">${esc(geld(inCent(z.kosten.amount), z.kosten.currency))}</span>` : ohneWert('kein Betrag');
+    const bytes = z.transkript && typeof z.transkript.bytes === 'number' ? `<span class="mono">${esc(groesse(z.transkript.bytes))}</span>` : ohneWert('keine Größe');
+    return `<div class="lv-leiste">${feld('ROLLE', esc(ohneSteuerzeichen(z.role)))}${feld('ZEITPUNKT', `<span class="mono">${zeitpunktText(z.kennung) || ''}</span>`)}`
+      + `${feld('SPALTE', spalteHtml(z, esc))}${feld('BETRAG', betrag)}${feld('GRÖSSE', bytes)}</div>`;
+  }
+
+  Object.assign(ziel, { laeufeTitelHtml, laeufeLeisteHtml });
   Object.assign(ziel, { laeufe, kennungsmengeGeaendert, laeufeTabelleHtml, laeufeAnsichtHtml, laeufeHinweisText, laeufeFehlerText });
 })(typeof module !== 'undefined' ? module.exports : window);
