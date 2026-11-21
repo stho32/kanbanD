@@ -1740,3 +1740,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - `entfaellt: () => false` in `berichte.js` ist tot.
   - OpenAPI `Board.anwendungen` sagt noch „reines Kanban“.
   - „Spalten einrichten“ behält beim Wechsel des Boards den Entwurf.
+| 2026-11-21 | #232 | Architektur | architekt | bestanden | 2 min | keine Technikfrage, kein ADR · claude · opus · Lauf 232-architekt-1 · 0,94 $ · Karte gesamt 0,94 $ |
+| 2026-11-21 | #232 | Detailplanung | product-owner | bestanden | 2 min | PO Z. 506-508 · claude · opus · Lauf 232-product-owner-1 · 1,01 $ · Karte gesamt 1,95 $ |
