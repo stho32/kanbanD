@@ -1541,3 +1541,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #217 | Detailplanung | gestalter | bestanden | 14 min | D0009 #laeufe, #laufansicht, #transkripte-schalter · claude · sonnet · Lauf 217-gestalter-1 · 5,35 $ · Karte gesamt 10,85 $ |
 | 2026-11-21 | #217 | Detailplanung | product-owner | bestanden | 3 min | D1/D2/C2 freigegeben mit Änderung, Z. 471–477 · claude · opus · Lauf 217-product-owner-2 · 1,39 $ · Karte gesamt 12,24 $ |
 | 2026-11-21 | #217 | Detailplanung | gestalter | bestanden | 2 min | Wortlaute 9, 15, 19, 21, 23 nachgezogen · claude · sonnet · Lauf 217-gestalter-2 · 0,92 $ · Karte gesamt 13,16 $ |
+| 2026-11-21 | #217 | Detailplanung | planer | bestanden | 4 min | R00219 nach Freigabe nachgezogen · claude · opus · Lauf 217-planer-2 · 1,51 $ · Karte gesamt 14,67 $ |
+| 2026-11-21 | #217 | Detailplanung | ux-reviewer | befund | 5 min | M1 Fehler-liest-erneut/Fokus, M2 doppelte Ansage alert+status · claude · sonnet · Lauf 217-ux-reviewer-1 · 0,80 $ · Karte gesamt 15,47 $ |
+| 2026-11-21 | #217 | Detailplanung | gestalter | bestanden | 5 min | Nachzeichnung M1/M2: Bild 7 und 9, eine Ansage · claude · sonnet · Lauf 217-gestalter-3 · 1,12 $ · Karte gesamt 16,59 $ |
+| 2026-11-21 | #217 | Detailplanung | product-owner | bestanden | 3 min | Nachzeichnung freigegeben, Z. 478–482 · claude · opus · Lauf 217-product-owner-3 · 1,11 $ · Karte gesamt 17,70 $ |
