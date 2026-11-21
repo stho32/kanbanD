@@ -4,10 +4,15 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { farbschlange, FRIST_MS } = require('../../web/farbschlange.js');
 
-/** Fake-Worker: hält jeden Auftrag, bis der Test ihn beantwortet; merkt `terminate`. */
-function fakeWorker(protokoll) {
+/** Fake-Worker: meldet sich auf die Nachfrage sofort bereit (oder nie, `stumm`), hält jeden Auftrag, bis der Test ihn
+    beantwortet; merkt `terminate`. */
+function fakeWorker(protokoll, stumm = false) {
   const w = { auftraege: [], beendet: false, onmessage: null, onerror: null, onmessageerror: null };
-  w.postMessage = auftrag => { w.auftraege.push(auftrag); protokoll.push(`post ${auftrag.sprache}`); };
+  w.postMessage = auftrag => {
+    if (auftrag.art === 'bereit') { protokoll.push('bereit?'); if (!stumm) w.onmessage({ data: { bereit: true } }); return; }
+    w.auftraege.push(auftrag);
+    protokoll.push(`post ${auftrag.sprache}`);
+  };
   w.terminate = () => { w.beendet = true; protokoll.push('terminate'); };
   w.antworten = daten => w.onmessage({ data: daten });
   return w;
@@ -25,11 +30,11 @@ function fakeUhr() {
   };
 }
 
-function aufbau({ ohneWorker = false } = {}) {
+function aufbau({ ohneWorker = false, stumm = false } = {}) {
   const protokoll = [], worker = [], uhr = fakeUhr();
   const workerAnlegen = () => {
     if (ohneWorker) return null;
-    const w = fakeWorker(protokoll);
+    const w = fakeWorker(protokoll, stumm && worker.length === 0);
     worker.push(w);
     protokoll.push('neu');
     return w;
@@ -47,7 +52,7 @@ test('FRIST_MS ist 1.000', () => {
 test('ein Auftrag: Antwort als Int32Array geht an die Datei, der Wecker ist danach weg', () => {
   const a = aufbau();
   a.schlange.stellen(a.auftrag('eins'));
-  assert.deepStrictEqual(a.protokoll, ['neu', 'post rust']);
+  assert.deepStrictEqual(a.protokoll, ['neu', 'bereit?', 'post rust']);
   assert.deepStrictEqual(a.worker[0].auftraege[0].zeilen, [{ art: 'plus', text: 'eins' }]);
   a.worker[0].antworten(Int32Array.of(1, 0, 2, 0));
   assert.deepStrictEqual(a.ergebnisse, [['eins', [1, 0, 2, 0]]]);
@@ -63,7 +68,7 @@ test('Frist abgelaufen: terminate, ohne Farbe, der nächste Auftrag bekommt eine
   a.uhr.vor(1);
   assert.deepStrictEqual(a.ergebnisse, [['feindlich', null]]);
   assert.strictEqual(a.worker[0].beendet, true);
-  assert.deepStrictEqual(a.protokoll, ['neu', 'post rust', 'terminate', 'neu', 'post rust']);
+  assert.deepStrictEqual(a.protokoll, ['neu', 'bereit?', 'post rust', 'terminate', 'neu', 'bereit?', 'post rust']);
   a.worker[0].antworten(Int32Array.of(1, 0, 1, 2));
   a.worker[1].antworten(Int32Array.of(1, 0, 2, 0));
   assert.deepStrictEqual(a.ergebnisse, [['feindlich', null], ['gut', [1, 0, 2, 0]]]);
@@ -135,4 +140,34 @@ test('eine fremde Antwort, die kein Int32Array und kein fehler ist, ergibt ohne 
   a.schlange.stellen(a.auftrag('html'));
   a.worker[0].antworten('<span class="token keyword">fn</span>');
   assert.deepStrictEqual(a.ergebnisse, [['html', null]]);
+});
+
+test('Laden zählt nicht zur Frist: der Auftrag geht erst an einen bereiten Worker; wird er nicht bereit, nach der Frist ohne Farbe und neuer Worker', () => {
+  const a = aufbau({ stumm: true });
+  a.schlange.stellen(a.auftrag('wartet'));
+  a.schlange.stellen(a.auftrag('danach'));
+  assert.deepStrictEqual(a.protokoll, ['neu', 'bereit?'], 'kein Auftrag an einen Worker, der nicht bereit ist');
+  a.uhr.vor(49);
+  assert.deepStrictEqual(a.ergebnisse, []);
+  a.uhr.vor(1);
+  assert.deepStrictEqual(a.ergebnisse, [['wartet', null]], 'der laufende Auftrag endet ohne Farbe');
+  assert.strictEqual(a.worker[0].beendet, true);
+  assert.deepStrictEqual(a.protokoll, ['neu', 'bereit?', 'terminate', 'neu', 'bereit?', 'post rust']);
+  a.uhr.vor(30);
+  a.worker[1].antworten(Int32Array.of(1, 0, 2, 0));
+  assert.deepStrictEqual(a.ergebnisse, [['wartet', null], ['danach', [1, 0, 2, 0]]]);
+});
+
+test('die Frist beginnt mit der Übergabe an den bereiten Worker, nicht beim Anlegen', () => {
+  const protokoll = [], uhr = fakeUhr();
+  let w = null;
+  const schlange = farbschlange({ workerAnlegen: () => (w = fakeWorker(protokoll, true)), frist: 50, uhr });
+  const aus = [];
+  schlange.stellen({ sprache: 'rust', zeilen: [], aktuell: () => true, fertig: s => aus.push(s && Array.from(s)) });
+  uhr.vor(40);
+  w.onmessage({ data: { bereit: true } });
+  uhr.vor(40);
+  assert.deepStrictEqual(aus, [], '80 ms nach dem Anlegen, 40 ms nach der Übergabe: noch in der Frist');
+  w.antworten(Int32Array.of(1, 0, 2, 0));
+  assert.deepStrictEqual(aus, [[1, 0, 2, 0]]);
 });

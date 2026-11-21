@@ -4,15 +4,18 @@
   'use strict';
   const { zelleHtml, farbAuftragHolen } = typeof module !== 'undefined' ? require('./diff.js') : window;
 
-  /** So lange darf der Worker an einem Auftrag rechnen, gezählt ab der Übergabe; danach `terminate()`, die Datei bleibt ohne Farbe. */
+  /** So lange darf der Worker an einem Auftrag rechnen, gezählt ab der Übergabe; danach `terminate()`, die Datei bleibt ohne Farbe.
+      Ebenso lange darf ein neuer Worker zum Laden brauchen, bis er „bereit“ meldet — das Laden zählt nicht zur Frist des Auftrags. */
   const FRIST_MS = 1000;
+  /** Nachfrage an einen neuen Worker; er antwortet `{bereit: true}`, sobald Prism geladen ist (nur auf diese Nachfrage). */
+  const BEREIT = { art: 'bereit' };
 
   /** Eine Schlange. `workerAnlegen()` liefert einen Worker oder null (dann bleibt jede Datei ohne Farbe); `frist` und `uhr` sind
       für Tests injizierbar. Ein Auftrag ist `{sprache, zeilen, aktuell(), fertig(stuecke | null)}`: `aktuell()` sagt, ob die Datei
       noch so gezeigt wird; `fertig` bekommt das `Int32Array` oder null (ohne Farbe) und wird für veraltete Aufträge nie gerufen. */
   function farbschlange({ workerAnlegen, frist = FRIST_MS, uhr = { setTimeout: (f, ms) => setTimeout(f, ms), clearTimeout: id => clearTimeout(id) } }) {
     const wartend = [];
-    let worker = null, laufend = null, wecker = null;
+    let worker = null, bereit = false, laufend = null, wecker = null;
 
     const verwerfen = () => {
       if (worker) worker.terminate();
@@ -39,11 +42,24 @@
       const w = worker;
       // nur der aktuelle Worker spricht für den laufenden Auftrag; ein abgebrochener bleibt stumm
       const vomAktuellen = f => e => { if (w === worker) f(e); };
-      w.onmessage = vomAktuellen(e => beenden(e.data instanceof Int32Array ? e.data : null));
+      w.onmessage = vomAktuellen(e => {
+        if (!bereit && e.data && e.data.bereit === true) { bereit = true; uebergeben(); return; }
+        beenden(e.data instanceof Int32Array ? e.data : null);
+      });
       // Lade- und Laufzeitfehler des Workers: nicht in die Konsole (preventDefault), dieser Worker wird ersetzt
       w.onerror = e => { if (e && e.preventDefault) e.preventDefault(); if (w === worker) { verwerfen(); beenden(null); } };
       w.onmessageerror = vomAktuellen(() => beenden(null));
+      bereit = false;
+      w.postMessage(BEREIT);
       return true;
+    }
+
+    /** Den laufenden Auftrag an einen bereiten Worker geben; die Frist zählt ab hier. */
+    function uebergeben() {
+      if (!laufend || !bereit) return;
+      uhr.clearTimeout(wecker);
+      wecker = uhr.setTimeout(() => { verwerfen(); beenden(null); }, frist);
+      worker.postMessage({ sprache: laufend.sprache, zeilen: laufend.zeilen });
     }
 
     function naechster() {
@@ -58,8 +74,9 @@
         return;
       }
       laufend = auftrag;
-      wecker = uhr.setTimeout(() => { verwerfen(); beenden(null); }, frist);
-      worker.postMessage({ sprache: auftrag.sprache, zeilen: auftrag.zeilen });
+      // ein Worker, der nicht bereit wird, hält die Schlange höchstens eine Frist lang auf
+      if (!bereit) wecker = uhr.setTimeout(() => { verwerfen(); beenden(null); }, frist);
+      uebergeben();
     }
 
     return {

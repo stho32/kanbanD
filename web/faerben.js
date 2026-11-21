@@ -90,10 +90,12 @@
 
   const prism = prismLaden();
 
-  /** Ein Auftrag der Seite: `{sprache, zeilen}`. Antwort: das `Int32Array` (übertragen) oder `{fehler}`. Was kein Auftrag ist
-      (fremde Nachrichten, etwa JSON-Text), bleibt ohne Antwort. */
+  /** Ein Auftrag der Seite: `{sprache, zeilen}`. Antwort: das `Int32Array` (übertragen) oder `{fehler}`. Die Nachfrage `{art:
+      'bereit'}` beantwortet der Worker mit `{bereit: true}` — er liest Nachrichten erst, wenn Prism geladen ist. Was sonst kein
+      Auftrag ist (fremde Nachrichten, etwa JSON-Text), bleibt ohne Antwort. */
   function auftragBeantworten(nachricht) {
     const auftrag = nachricht.data;
+    if (auftrag && auftrag.art === 'bereit') { self.postMessage({ bereit: true }); return; }
     if (!auftrag || typeof auftrag !== 'object' || typeof auftrag.sprache !== 'string' || !Array.isArray(auftrag.zeilen)) return;
     try {
       const grammatik = prism && Object.prototype.hasOwnProperty.call(prism.languages, auftrag.sprache) ? prism.languages[auftrag.sprache] : null;
