@@ -266,3 +266,27 @@ async fn ak05_keine_route_setzt_den_schalter() {
     assert!(lies(tmp.path(), "boards/fabrik.md").starts_with("---\nrecord-transcripts: false\n---\n"), "{}", lies(tmp.path(), "boards/fabrik.md"));
     assert_eq!(lies(tmp.path(), "boards/fabrik.md"), board_vorher);
 }
+
+// B1104 · AK 14c: nach dem Schreiben durch die Vorversion fehlt der Schalter (Belege unter tests/altbestaende/main-673ac073/)
+// — diese Version weist einen Upload mit 409 ab (sichere Richtung); der Eintrag bleibt
+#[tokio::test]
+async fn ak14c_vorversion_verliert_den_schalter_sichere_richtung() {
+    let beleg = |name: &str| std::fs::read_to_string(format!("{}/tests/altbestaende/main-673ac073/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap();
+    for (board, vorgabe) in [(beleg("board-fabrik-nach-zug-der-vorversion.md"), None), (String::new(), Some(beleg("kanbanD-nach-put-der-vorversion.md")))] {
+        let tmp = tempfile::tempdir().unwrap();
+        fabrik(tmp.path(), &format!("transcripts:\n{EIN}"), "", "");
+        if !board.is_empty() {
+            std::fs::write(tmp.path().join("boards/fabrik.md"), board.replace("# fabrik", "# Fabrik").replace("0001-a.md", "0001-a1.md")).unwrap();
+        }
+        if let Some(v) = &vorgabe {
+            std::fs::write(tmp.path().join("kanbanD.md"), v.replace("  entw: {name: Entwickler, kind: agent}", "  st: {name: Stefan, kind: human}")).unwrap();
+        }
+        let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+        let (s, l) = holen(&lauf.adresse, "api/aufgaben/1/transkripte").await;
+        assert_eq!((s, &l["erfassen"], &l["boards_aus"]), (200, &json!(false), &json!(["fabrik"])), "{l}");
+        assert_eq!(l["transkripte"][0]["kennung"], json!("entwickler@2026-11-13T10:34+01:00"), "der Eintrag bleibt");
+        let form = reqwest::multipart::Form::new().text("at", "2026-11-13 10:40+01:00").text("role", "entwickler").text("column", "Fertig").part("datei", reqwest::multipart::Part::bytes(vec![0x1f, 0x8b, 0x08, 0]));
+        let r = reqwest::Client::new().post(format!("{}api/aufgaben/1/transkripte", lauf.adresse)).header("X-KanbanD-Wer", "st").multipart(form).send().await.unwrap();
+        assert_eq!(r.status().as_u16(), 409);
+    }
+}
