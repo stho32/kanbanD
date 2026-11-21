@@ -77,6 +77,81 @@ fn antwort(erfassen: Option<bool>, wirksam: bool) -> Schalterantwort {
     Schalterantwort { erfassen, wirksam }
 }
 
+// ---- Nacharbeit 1, Muss 1 (code-reviewer): eine handgeschriebene kanbanD.md behält alles außer der einen Zeile ----
+
+/// Eine von Hand geschriebene `kanbanD.md` (PO Z. 492, AK 2): Kommentarzeile `# von Hand`, `eigener-schluessel: 1` vor den
+/// bekannten Schlüsseln, eigene Reihenfolge (`sources` vor `people`), eigener Textkörper.
+const HANDGESCHRIEBEN: &str = "---\n# von Hand\neigener-schluessel: 1\nsources:\n  requirements: anf/\n  wbs: plan/wbs.md\npeople:\n  sh: {name: Stefan, kind: human}\n  entw1: {name: Entwickler, kind: agent}\nclasses: {}\n---\n\nUnser eigener Text unter dem Frontmatter.\n";
+
+/// Die geänderten Zeilen der Datei im letzten Commit, ohne Kopf.
+fn geaenderte_zeilen(pfad: &Path, datei: &str) -> Vec<String> {
+    git(pfad, &["show", "-U0", "--format=", "HEAD", "--", datei]).lines().filter(|z| (z.starts_with('+') || z.starts_with('-')) && !z.starts_with("+++") && !z.starts_with("---")).map(str::to_string).collect()
+}
+
+/// Probe aus dem Code-Review und PO Z. 492 (AK 2); Mutant „Schreiben aus dem Modell“ macht sie rot: `{erfassen: true}` an einer handgeschriebenen Datei zeigt im Commit nur
+/// `+record-transcripts: true`; ebenso `{erfassen: false}` bei vorhandenem Schlüssel nur den Tausch dieser Zeile.
+#[tokio::test]
+async fn vorgabe_aendert_an_handgeschriebener_datei_nur_die_eine_zeile() {
+    let i = instanz();
+    std::fs::write(i.pfad.join("kanbanD.md"), HANDGESCHRIEBEN).unwrap();
+    git(&i.pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-am", "von Hand"]);
+    let vorher = commits(&i.pfad);
+
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": true})).await, (200, json!({"erfassen": true, "wirksam": true})));
+    ein_commit_an(&i.pfad, vorher, "kanbanD.md");
+    assert_eq!(geaenderte_zeilen(&i.pfad, "kanbanD.md"), ["+record-transcripts: true"]);
+    assert_eq!(lies(&i.pfad, "kanbanD.md"), HANDGESCHRIEBEN.replacen("classes: {}\n---", "classes: {}\nrecord-transcripts: true\n---", 1));
+
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": false})).await, (200, json!({"erfassen": false, "wirksam": false})));
+    ein_commit_an(&i.pfad, vorher + 1, "kanbanD.md");
+    assert_eq!(geaenderte_zeilen(&i.pfad, "kanbanD.md"), ["-record-transcripts: true", "+record-transcripts: false"]);
+    assert_eq!(lies(&i.pfad, "kanbanD.md"), HANDGESCHRIEBEN.replacen("classes: {}\n---", "classes: {}\nrecord-transcripts: false\n---", 1));
+    assert_eq!(i.lesen("api/einstellungen").await["transkripte_erfassen"], json!(false));
+}
+
+/// Steht der Schlüssel mitten im Frontmatter, mit Kommentar oder Windows-Zeilenende, wird genau diese Zeile getauscht.
+#[tokio::test]
+async fn vorgabe_tauscht_den_schluessel_an_seiner_stelle() {
+    let i = instanz();
+    let text = "---\r\npeople:\r\n  sh: {name: Stefan, kind: human}\r\n  entw1: {name: Entwickler, kind: agent}\r\nrecord-transcripts: false   # bewusst aus\r\nclasses: {}\r\n---\r\n";
+    std::fs::write(i.pfad.join("kanbanD.md"), text).unwrap();
+    git(&i.pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-am", "von Hand"]);
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": true})).await.0, 200);
+    assert_eq!(lies(&i.pfad, "kanbanD.md"), text.replace("record-transcripts: false   # bewusst aus", "record-transcripts: true"));
+    let stand = commits(&i.pfad);
+    assert_eq!(i.vorgabe("sh", json!({"erfassen": true})).await.0, 200);
+    assert_eq!(commits(&i.pfad), stand, "gleicher Wert: kein Commit");
+}
+
+/// PO Z. 492, AK 1: die Board-Datei bleibt in ihrer Normalform (`board_text`); liegt sie in Normalform mit Frontmatter vor,
+/// zeigt der Diff genau eine hinzugefügte Zeile `record-transcripts: true` und keine entfernte, bei `null` genau eine entfernte.
+#[tokio::test]
+async fn board_in_normalform_aendert_nur_die_eine_zeile() {
+    let i = instanz();
+    let roh = "---\nlimits:\n  Eingang: 3\n---\n\n# kopf\n\n## Eingang\n\n## Fertig\n";
+    let normal = kanband::format::board::schreiben(&kanband::format::board::lesen("kopf", roh).unwrap(), |_| None);
+    std::fs::write(i.pfad.join("boards/kopf.md"), &normal).unwrap();
+    git(&i.pfad, &["add", "-A"]);
+    git(&i.pfad, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "kopf"]);
+    assert_eq!(i.board("sh", "kopf", json!({"erfassen": true})).await.0, 200);
+    assert_eq!(geaenderte_zeilen(&i.pfad, "boards/kopf.md"), ["+record-transcripts: true"]);
+    assert_eq!(i.board("sh", "kopf", json!({"erfassen": null})).await.0, 200);
+    assert_eq!(geaenderte_zeilen(&i.pfad, "boards/kopf.md"), ["-record-transcripts: true"]);
+    assert_eq!(lies(&i.pfad, "boards/kopf.md"), normal);
+}
+
+/// Hat das Board in Normalform keinen Frontmatter (`zweit` der Ausgangslage), entsteht er mit dem Schlüssel: der Diff zeigt
+/// den Schlüssel und seinen Rahmen, bei `null` verschwindet beides wieder — nichts sonst ändert sich.
+#[tokio::test]
+async fn board_ohne_frontmatter_bekommt_schluessel_und_rahmen() {
+    let i = instanz();
+    let vorher = lies(&i.pfad, "boards/zweit.md");
+    assert_eq!(i.board("sh", "zweit", json!({"erfassen": true})).await.0, 200);
+    assert_eq!(geaenderte_zeilen(&i.pfad, "boards/zweit.md"), ["+---", "+record-transcripts: true", "+---", "+"]);
+    assert_eq!(i.board("sh", "zweit", json!({"erfassen": null})).await.0, 200);
+    assert_eq!(lies(&i.pfad, "boards/zweit.md"), vorher);
+}
+
 // ---- B1133 Dienst ----
 
 /// AK 1 / US-1 (Dienst): `true` schreibt den Schlüssel, gleicher Wert committet nicht, `None` entfernt ihn wieder.

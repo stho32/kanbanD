@@ -99,6 +99,49 @@ pub(crate) fn schalter_lesen(m: &serde_yaml::Mapping) -> Result<Option<bool>, Fo
     }
 }
 
+/// Setzt `record-transcripts` im Text einer Datei mit Frontmatter und lässt alles andere zeichengleich (R00220 FA 4,
+/// Nacharbeit 1): eine Zeile `record-transcripts:` oben im Frontmatter wird ersetzt (samt eingerückter Folgezeilen) bzw. bei
+/// `None` entfernt; fehlt sie, kommt sie vor das schließende `---`. Ohne Frontmatter entsteht einer. Das Zeilenende folgt
+/// der Datei. Ob danach wirklich der Wert gilt, prüft der Aufrufer beim Lesen.
+pub fn schalter_im_text(text: &str, wert: Option<bool>) -> String {
+    let ende = if text.contains("\r\n") { "\r\n" } else { "\n" };
+    let zeile = wert.map(|b| format!("{SCHALTER}: {b}{ende}")).unwrap_or_default();
+    let (bom, ohne_bom) = text.strip_prefix('\u{feff}').map_or(("", text), |rest| ("\u{feff}", rest));
+    let zeilen: Vec<&str> = ohne_bom.split_inclusive('\n').collect();
+    let mit_kopf = zeilen.first().is_some_and(|z| z.trim_end() == "---");
+    let schluss = mit_kopf.then(|| zeilen.iter().skip(1).position(|z| z.trim_end() == "---").map(|i| i + 1)).flatten();
+    let Some(schluss) = schluss else {
+        if zeile.is_empty() {
+            return text.to_string();
+        }
+        return format!("{bom}---{ende}{zeile}---{ende}{ende}{ohne_bom}");
+    };
+    let ist_schluessel = |z: &str| z.strip_prefix(SCHALTER).is_some_and(|rest| rest.trim_start().starts_with(':'));
+    let folgezeile = |z: &str| z.starts_with(' ') || z.starts_with('\t');
+    let mut neu = String::from(bom);
+    let mut gesetzt = false;
+    let mut i = 0;
+    while i < zeilen.len() {
+        let z = zeilen[i];
+        if i > 0 && i < schluss && !gesetzt && ist_schluessel(z) {
+            neu.push_str(&zeile);
+            gesetzt = true;
+            i += 1;
+            while i < schluss && folgezeile(zeilen[i]) {
+                i += 1;
+            }
+            continue;
+        }
+        if i == schluss && !gesetzt {
+            neu.push_str(&zeile);
+            gesetzt = true;
+        }
+        neu.push_str(z);
+        i += 1;
+    }
+    neu
+}
+
 /// Der Schalter als Zeile mit Zeilenende, oder nichts.
 pub(crate) fn schalter_zeile(schalter: Option<bool>) -> String {
     schalter.map(|b| format!("{SCHALTER}: {b}\n")).unwrap_or_default()
@@ -923,5 +966,29 @@ mod tests {
         assert_eq!(serde_json::to_value(&b).unwrap()["bestand"], serde_json::Value::Null);
         b.bestand = Some(Bestandseinstellung { zeilen: "nc".into(), spalten: "repo".into() });
         assert_eq!(serde_json::to_value(&b).unwrap()["bestand"], serde_json::json!({"zeilen": "nc", "spalten": "repo"}));
+    }
+}
+
+#[cfg(test)]
+mod tests_schalter_im_text {
+    use super::schalter_im_text;
+
+    #[test]
+    fn haengt_an_ersetzt_und_entfernt_nur_die_eine_zeile() {
+        let alt = "---\n# Kommentar\nzzz: 1\n---\n\nText\n";
+        assert_eq!(schalter_im_text(alt, Some(true)), "---\n# Kommentar\nzzz: 1\nrecord-transcripts: true\n---\n\nText\n");
+        let mit = "---\nrecord-transcripts:\n  true\nzzz: 1\n---\nText\n";
+        assert_eq!(schalter_im_text(mit, Some(false)), "---\nrecord-transcripts: false\nzzz: 1\n---\nText\n", "eingerückte Folgezeile gehört dazu");
+        assert_eq!(schalter_im_text(mit, None), "---\nzzz: 1\n---\nText\n");
+        assert_eq!(schalter_im_text(alt, None), alt, "ohne Schlüssel und ohne Wert zeichengleich");
+    }
+
+    #[test]
+    fn aehnliche_schluessel_text_und_ohne_frontmatter() {
+        let alt = "---\nrecord-transcripts-alt: x\n---\nrecord-transcripts: im Text\n";
+        assert_eq!(schalter_im_text(alt, Some(true)), "---\nrecord-transcripts-alt: x\nrecord-transcripts: true\n---\nrecord-transcripts: im Text\n");
+        assert_eq!(schalter_im_text("# zweit\n\n## A\n", Some(true)), "---\nrecord-transcripts: true\n---\n\n# zweit\n\n## A\n");
+        assert_eq!(schalter_im_text("# zweit\n", None), "# zweit\n");
+        assert_eq!(schalter_im_text("\u{feff}---\na: 1\n---\n", Some(false)), "\u{feff}---\na: 1\nrecord-transcripts: false\n---\n");
     }
 }

@@ -1004,3 +1004,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #218 R00220 | B1139 Verweis „In „Einrichten“ umschalten“ in „Läufe“ | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #218 R00220 | B1140 Breite, Ziele, Themen, Kontrast, Tastatur und Ansage messen und nachziehen | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #218 R00220 | B1141 Probe im echten Programm, volles Gate, Anforderung abgeschlossen | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-21 | Karte #218 R00220 | Nacharbeit 1: Muss 1 Code-Review (kanbanD.md zeilengenau), Diff-Proben AK 1/AK 2 nach PO Z. 492 | Standard | 0,5h | 0,3h | 0,3h | autonom |
