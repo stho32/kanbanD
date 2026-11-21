@@ -285,10 +285,15 @@ impl Gesamtlauf<'_> {
             netto = netto_liste.iter().filter(|d| alles_netto || einteilung.netto(d)).cloned().collect();
             diff.spanne = Some(Spanne { basis: basis.clone(), letzter: letzter.clone() });
         }
-        // Folge: alle Kartenpfade, die kein Netto-Eintrag trägt (ganze Gruppen, Einteilung::folgepfade)
+        // Folge (N8.3 Punkt 1): Kartenpfade ohne Netto-Eintrag, die belastet sind oder in einem verworfenen Netto-Eintrag stehen;
+        // netto unveränderte Pfade erscheinen nirgends. Unbelastete Pfade hinter einer abgeschnittenen Liste sind netto und
+        // zählen über `gesamt` (N8.3 Punkt 2, B3). Ganz als Folge: jeder Kartenpfad (N6.4)
         let gedeckt: HashSet<&[u8]> = netto.iter().flat_map(|d| d.pfade_roh.iter().map(Vec::as_slice)).collect();
-        // ohne fremden Pfad: fehlt ein Kartenpfad nur, weil eine Liste abgeschnitten ist, ist er netto, nicht Folge (B3)
-        let folgepfade: HashSet<Vec<u8>> = if alles_netto && !(netto_vollstaendig && namen_vollstaendig) { HashSet::new() } else { einteilung.folgepfade(&gedeckt) };
+        let verworfen: HashSet<&[u8]> = netto_liste.iter().filter(|d| !(alles_netto || einteilung.netto(d))).flat_map(|d| d.pfade_roh.iter().map(Vec::as_slice)).collect();
+        let folgepfade: HashSet<Vec<u8>> = match grund {
+            Some(_) => einteilung.karte.iter().cloned().collect(),
+            None => einteilung.folgepfade(&gedeckt, &verworfen),
+        };
         let mut plan = Folgeplan { commits: vec![], pfade: vec![] };
         for c in &schritte {
             if je_commit.get(&c.hash).is_some_and(|es: &Vec<Eintragspfade>| es.iter().flatten().any(|p| folgepfade.contains(p))) {

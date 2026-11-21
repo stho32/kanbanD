@@ -248,13 +248,12 @@ impl Einteilung {
         d.pfade_roh.iter().all(|p| self.karte.contains(p) && !self.belastet(p))
     }
 
-    /// Die Folge-Pfade: alle Kartenpfade, die kein Netto-Eintrag trägt (`gedeckt`) — außer ihre Gruppe ist unbelastet und
-    /// ein Netto-Eintrag trägt einen anderen Pfad von ihr (ein Zwischenname: K1 benennt `a` nach `m`, K2 `m` nach `z`;
-    /// netto steht `a → z`, `m` erscheint nirgends).
-    pub fn folgepfade(&self, gedeckt: &HashSet<&[u8]>) -> HashSet<Vec<u8>> {
-        let gedeckte: HashSet<usize> = gedeckt.iter().filter_map(|p| self.gruppe.get(*p)).copied().collect();
-        let zwischenname = |p: &[u8]| self.gruppe.get(p).is_some_and(|g| gedeckte.contains(g) && !self.belastet.contains(g));
-        self.karte.iter().filter(|p| !gedeckt.contains(p.as_slice()) && !zwischenname(p)).cloned().collect()
+    /// Die Folge-Pfade (ADR-0032 N8.3 Punkt 1): Kartenpfade, die kein Netto-Eintrag trägt (`gedeckt`) und die belastet sind
+    /// oder in einem Netto-Eintrag stehen, den [`Einteilung::netto`] verworfen hat (`verworfen`). Jeder andere Kartenpfad ohne
+    /// Netto-Eintrag ist netto unverändert (die Karte nimmt ihre Änderung selbst zurück) oder ein Zwischenname (K1 benennt `a`
+    /// nach `m`, K2 `m` nach `z`; netto steht `a → z`) und erscheint nirgends.
+    pub fn folgepfade(&self, gedeckt: &HashSet<&[u8]>, verworfen: &HashSet<&[u8]>) -> HashSet<Vec<u8>> {
+        self.karte.iter().filter(|p| !gedeckt.contains(p.as_slice()) && (self.belastet(p) || verworfen.contains(p.as_slice()))).cloned().collect()
     }
 
     /// Liegt jeder Pfad des Eintrags in `D_karte`? Sonst trifft ihn nur eine Pfadangabe `foo` als `foo/…` (N6.3).
@@ -542,9 +541,38 @@ mod tests {
         assert!(!e.netto(&rohdatei('A', &["w"])), "w hängt über v an u");
         assert!(e.netto(&rohdatei('R', &["x", "z"])) && e.netto(&rohdatei('A', &["k"])));
         let gedeckt: HashSet<&[u8]> = [b"x".as_slice(), b"z", b"k"].into();
-        let mut folge: Vec<Vec<u8>> = e.folgepfade(&gedeckt).into_iter().collect();
+        let mut folge: Vec<Vec<u8>> = e.folgepfade(&gedeckt, &HashSet::new()).into_iter().collect();
         folge.sort();
         assert_eq!(folge, pfade(&["c", "f", "u", "v", "w"]), "m ist ein Zwischenname der gedeckten Gruppe x → m → z");
+    }
+
+    // R00225, ADR-0032 N8.3 Punkt 1: Folge sind nur Kartenpfade ohne Netto-Eintrag, die belastet sind oder in einem verworfenen
+    // Netto-Eintrag stehen; netto unveränderte Pfade und Zwischennamen erscheinen nirgends
+    #[test]
+    fn folge_nur_belastet_oder_verworfen() {
+        // A, C Karte: x → m → z (unbelastet, netto x → z), d gelöscht und wieder angelegt, u, v, w, g; B fremd: g
+        let je: HashMap<String, Vec<Eintragspfade>> = [
+            (A.to_string(), vec![pfade(&["x", "m"]), pfade(&["d"]), pfade(&["u"]), pfade(&["v"]), pfade(&["g"])]),
+            (B.to_string(), vec![pfade(&["g"])]),
+            (C.to_string(), vec![pfade(&["m", "z"]), pfade(&["d"]), pfade(&["w"])]),
+        ].into();
+        let e = Einteilung::aus(&je, &menge(&[A, C]));
+        let gedeckt: HashSet<&[u8]> = [b"x".as_slice(), b"z", b"w"].into();
+        let verworfen: HashSet<&[u8]> = [b"v".as_slice(), b"g"].into();
+        let tabelle: [(&str, bool, &str); 7] = [
+            ("g", true, "belastet (D_fremd)"),
+            ("v", true, "unbelastet, aber in einem verworfenen Netto-Eintrag"),
+            ("d", false, "netto unverändert: kein Netto-Eintrag, unbelastet"),
+            ("u", false, "netto unverändert"),
+            ("m", false, "Zwischenname der gedeckten Gruppe x → m → z"),
+            ("x", false, "gedeckt"),
+            ("w", false, "gedeckt"),
+        ];
+        let folge = e.folgepfade(&gedeckt, &verworfen);
+        for (pfad, soll, warum) in tabelle {
+            assert_eq!(folge.contains(pfad.as_bytes()), soll, "{pfad}: {warum}");
+        }
+        assert_eq!(folge.len(), 2);
     }
 
     // Code-Review B2 (#214): die Pfadangabe nimmt jeden Eintrag ganz, dessen Pfad sie trifft — `d/x` trifft `d/x/inner`,

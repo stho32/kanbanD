@@ -1037,3 +1037,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #232 R00224 | B1171 erste Anwendung mit 404 + zustand: Kürzel und seitenweite Hinweise aus der Liste, Warten auf die Liste, Seitenmeldung bei gescheiterter Liste | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-22 | Karte #232 R00224 | B1172 Mutanten m1–m11 über KD_MUTANTE, Probe-Lücke (unrouteAll nahm die Mutante weg) behoben, volles Gate, R00224 Erledigt | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #234 R00225 | B1173 Abnahme-Proben N, N+F, M, F (API) und Seite N, N+F, F rot am heutigen Stand | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-21 | Karte #234 R00225 | B1174 Einteilung: Folge nur belastet oder aus verworfenem Netto-Eintrag, ganz als Folge jeder Kartenpfad | Standard | 1-2h | 0,3h | 0,3h | autonom |
