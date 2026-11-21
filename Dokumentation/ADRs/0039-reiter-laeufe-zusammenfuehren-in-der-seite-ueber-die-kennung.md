@@ -85,3 +85,61 @@ Für das Lesen des Zustands:
 - ADR-0028 Punkt 4 und 5 (Kennung, doppelte Kennung)
 - ADR-0014 (nur die neueste Antwort), R00205 FA 2 (Lesen der „Commits“)
 - po-entscheidungen Z. 370 (ein Transkript ohne Kosteneintrag ist erlaubt), Z. 384–388 (Zuschnitt D1)
+
+## Nachtrag 2026-11-21 N1: Abhilfe für das Zeichnen — die Tabelle bleibt derselbe Knoten an ihrem Platz, solange ihr HTML gleich ist (Karte #217, R00219 AK 1, Frage des entwicklers nach Punkt 7)
+
+**Status bleibt `Akzeptiert`.** Punkt 7 sah für eine gerissene Grenze „Zeichnen in Stücken oder Seiten“ vor. Gewählt wird stattdessen eine Insel wie `rv-insel` (ADR-0033 Punkt 4): Die Tabelle bleibt als Knoten an ihrem Platz. Stücke und Seiten entfallen. Am Server ändert sich nichts.
+
+### Anlass (Messwerte des entwicklers, Zweig `karte/217`, Stand `42dbe787`)
+
+- `GET …/transkripte`: p95 54–65 ms, grün.
+- Zeichnen: Der größte `render()` je Lauf brauchte 161–172 ms bei 1.000 Zeilen und einer Last von 1,4–1,7. Die Grenze ist 100 ms. „Inhalt“ braucht 5–6,5 ms.
+- Davon entfallen etwa 32 ms auf `laeufeAnsichtHtml`, vor allem auf das Geldformat. `laeufe()` braucht 1,5 ms. Der Rest geht in das Parsen, die Stile und das Layout der 1.000 Zeilen. Den Formatierer zwischenzuspeichern spart etwa 20 ms.
+
+### Was AK 1 misst
+
+Der Teil Zeichnen von AK 1 misst das **Neuzeichnen bei gleichen Daten**. Die Messprobe (`e2e/tests/r00219-ansicht-laeufe.spec.js`, `KD_MESSPROBE=1`) wartet, bis 1.000 Zeilen stehen. Danach ruft sie 20-mal `render()` mit erzwungenem Layout (`mitLayout < 100`). Dazwischen ändert sich weder die Antwort noch ein Kosteneintrag. Das erste Zeichnen nach dem Lesen misst AK 1 nicht. Im Betrieb ist das Neuzeichnen bei gleichen Daten auch der häufige Fall: `render()` zeichnet das ganze `#over` bei jedem Live-Ereignis des Boards neu, auch wenn ein Kollege an einer anderen Karte tippt.
+
+### Probe (gebaut, im Scratchpad des architekten, nicht im Projekt)
+
+Gemessen mit `web/laeufe.js` und den drei CSS-Dateien vom Stand `42dbe787`, 1.000 Zeilen, Chromium headless (Playwright des Projekts), Fenster 1280 × 900, 21.11. 08:27 Uhr, Last 0,9, `nice -n 10`. Je Variante 20 Durchläufe mit erzwungenem Layout, drei Läufe:
+
+| Variante | größter Wert | Median |
+|---|---|---|
+| alles neu (`innerHTML`, heute) | 126–143 ms | 103–113 ms |
+| nur der HTML-Text (`laeufeAnsichtHtml`) | 36–44 ms | 33–34 ms |
+| alte Tabelle ab- und wieder eingehängt | 79–104 ms | 60–70 ms |
+| **Tabelle bleibt im Dokument, nur die Geschwister werden getauscht** | **2–3 ms** | **1,8–1,9 ms** |
+| erstes Zeichnen | 107–171 ms | — |
+
+Ohne den Rest des Fensters liegt die Probe unter den Werten des entwicklers. Die Verhältnisse sind dieselben. Wichtig ist der dritte Befund: **Ab- und wieder Einhängen hilft nicht.** Ein ausgehängter Knoten verliert seine Layout-Boxen. Beim Einsetzen rechnet Chromium Stile und Layout der 1.000 Zeilen neu. Nur wenn der Knoten im Dokument bleibt, kostet das Neuzeichnen fast nichts.
+
+### Varianten
+
+| Variante | Neuzeichnen bei gleichen Daten | Schwäche | Wahl |
+|---|---|---|---|
+| A1 Stücke: `render()` zeichnet z. B. 200 Zeilen, der Rest folgt über `requestAnimationFrame` | `render()` < 100 ms | Bei jedem Ereignis fällt dieselbe Arbeit an, nur über mehrere Frames verteilt. Die Tabelle schrumpft und wächst wieder, die Leseposition springt. Bis das letzte Stück steht, finden Strg+F und Bildschirmleser nur einen Teil. Die Grenze hielte damit nur auf dem Papier. | verworfen |
+| A2 Seiten | < 100 ms | Widerspricht R00219 (1.000 Zeilen am Stück, ohne Seiten) und der Zeichnung D0009 `#laeufe` („eine Liste ohne Seiten“). | verworfen |
+| C Nur die sichtbaren Zeilen im DOM (Virtualisierung) | < 100 ms | Wie A2: nicht „am Stück“. Dazu fallen Strg+F, Textauswahl und die Tabellenrollen für Bildschirmleser weg. | verworfen |
+| D Abgleich Zeile für Zeile mit Schlüssel | < 100 ms, auch bei einem neuen Kosteneintrag | Doppel derselben Kennung (Punkt 3) brauchen einen eigenen Schlüssel je Zeile. Die Reihenfolge muss mit abgeglichen werden. Das ist viel Code für einen Fall, den AK 1 nicht misst. | zurückgestellt |
+| **B Insel: Die Tabelle bleibt derselbe Knoten an ihrem Platz, solange ihr HTML gleich ist** | ≈ Rest des Fensters + HTML-Text ≈ 40 ms, mit zwischengespeichertem Formatierer ≈ 20 ms | Das erste Zeichnen und das Zeichnen nach einer geänderten Zeile (neue Antwort, Kosteneintrag dieser Aufgabe) bleiben bei 110–170 ms. In `#over` kommt ein zweiter Ort mit gehaltenem Knoten dazu. | **gewählt** |
+
+### Was der Nachtrag festlegt
+
+1. **Insel.** Die Tabelle (`.lf-rahmen`) ist eine Insel nach dem Muster `rv-insel`. Ist ihr HTML-Text gleich dem des letzten Zeichnens derselben Aufgabe, bleibt der alte Knoten **im Dokument**. Er wird nicht eingesetzt, sondern nur seine Geschwister entlang des Pfads werden getauscht, wie bei `hauptbereichErsetzen` mit `pfadZu`, `geschwisterErsetzen` und `attributeAbgleichen`. Für `#over` heißt das: Ist die Insel da, wird `#over` nicht mehr als Ganzes über `innerHTML` geschrieben, sondern über denselben Weg mit `#over` als Wurzel. Die vorhandenen Funktionen werden dafür um die Wurzel als Parameter erweitert, keine zweite Fassung. Weicht der Pfad ab (andere Ansicht, Fehlerbild, andere Aufgabe), wird alles neu gezeichnet wie heute.
+2. **Der Schlüssel ist der HTML-Text der Tabelle selbst.** Er ist kein Fingerabdruck aus ausgewählten Feldern. Die Seite baut den Text bei jedem `render()` (≈ 32 ms) und vergleicht ihn mit dem zuletzt eingesetzten Text. Der Text wird im Zustand der Ansicht gehalten (`S.ui.laeufe`), nicht als Attribut im DOM. So kann kein Eingang vergessen werden: Antwort, Kosten, `gelesen`, Zustandswort und Spalte der Kosten. Das ist dieselbe Regel wie `innerHTML !==` in `personenwahlAbgleichen` und `laeufeKnotenBehalten`. Ein eigener Schlüssel aus Feldern wäre billiger (≈ 8 ms), braucht aber eine eigene Probe gegen veraltete Zeilen. Er ist nicht nötig, weil 40 ms unter der Grenze liegen.
+3. **Den Formatierer zwischenzuspeichern ist erlaubt, aber nicht verlangt.** Gemeint ist `Intl.NumberFormat` je Währung in `geld`. Das spart etwa 20 ms je Zeichnen, auch beim ersten Zeichnen. Ändert sich dadurch die Ausgabe von `geld` für einen Betrag, ist das ein Befund, denn es gibt nur einen Weg für Geldbeträge (Konsequenzen „Positiv“).
+4. **Kopf und Fuß bleiben außerhalb der Insel.** Gemeint sind Zahl, Status, „Neu lesen“, Meldung und Hinweis. Sie werden wie bisher neu gezeichnet. `laeufeKnotenBehalten` bleibt für den Statusbereich zuständig (einzige Live-Region, AK 10). Die Insel enthält in D1 keine fokussierbaren Elemente (Punkt 9). Bekommt #210 (D2) Ziele an den Zeilen, gilt die Fokusregel der Review-Insel (ADR-0033 Punkt 4).
+5. **Grenze für AK 1.** Die Grenze von 100 ms je `render()` gilt für das Neuzeichnen bei gleicher Tabelle. Das ist der Fall, den AK 1 misst. Erwartet werden etwa 40 ms bei der Last der Messung des entwicklers, ohne zwischengespeicherten Formatierer. Das ist eine Schätzung aus dessen Aufteilung (Rest des Fensters ≈ 6 ms + `laeufe()` 1,5 ms + Text 32 ms) und der Probe oben (Insel ≈ 2 ms). Gemessen wird sie erst mit der Messprobe von AK 1. Das erste Zeichnen und das Zeichnen nach einer geänderten Zeile bleiben bei 110–170 ms. Das ist Inkauf: Es passiert einmal je Öffnen, je Antwort und je Kosteneintrag dieser Aufgabe. Es wird beobachtet, nicht im Gate geprüft. Die Messprobe nennt den Wert des ersten Zeichnens zusätzlich im Bericht.
+6. **Kein Ab- und Einhängen.** Eine Umsetzung, die die alte Tabelle aushängt und wieder einsetzt (etwa `replaceWith` nach `innerHTML`), ist ein Befund. Laut Probe spart sie nur das Parsen, nicht Stile und Layout (60–100 ms).
+
+### Durchsetzung (ergänzt)
+
+- **E2E, Insel hält:** „Läufe“ mit Zeilen ist offen. Die Tabelle bekommt eine Marke (`page.evaluate`, `el.__probe = 1`). Ein Kommentar an der Aufgabe und eine Änderung an einer anderen Karte lassen denselben Knoten stehen: Die Marke ist da, und es gibt kein `GET …/transkripte`. Ein per API gebuchter Kosteneintrag ersetzt den Knoten: Die Marke ist weg, und der neue Betrag steht in der Zeile. Mutant „Schlüssel immer gleich“ macht den zweiten Teil rot. Mutant „Insel nie gehalten“ macht den ersten Teil rot.
+- **Messprobe AK 1** unverändert (20-mal `render()` mit Layout, jedes < 100 ms). Zusätzlich steht im Bericht das erste Zeichnen nach dem Lesen, als Beobachtung.
+- **Review-Punkt:** Ein Neuzeichnen von `#over` als Ganzes, solange die Insel steht, oder ein Ab- und Einhängen der Tabelle ist ein Befund (Punkt 1, Punkt 6).
+
+### Offen
+
+- Die nicht-funktionale Anforderung „Performance“ in R00219 sagt „Zeichnen der Ansicht in Chromium < 100 ms je `render()`“, ohne Einschränkung. Das erste Zeichnen hält diese Grenze nicht. AK 1 misst nur das Neuzeichnen. Frage an den PO (siehe Bericht 217-architekt-2). Empfehlung: den Wortlaut der Anforderung an das anpassen, was AK 1 misst, und das erste Zeichnen als Beobachtung ohne Grenze im Gate führen.
+- D (Abgleich Zeile für Zeile), falls das Zeichnen nach einem Kosteneintrag im Betrieb stört.
