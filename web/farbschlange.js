@@ -183,10 +183,12 @@
       };
       schlange.stellen({ sprache: auftrag.sprache, zeilen: auftrag.zeilen, aktuell, fertig });
     };
+    const laeuft = el => el.dataset.farbe === 'laeuft';
+    // über die Klassenliste statt eines Selektors: ein Abschnitt mit 10.000 Zeilen hat 50.000 Elemente (R00217 AK 1)
     const pruefen = knoten => {
       if (knoten.nodeType !== 1) return;
-      if (knoten.matches('.df-sc[data-farbe="laeuft"]')) anstossen(knoten);
-      knoten.querySelectorAll('.df-sc[data-farbe="laeuft"]').forEach(anstossen);
+      if (knoten.classList.contains('df-sc') && laeuft(knoten)) anstossen(knoten);
+      for (const bereich of Array.from(knoten.getElementsByClassName('df-sc'))) if (laeuft(bereich)) anstossen(bereich);
     };
     new MutationObserver(eintraege => eintraege.forEach(e => e.addedNodes.forEach(pruefen))).observe(wurzel, { childList: true, subtree: true });
     pruefen(wurzel);

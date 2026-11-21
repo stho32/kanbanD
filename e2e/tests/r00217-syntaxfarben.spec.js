@@ -16,12 +16,20 @@ const datei = (page, pfad) => page.locator('#rv-insel .df').filter({ has: page.l
 /** Der Diffbereich einer Datei. */
 const bereich = (page, pfad) => datei(page, pfad).locator('.df-sc');
 
-/** Klappt die Datei auf, wenn sie zu ist, und wartet, bis die Farbe entschieden ist (`ja` oder `nein`). */
+/** Wartet im Browser, bis die Farbe des Diffbereichs entschieden ist (`ja` oder `nein`), und liefert sie. Gewartet wird mit
+    `waitForFunction` in der Seite, nicht mit dem Polling von `expect`: solange Playwright von außen pollt, startet ein neuer
+    Worker in Chromium spürbar später (geprobt: über 1,5 s statt 0,1 s), und eine gutartige Datei liefe in die Frist. */
+async function farbeAbwarten(page, pfad, timeout = 10000) {
+  const el = await bereich(page, pfad).elementHandle();
+  await page.waitForFunction(e => e.dataset.farbe === 'ja' || e.dataset.farbe === 'nein', el, { timeout });
+  return el.evaluate(e => e.dataset.farbe);
+}
+
+/** Klappt die Datei auf, wenn sie zu ist, und wartet, bis die Farbe entschieden ist. */
 async function aufklappenUndWarten(page, pfad) {
   const kopf = datei(page, pfad).locator('.df-k');
   if (await kopf.getAttribute('aria-expanded') !== 'true') await kopf.click();
-  await expect(bereich(page, pfad)).toHaveAttribute('data-farbe', /^(ja|nein)$/);
-  return bereich(page, pfad).getAttribute('data-farbe');
+  return farbeAbwarten(page, pfad);
 }
 
 /** Je Zeile des Diffbereichs die Stücke mit Rolle: [[Text, Klasse], …]. */
@@ -183,7 +191,7 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     const vorher = await b.evaluate(el => ({ links: el.scrollLeft, oben: document.scrollingElement.scrollTop }));
     expect(vorher.links).toBeGreaterThan(0);
     frei();
-    await expect(b).toHaveAttribute('data-farbe', 'ja');
+    expect(await farbeAbwarten(page, 'zeichen.js')).toBe('ja');
     const nachher = await b.evaluate(el => ({
       merker: el.querySelectorAll('[data-m]').length + (el.dataset.m ? 1 : 0),
       fokus: document.activeElement === el, links: el.scrollLeft, oben: document.scrollingElement.scrollTop,
@@ -209,9 +217,22 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     });
     expect(ausgewaehlt).toBe('fn main');
     frei();
-    await expect(b).toHaveAttribute('data-farbe', 'ja');
+    expect(await farbeAbwarten(page, 'src/main.rs')).toBe('ja');
     await expect(b.locator('.tk-keyword', { hasText: 'fn' })).toHaveCount(1);
     expect(await page.evaluate(() => document.getSelection().toString())).toBe('fn main');
+  });
+
+  test('UX S1: erst feindlich.md, dann gut.rs aufgeklappt — gut.rs steht sofort mit Text da und wird gefärbt, feindlich.md bleibt ohne Farbe', async ({ page }) => {
+    await page.goto(reviewAdresse(k, 3));
+    await alleZu(page);
+    await datei(page, 'feindlich.md').locator('.df-k').click();
+    await expect(bereich(page, 'feindlich.md')).toHaveAttribute('data-farbe', 'laeuft');
+    await datei(page, 'gut.rs').locator('.df-k').click();
+    await expect(bereich(page, 'gut.rs').locator('td.c')).toHaveText(['hinzugefügt: fn gut() {}']);
+    // läuft feindlich.md schon, wartet gut.rs bis zu dessen Frist; wartet es noch, zieht gut.rs als zuletzt geöffnete vor (S1)
+    expect(await farbeAbwarten(page, 'gut.rs')).toBe('ja');
+    expect(await farbeAbwarten(page, 'feindlich.md')).toBe('nein');
+    await expect(bereich(page, 'gut.rs').locator('.tk-keyword', { hasText: 'fn' })).toHaveCount(1);
   });
 
   test('UX K3: zuklappen und wieder aufklappen färbt erneut', async ({ page }) => {
@@ -281,5 +302,189 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     const regeln = app.split('}').filter(r => /\.tk-/.test(r));
     expect(regeln.length).toBeGreaterThan(0);
     expect(regeln.filter(r => /color:(?!var\(--kd-tk-)/.test(r)), 'keine Farbe als Literal').toEqual([]);
+  });
+
+  /* ── AK 1 Messziel, AK 5 Grenze und Frist, AK 6 Fehlerpfad, AK 7 unverändert (B1111) ── */
+
+  /** Long Tasks der Seite ab dem Laden (PerformanceObserver `longtask`), mit Startzeit. */
+  async function langeAufgabenBeobachten(page) {
+    await page.addInitScript(() => {
+      window.kdLang = [];
+      new PerformanceObserver(l => l.getEntries().forEach(e => window.kdLang.push({ start: e.startTime, dauer: Math.round(e.duration) }))).observe({ type: 'longtask', buffered: true });
+    });
+  }
+  const jetzt = page => page.evaluate(() => performance.now());
+  const langeSeit = async (page, t0, name = '') => {
+    const alle = await page.evaluate(t => window.kdLang.filter(e => e.start >= t), t0);
+    // Lastbeobachtung für den Bericht (kein Kriterium): alle Long Tasks ab dem Auslöser, mit KD_MESS_AUS in eine Datei
+    if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify({ name, dauern: alle.map(e => e.dauer) }) + '\n');
+    return alle.filter(e => e.dauer > 150);
+  };
+
+  /** Alle Dateien zu, dann warten, bis kein Diffbereich mehr steht. */
+  async function alleZu(page) {
+    await page.getByRole('button', { name: 'Alle einklappen' }).click();
+    await expect(page.locator('#rv-insel .df-sc')).toHaveCount(0);
+  }
+
+  test('AK 1: feindlich.md, feindlich.html, feindlich.js — Text sofort, Ende ohne Farbe, kein Long Task über 150 ms; danach gut.rs gefärbt', async ({ page }) => {
+    test.setTimeout(60000);
+    const b = beobachten(page);
+    await langeAufgabenBeobachten(page);
+    await page.goto(reviewAdresse(k, 3));
+    await expect(page.locator('#rv-insel .df')).toHaveCount(4);
+    await alleZu(page);
+    for (const [pfad, zeilen] of [['feindlich.md', 64], ['feindlich.html', 64], ['feindlich.js', 261]]) {
+      const t0 = await jetzt(page);
+      await datei(page, pfad).locator('.df-k').click();
+      await expect(bereich(page, pfad)).toHaveAttribute('data-farbe', 'laeuft');
+      // solange gefärbt wird, steht der Text schon ganz da
+      const texte = await bereich(page, pfad).evaluate(el => Array.from(el.querySelectorAll('tr:not(.hk) td.c'), c => c.textContent));
+      expect(texte.length, pfad).toBe(zeilen);
+      expect(texte.every(t => t.length === 'hinzugefügt: '.length + 999), pfad).toBe(true);
+      expect(await farbeAbwarten(page, pfad), pfad).toBe('nein');
+      expect(await bereich(page, pfad).locator('[class^="tk-"]').count(), pfad).toBe(0);
+      expect(await langeSeit(page, t0, pfad), `${pfad}: Long Tasks über 150 ms`).toEqual([]);
+    }
+    expect(await aufklappenUndWarten(page, 'gut.rs')).toBe('ja');
+    await expect(bereich(page, 'gut.rs').locator('.tk-keyword', { hasText: 'fn' })).toHaveCount(1);
+    expect(b.konsole, 'keine Konsolenmeldung').toEqual([]);
+    expect(b.fehler).toEqual([]);
+  });
+
+  test('AK 1: lang.rs (10.000 Zeilen über „Änderungen anzeigen“) endet gefärbt, `let` in Zeile 1 und 10.000, kein Long Task über 150 ms', async ({ page }) => {
+    test.setTimeout(60000);
+    await langeAufgabenBeobachten(page);
+    await page.goto(reviewAdresse(k, 4));
+    const anzeigen = datei(page, 'lang.rs').getByRole('button', { name: 'Änderungen anzeigen' });
+    await expect(anzeigen).toBeVisible();
+    const t0 = await jetzt(page);
+    await anzeigen.click();
+    expect(await farbeAbwarten(page, 'lang.rs', 15000)).toBe('ja');
+    const ersteUndLetzte = await bereich(page, 'lang.rs').evaluate(el => {
+      const zeilen = Array.from(el.querySelectorAll('tr:not(.hk)'));
+      const kw = tr => Array.from(tr.querySelectorAll('.tk-keyword'), e => e.textContent);
+      return [zeilen.length, kw(zeilen[0]), kw(zeilen[zeilen.length - 1]), el.querySelectorAll('.dz-b').length];
+    });
+    // 10.000 Zeilen und der Hunk-Kopf sind 10.001 Patch-Zeilen, also 21 Blöcke zu höchstens 500
+    expect(ersteUndLetzte).toEqual([10000, ['let'], ['let'], 21]);
+    expect(await langeSeit(page, t0, 'lang.rs'), 'Long Tasks über 150 ms').toEqual([]);
+  });
+
+  /** Eine Rust-Datei mit genau `laenge` Zeichen Patch, Zeilen höchstens 1.000 Zeichen, jede beginnt mit `fn`. */
+  function rustPatch(laenge) {
+    const kopf = '@@ -0,0 +1,300 @@';
+    const teile = [kopf];
+    let n = kopf.length;
+    while (n < laenge) {
+      const rest = laenge - n - 1;
+      const z = ('+fn g() {} //' + 'a'.repeat(1000)).slice(0, Math.min(1000, rest));
+      teile.push(z);
+      n += 1 + z.length;
+    }
+    const p = teile.join('\n');
+    if (p.length !== laenge) throw new Error(`Länge ${p.length}`);
+    return p;
+  }
+
+  test('AK 5: Grenze — 262.144 Zeichen gefärbt, 262.145 in keiner Zeile (feste Antwort); grenze.rs gefärbt, drueber.rs nicht; ohne Hinweis', async ({ page }) => {
+    const b = beobachten(page);
+    await page.goto(reviewAdresse(k, 2));
+    expect(await aufklappenUndWarten(page, 'grenze.rs')).toBe('ja');
+    await expect(bereich(page, 'grenze.rs').locator('.tk-keyword', { hasText: 'fn' })).toHaveCount(1);
+    expect(await aufklappenUndWarten(page, 'drueber.rs')).toBe('nein');
+    expect(await bereich(page, 'drueber.rs').locator('[class^="tk-"]').count()).toBe(0);
+    await expect(datei(page, 'drueber.rs').locator('.df-inhalt')).not.toContainText(/Farbe|Hervorhebung|zu groß/);
+    // feste Antwort: grenze.rs mit genau 262.144 Zeichen Patch, drueber.rs mit 262.145
+    const ersetzen = x => {
+      if (Array.isArray(x)) return x.forEach(ersetzen);
+      if (!x || typeof x !== 'object') return;
+      if (typeof x.patch === 'string' && x.neu === 'grenze.rs') x.patch = rustPatch(262144);
+      if (typeof x.patch === 'string' && x.neu === 'drueber.rs') x.patch = rustPatch(262145);
+      Object.values(x).forEach(ersetzen);
+    };
+    await page.route(u => u.pathname === '/api/aufgaben/2/diff', async route => {
+      const echt = await route.fetch();
+      const json = await echt.json();
+      ersetzen(json);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(json) });
+    });
+    await page.reload();
+    await alleZu(page);
+    expect(await aufklappenUndWarten(page, 'grenze.rs'), '262.144').toBe('ja');
+    expect(await bereich(page, 'grenze.rs').locator('tr:not(.hk)').count()).toBeGreaterThan(250);
+    expect(await bereich(page, 'grenze.rs').locator('tr:last-child .tk-keyword').first().textContent()).toBe('fn');
+    expect(await aufklappenUndWarten(page, 'drueber.rs'), '262.145').toBe('nein');
+    expect(await bereich(page, 'drueber.rs').locator('[class^="tk-"]').count()).toBe(0);
+    expect(b.konsole).toEqual([]);
+  });
+
+  test('AK 5: Frist — feindlich.md bleibt nach 1.000 ms ohne Farbe, in keiner Zeile eine Rolle, ohne Konsoleneintrag und ohne Hinweis', async ({ page }) => {
+    const b = beobachten(page);
+    await page.goto(reviewAdresse(k, 3));
+    await alleZu(page);
+    await datei(page, 'feindlich.md').locator('.df-k').click();
+    expect(await farbeAbwarten(page, 'feindlich.md')).toBe('nein');
+    expect(await bereich(page, 'feindlich.md').locator('[class^="tk-"]').count()).toBe(0);
+    await expect(datei(page, 'feindlich.md').locator('.df-inhalt')).not.toContainText(/Farbe|Hervorhebung/);
+    expect(b.konsole).toEqual([]);
+    expect(b.fehler).toEqual([]);
+  });
+
+  test('AK 6: ohne Farbe und still — prism.js 404, faerben.js 404, kein Worker, tokenize wirft', async ({ page }) => {
+    const b = beobachten(page);
+    await page.goto(reviewAdresse(k, 2));
+    expect(await aufklappenUndWarten(page, 'src/main.rs')).toBe('ja');
+    const textMitFarbe = await bereich(page, 'src/main.rs').evaluate(el => Array.from(el.querySelectorAll('tr'), tr => tr.textContent));
+    const faelle = [
+      ['(a) prism.js 404', u => u.pathname === '/web/vendor/prism.js', route => route.fulfill({ status: 404, body: '' })],
+      ['(b) faerben.js 404', u => u.pathname === '/web/faerben.js', route => route.fulfill({ status: 404, body: '' })],
+      ['(d) tokenize wirft', u => u.pathname === '/web/vendor/prism.js', async route => { const echt = await route.fetch(); await route.fulfill({ response: echt, body: (await echt.text()) + '\nPrism.tokenize=function(){throw new Error("kaputt")};' }); }],
+      ['(c) ohne Worker', null, null],
+    ];
+    let vorige = null;
+    for (const [name, muster, antwort] of faelle) {
+      // nur die eigene Route des vorigen Falls entfernen — eine Mutante (mutanteEinsetzen) bleibt eingesetzt
+      if (vorige) await page.unroute(vorige[0], vorige[1]);
+      vorige = muster ? [muster, antwort] : null;
+      if (muster) await page.route(muster, antwort);
+      else await page.addInitScript(() => { delete window.Worker; });
+      b.konsole.length = 0;
+      await page.reload();
+      expect(await aufklappenUndWarten(page, 'src/main.rs'), name).toBe('nein');
+      expect(await bereich(page, 'src/main.rs').locator('[class^="tk-"]').count(), name).toBe(0);
+      expect(await bereich(page, 'src/main.rs').evaluate(el => Array.from(el.querySelectorAll('tr'), tr => tr.textContent)), name).toEqual(textMitFarbe);
+      expect(b.konsole.filter(e => !/404|Failed to load resource/.test(e)), `${name}: nur die Ladefehlermeldung`).toEqual([]);
+      if (name.startsWith('(c)')) expect(await page.evaluate(() => typeof window.Worker)).toBe('undefined');
+    }
+    expect(b.fehler, 'kein pageerror').toEqual([]);
+  });
+
+  test('AK 7: zeichen.js mit und ohne Farbe — Text, Marken (Zahl und Farbe), Zeilennummern, Blöcke und Blockbreite gleich, PWN nie gesetzt, nur erlaubte Klassen', async ({ page }) => {
+    const erfassen = () => bereich(page, 'zeichen.js').evaluate(el => ({
+      zeilen: Array.from(el.querySelectorAll('tr'), tr => ({ text: (tr.querySelector('td.c') || tr.firstElementChild).textContent, n: Array.from(tr.querySelectorAll('td.n'), n => n.textContent) })),
+      marken: { bidi: el.querySelectorAll('.mk-bidi').length, steuer: el.querySelectorAll('.mk-st').length, texte: Array.from(el.querySelectorAll('.mk-z'), m => m.textContent) },
+      markenFarbe: Array.from(el.querySelectorAll('.mk-z'), m => [getComputedStyle(m).color, getComputedStyle(m).backgroundColor]),
+      bloecke: Array.from(el.querySelectorAll('.dz-b'), d => d.getAttribute('style')),
+      klassen: [...new Set(Array.from(el.querySelectorAll('td.c *'), e => e.getAttribute('class') || ''))].sort(),
+      pwn: typeof window.PWN,
+      img: el.querySelectorAll('img').length,
+    }));
+    await page.goto(reviewAdresse(k, 2));
+    expect(await aufklappenUndWarten(page, 'zeichen.js')).toBe('ja');
+    const mit = await erfassen();
+    await page.route(u => u.pathname === '/web/vendor/prism.js', route => route.fulfill({ status: 404, body: '' }));
+    await page.reload();
+    expect(await aufklappenUndWarten(page, 'zeichen.js')).toBe('nein');
+    const ohne = await erfassen();
+    expect(mit.marken).toEqual({ bidi: 1, steuer: 2, texte: ['⟨U+202E⟩', '␍', 'U+2028'] });
+    expect({ ...mit, klassen: null }).toEqual({ ...ohne, klassen: null });
+    expect(mit.pwn).toBe('undefined');
+    expect(mit.img).toBe(0);
+    expect(mit.zeilen.some(z => z.text.includes('<img src=x onerror=window.PWN=1>'))).toBe(true);
+    const erlaubt = /^(tk-(keyword|string|comment|number|function|type|macro)|vh|mk-z mk-bidi|mk-z mk-st|i|)$/;
+    expect(mit.klassen.filter(k => !erlaubt.test(k)), 'nur tk-… und Marken').toEqual([]);
+    expect(mit.klassen.some(k => k.startsWith('tk-'))).toBe(true);
+    expect(mit.klassen.some(k => /token/.test(k))).toBe(false);
   });
 });

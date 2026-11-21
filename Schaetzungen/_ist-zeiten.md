@@ -981,3 +981,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #216 R00217 | B1109 Schlange mit Frist, Abbruch, veraltete Antworten, Fehlerpfad still | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-21 | Karte #216 R00217 | B1132 Farbe als Auflage blockweise, ein Block je Aufgabe | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #216 R00217 | B1110 Farben je Thema und Kontrast in vier Themenlagen | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-21 | Karte #216 R00217 | B1111 Probe im echten Programm, Mutanten, Gate | Standard | 0,5-1h | 1,0h | 1,0h | autonom |
