@@ -28,6 +28,7 @@ dateien! {
     "register.js" => "text/javascript; charset=utf-8",
     "diff.js" => "text/javascript; charset=utf-8",
     "gesamt.js" => "text/javascript; charset=utf-8",
+    "farbschlange.js" => "text/javascript; charset=utf-8",
     "faerben.js" => "text/javascript; charset=utf-8",
     "vendor/prism.js" => "text/javascript; charset=utf-8",
     "vendor/LICENSE-prism.txt" => "text/plain; charset=utf-8",

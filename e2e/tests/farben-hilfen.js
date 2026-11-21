@@ -45,7 +45,7 @@ function farbenRepositoryBauen(basis) {
     'src/hunks.rs': zeilenText(HUNKS_ALT),
     'Makefile': 'x\n', 'notiz.unbekannt': 'x\n', 'Typ.TS': 'x\n', 'SRC/GROSS.RS': 'x\n',
     'alt.py': 'def f(): pass\n',
-    'umbenannt.txt': '// u1\n// u2\n// u3\n// u4\nx\n',
+    'umbenannt.txt': '// u1\n// u2\n// u3\n// u4\nfn alt() {}\n',
   });
   const h = { r };
   h.k0 = commitAlles(r, 'Ausgangsstand');

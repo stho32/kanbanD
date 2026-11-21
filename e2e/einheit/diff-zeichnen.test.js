@@ -34,7 +34,7 @@ test('Bidi in Pfad und Zeile: Marke mit Auge, role="img", Name „sichtbar gemac
 test('Datei mit patch offen: Kopf als Knopf mit aria-expanded, Tabelle „Änderungen in <Pfad>“, Lesetext, Zeilennummern und Zeichen aria-hidden', () => {
   const html = zeichne();
   assert.ok(/<h3 class="df-h"><button type="button" class="df-k" id="rv-dk0" data-act="review-klappe" data-arg="0" aria-expanded="true"/.test(html));
-  assert.ok(html.includes('<div class="df-sc" tabindex="0" role="region" aria-label="Änderungen in src/a.txt">'));
+  assert.ok(html.includes('<div class="df-sc" tabindex="0" role="region" aria-label="Änderungen in src/a.txt" data-farbe="nein">'));
   assert.ok(html.includes('<table class="dz" aria-label="Änderungen in src/a.txt">'));
   assert.ok(html.includes('<td class="n" aria-hidden="true">1</td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true">−</td><td class="c"><span class="vh">entfernt: </span>a</td>'));
   assert.ok(html.includes('<td class="m" aria-hidden="true">+</td><td class="c"><span class="vh">hinzugefügt: </span>b</td>'));

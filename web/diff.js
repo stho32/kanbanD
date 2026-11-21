@@ -213,10 +213,37 @@
 
   /** Fremder Text mit sichtbar gemachten Zeichen; jede Marke ist ein Bild mit Namen, ihr Text bleibt im Dokument. */
   function sichtbarHtml(text, esc) {
+    return sichtbarTeile(String(text)).map(t => (t.marke ? markeHtml(t, esc) : esc(t.text))).join('');
+  }
+
+  /** Eine Marke als Bild mit Namen. */
+  function markeHtml(t, esc) {
+    if (t.marke === 'bidi') return `<span class="mk-z mk-bidi" role="img" aria-label="sichtbar gemachtes Bidi-Steuerzeichen ${t.code}">${symbol('auge')}${esc(t.text)}</span>`;
+    return `<span class="mk-z mk-st" role="img" aria-label="sichtbar gemachtes Steuerzeichen ${t.code}">${esc(t.text)}</span>`;
+  }
+
+  /** Die sieben Rollen der Syntaxfarben (R00217 FA 3); Index wie in `web/faerben.js`. */
+  const TK_KLASSEN = ['tk-keyword', 'tk-string', 'tk-comment', 'tk-number', 'tk-function', 'tk-type', 'tk-macro'];
+
+  /** Zeilentext mit Farbstücken `[von, bis, Rolle]` (UTF-16-Versätze im Zeilentext): die Teile aus `sichtbarTeile` bleiben, Text
+      ohne Marke wird an den Stückgrenzen in `<span class="tk-…">` geteilt; eine Marke hat Vorrang und bleibt ohne Farbe (ADR-0037
+      Punkt 6). Jede Marke steht für genau ein Zeichen des Zeilentexts (alle sichtbar gemachten Zeichen liegen in der BMP). */
+  function farbigHtml(text, stuecke, esc) {
+    let pos = 0, s = 0;
     return sichtbarTeile(String(text)).map(t => {
-      if (!t.marke) return esc(t.text);
-      if (t.marke === 'bidi') return `<span class="mk-z mk-bidi" role="img" aria-label="sichtbar gemachtes Bidi-Steuerzeichen ${t.code}">${symbol('auge')}${esc(t.text)}</span>`;
-      return `<span class="mk-z mk-st" role="img" aria-label="sichtbar gemachtes Steuerzeichen ${t.code}">${esc(t.text)}</span>`;
+      if (t.marke) { pos += 1; return markeHtml(t, esc); }
+      const ende = pos + t.text.length;
+      let aus = '', bei = pos;
+      while (s < stuecke.length && stuecke[s][1] <= bei) s++;
+      for (let j = s; j < stuecke.length && stuecke[j][0] < ende; j++) {
+        const von = Math.max(stuecke[j][0], bei), bis = Math.min(stuecke[j][1], ende);
+        if (von > bei) aus += esc(text.slice(bei, von));
+        aus += `<span class="${TK_KLASSEN[stuecke[j][2]]}">${esc(text.slice(von, bis))}</span>`;
+        bei = bis;
+      }
+      if (bei < ende) aus += esc(text.slice(bei, ende));
+      pos = ende;
+      return aus;
     }).join('');
   }
 
@@ -243,12 +270,17 @@
   const LESETEXT = { plus: 'hinzugefügt: ', minus: 'entfernt: ' };
   const ZEICHEN = { plus: '+', minus: '−', kontext: '' };
 
+  /** Inhalt der Codezelle einer Zeile mit Kontext, plus oder minus; mit `stuecke` gefärbt (die Auflage ersetzt nur diesen Inhalt). */
+  function zelleHtml(z, esc, stuecke = null) {
+    const lesen = LESETEXT[z.art] ? `<span class="vh">${LESETEXT[z.art]}</span>` : '';
+    return lesen + (stuecke ? farbigHtml(z.text, stuecke, esc) : sichtbarHtml(z.text, esc));
+  }
+
   function zeileHtml(z, esc) {
     if (z.art === 'kopf') return `<tr class="hk"><td colspan="4">${sichtbarHtml(z.text, esc)}</td></tr>`;
     if (z.art === 'hinweis') return `<tr class="nn"><td class="n" aria-hidden="true"></td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true"></td><td class="c">${esc(z.text)}</td></tr>`;
     const klasse = z.art === 'plus' ? 'add' : z.art === 'minus' ? 'del' : 'ctx';
-    const lesen = LESETEXT[z.art] ? `<span class="vh">${LESETEXT[z.art]}</span>` : '';
-    return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td><td class="n" aria-hidden="true">${z.neu ?? ''}</td><td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c">${lesen}${sichtbarHtml(z.text, esc)}</td></tr>`;
+    return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td><td class="n" aria-hidden="true">${z.neu ?? ''}</td><td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c">${zelleHtml(z, esc)}</td></tr>`;
   }
 
   /** Geschätzte Breite eines Blocks in px: Chromium misst die Breite eines Elements mit `content-visibility: auto` für die
@@ -263,8 +295,34 @@
       eine Tabelle mit dem Namen der Datei; der Bereich ist per Tab erreichbar und scrollt quer. */
   function codeHtml(patch, pfad, esc) {
     const name = `Änderungen in ${esc(sichtbarText(pfad))}`;
-    const teile = bloecke(patchZeilen(patch)).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc)).join('')}</table></div>`);
-    return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}">${teile.join('')}</div>`;
+    const zeilen = patchZeilen(patch);
+    const teile = bloecke(zeilen).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc)).join('')}</table></div>`);
+    return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;
+  }
+
+  /* ── Aufträge der Syntaxfarben (R00217 FA 5–7, ADR-0040 Punkt 5): `codeHtml` zeichnet ungefärbt und legt je färbbarer Datei einen
+     Auftrag ab; die Auflage (`web/farbschlange.js`) holt ihn, sobald der Diffbereich im Dokument steht. ── */
+
+  /** Höchstens so viele abgelegte, nie geholte Aufträge bleiben liegen (Zeichnen ohne Einsetzen); der älteste fällt zuerst. */
+  const AUFTRAEGE_HOECHSTENS = 500;
+  const farbAuftraege = new Map();
+  let farbNr = 0;
+
+  /** `data-farbe` am Diffbereich: „laeuft“ mit Auftrag bei bekannter Sprache innerhalb der Grenzen, sonst „nein“ ohne Auftrag. */
+  function farbeAttribute(patch, pfad, zeilen) {
+    const sprache = spracheZuPfad(pfad);
+    if (!sprache || !faerbbar(patch)) return ' data-farbe="nein"';
+    farbNr += 1;
+    farbAuftraege.set(farbNr, { sprache, zeilen });
+    if (farbAuftraege.size > AUFTRAEGE_HOECHSTENS) farbAuftraege.delete(farbAuftraege.keys().next().value);
+    return ` data-farbe="laeuft" data-farbe-nr="${farbNr}"`;
+  }
+
+  /** Den Auftrag zu `nr` genau einmal holen; null, wenn es ihn nicht (mehr) gibt. */
+  function farbAuftragHolen(nr) {
+    const auftrag = farbAuftraege.get(nr) || null;
+    farbAuftraege.delete(nr);
+    return auftrag;
   }
 
   const knopf = (text, act, arg, id = '') => `<button type="button" class="btn"${id ? ` id="${id}"` : ''} data-act="${act}"${arg == null ? '' : ` data-arg="${arg}"`}>${text}</button>`;
@@ -426,7 +484,7 @@
 
   Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
-  Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE });
+  Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });
 
   Object.assign(ziel, { folge, patchZeilen, sichtbarTeile, dateiZustand, aufklappPlan, aufklappPlanSeite, bloecke, fehlerArt, zuordnen, BUDGET_ZEILEN, BLOCK_ZEILEN });
 })(typeof module !== 'undefined' ? module.exports : window);
