@@ -956,3 +956,4 @@ Nie vom User erfragen.
 | 2026-11-21 | Karte #231 R00215 (Wackler unter Last) | B1092 Helfer gestaffelt, Umstellung, Mutanten, AK-4-Probe | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-21 | Karte #231 R00215 (Wackler unter Last) | B1093 R00209 AK 9 belegt, Fehler der Seite behoben | Standard | 1-2h | 0,9h | 0,9h | autonom |
 | 2026-11-21 | Karte #231 R00215 (Wackler unter Last) | B1094 Gate, 5× langsames Git (Tagprobe AK 10 offen) | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-21 | Karte #231 R00215 (Wackler unter Last) | B1096 Nacharbeit S1 Ansichtswechsel beim Speichern, A3/A4/A2/A7 | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
