@@ -1764,3 +1764,8 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #249 | Detailplanung | planer | bestanden | 3 min | Vorprüfung eingearbeitet · claude · opus · Lauf 249-planer-2 · 1,12 $ · Karte gesamt 4,16 $ |
 | 2026-11-21 | #247 | Detailplanung | planer | bestanden | 1 min | Z=default eingetragen · claude · opus · Lauf 247-planer-2 · 0,51 $ · Karte gesamt 4,07 $ |
 | 2026-11-21 | #249 | Detailplanung | ux-reviewer | bestanden | 1 min | Muss geschlossen · claude · sonnet · Lauf 249-ux-reviewer-2 · 0,37 $ · Karte gesamt 4,53 $ |
+| 2026-11-21 | #234 | Entwicklung | entwickler | bestanden | 52 min | Gate cargo 1207/0, node 1507, PW 2339/0 · claude · opus · Lauf 234-entwickler-1 · 6,30 $ · Karte gesamt 11,31 $ |
+| 2026-11-21 | #234 | Auto-Reviews | code-reviewer | befund | 6 min | 2 Muss: Gruppe verworfen, datei= hinter Schnitt · claude · sonnet · Lauf 234-code-reviewer-1 · 1,65 $ · Karte gesamt 12,96 $ |
+| 2026-11-21 | #234 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | keine Funde · claude · sonnet · Lauf 234-rechtschreib-reviewer-1 · 0,39 $ · Karte gesamt 13,35 $ |
+| 2026-11-22 | #234 | Auto-Reviews | architekt | bestanden | 4 min | ADR-0032 N8.6 · claude · opus · Lauf 234-architekt-2 · 1,26 $ · Karte gesamt 14,61 $ |
+| 2026-11-22 | #234 | Auto-Reviews | product-owner | bestanden | 1 min | PO Z. 514 · claude · opus · Lauf 234-product-owner-2 · 0,56 $ · Karte gesamt 15,17 $ |
