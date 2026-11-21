@@ -1492,3 +1492,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-21 | #208 | Entwicklung | entwickler | bestanden | 1 h 9 min | B1097–B1104 grün, AK 1–15, Gate grün, 9/10 Mutanten · claude · Lauf 208-entwickler-1 · 16,16 $ · Karte gesamt 22,47 $ |
 | 2026-11-21 | #208 | Auto-Reviews | code-reviewer | bestanden | 3 min | kein Muss; 4 Sollte (leere .gitignore, Löschen außerhalb der Sperre, oeffnen-Fenster, Testlücken) · claude · sonnet · Lauf 208-code-reviewer-1 · 0,76 $ · Karte gesamt 23,23 $ |
 | 2026-11-21 | #216 | Architektur | architekt | bestanden | 6 min | ADR-0037 vorgeschlagen bis Sondierung · claude · opus · Lauf 216-architekt-1 · 1,67 $ · Karte gesamt 1,67 $ |
+| 2026-11-21 | #208 | Auto-Reviews | security-reviewer | bestanden | 10 min | kein Muss; 7 Sollte (İ-Faltung 500, O_NOFOLLOW, Höchstzahl vor Körper, multer-Header, tmp nach Absturz, leere .gitignore, oeffnen-Fenster) · claude · sonnet · Lauf 208-security-reviewer-1 · 1,19 $ · Karte gesamt 24,42 $ |
+| 2026-11-21 | #216 | Detailplanung | planer | bestanden | 7 min | I0207 B1105–B1111, R00217 · claude · opus · Lauf 216-planer-1 · 2,30 $ · Karte gesamt 3,97 $ |
+| 2026-11-21 | #208 | Auto-Reviews | architektur-reviewer | befund | 2 min | Muss: Zyklus Wächter → dienst::transkripte::ORDNER · claude · sonnet · Lauf 208-architektur-reviewer-1 · 0,53 $ · Karte gesamt 24,95 $ |
+| 2026-11-21 | #220 | Architektur | architekt | bestanden | 6 min | ADR-0038 vorgeschlagen bis Sondierung · claude · opus · Lauf 220-architekt-1 · 1,83 $ · Karte gesamt 1,83 $ |
