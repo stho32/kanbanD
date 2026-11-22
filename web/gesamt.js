@@ -195,7 +195,7 @@
   /** Kopf eines Abschnitts: „Anwendung <kürzel>“ als h2 (Fokusziel nach „Erneut versuchen“, S3), dazu Zahlen oder Zustandswort. */
   function abschnittKopfHtml(a, kuerzel, zusatz, esc) {
     const name = esc(diff.anwendungName(kuerzel));
-    return `<h2 class="anw" id="rv-a${a}-t" tabindex="-1">${name}${zusatz}</h2>`;
+    return `<h2 class="rv-anw" id="rv-a${a}-t" tabindex="-1">${name}${zusatz}</h2>`;
   }
 
   /** Ein ausgelassener Verweis wie in der Liste der Commits (R00205 FA 5): Verweis, Symbol, Zustandswort, Hinweis; kein „einzeln

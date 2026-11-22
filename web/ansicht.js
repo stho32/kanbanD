@@ -2164,14 +2164,14 @@ function vRegister(d) {
   const register = d.quellen.anwendungen || [];
   const zeilen = register.map((a, i) => {
     const repository = vRepositoryFeld({ ef: 'arepo', i, wert: a.repository || '', beschriftung: `Repository ${a.kuerzel}`, zustandId: `anw-repo-${i}`, gespeichert: gespeichertesRepository(a.kuerzel) });
-    return `<div class="anw" data-anwendung="${esc(a.kuerzel)}"><div class="klz az"><span class="pk pk-0">${esc(a.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(a.kuerzel)}</span><input class="inp" data-ef="aname" data-i="${i}" value="${esc(a.name)}" aria-label="Name der Anwendung ${esc(a.kuerzel)}"><span></span><button class="btn btn-sym" data-act="a-del" data-arg="${i}" title="aus dem Register entfernen – Aufgaben behalten ihre Herkunft" aria-label="Anwendung ${esc(a.kuerzel)} entfernen">✕</button></div><div class="felder">${repository}</div></div>`;
+    return `<div class="anw" data-anwendung="${esc(a.kuerzel)}"><div class="klz az"><span class="pk pk-0">${esc(a.kuerzel.slice(0, 2).toUpperCase())}</span><span class="key">${esc(a.kuerzel)}</span><input class="inp" data-ef="aname" data-i="${i}" value="${esc(a.name)}" aria-label="Name der Anwendung ${esc(a.kuerzel)}"><span></span><button class="btn btn-sym" data-act="a-del" data-arg="${i}" title="aus dem Register entfernen – Aufgaben behalten ihre Herkunft" aria-label="Anwendung ${esc(a.kuerzel)} entfernen">✕</button></div><div class="felder felder-repo">${repository}</div></div>`;
   }).join('');
   return `${zeilen}<div class="klz az"><span class="pk pk-0">+</span><input class="inp mono" id="nak" placeholder="kürzel" aria-label="Neues Anwendungskürzel"><input class="inp" id="nan" placeholder="Name · Enter" data-enter="a-add" aria-label="Neuer Anwendungsname"><span></span><span></span></div>`;
 }
 /** Die Quellen (Standardanwendung ohne Kürzel): Repository mit Zustandswort wie eine Anwendung (R00222: nur noch das Repository). */
 function vQuellen(d) {
   const repository = vRepositoryFeld({ ef: 'repo', wert: d.quellen.repository || '', beschriftung: 'Repository', zustandId: 'quellen-repo', gespeichert: S.quellenStand || undefined });
-  return `<div class="felder">${repository}</div>`;
+  return `<div class="felder felder-repo">${repository}</div>`;
 }
 
 /** Die Klassen eines Entwurfs, wie sie gespeichert werden: ohne die gestrichenen Zeilen und ohne deren Marke. */

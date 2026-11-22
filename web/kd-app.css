@@ -1023,11 +1023,20 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
   .setup{flex-direction:column;overflow-y:auto}
   .setup>.bahnen{flex:none;height:min(60vh,420px)}
   .setup>.einr{flex:none;overflow:visible}
-  .einrichten{display:block;overflow:auto}
+  .einrichten,.first{display:block;overflow:auto}
   .einr{border-left:0}
   .einr.breit{border-right:0}
 }
 @media (max-width:640px){
+  /* Repository-Feld in Einrichten (R00228 AK 1a): Beschriftung über dem Feld, Zustandswort darunter — die Hausform
+     .felder-schmal (R00146 FA 12) bis 640 px; sonst bleibt dem Feld neben Beschriftung und Zustandswort nur ein Drittel der Zeile */
+  .felder.felder-repo{grid-template-columns:minmax(0,1fr);border-top:0;background:none}
+  .felder.felder-repo>*{min-height:0;border-bottom:0;padding:0}
+  .felder.felder-repo>.kb{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;padding:6px 0 2px;background:none}
+  .felder.felder-repo>.kb .k,.felder.felder-repo>.kb .sl{display:block;padding:0 4px}
+  .felder.felder-repo>.w{flex-direction:column;align-items:stretch;gap:2px;padding:0 0 7px}
+  .felder.felder-repo .mini-inp{width:100%;height:var(--kd-ziel);min-height:var(--kd-ziel);padding:0 6px}
+  .felder.felder-repo .erreich{padding:0 4px}
   .bahnen{scroll-snap-type:x mandatory}
   .bahn{--bw:calc(100vw - 28px);scroll-snap-align:start}
   .mod-body{display:block;overflow:auto}
@@ -1589,10 +1598,10 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .rv-alle{display:flex;flex-direction:column;gap:var(--kd-s4);padding:var(--kd-s4) var(--kd-s5);min-width:0}
 .rv-abs{display:flex;flex-direction:column;gap:var(--kd-s3);min-width:0;padding-top:var(--kd-s4);border-top:1px solid var(--kd-line-strong)}
 .rv-abs:first-of-type{border-top:0;padding-top:0}
-.anw{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0;font-size:14px;font-weight:600}
-.anw .mono{font-weight:400;color:var(--kd-muted)}
-.anw .zw{display:inline-flex;align-items:center;gap:4px;font:500 12px var(--kd-font);color:var(--kd-muted)}
-.anw .zw svg.i,.rv-abs-zust svg.i{width:12px;height:12px;flex:none}
+.rv-anw{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0;font-size:14px;font-weight:600}
+.rv-anw .mono{font-weight:400;color:var(--kd-muted)}
+.rv-anw .zw{display:inline-flex;align-items:center;gap:4px;font:500 12px var(--kd-font);color:var(--kd-muted)}
+.rv-anw .zw svg.i,.rv-abs-zust svg.i{width:12px;height:12px;flex:none}
 .rv-abs-zust{display:flex;align-items:center;gap:var(--kd-s3);margin:0;color:var(--kd-muted)}
 .rv-abs-leer{margin:0;color:var(--kd-text)}
 .rv-hw{list-style:none;margin:0;padding:var(--kd-s3) var(--kd-s4);display:flex;flex-direction:column;gap:6px;border:1px solid var(--kd-status-warn-ink);background:var(--kd-status-warn-bg);color:var(--kd-text)}

@@ -156,6 +156,8 @@ test.describe('R00228 Repository-Feld und erster Start', () => {
       await breiteSetzen(page, 1280);
       await bereit(page, page.locator(SELEKTOR_KOPF).first());
       await expect(page.locator(SELEKTOR_KOPF)).toHaveCount(3);
+      // erst wenn alle drei Abschnitte geladen sind (Zahlen im Kopf), sonst fehlt ihnen das `.mono`
+      await expect(page.locator(`${SELEKTOR_KOPF} .mono`)).toHaveCount(3);
       const jetzt = await stileDerReviewSeite(page);
       if (process.env.KD_STILE_AUS) fs.writeFileSync(`${process.env.KD_STILE_AUS}-${farbe}.json`, JSON.stringify({ koepfe: jetzt.koepfe, probe: jetzt.probe }, null, 1));
       expect(jetzt.klassenAnw, 'Elemente mit der Klasse anw auf der Review-Seite').toBe(0);
