@@ -140,3 +140,38 @@ Schließt die offene Frage zu `tests/live.rs:57`. **Belegt (Code, Ist; nicht gef
 **Nicht entschieden**: Dass das Programm den Ausfall des Wächters nur auf stderr meldet (keine Wiederholung, kein Zeichen in API oder Oberfläche), ist ein Betriebsthema und eine eigene Karte; ein Zustandsfeld dort wäre das bessere Bereitzeichen.
 
 **Probe**: vier gleichzeitige Läufe der Testdatei `live`, fünf Runden, 20 von 20 grün; mit dauerhaft belegter Grenze scheitert ein Lauf mit der benannten Ursache.
+
+## Nachtrag 2026-11-22: Geometrie in einem Zug messen (Karte #240)
+
+**Anlass**: `e2e/tests/r00127-kartendetails-tabs.spec.js:356` (Touch, ≥ 44 px) und `:332` (feiner Zeiger, ≥ 24 px) waren in vollen Läufen unter Last einzeln rot, allein grün. Im Gate von #231 maß `:366` die Größe 0 (`Expected: >= 44, Received: 0`, Lauf 402 ms, also nicht langsam).
+
+**Belegt (Code und Probe, ohne Last, 1 Worker)**:
+
+- `locator.evaluate(fn)` ist **kein** Zug. Playwright 1.65.1 löst erst den Knoten auf und wertet danach in einem zweiten Aufruf aus (`_withElement`: `waitForSelector` mit `state: "attached"`, dann `handle.evaluate`). Ersetzt ein Neuzeichnen den Knoten dazwischen, misst `getBoundingClientRect` den ausgehängten Knoten: 0 × 0. Die Annahme in `r00127-kartendetails-tabs.spec.js:60` („in einem Zug in der Seite gelesen“) stimmt daher nicht. `boundingBox()` liefert in dieser Lage `null`.
+- Das Neuzeichnen kommt **von der Seite und ist gewollt**. Die Testdaten tragen eine laufende Stoppuhr seit dem 2026-11-11 (`LAEUFT`, `:17`). Der erste Sekundentakt nach dem Laden erkennt sie als vergessen und zeichnet einmal neu (`web/app.js:5302–5325`, `taktVergessen` `:5226`, R00114). Ohne Last fällt dieser Takt hinter die Messung, unter Last mitten hinein.
+- Probe (`gemeinsam/scratchpad/arch-240/`, Stand `5236704c`):
+  - mit den Testdaten der Spec folgt nach dem Messpunkt 3 von 3 Mal ein weiteres Zeichnen, das den Auslöser ersetzt;
+  - mit dem Knoten aus Schritt 1 und erst nach diesem Takt ausgewertet misst die Probe 10 von 10 Mal 0 × 0 (`isConnected: false`);
+  - zeichnet die Seite in jedem Frame neu, ist die Zweischritt-Messung 10 von 10 Mal rot (`Received: 0`), die Messung in einem `page.evaluate` 10 von 10 Mal grün;
+  - die beiden Specs unverändert, `--repeat-each=20`: 40 von 40 grün.
+- Eine verzögerte Antwort (`page.route` auf `/api/aufgaben/1`, `/anhaenge`, CSS, 300–800 ms) stellt den Fehler **nicht** nach. Das Fenster zeichnet erst, wenn beide Antworten da sind.
+
+**Urteil**: Die Ursache liegt im Test, nicht in der Seite. Die Seite zeichnet den Auslöser nie mit Höhe 0, sie ersetzt ihn beim Neuzeichnen (ADR-0007, `#over` über `innerHTML`). Gemessen wird ein Knoten, der nicht mehr im Dokument hängt.
+
+### N3 Regel 8: Geometrie in einem Zug, mit Wiederholung
+
+8. **Lage und Größe werden in einem einzigen Aufruf in der Seite gelesen und unter `expect.poll` geprüft.** Erlaubt ist `page.evaluate(sel => document.querySelector(sel)…getBoundingClientRect(), sel)`, weil Auflösen und Messen dann in derselben Aufgabe der Seite liegen. Fehlt der Knoten, liefert die Lesung `null`, nie 0. Ort: eine Hilfe `masse(page, selektor)` in `e2e/tests/hilfen.js`, die `rechteck` aus `r00127` ablöst. Die Schwelle prüft `await expect.poll(async () => { const m = await masse(page, sel); return m && Math.min(m.width, m.height); }).toBeGreaterThanOrEqual(44)`. `locator.evaluate`, `elementHandle` und `boundingBox()` sind für Maße untersagt. Dasselbe gilt für Lesungen, die an einem ausgehängten Knoten still 0 liefern (`scrollWidth`, `clientHeight`): am Kopf in `r00127:312` wird „einzeilig“ dann leer wahr.
+
+**Verworfen**:
+
+- *Auf das Takt-Zeichnen warten* oder die Stoppuhr aus den Testdaten nehmen: Das bindet die Probe an eine Eigenheit der Daten. Ein Live-Ereignis oder das nächste Zeichnen stößt sie wieder um.
+- *Die Seite hält unveränderte Knoten* (Abgleich statt `innerHTML` in `#over`): Das ist Produktivcode gegen die Hausform aus ADR-0007, und es gibt keinen Defekt, den es behebt.
+- *Nur `expect.poll` um die heutige `locator.evaluate`*: Das wird grün, behält aber die Lesung, die am ausgehängten Knoten 0 liefert. An den Stellen mit `≤`-Erwartung (`:312`) bliebe die Probe leer wahr.
+
+**Nicht entschieden**: Die übrigen Fundstellen in Specs, die die Karte nicht nennt, werden nicht in einem Zug umgestellt. Das sind 47 Lesungen `locator.evaluate(… getBoundingClientRect …)` in 23 Specs und 89 Aufrufe `boundingBox()`. Sie wackeln nur, wenn zwischen Auflösen und Messen gezeichnet wird. Das betrifft vor allem die Specs mit laufender Stoppuhr: `r00101-kopfzeile`, `r00114-vergessene-timer`, `r00115-kartentext`, `r00117-kopfzeile`, `r00140-navigation`, `r00199-personen-tag-blaettern`. Durchgesetzt wird die Regel wie die übrigen: als Review-Punkt an jeder neu geschriebenen oder angefassten Messung.
+
+**Probe**: In `r00127` misst jede Größenprobe (`:312`, `:320`, `:341`, `:365`, `:371`) über `masse` und `expect.poll`. Abgenommen wird so:
+
+- Eine zusätzliche Variante lässt die Seite in jedem Frame neu zeichnen (`requestAnimationFrame`-Schleife mit `render()`). Sie ist 10 von 10 Mal grün. Mit dem alten `rechteck(locator)` ist sie 10 von 10 Mal rot.
+- `:332` und `:356` sind mit `--repeat-each=20 --workers=1` 40 von 40 Mal grün.
+- Mutante: `masse` löst über `elementHandle` auf und misst danach. Die Variante wird rot.
