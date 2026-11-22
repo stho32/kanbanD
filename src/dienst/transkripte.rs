@@ -599,6 +599,12 @@ mod tests {
         Ablageangaben { at: Some("2026-11-13 10:34+01:00".into()), role: Some("entwickler".into()), column: Some("Entwicklung".into()) }
     }
 
+    /// Der Eintrag, den ein Upload mit [`angaben`] ablegt — `at` in Ortszeit des Rechners umgerechnet, daher nicht fest
+    /// verdrahtet: der Runner läuft in UTC, der Entwicklerrechner in Europe/Berlin.
+    fn abgelegt() -> Transkripteintrag {
+        angaben().eintrag(1).unwrap()
+    }
+
     fn empfangen(k: &Kanban) -> Empfang {
         k.transkript_vorpruefen(1).unwrap();
         let mut e = Empfang::neu(k.ordner().wurzel(), 1);
@@ -652,7 +658,7 @@ mod tests {
             assert_eq!(zwischendateien(w.path()), 1, "nur die Zwischendatei des zweiten");
             if zweiter_haengt_ein {
                 assert!(k.transkript_einhaengen(&wer, 1, &angaben(), zweiter).is_ok());
-                assert_eq!(dateien(w.path()), ["entwickler@2026-11-13T1034+0100.jsonl.gz"]);
+                assert_eq!(dateien(w.path()), [abgelegt().dateiname()]);
                 assert_eq!(std::fs::read_to_string(w.path().join("transkripte/.gitignore")).unwrap(), "*\n");
             } else {
                 k.transkript_verwerfen(zweiter);
@@ -689,7 +695,7 @@ mod tests {
             assert!(upload.join().unwrap().is_ok());
         });
         assert_eq!(k.ordner().aufgabe(1).unwrap().transkripte.len(), 1, "der Eintrag des Uploads");
-        assert_eq!(dateien(w.path()), ["entwickler@2026-11-13T1034+0100.jsonl.gz"], "und seine Datei");
+        assert_eq!(dateien(w.path()), [abgelegt().dateiname()], "und seine Datei");
         assert_eq!(git_status(w.path()), "");
     }
 
@@ -754,7 +760,7 @@ mod tests {
             assert_eq!(f.meldung().contains("Rücknahme unvollständig"), !ruecknahme_gelingt, "{wie}: {f:?}");
             let eintrag_da = k.ordner().aufgabe(1).unwrap().transkripte.len() == 1;
             assert_eq!(eintrag_da, !ruecknahme_gelingt, "{wie}");
-            let datei_da = dateien(w.path()) == ["entwickler@2026-11-13T1034+0100.jsonl.gz"];
+            let datei_da = dateien(w.path()) == [abgelegt().dateiname()];
             assert_eq!(datei_da, eintrag_da, "{wie}: Eintrag und Datei zusammen — {:?}", dateien(w.path()));
             assert_eq!(zwischendateien(w.path()), 0, "{wie}");
             assert!(!w.path().join("aufgaben/0001-a.kanbanD-tmp").exists(), "{wie}: keine Nachbardatei der Rücknahme");
@@ -774,8 +780,8 @@ mod tests {
         assert_eq!(dateien(w.path()).iter().filter(|d| d.ends_with(".kanbanD-tmp")).count(), 2, "beide Zwischendateien liegen");
         assert!(k.transkript_einhaengen(&wer, 1, &angaben(), erster).is_ok());
         let f = k.transkript_einhaengen(&wer, 1, &angaben(), zweiter).unwrap_err();
-        assert!(matches!(&f, Fehler::KennungBelegt { kennung, .. } if kennung == "entwickler@2026-11-13T10:34+01:00"), "{f:?}");
-        assert_eq!(dateien(w.path()), ["entwickler@2026-11-13T1034+0100.jsonl.gz"]);
+        assert!(matches!(&f, Fehler::KennungBelegt { kennung, .. } if *kennung == abgelegt().kennung()), "{f:?}");
+        assert_eq!(dateien(w.path()), [abgelegt().dateiname()]);
         assert_eq!(k.ordner().aufgabe(1).unwrap().transkripte.len(), 1);
     }
 
