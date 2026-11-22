@@ -1828,3 +1828,14 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Lehre (Rebase mit Doku-Strings):** Zwei Karten, die dieselbe Beschreibung eines Endpunkts ergänzen (`DIFF_LESEN`, OpenAPI), kollidieren beim Rebase. Mechanisch lösen, beide Sätze erhalten, dann `cargo test --lib` nachfahren.
 - **Härtung, nicht gebaut:** `diff::abbruch` kann privat werden. Ein Platz, der genau an der Frist frei wird, meldet die Zeitgrenze (Mikrosekunden, deckt sich mit AK 4).
 | 2026-11-22 | #238 | Erledigt | director | Retrospektive | – | 3 Lehren (Wache, pgrep, Doku-Rebase) |
+| 2026-11-22 | #240 | Architektur | architekt | bestanden | 14 min | ADR-0026 N3 Regel 8, Ursache im Test · claude · opus · Lauf 240-architekt-1 · 3,29 $ · Karte gesamt 3,29 $ |
+| 2026-11-22 | #240 | Detailplanung | planer | bestanden | 3 min | R00231, I0221, 2 Bubbles · claude · opus · Lauf 240-planer-1 · 1,17 $ · Karte gesamt 4,46 $ |
+
+**Retrospektive #243** (OFL-Lizenz der Schriften ausliefern, R00227; 2026-11-22; Gate grün auf 5236704c, ausgeliefert. Karte gesamt rund 3,50 $.)
+- **Gut:**
+  - Der Abgleich-Test liest `web/fonts/` und `web/vendor/` aus dem Dateisystem. Die ganze Klasse „Datei vergessen einzubetten“ ist damit geschlossen, nicht nur der eine Fall.
+  - Mit Sonnet und kleinem Auftrag kostete der Bau 0,71 $.
+- **Lehre (Abhängigkeiten im Worktree):** Der entwickler verlinkte `e2e/node_modules` auf den Hauptordner, gegen `gemeinsam/gelerntes.md` Z. 10, und schrieb das sogar als Empfehlung ins Gelernte. Der code-reviewer fand es; die Zeile ist beim Zusammenführen berichtigt. Der Fehler lag im Auftrag des Directors an #247 („Symlink legen“), der Auftrag ist korrigiert, die Regel steht jetzt im Projekt-Gelernten.
+- **Härtung, nicht gebaut:** `&text[..60]` schneidet an der Bytegrenze; `holen` ist doppelt (`statisch_faerben.rs`); die Fehlerliste ist unsortiert.
+- **Offen, im Backlog:** #250 Lizenzhinweise der 161 Rust-Pakete, wartet auf die Freigabe des Betreibers.
+| 2026-11-22 | #243 | Erledigt | director | Retrospektive | – | 1 Lehre (node_modules nie verlinken) |
