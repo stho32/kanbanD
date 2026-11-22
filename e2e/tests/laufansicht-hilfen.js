@@ -113,11 +113,13 @@ async function hochladen(adresse, nr, kennung, spalte, daten) {
   return antwort.json();
 }
 
-/** Über die API: einen Kosteneintrag buchen. */
-async function buchen(adresse, nr, kennung, spalte, betrag) {
+/** Über die API: einen Kosteneintrag buchen, auf Wunsch mit `tokens` (R00238). */
+async function buchen(adresse, nr, kennung, spalte, betrag, tokens) {
+  const eintrag = { at: zeitAus(kennung), role: rolleAus(kennung), column: spalte, amount: betrag, currency: 'USD' };
+  if (tokens !== undefined) eintrag.tokens = tokens;
   const antwort = await fetch(`${adresse}api/aufgaben/${nr}/kosteneintraege`, {
     method: 'POST', headers: { 'X-KanbanD-Wer': AGENT, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ at: zeitAus(kennung), role: rolleAus(kennung), column: spalte, amount: betrag, currency: 'USD' }),
+    body: JSON.stringify(eintrag),
   });
   if (!antwort.ok) throw new Error(`buchen ${kennung}: ${antwort.status} ${await antwort.text()}`);
 }
