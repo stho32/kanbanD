@@ -284,7 +284,8 @@ test.describe('R00221 Laufansicht', () => {
     const lang = 'w'.repeat(250);
     await h.freigeben({ body: lv.gz(lv.zeile({ art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Bash', text: lang + '\nzwei' })) });
     const z1 = page.locator(`${EINTRAEGE} .eg`);
-    await expect(z1).toHaveText('w'.repeat(200) + '…');
+    // R00240 FA 11: das „…“ von kanbanD trägt seinen Lesetext im textContent
+    await expect(z1).toHaveText('w'.repeat(200) + '…Von kanbanD gekürzt, vollständig im aufgeklappten Schritt');
     await page.locator(`${EINTRAEGE} summary`).click();
     await expect(page.locator(`${EINTRAEGE} pre`)).toHaveText(lang + '\nzwei');
   });

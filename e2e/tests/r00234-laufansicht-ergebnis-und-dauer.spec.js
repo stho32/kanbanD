@@ -227,7 +227,8 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     expect(await zeileVon(page, 15).ariaSnapshot()).toContain('kein Ergebnis');
     await z3.click();
     const ganz = zeileVon(page, 3).locator('.lv-s-ganz');
-    await expect(ganz.locator('pre').nth(0)).toHaveText('{"command":"ls Anforderungen | tail -2","description":"Nächste freie Nummer"}');
+    // R00240: Bash als Shell-Block ohne description im Block „Aufruf“
+    await expect(ganz.locator('pre').nth(0)).toHaveText('ls Anforderungen | tail -2');
     await expect(ganz.locator('pre').nth(1)).toHaveText('R00228-wackler-unter-last.md\nR00229-frei.md');
     await expect(ganz.locator('.k')).toHaveText(['Aufruf', 'Ergebnis']);
   });
@@ -236,7 +237,8 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     await ablegen(k, t1Text((e, nr) => (nr === 3 ? { ...e, text: JSON.stringify({ command: 'x'.repeat(250) + '\nzweite', description: 'lang' }) } : e)));
     await laufOeffnen(page, T.T1);
     await gelesen(page);
-    await expect(summaryVon(page, 3).locator('.bf')).toHaveText('x'.repeat(200) + '…');
+    // R00240 FA 11: das „…“ von kanbanD trägt seinen Lesetext im textContent
+    await expect(summaryVon(page, 3).locator('.bf')).toHaveText('x'.repeat(200) + '…Von kanbanD gekürzt, vollständig im aufgeklappten Schritt');
   });
 
   test('AK 6 · US-2: Nr 5 und Nr 8 rot mit Warnzeichen und vorgelesen „Fehler: …“; Nr 3 und Nr 11 nicht; Warnzeichen unter forced-colors sichtbar', async ({ page }) => {
@@ -512,7 +514,7 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
         }
       }
       expect(fehler).toEqual([]);
-      await expect(summaryVon(page, 3).locator('.bf')).toHaveText(variante.startsWith('Befehl aus') ? /…$/ : 'p'.repeat(200));
+      await expect(summaryVon(page, 3).locator('.bf')).toHaveText(variante.startsWith('Befehl aus') ? /…Von kanbanD gekürzt, vollständig im aufgeklappten Schritt$/ : 'p'.repeat(200));
     });
   }
 

@@ -314,7 +314,7 @@
       was vor der 21. Zeile beginnt; der Rest steht hinter „weitere <n> Zeilen“, n in Zeilen des Texts. */
   function teileHtml(teile, zeile) {
     const posten = teile.flatMap(t => {
-      if (t.art === 'hinweis') return [{ hinweis: true, html: hinweisHtml(t.text, zeile), zeilen: textZeilen(t.text).length }];
+      if (t.art === 'hinweis') return [{ hinweis: true, html: systemhinweisHtml(t.text, zeile), zeilen: textZeilen(t.text).length }];
       if (!t.text) return [];
       return textZeilen(t.text).map(z => ({ hinweis: false, html: zeile(z), zeilen: 1 }));
     });
@@ -350,13 +350,25 @@
 
   /** Eingebetteter Systemhinweis (PO Z. 600, 603), eingeklappt wie die Systemhinweis-Zeile: Wort und erste Zeile des Blocks;
       aufgeklappt der Block in Festbreite. Der Filter „Systemhinweise“ blendet ihn über die Klasse `lv-ein` aus. */
-  function hinweisHtml(text, zeile) {
+  function systemhinweisHtml(text, zeile) {
     const zeilen = textZeilen(text);
     const z1 = Array.from(zeilen[0]).slice(0, ERSTE_ZEILE_ZEICHEN).join('');
     return `<details class="lv-e sys lv-ein"><summary>${PFEIL}<span class="nm">Systemhinweis</span><span class="z1">${zeile(z1)}</span></summary><pre>${zeilen.map(zeile).join('\n')}</pre></details>`;
   }
 
   /* ── Systemhinweise im Text (N4 Nachtrag 261-architekt-2 Punkt 1, PO Z. 603) ── */
+
+  /** Wie viele eingebettete Hinweise der Satz zeigt, ohne zu setzen: ein Ergebnis wie `ergebnisSatz` (Vorschau einer gekürzten Ausgabe,
+      ein JSON-Objekt ohne), eine Nachricht ihren Text. Für die Ansage aus der Auswertung (PO Z. 608). */
+  function systemhinweiseZaehlen(text, istErgebnis) {
+    if (!text.includes(HINWEIS_AUF)) return 0;
+    let inhalt = text;
+    let gekuerzt = null;
+    if (istErgebnis) gekuerzt = gekuerztErkennen(text);
+    if (gekuerzt !== null && gekuerzt.form) inhalt = gekuerzt.vorschau;
+    if (istErgebnis && (!inhalt.trim() || jsonErgebnis(inhalt) !== null)) return 0;
+    return systemhinweiseTrennen(inhalt).filter(t => t.art === 'hinweis').length;
+  }
 
   const HINWEIS_AUF = '<system-reminder>';
   const HINWEIS_ZU = '</system-reminder>';
@@ -474,5 +486,5 @@
     };
   }
 
-  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
+  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
 })(typeof module !== 'undefined' ? module.exports : window);

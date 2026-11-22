@@ -9,6 +9,9 @@ const { T1_ZEILEN } = require('../tests/laufansicht-t1.js');
 const { laufAuswerten, dauerText, DENKZEILE_AB_MS } = lauf;
 const e = (nr, art, wer, zeit, text = 'x', name = null) => ({ nr, eintrag: { art, wer, text, zeit, name } });
 const um = s => `2026-11-21T08:00:${String(s).padStart(2, '0')}+01:00`;
+/** R00240 ergänzt an jedem Eintrag von „Längste“ und „Teuerste Schritte“ die Beschriftung (geprüft in lauf-zeichnen.test.js). */
+const ohneB = ({ beschriftung, ...t }) => t;
+const ohneBeschriftung = a => ({ ...a, top3: a.top3.map(ohneB), teuer3: a.teuer3.map(ohneB) });
 
 test('AK 1: dauerText rundet ab auf ganze Sekunden — < 1 s, n s, m min s s, h h m min', () => {
   const tabelle = [[0, '< 1 s'], [999, '< 1 s'], [1000, '1 s'], [4999, '4 s'], [59999, '59 s'], [60000, '1 min 0 s'], [71000, '1 min 11 s'],
@@ -135,12 +138,12 @@ test('AK 3: Kennzahlen von T1 — 6 Werkzeugaufrufe, 2 Fehler', () => {
 });
 
 test('AK 9: Längste Schritte von T1 — Wartezeile vor 13, Denkzeilen vor 15 und vor 3', () => {
-  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false).top3, [
+  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false).top3.map(ohneB), [
     { art: 'warten', nr: 13, schritt: false, dauer: 65000, was: 'wartet · vor Nachricht von Mensch' },
     { art: 'denken', nr: 15, schritt: false, dauer: 38000, was: 'denkt · vor SubagentHandback R00229 angelegt.' },
     { art: 'denken', nr: 3, schritt: false, dauer: 21000, was: 'denkt · vor Bash ls Anforderungen | tail -2' }]);
   const schritt = laufAuswerten([e(1, 'werkzeugaufruf', 'agent', um(0), '{"file_path":"a.md"}', 'Read'), e(2, 'werkzeugergebnis', 'werkzeug', um(3))], false).top3;
-  assert.deepStrictEqual(schritt, [{ art: 'werkzeug', nr: 1, schritt: true, dauer: 3000, was: 'Read a.md' }]);
+  assert.deepStrictEqual(schritt.map(ohneB), [{ art: 'werkzeug', nr: 1, schritt: true, dauer: 3000, was: 'Read a.md' }]);
 });
 
 test('AK 9: Gleichstand — die frühere Zeile zuerst; eine Denkzeile vor Nr k liegt vor dem Schritt Nr k; ohne Dauer keine Liste', () => {
@@ -198,8 +201,9 @@ const ALTBESTAND_T1 = {
 };
 
 test('R00238 AK 2: Altbestand — T1 ohne tokens ergibt dieselbe Auswertung wie vor #263, bis auf tokens: null und eine leere Liste der teuersten', () => {
-  // R00239 ergänzt Zeitachse und Arten der Zeilen (geprüft in lauf-zeitachse.test.js, lauf-filter.test.js); jedes alte Feld bleibt gleich
-  const { zeitachse, zeilenArten, ...alt } = laufAuswerten(T1_ZEILEN, false);
+  // R00239 ergänzt Zeitachse und Arten der Zeilen (geprüft in lauf-zeitachse.test.js, lauf-filter.test.js), R00240 die eingebetteten
+  // Hinweise und die Beschriftung der Listen (lauf-zeichnen.test.js); jedes alte Feld bleibt gleich
+  const { zeitachse, zeilenArten, eingebettet, ...alt } = ohneBeschriftung(laufAuswerten(T1_ZEILEN, false));
   assert.deepStrictEqual(alt, { ...ALTBESTAND_T1, tokens: null, teuer3: [] });
 });
 
@@ -265,7 +269,7 @@ test('R00238 AK 4, AK 7: T8 — Antworten 2, 5, 7, 12 mit neuen Tokens, nachNr u
 });
 
 test('R00238 AK 6: T8 — „Teuerste Schritte“ 12, 5, 2 nach neuen Tokens; Nr 7 mit der zweitgrößten Summe fehlt', () => {
-  assert.deepStrictEqual(laufAuswerten(T8_ZEILEN, false).teuer3, [
+  assert.deepStrictEqual(laufAuswerten(T8_ZEILEN, false).teuer3.map(ohneB), [
     { nr: 12, neu: 61502, was: 'Nachricht von Agent', nach: 'nach 5 min 17 s Warten' },
     { nr: 5, neu: 35101, was: 'Bash grep -n tokens web/lauf.js', nach: 'nach Read regeln.md' },
     { nr: 2, neu: 18123, was: 'Read regeln.md', nach: null },

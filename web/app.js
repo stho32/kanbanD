@@ -3739,7 +3739,7 @@ async function aktion(a, arg, wert) {
         const v = u.lauf;
         if (!v || !v.ergebnis || v.ergebnis.art !== 'eintraege') return;
         v.filter = { ...v.filter, [arg]: !v.filter[arg] };
-        v.ansage = laufFilterAnsage(v.ergebnis.auswertung.zeilenArten, v.filter);
+        v.ansage = laufFilterAnsage(v.ergebnis.auswertung.zeilenArten, v.filter, arg, v.ergebnis.auswertung.eingebettet);
         // jeder Wechsel sagt an, auch bei gleichem Satz: der Statusbereich wird vor der Ansage geleert (PO Z. 616, Vorbild fensterMelden R00189);
         // das Leeren ist keine Ansage, eine Zeitschwelle gibt es nicht
         const status = document.getElementById('lv-status');

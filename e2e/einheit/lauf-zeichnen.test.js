@@ -30,7 +30,8 @@ test('AK 6: Datei G — Nachricht offen mit fett, Aufruf und Ergebnis als eine Z
   assert.match(w2, /<details class="lv-s ohne-ab"><summary>/);
   assert.match(w2, /<span class="nm">Read<\/span><span class="bf">Anforderungen\/R00219.md<\/span><span class="eg">---<\/span><span class="du"><span>1 s<\/span>/, 'Dauer aus 10:00:42+01:00 bis 09:00:43Z');
   assert.strictEqual(ohneTags(f4), 'Zeile 4 des Transkripts ist nicht lesbar.');
-  assert.match(w2, /<span class="k">Aufruf<\/span><pre>Anforderungen\/R00219.md<\/pre><span class="k">Ergebnis<\/span><pre>---\nid: R00219\nstatus: Neu<\/pre>/, 'aufgeklappt beide Texte in Mono, kein Markdown');
+  // R00240: der Aufruf steht im eigenen Block „Aufruf“ (kein JSON: wie heute als pre), das Ergebnis darunter in „Ergebnis“
+  assert.match(w2, /<div class="lv-auf"><span class="k">Aufruf<\/span><pre>Anforderungen\/R00219.md<\/pre><\/div><div class="lv-erg"><span class="k">Ergebnis<\/span><pre>---\nid: R00219\nstatus: Neu<\/pre><\/div>/, 'aufgeklappt beide Texte in Mono, kein Markdown');
   // R00234 FA 9: die erste Nachricht von mensch ist der Auftrag und steht eingeklappt
   assert.match(n6, /<details class="lv-e"><summary>[\s\S]*<span class="nm">Auftrag<\/span><span class="z1">Passt\.<\/span><\/summary>/);
   assert.doesNotMatch(n6, /class="zt"/, 'zeit in anderer Form entfällt');
@@ -50,8 +51,9 @@ test('FA 6: Uhrzeit nur aus ISO 8601 mit Versatz oder Z, Sekunden erlaubt; jede 
 test('AK 6: erste Zeile eines Werkzeugtexts eingeklappt höchstens 200 Zeichen und „…“, aufgeklappt alle', () => {
   const lang = 'a'.repeat(250);
   const html = laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', lang + '\nzweite', { name: 'Bash' })], false, esc);
-  const kuerzelText = /<span class="eg">([^<]*)<\/span>/.exec(html)[1];
-  assert.strictEqual(kuerzelText, 'a'.repeat(200) + '…');
+  // R00240 FA 11: das „…“ von kanbanD steht in einem eigenen Element
+  const kuerzelText = /<span class="eg">([^<]*)<span class="lv-ell"[^>]*><span aria-hidden="true">…<\/span>/.exec(html)[1];
+  assert.strictEqual(kuerzelText, 'a'.repeat(200));
   assert.match(html, new RegExp(`<pre>${lang}\nzweite</pre>`));
   const kurz = /<span class="bf">([^<]*)<\/span>/.exec(laufHtml([e(1, 'werkzeugaufruf', 'agent', 'b'.repeat(200), {})], false, esc))[1];
   assert.strictEqual(kurz, 'b'.repeat(200), 'genau 200 ohne „…“');
@@ -348,7 +350,8 @@ test('AK 5: Nr 3 mit Nr 4 eine Zeile — Bash, Befehl in Festbreite, Absicht, K�
   assert.match(z, /<span class="nm">Bash<\/span><span class="bf">ls Anforderungen \| tail -2<\/span><span class="ab">Nächste freie Nummer<\/span><span class="eg">R00228-wackler-unter-last.md<\/span>/);
   assert.match(z, /<span class="du"><span>4 s<\/span><i class="w" style="width:6%" aria-hidden="true"><\/i><\/span>/);
   assert.strictEqual(liVon('lv-s4'), undefined);
-  assert.match(z, /<span class="k">Aufruf<\/span><pre>\{&quot;command&quot;:&quot;ls Anforderungen \| tail -2&quot;,&quot;description&quot;:&quot;Nächste freie Nummer&quot;\}<\/pre><span class="k">Ergebnis<\/span><pre>R00228-wackler-unter-last.md\nR00229-frei.md<\/pre>/);
+  // R00240: Bash als Shell-Block ohne description im Block „Aufruf“, das Ergebnis darunter
+  assert.match(z, /<div class="lv-auf"><span class="k">Aufruf<\/span><pre class="lv-sh">ls Anforderungen \| tail -2<\/pre><\/div><div class="lv-erg"><span class="k">Ergebnis<\/span><pre>R00228-wackler-unter-last.md\nR00229-frei.md<\/pre><\/div>/);
 });
 
 test('AK 5: Nr 5 ohne Absicht ohne Platzhalter; Nr 7 und 8 parallel mit 2 s und 3 s (Balken 5 %); Nr 11 und 15 „–“ ohne Balken', () => {
@@ -453,7 +456,7 @@ test('R00238 AK 4: in der Werkzeugzeile steht die Angabe nach der Dauer (DOM wie
 
 test('R00238 AK 4: aufgeklappt vor „Aufruf“ die Überschrift „Tokens“ mit den vier Werten voll, nur am Träger', () => {
   const ganz = /<div class="lv-s-ganz">([\s\S]*?)<\/div>/.exec(t8Von('lv-s5'))[1];
-  assert.match(ganz, /^<span class="k">Tokens<\/span><p class="lv-tk4">[\s\S]*?<\/p><span class="k">Aufruf<\/span>/);
+  assert.match(ganz, /^<span class="k">Tokens<\/span><p class="lv-tk4">[\s\S]*?<\/p><div class="lv-auf"><span class="k">Aufruf<\/span>/, 'R00240: Aufruf im eigenen Block');
   const werte = /<p class="lv-tk4">([\s\S]*?)<\/p>/.exec(ganz)[1];
   assert.strictEqual(sichtbar(werte), 'Eingabe 1 · Cache-Schreiben 34.800 · Ausgabe 300 · Cache-Lesen 18.000');
   assert.strictEqual(vorgelesen(werte), 'Eingabe 1, Cache-Schreiben 34.800, Ausgabe 300, Cache-Lesen 18.000');
@@ -588,19 +591,19 @@ test('R00240 AK 7: Nr 10 — Zusammenfassung gedämpft „Systemhinweis“; Nr 1
 test('R00240 FA 10 Ansage: nach „Systemhinweise“ die eingebetteten in den sichtbaren Zeilen; e = 1 Einzahl, e = 0 und andere Kästchen ohne Zusatz', () => {
   const arten = lauf240.laufAuswerten(t13Zeilen(), false).zeilenArten;
   const f = (n, w, h, nurF) => ({ n, w, h, f: nurF });
-  const satzAn = lauf240.laufFilterAnsage(arten, f(true, true, true, false), 'h');
-  const satzAus = lauf240.laufFilterAnsage(arten, f(true, true, false, false), 'h');
+  const ein = lauf240.laufAuswerten(t13Zeilen(), false).eingebettet;
+  const satzAn = lauf240.laufFilterAnsage(arten, f(true, true, true, false), 'h', ein);
+  const satzAus = lauf240.laufFilterAnsage(arten, f(true, true, false, false), 'h', ein);
   assert.strictEqual(satzAn, `${lauf240.laufFilterAnsage(arten, f(true, true, true, false))}`.replace(/\.$/, ', 3 eingebettete Systemhinweise sichtbar.'));
   assert.match(satzAn, /^\d+ von \d+ Einträgen sichtbar, 3 eingebettete Systemhinweise sichtbar\.$/);
   assert.match(satzAus, /^\d+ von \d+ Einträgen sichtbar, 3 eingebettete Systemhinweise ausgeblendet\.$/);
-  assert.match(lauf240.laufFilterAnsage(arten, f(false, true, true, false), 'h'), /, 2 eingebettete Systemhinweise sichtbar\.$/, 'nur die Werkzeugzeilen Nr 6 und Nr 10');
-  assert.match(lauf240.laufFilterAnsage(arten, f(true, false, true, false), 'h'), /, 1 eingebetteter Systemhinweis sichtbar\.$/);
-  assert.strictEqual(lauf240.laufFilterAnsage(arten, f(true, true, true, false), 'n'), lauf240.laufFilterAnsage(arten, f(true, true, true, false)));
+  assert.match(lauf240.laufFilterAnsage(arten, f(false, true, true, false), 'h', ein), /, 2 eingebettete Systemhinweise sichtbar\.$/, 'nur die Werkzeugzeilen Nr 6 und Nr 10');
+  assert.match(lauf240.laufFilterAnsage(arten, f(true, false, true, false), 'h', ein), /, 1 eingebetteter Systemhinweis sichtbar\.$/);
+  assert.strictEqual(lauf240.laufFilterAnsage(arten, f(true, true, true, false), 'n', ein), lauf240.laufFilterAnsage(arten, f(true, true, true, false)));
   const ohne = lauf240.laufAuswerten(G, false).zeilenArten;
-  assert.strictEqual(lauf240.laufFilterAnsage(ohne, f(true, true, true, false), 'h'), lauf240.laufFilterAnsage(ohne, f(true, true, true, false)));
-  assert.strictEqual(lauf240.laufFilterAnsage(arten, f(false, false, true, false), 'h'), 'Keine Einträge sichtbar.');
-  const fehlerZeilen = lauf240.laufAuswerten(t13Zeilen(t13.T13F), false).zeilenArten;
-  assert.strictEqual(fehlerZeilen.ein.fehler, 1);
+  assert.strictEqual(lauf240.laufFilterAnsage(ohne, f(true, true, true, false), 'h', lauf240.laufAuswerten(G, false).eingebettet), lauf240.laufFilterAnsage(ohne, f(true, true, true, false)));
+  assert.strictEqual(lauf240.laufFilterAnsage(arten, f(false, false, true, false), 'h', ein), 'Keine Einträge sichtbar.');
+  assert.strictEqual(lauf240.laufAuswerten(t13Zeilen(t13.T13F), false).eingebettet.fehler, 1);
 });
 
 test('R00240 AK 8: „Längste Schritte“ mit der Absicht als Titel und dem Befehl gedämpft darunter, ohne Absicht der Befehl allein', () => {

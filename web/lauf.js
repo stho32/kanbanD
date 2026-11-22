@@ -249,7 +249,7 @@
     const zeit = uhrzeit === null ? '' : `<span class="mono">${uhrzeit}</span>`;
     let vierWerte = '';
     if (e.wer === 'agent' && e.tokens) vierWerte = `<p class="lv-tokens"><span class="k">Tokens</span> <span class="lv-tk4">${vierWerteHtml(e.tokens)}</span></p>`;
-    return `<li id="lv-s${nr}" tabindex="-1" class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}${tokenAngabeHtml(nr, e, z.tokens)}</div><div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div>${vierWerte}</li>`;
+    return `<li id="lv-s${nr}" tabindex="-1" class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}${tokenAngabeHtml(nr, e, z.tokens)}</div><div class="lv-text">${nachrichtMitHinweisenHtml(e.text, esc, budget)}</div>${vierWerte}</li>`;
   }
 
   const IN_DER_ANTWORT_DARUEBER = 'Tokens in der Antwort darüber gezählt';
@@ -274,8 +274,24 @@
 
   /** Text einer Nachricht oder des Berichts: gebucht, je Zeile sichtbar gemacht, dann Markdown (maskiert). */
   function nachrichtTextHtml(text, esc, budget) {
-    const alsMarkdown = teil => (teil ? markdownHtml(teil.split('\n').map(sichtbarText).join('\n'), 1) : '');
-    return gebuchtHtml(zeichenBuchen(text, budget), alsMarkdown, esc);
+    return gebuchtHtml(zeichenBuchen(text, budget), markdownTeilHtml, esc);
+  }
+
+  /** Ein Abschnitt einer Nachricht: je Zeile sichtbar gemacht, dann Markdown (maskiert); leer bleibt leer. */
+  function markdownTeilHtml(teil) {
+    if (!teil) return '';
+    return markdownHtml(teil.split('\n').map(sichtbarText).join('\n'), 1);
+  }
+
+  /** Text einer Nachricht in der Liste (R00240 FA 10): eingebettete Systemhinweise an ihrer Stelle eingeklappt, der Rest als Markdown.
+      Reicht das Budget nicht für den ganzen Text, steht er wie bisher. */
+  function nachrichtMitHinweisenHtml(text, esc, budget) {
+    const b = zeichenBuchen(text, budget);
+    if (b.rest) return gebuchtHtml(b, markdownTeilHtml, esc);
+    return satz.systemhinweiseTrennen(text).map(t => {
+      if (t.art === 'hinweis') return satz.systemhinweisHtml(t.text, z => zeileHtml(z, esc));
+      return markdownTeilHtml(t.text);
+    }).join('');
   }
 
   const EINGEKLAPPT_WORT = { auftrag: 'Auftrag', systemhinweis: 'Systemhinweis' };
@@ -285,7 +301,7 @@
     const uhrzeit = uhrzeitText(e.zeit);
     const zeit = uhrzeit === null ? '' : `<span class="zt">${uhrzeit}</span>`;
     const klasse = art === 'systemhinweis' ? 'lv-e sys' : 'lv-e';
-    const summary = `<summary>${PFEIL}<span class="nm">${EINGEKLAPPT_WORT[art]}</span><span class="z1">${esc(sichtbarText(ersteZeileGekuerzt(e.text)))}</span>${zeit}</summary>`;
+    const summary = `<summary>${PFEIL}<span class="nm">${EINGEKLAPPT_WORT[art]}</span><span class="z1">${kurzTextHtml(ersteZeileGekuerzt(e.text), esc)}</span>${zeit}</summary>`;
     return `<li id="lv-s${nr}" tabindex="-1"${artAttribut(zeileArt(e, art))}><details class="${klasse}">${summary}<div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div></details></li>`;
   }
 
@@ -299,7 +315,8 @@
   }
 
   /** Werkzeugzeile (FA 6, FA 7): Aufruf samt Ergebnis an der Stelle des Aufrufs, oder einer allein. Eingeklappt Name, „parallel“,
-      Befehl, Absicht, Kürzel des Ergebnisses und Dauer mit Balken; aufgeklappt beide Texte ganz, nie Markdown (Wortlaut 20). */
+      Befehl, Absicht, Kürzel des Ergebnisses und Dauer mit Balken; aufgeklappt der Block „Aufruf“ und darunter „Ergebnis“, gesetzt
+      von `lauf-satz.js` (R00240), nie Markdown (Wortlaut 20). */
   function schrittHtml(s, eintrag, z) {
     const { esc, budget } = z;
     const aufruf = s.aufruf ? eintrag : null;
@@ -307,19 +324,53 @@
     const name = nameHtml(s.name, esc, budget) + (s.parallel ? '<span class="par">parallel</span>' : '');
     const aufrufGebucht = aufruf ? zeichenBuchen(aufruf.text, budget) : null;
     const ergebnisGebucht = ergebnis ? zeichenBuchen(ergebnis.text, budget) : null;
-    const befehl = aufruf ? `<span class="bf">${esc(sichtbarText(s.befehl || ''))}</span>` : '';
-    const absicht = s.absicht === null ? '' : `<span class="ab">${esc(sichtbarText(s.absicht))}</span>`;
+    const zeile = t => zeileHtml(t, esc);
+    let ergebnisGesetzt = null;
+    if (ergebnisGebucht && !ergebnisGebucht.rest) ergebnisGesetzt = satz.ergebnisSatz(ergebnis.text, zeile);
+    const befehl = aufruf ? `<span class="bf">${kurzTextHtml(s.befehl || '', esc)}</span>` : '';
+    const absicht = s.absicht === null ? '' : `<span class="ab">${kurzTextHtml(s.absicht, esc)}</span>`;
     const fehler = s.fehler ? `${ACHTUNG}<span class="vh">Fehler: </span>` : '';
-    const kuerzelTeil = ergebnisGebucht ? `<span class="eg">${fehler}${ersteZeileHtml(ergebnisGebucht, esc)}</span>` : '';
+    const kuerzelTeil = ergebnisGebucht ? `<span class="eg">${fehler}${kurzformHtml(ergebnisGesetzt, ergebnisGebucht, esc)}</span>` : '';
     let angabe = '', tokensGanz = '';
     if (aufruf) angabe = tokenAngabeHtml(s.nr, aufruf, z.tokens);
     if (aufruf && aufruf.wer === 'agent' && aufruf.tokens) tokensGanz = `<span class="k">Tokens</span><p class="lv-tk4">${vierWerteHtml(aufruf.tokens)}</p>`;
     const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span>${angabe}</summary>`;
-    const teil = (wort, b) => (b ? `<span class="k">${wort}</span><pre>${gebuchtHtml(b, t => zeilenHtml(t, esc), esc)}</pre>` : '');
+    const ganz = tokensGanz + aufrufBlockHtml(aufruf, aufrufGebucht, s.name, z) + ergebnisBlockHtml(aufruf, ergebnisGebucht, ergebnisGesetzt, esc);
     const klasse = `lv-s${s.fehler ? ' fehl' : ''}${s.absicht === null ? ' ohne-ab' : ''}`;
     let marken = artAttribut('w');
     if (s.fehler) marken += ' data-fehler';
-    return `<li id="lv-s${s.nr}" tabindex="-1"${marken}><details class="${klasse}">${summary}<div class="lv-s-ganz">${tokensGanz}${teil('Aufruf', aufrufGebucht)}${teil('Ergebnis', ergebnisGebucht)}</div></details></li>`;
+    return `<li id="lv-s${s.nr}" tabindex="-1"${marken}><details class="${klasse}">${summary}<div class="lv-s-ganz">${ganz}</div></details></li>`;
+  }
+
+  /** Text, wie er heute aufgeklappt steht: gebucht, je Zeile sichtbar gemacht, in einem `pre` — der Rückfall jedes Satzes. */
+  const rohHtml = (b, esc) => `<pre>${gebuchtHtml(b, t => zeilenHtml(t, esc), esc)}</pre>`;
+
+  /** Block „Aufruf“ (FA 1, 13): Fläche, Rand, Kante und das Wort als erstes Kind; der Satz nur, wenn das Budget den ganzen Text trägt
+      und die Grenzen ihn erlauben, sonst der Text wie heute. */
+  function aufrufBlockHtml(aufruf, gebucht, name, z) {
+    if (!aufruf) return '';
+    let inhalt = null;
+    if (!gebucht.rest) inhalt = satz.aufrufSatz(name, aufruf.text, t => zeileHtml(t, z.esc));
+    if (inhalt === null) inhalt = rohHtml(gebucht, z.esc);
+    return `<div class="lv-auf"><span class="k">Aufruf</span>${inhalt}</div>`;
+  }
+
+  /** „Ergebnis“ ohne Fläche darunter; ohne Ergebnis im Transkript unter dem Aufruf gedämpft der Satz dazu (PO Z. 612). */
+  function ergebnisBlockHtml(aufruf, gebucht, gesetzt, esc) {
+    if (!gebucht && aufruf) return `<p class="lv-gedaempft">${KEIN_ERGEBNIS}</p>`;
+    if (!gebucht) return '';
+    let inhalt = rohHtml(gebucht, esc);
+    if (gesetzt !== null) inhalt = gesetzt.html;
+    return `<div class="lv-erg"><span class="k">Ergebnis</span>${inhalt}</div>`;
+  }
+  const KEIN_ERGEBNIS = 'Kein Ergebnis im Transkript.';
+
+  /** Kürzel des Ergebnisses in der Zusammenfassung (PO Z. 604, 605): „Von Claude Code gekürzt“ mit Symbol, gedämpft „Systemhinweis“
+      oder die erste Zeile. */
+  function kurzformHtml(gesetzt, gebucht, esc) {
+    if (gesetzt !== null && gesetzt.kurz === 'gekuerzt') return satz.GEKUERZT_KURZ;
+    if (gesetzt !== null && gesetzt.kurz === 'systemhinweis') return '<span class="lv-syseg">Systemhinweis</span>';
+    return ersteZeileHtml(gebucht, esc);
   }
 
   /** Dauer der Werkzeugzeile mit Balken; „–“ mit Lesetext: ohne Partner „kein Ergebnis“ bzw. „kein Aufruf“, sonst „Dauer unbekannt“. */
@@ -373,12 +424,29 @@
   /** Wert des Attributs `data-zeigen` an der Insel: die eingeschalteten Arten, durch Leerzeichen getrennt. */
   const laufZeigenWert = filter => ARTEN_DER_ZEILEN.filter(art => filter[art]).join(' ');
 
-  /** Ansage nach einem Wechsel (PO Z. 587) aus den Zahlen der Auswertung, nie aus dem DOM. */
-  function laufFilterAnsage(arten, filter) {
-    const gesamt = arten.n + arten.w + arten.h;
-    let sichtbar = arten.fehler;
-    if (!filter.f) sichtbar = ARTEN_DER_ZEILEN.filter(art => filter[art]).reduce((summe, art) => summe + arten[art], 0);
-    if (sichtbar === 0 && filter.f) return 'Keine Fehler erkannt.';
+  /** Ansage nach einem Wechsel des Kästchens `geaendert` (PO Z. 587) aus den Zahlen der Auswertung, nie aus dem DOM; nach einem Wechsel
+      von „Systemhinweise“ folgt die Zahl der eingebetteten Hinweise in den sichtbaren Zeilen (R00240 FA 10, PO Z. 608). */
+  function laufFilterAnsage(arten, filter, geaendert, eingebettet) {
+    const sichtbar = sichtbareZeilen(arten, filter, filter.f);
+    const satzDerZeilen = zeilenAnsage(sichtbar, arten.n + arten.w + arten.h, filter.f);
+    if (geaendert !== 'h' || sichtbar === 0 || !eingebettet) return satzDerZeilen;
+    const e = sichtbareZeilen(eingebettet, filter, filter.f);
+    if (e === 0) return satzDerZeilen;
+    let zahl = `${tausender(e)} eingebettete Systemhinweise`;
+    if (e === 1) zahl = '1 eingebetteter Systemhinweis';
+    let zustand = 'ausgeblendet';
+    if (filter.h) zustand = 'sichtbar';
+    return `${satzDerZeilen.slice(0, -1)}, ${zahl} ${zustand}.`;
+  }
+
+  /** Summe der sichtbaren Zeilen bzw. Hinweise: unter „nur Fehler“ die der Fehlerzeilen, sonst die der eingeschalteten Arten. */
+  function sichtbareZeilen(zahlen, filter, nurFehler) {
+    if (nurFehler) return zahlen.fehler;
+    return ARTEN_DER_ZEILEN.filter(art => filter[art]).reduce((summe, art) => summe + (zahlen[art] || 0), 0);
+  }
+
+  function zeilenAnsage(sichtbar, gesamt, nurFehler) {
+    if (sichtbar === 0 && nurFehler) return 'Keine Fehler erkannt.';
     if (sichtbar === 0) return 'Keine Einträge sichtbar.';
     let wort = 'Einträgen';
     if (gesamt === 1) wort = 'Eintrag';
@@ -418,8 +486,22 @@
 
   function laengsteListe(top3, esc) {
     const ziel = t => (t.schritt ? `lv-s${t.nr}` : `lv-s${t.nr}-vor`);
-    const eintraege = top3.map(t => ({ ziel: ziel(t), inhalt: `<span class="was">${esc(sichtbarText(t.was))}</span><span class="d">${dauerText(t.dauer)}</span>` }));
+    const eintraege = top3.map(t => ({ ziel: ziel(t), inhalt: `${beschriftungHtml(beschriftungVon(t), esc)}<span class="d">${dauerText(t.dauer)}</span>` }));
     return { praefix: 'lv-top', titel: 'Längste Schritte', eintraege };
+  }
+
+  /** Die Beschriftung eines Eintrags; ein Eintrag ohne (von Hand gebaut) steht mit seinem Text wie vor R00240. */
+  function beschriftungVon(t) {
+    if (t.beschriftung) return t.beschriftung;
+    let nach = null;
+    if (t.nach !== undefined && t.nach !== null) nach = wort(t.nach, false);
+    return { was: wort(t.was, false), absicht: null, nach };
+  }
+
+  /** Mit Absicht zweizeilig: die Absicht als Titel, darunter einzeilig gedämpft der Befehl; ohne Absicht der Befehl allein. */
+  function beschriftungHtml(b, esc) {
+    if (b.absicht === null) return `<span class="was">${wortHtml(b.was, esc)}</span>`;
+    return `<span class="was zw"><span class="wt">${wortHtml(b.absicht, esc)}</span><span class="bf2">${wortHtml(b.was, esc)}</span></span>`;
   }
 
   const TEUERSTE_ERKLAERUNG = 'Gezählt sind die neuen Tokens je Antwort: Eingabe, Cache-Schreiben und Ausgabe. Den schon vorhandenen Kontext (Cache-Lesen) trägt jede Antwort, er zählt hier nicht.';
@@ -429,14 +511,14 @@
       Zeile, die die Tokens der Antwort trägt. */
   function teuersteListe(teuer3, esc) {
     const eintraege = teuer3.map(t => {
-      const was = esc(sichtbarText(t.was));
+      const b = beschriftungVon(t);
       let nach = '';
-      const name = [was, neueTokensLesetext(t.neu)];
-      if (t.nach !== null) {
-        nach = `<span class="nach">${esc(sichtbarText(t.nach))}</span>`;
-        name.push(esc(sichtbarText(t.nach)));
+      const name = [esc(sichtbarText((b.absicht || b.was).text)), neueTokensLesetext(t.neu)];
+      if (b.nach !== null) {
+        nach = `<span class="nach">${wortHtml(b.nach, esc)}</span>`;
+        name.push(esc(sichtbarText(b.nach.text)));
       }
-      return { ziel: `lv-s${t.nr}`, inhalt: `<span class="was">${was}</span>${nach}<span class="d">${neueTokensHtml(t.neu)}</span>`, name: name.join(', ') };
+      return { ziel: `lv-s${t.nr}`, inhalt: `${beschriftungHtml(b, esc)}${nach}<span class="d">${neueTokensHtml(t.neu)}</span>`, name: name.join(', ') };
     });
     return { praefix: 'lv-teu', titel: 'Teuerste Schritte', erklaerung: TEUERSTE_ERKLAERUNG, eintraege };
   }
@@ -447,7 +529,7 @@
   function ersteZeileHtml(b, esc) {
     const zeile = b.vorher.split('\n')[0];
     const amBudget = b.rest > 0 && zeile.length === b.vorher.length && Array.from(zeile).length <= ERSTE_ZEILE_ZEICHEN;
-    const anfang = esc(sichtbarText(gekuerzt(zeile)));
+    const anfang = kurzTextHtml(gekuerzt(zeile), esc);
     if (!amBudget) return anfang;
     return `${anfang}<span class="mk-rest">${esc(restText(b.rest))}</span>`;
   }
@@ -456,6 +538,27 @@
     const zeichen = Array.from(zeile);
     if (zeichen.length <= ERSTE_ZEILE_ZEICHEN) return zeile;
     return zeichen.slice(0, ERSTE_ZEILE_ZEICHEN).join('') + '…';
+  }
+
+  /** Hat `gekuerzt` diesen Text geschnitten? Nur dann hat er 201 Zeichen und endet auf „…“ — ein ungekürzter hat höchstens 200. */
+  function vonKanbanGekuerzt(text) {
+    if (text === null || text === undefined || !text.endsWith('…')) return false;
+    return Array.from(text).length === ERSTE_ZEILE_ZEICHEN + 1;
+  }
+
+  const ELL_LESETEXT = 'Von kanbanD gekürzt, vollständig im aufgeklappten Schritt';
+  /** Das „…“ von kanbanD (PO Z. 601, 610): eigenes, gedämpftes Element mit Tooltip; der Lesetext steht unsichtbar im Element. */
+  const ELL = `<span class="lv-ell" title="${ELL_LESETEXT}"><span aria-hidden="true">…</span><span class="vh">${ELL_LESETEXT}</span></span>`;
+
+  /** Ein Text der Zusammenfassung oder der Listen: maskiert und sichtbar gemacht; hat kanbanD ihn gekürzt, mit dem eigenen „…“. */
+  function kurzTextHtml(text, esc) {
+    if (!vonKanbanGekuerzt(text)) return esc(sichtbarText(text));
+    return esc(sichtbarText(text.slice(0, -1))) + ELL;
+  }
+
+  function wortHtml(w, esc) {
+    if (!w.gekuerzt) return esc(sichtbarText(w.text));
+    return esc(sichtbarText(w.text.slice(0, -1))) + ELL;
   }
 
   const ISO_MIT_VERSATZ = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
@@ -494,6 +597,7 @@
   function laufAuswerten(zeilen, grenze) {
     const summe = { werkzeug: 0, denken: 0, warten: 0 };
     const luecken = [], schritte = [], offen = offeneAufrufe(), tokens = tokenZaehlung(), achse = zeitachseBeginnen(), arten = artenBeginnen();
+    const einbettung = einbettungBeginnen(), vorSchritt = new Map();
     let vorher = null, mitZeit = 0;
     for (const { nr, eintrag } of zeilen) {
       if (!eintrag) { unlesbarZaehlen(tokens); arten.unlesbar++; continue; }
@@ -503,6 +607,7 @@
       if (schritt) schritte.push(schritt);
       const ergebnisSchritt = eintrag.art === 'werkzeugergebnis' ? ergebnisZuordnen(nr, eintrag, ms, offen, schritte) : null;
       tokensZaehlen(tokens, nr, eintrag, schritt, ergebnisSchritt);
+      einbettungZaehlen(einbettung, nr, eintrag, ergebnisSchritt);
       if (ms === null) continue;
       mitZeit++;
       if (vorher !== null) {
@@ -511,15 +616,16 @@
         stueckAnhaengen(achse, art, dauer);
         if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS && eintrag.art === 'nachricht') arten.vorNachricht.push(nr);
         if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS) luecken.push({ vorNr: nr, art, dauer, vor: schritt ? schrittText(schritt) : `Nachricht von ${eintrag.name || WER_WORT[eintrag.wer]}` });
+        if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS && schritt) vorSchritt.set(nr, schritt);
         if (art === 'warten' && dauer >= DENKZEILE_AB_MS) tokens.wartenSeit = dauer;
       } else achse.erste = ms;
       vorher = ms;
     }
     const gesamt = summe.werkzeug + summe.denken + summe.warten, bekannt = mitZeit >= 2;
     const kennzahlen = { werkzeugaufrufe: schritte.filter(s => s.aufruf).length, fehler: schritte.filter(s => s.fehler).length };
-    const top3 = bekannt ? laengsteSchritte(schritte, luecken) : [];
+    const top3 = bekannt ? laengsteSchritte(schritte, luecken, vorSchritt) : [];
     const eingeklappt = eingeklapptFinden(zeilen);
-    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt, tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer), zeitachse: zeitachseAbschliessen(achse, bekannt), zeilenArten: artenAbschliessen(arten, schritte.length, luecken.length, eingeklappt, kennzahlen.fehler) };
+    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt, tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer), zeitachse: zeitachseAbschliessen(achse, bekannt), zeilenArten: artenAbschliessen(arten, schritte.length, luecken.length, eingeklappt, kennzahlen.fehler), eingebettet: einbettungAbschliessen(einbettung, eingeklappt) };
   }
 
   /* ── Arten der Zeilen (R00239 FA 5): wie viele Zeilen der Liste Nachrichten, Werkzeuge und Systemhinweise sind, für die Ansage ── */
@@ -535,6 +641,29 @@
     const hinweise = Object.values(eingeklappt).filter(art => art === 'systemhinweis').length;
     const vorHinweis = vorNachricht.filter(nr => eingeklappt[nr] === 'systemhinweis').length;
     return { n: nachrichten - hinweise + unlesbar + vorNachricht.length - vorHinweis, w: schritte + luecken - vorNachricht.length, h: hinweise + vorHinweis, fehler };
+  }
+
+  /* ── Eingebettete Systemhinweise (R00240 FA 10, PO Z. 608): je Art der Zeile, für die Ansage aus der Auswertung ── */
+
+  function einbettungBeginnen() {
+    return { w: 0, fehler: 0, nachrichten: [] };
+  }
+
+  /** Ein Ergebnis zählt in seiner Werkzeugzeile (und als Fehlerzeile, wenn sein Schritt einer ist), eine Nachricht in ihrer Zeile —
+      gezählt wie `ergebnisSatz` und `nachrichtHtml` setzen, ohne zu setzen. */
+  function einbettungZaehlen(z, nr, eintrag, ergebnisSchritt) {
+    const anzahl = satz.systemhinweiseZaehlen(eintrag.text, eintrag.art === 'werkzeugergebnis');
+    if (anzahl === 0) return;
+    if (eintrag.art === 'nachricht') { z.nachrichten.push({ nr, anzahl }); return; }
+    if (eintrag.art !== 'werkzeugergebnis') return;
+    z.w += anzahl;
+    if (ergebnisSchritt.fehler) z.fehler += anzahl;
+  }
+
+  /** `{n, w, fehler}`: eine eingeklappte Nachricht (Auftrag, Systemhinweis) zeigt ihren Text ungeteilt und zählt nicht. */
+  function einbettungAbschliessen({ w, fehler, nachrichten }, eingeklappt) {
+    const n = nachrichten.filter(x => !eingeklappt[x.nr]).reduce((summe, x) => summe + x.anzahl, 0);
+    return { n, w, fehler };
   }
 
   /* ── Zeitachse (R00239 FA 1, FA 2; ADR-0041 N1 Punkt 2): Stücke im selben Durchlauf, Fächer danach in O(Stücke + 200) ── */
@@ -652,7 +781,7 @@
 
   /** Die teuersten in Worten: erster Aufruf oder „Nachricht von Agent“, dazu „nach <Schritt>“ oder „nach <Dauer> Warten“. */
   function teuersteAbschliessen(teuer) {
-    return teuer.map(t => ({ nr: t.nr, neu: t.neu, was: antwortText(t), nach: anlassText(t) }));
+    return teuer.map(t => ({ nr: t.nr, neu: t.neu, was: antwortText(t), nach: anlassText(t), beschriftung: teuersteBeschriften(t) }));
   }
 
   function antwortText(antwort) {
@@ -668,13 +797,40 @@
 
   /** Die drei längsten Schritt-, Denk- und Wartezeilen, nach Dauer absteigend, bei Gleichstand die frühere Zeile zuerst — eine Denk-
       oder Wartezeile steht vor dem Eintrag `nr`, ein Schritt an seiner Stelle. */
-  function laengsteSchritte(schritte, luecken) {
+  function laengsteSchritte(schritte, luecken, vorSchritt) {
     const zeilen = [
-      ...luecken.map(l => ({ art: l.art, nr: l.vorNr, schritt: false, dauer: l.dauer, was: `${LUECKE_WORT[l.art]} · vor ${l.vor}`, stelle: l.vorNr - 0.5 })),
-      ...schritte.filter(s => s.dauer !== null).map(s => ({ art: 'werkzeug', nr: s.nr, schritt: true, dauer: s.dauer, was: schrittText(s), stelle: s.nr })),
+      ...luecken.map(l => ({ art: l.art, nr: l.vorNr, schritt: false, dauer: l.dauer, was: `${LUECKE_WORT[l.art]} · vor ${l.vor}`, stelle: l.vorNr - 0.5, quelle: vorSchritt.get(l.vorNr) || null })),
+      ...schritte.filter(s => s.dauer !== null).map(s => ({ art: 'werkzeug', nr: s.nr, schritt: true, dauer: s.dauer, was: schrittText(s), stelle: s.nr, quelle: s })),
     ];
     zeilen.sort((a, b) => b.dauer - a.dauer || a.stelle - b.stelle);
-    return zeilen.slice(0, 3).map(({ stelle, ...zeile }) => zeile);
+    return zeilen.slice(0, 3).map(({ stelle, quelle, ...zeile }) => ({ ...zeile, beschriftung: laengsteBeschriften(zeile, quelle) }));
+  }
+
+  /* ── Beschriftung der Listen (R00240 FA 11, FA 12; PO Z. 599, 601): Wörter mit dem Wissen, ob kanbanD sie gekürzt hat ── */
+
+  /** Ein Wort der Listen: `text` und ob er auf das „…“ von kanbanD endet. */
+  const wort = (text, gekuerzt) => ({ text, gekuerzt });
+  const schrittWort = s => wort(schrittText(s), vonKanbanGekuerzt(s.befehl));
+  function absichtWort(s) {
+    if (s === null || s.absicht === null) return null;
+    return wort(s.absicht, vonKanbanGekuerzt(s.absicht));
+  }
+
+  /** Ein Schritt mit Absicht trägt sie als Titel, darunter den Befehl; eine Denk- oder Wartezeile behält ihren Text. */
+  function laengsteBeschriften(l, quelle) {
+    if (!l.schritt) return { was: wort(l.was, quelle !== null && vonKanbanGekuerzt(quelle.befehl)), absicht: null };
+    return { was: schrittWort(quelle), absicht: absichtWort(quelle) };
+  }
+
+  /** Wie `teuersteAbschliessen`, mit der Absicht des ersten Aufrufs und „nach <Absicht>“, wenn der Schritt davor eine hat (PO Z. 599). */
+  function teuersteBeschriften(t) {
+    const aufruf = t.ersterAufruf;
+    let was = wort(antwortText(t), false), nach = null;
+    if (aufruf !== null) was = schrittWort(aufruf);
+    if (t.nachSchritt !== null && t.nachSchritt.absicht !== null) nach = wort(`nach ${t.nachSchritt.absicht}`, vonKanbanGekuerzt(t.nachSchritt.absicht));
+    else if (t.nachSchritt !== null) nach = wort(`nach ${schrittText(t.nachSchritt)}`, vonKanbanGekuerzt(t.nachSchritt.befehl));
+    else if (anlassText(t) !== null) nach = wort(anlassText(t), false);
+    return { was, absicht: absichtWort(aufruf), nach };
   }
 
   /** Ein Schritt in Worten: Werkzeug und Kurzbefehl, etwa „Bash ls Anforderungen“. */

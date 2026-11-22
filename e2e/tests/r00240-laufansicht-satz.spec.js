@@ -74,6 +74,16 @@ const sprache = (page, k) => ({
     return farbe;
   }, name),
   farbe: ort => ort.evaluate(el => getComputedStyle(el).color),
+  /** Zustand „expanded“ des Knotens mit diesem Namen im Barrierefreiheitsbaum von Chromium: `ariaSnapshot()` von Playwright zeigt den
+      Zustand eines nativen `summary` nicht, der Baum des Browsers schon (der Bildschirmleser liest ihn dort). */
+  async aufgeklappt(name) {
+    const cdp = await page.context().newCDPSession(page);
+    const { nodes } = await cdp.send('Accessibility.getFullAXTree');
+    await cdp.detach();
+    const knoten = nodes.filter(n => n.name && n.name.value === name && (n.properties || []).some(p => p.name === 'expanded'));
+    expect(knoten.length, `ein Knoten „${name}“ mit Zustand expanded`).toBe(1);
+    return knoten[0].properties.find(p => p.name === 'expanded').value.value;
+  },
   flaeche: ort => ort.evaluate(el => getComputedStyle(el).backgroundColor),
 });
 
@@ -154,11 +164,11 @@ test.describe('R00240 Laufansicht: Satz der Einträge', () => {
     await page.keyboard.press('Enter');
     await expect(erg.locator(':scope > details.lv-mehr')).toHaveAttribute('open', '');
     expect(await knopf.evaluate(el => el === document.activeElement)).toBe(true);
-    expect(await erg.locator(':scope > details.lv-mehr').ariaSnapshot()).toContain('[expanded]');
+    expect(await s.aufgeklappt('weitere 5 Zeilen des Ergebnisses')).toBe(true);
     await page.keyboard.press(' ');
     await expect(erg.locator(':scope > details.lv-mehr')).not.toHaveAttribute('open', '');
     expect(await knopf.evaluate(el => el === document.activeElement)).toBe(true);
-    expect(await erg.locator(':scope > details.lv-mehr').ariaSnapshot()).not.toContain('[expanded]');
+    expect(await s.aufgeklappt('weitere 5 Zeilen des Ergebnisses')).toBe(false);
     expect(await page.locator(STATUS).textContent()).toBe(status);
     expect(Math.abs((await page.evaluate(() => scrollY)) - rollstand)).toBeLessThanOrEqual(1);
     expect(await s.markeSteht()).toBe(true);
@@ -351,7 +361,7 @@ test.describe('R00240 Laufansicht: Satz der Einträge', () => {
       expect(ring.stil).not.toBe('none');
       expect(ring.breite).toBeGreaterThanOrEqual(2);
     }
-    expect(await s.aufruf(2).ariaSnapshot()).toMatch(/^- text: Aufruf/);
+    expect(await s.aufruf(2).ariaSnapshot()).toMatch(/^- text: "?Aufruf cd \/w\/demo/);
   });
 
   test('AK 10 · Ansage: „Systemhinweise“ an und ab — genau eine Ansage, mit der Zahl der eingebetteten Hinweise', async ({ page }) => {

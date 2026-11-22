@@ -1829,6 +1829,55 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-e .zt{font:11.5px var(--kd-mono);color:var(--kd-muted)}
 .lv-e>.lv-text{border-top:1px solid var(--kd-line);padding:4px var(--kd-s3) 8px 36px}
 .lv-e.sys{margin-left:29px}
+/* R00240 Satz der Einträge (D0009 Bild 12): Aufruf als abgesetzter Block, Ergebnis darunter; nur Tokens aus kd-tokens.css */
+.lv-auf{margin:4px 0 0;border:1px solid var(--kd-line-strong);border-left:3px solid var(--kd-accent);background:var(--kd-sunken);padding:0 8px 6px;min-width:0}
+.lv-auf>.k{margin-top:3px}
+.lv-erg{margin-top:10px;min-width:0}
+.lv-s-ganz .lv-erg>pre,.lv-s-ganz .lv-erg>.lv-mehr>pre{padding-left:0}
+.lv-kv{display:grid;grid-template-columns:fit-content(40%) minmax(0,1fr);column-gap:10px;row-gap:1px;margin:2px 0 0;font:12px/1.5 var(--kd-mono)}
+.lv-kv dt{color:var(--kd-muted);min-width:0;overflow-wrap:anywhere}
+.lv-kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.lv-kv .blk{grid-column:1/-1}
+.lv-kv dd.blk{padding-left:10px;border-left:1px solid var(--kd-line-strong)}
+.lv-s-ganz .lv-kv dd.blk pre{margin:0}
+.lv-dif{margin:2px 0 0;font:12px/1.5 var(--kd-mono);border:1px solid var(--kd-line);background:var(--kd-bg);min-width:0}
+.lv-dif>div{display:grid;grid-template-columns:16px minmax(0,1fr)}
+.lv-dif .c{white-space:pre-wrap;overflow-wrap:anywhere;padding-right:6px;min-width:0}
+.lv-dif .m{text-align:center;color:var(--kd-muted)}
+.lv-dif .add{background:var(--kd-status-ok-bg)}.lv-dif .add .m{color:var(--kd-status-ok-ink);font-weight:600}
+.lv-dif .del{background:var(--kd-status-error-bg)}.lv-dif .del .m{color:var(--kd-status-error-ink);font-weight:600}
+.lv-dif+.lv-mehr>.lv-dif{margin-top:0}
+.lv-mehr{min-width:0}
+.lv-mehr>summary{display:inline-flex;align-items:center;gap:4px;min-block-size:max(24px,var(--kd-ziel));padding:0 4px 0 0;font:600 12px var(--kd-font);color:var(--kd-accent-ink);cursor:pointer;list-style:none}
+.lv-mehr>summary::-webkit-details-marker{display:none}
+.lv-mehr>summary svg.i{width:12px;height:12px}
+.lv-mehr[open]>summary svg.i{transform:rotate(90deg)}
+.lv-mehr>summary:hover{text-decoration:underline}
+.lv-mehr>summary:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:1px}
+.lv-tz{display:flex;align-items:center;gap:6px;margin:2px 0 4px;padding:2px 8px;border-left:3px solid;font:600 12px/1.5 var(--kd-mono);overflow-wrap:anywhere;min-width:0}
+.lv-tz svg.i{width:14px;height:14px;flex:none}
+.lv-tz>span{min-width:0}
+.lv-tz.ok{background:var(--kd-status-ok-bg);color:var(--kd-status-ok-ink);border-color:var(--kd-status-ok)}
+.lv-tz.fehl{background:var(--kd-status-error-bg);color:var(--kd-status-error-ink);border-color:var(--kd-status-error)}
+.lv-cc{display:flex;align-items:flex-start;gap:6px;margin:2px 0 4px;padding:4px 8px;border:1px dashed var(--kd-line-strong);background:var(--kd-surface);font-size:12.5px;line-height:1.45;overflow-wrap:anywhere;min-width:0}
+.lv-cc svg.i{width:14px;height:14px;flex:none;margin-top:2px}
+.lv-cc>span{min-width:0}
+.lv-cc .mono{font-size:12px}
+.lv-cck{display:inline-flex;align-items:center;gap:4px;font-family:var(--kd-font)}
+.lv-cck svg.i,.lv-s .eg svg.i{flex:none}
+.lv-syseg{font-family:var(--kd-font);font-style:italic}
+.lv-e.lv-ein{margin:4px 0}
+.lv-e.lv-ein>summary{grid-template-columns:14px max-content minmax(0,1fr);grid-template-areas:"pf nm z1"}
+.lv-e.lv-ein .pf{grid-area:pf}.lv-e.lv-ein .nm{grid-area:nm}.lv-e.lv-ein .z1{grid-area:z1}
+.lv-e.lv-ein[open]>summary .pf svg.i{transform:rotate(90deg)}
+.lv-ein pre{margin:0;padding:4px var(--kd-s3) 6px 29px;font:12px/1.5 var(--kd-mono);white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px dashed var(--kd-line-strong)}
+.lv-json .tk-function{color:var(--kd-tk-function)}.lv-json .tk-string{color:var(--kd-tk-string)}.lv-json .tk-number{color:var(--kd-tk-number)}.lv-json .tk-keyword{color:var(--kd-tk-keyword)}
+.lv-ell{position:relative;color:var(--kd-muted);text-decoration:underline dotted;text-underline-offset:2px;cursor:help}
+.lv-gedaempft,.lv-nurh{margin:4px 0 0;font-size:12px;font-style:italic;color:var(--kd-muted)}
+#lv-insel:not([data-zeigen~="h"]) .lv-ein,#lv-insel[data-zeigen~="h"] .lv-nurh{display:none}
+.lv-top .was.zw,.lv-teu .was.zw{display:block;padding:3px 0;min-width:0}
+.lv-top .wt,.lv-teu .wt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;line-height:1.35}
+.lv-top .bf2,.lv-teu .bf2{display:block;font:11px/1.4 var(--kd-mono);color:var(--kd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Sprungziele (FA 10): unter dem Seitenkopf, mit eigenem Fokusring — ein Fokus per Skript löst :focus-visible nicht immer aus */
 .lv-l>li[id]{scroll-margin-block-start:var(--kd-head-h)}
 .lv-l>li[tabindex="-1"]:focus{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
