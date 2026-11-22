@@ -5,8 +5,8 @@
   'use strict';
 
   /** Grenzen je Eintrag (N4 Punkt 7); darüber steht der Aufruf wie heute als `pre`, ein Ergebnis als Text. Nie in der Oberfläche.
-      `jsonTiefe` und `satzZeichen` deckeln Stapel und HTML eines JSON-Satzes. */
-  const SATZ_GRENZEN = Object.freeze({ aufrufBytes: 65536, aufrufZeilen: 2000, befehlBytes: 16384, jsonTiefe: 32, satzZeichen: 524288 });
+      `jsonTiefe` und `satzZeichen` deckeln Stapel und HTML eines JSON-Satzes, `hinweise` die eingebetteten Hinweise je Text. */
+  const SATZ_GRENZEN = Object.freeze({ aufrufBytes: 65536, aufrufZeilen: 2000, befehlBytes: 16384, jsonTiefe: 32, satzZeichen: 524288, hinweise: 200 });
   const OFFENE_ZEILEN = 20;
   const PFEIL_KLEIN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 
@@ -444,10 +444,11 @@
   const HINWEIS_ZU = '</system-reminder>';
 
   /** Text → Teile `{art: 'text'|'hinweis', text}`: ein Hinweis ist ein vollständiger Block, der am Zeilenanfang mit `<system-reminder>`
-      beginnt und mit `</system-reminder>` schließt; der Umbruch davor und danach gehört zur Grenze. Alles andere bleibt Text. */
+      beginnt und mit `</system-reminder>` schließt; der Umbruch davor und danach gehört zur Grenze. Alles andere bleibt Text. Mehr als
+      200 Hinweise in einem Text (Flut) lassen ihn ganz Text bleiben. */
   function systemhinweiseTrennen(text) {
     const teile = [];
-    let ab = 0, suche = 0;
+    let ab = 0, suche = 0, hinweise = 0;
     for (let auf = text.indexOf(HINWEIS_AUF, suche); auf >= 0; auf = text.indexOf(HINWEIS_AUF, suche)) {
       suche = auf + 1;
       if (auf > 0 && text[auf - 1] !== '\n') continue;
@@ -456,6 +457,8 @@
       if (auf > ab) teile.push({ art: 'text', text: text.slice(ab, auf - 1) });
       ab = zu + HINWEIS_ZU.length;
       teile.push({ art: 'hinweis', text: text.slice(auf, ab) });
+      hinweise++;
+      if (hinweise > SATZ_GRENZEN.hinweise) return [{ art: 'text', text }];
       if (text[ab] === '\n') ab++;
       suche = ab;
     }

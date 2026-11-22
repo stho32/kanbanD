@@ -456,3 +456,13 @@ test('Muss 3: die letzte Fehlschlagszeile gewinnt, auch vor späteren Erfolgszei
   assert.deepStrictEqual(testzeileFinden('test result: FAILED. 3 passed; 1 failed\n# pass 9'), { zeile: 'test result: FAILED. 3 passed; 1 failed', fehler: true });
   assert.deepStrictEqual(testzeileFinden(['1 failed', ...zeilen(20)].join('\n')), null, 'außerhalb der letzten 20 Zeilen');
 });
+
+/* Sollte: Hinweis-Flut — ab mehr als 200 eingebetteten Hinweisen in einem Text bleibt der Text Text. */
+
+test('Sollte Hinweis-Flut: 200 Hinweise werden eingeklappt, 201 bleiben Text, gezählt wie gesetzt', () => {
+  const flut = n => 'a' + '\n<system-reminder>x</system-reminder>'.repeat(n);
+  assert.strictEqual(systemhinweiseTrennen(flut(200)).filter(t => t.art === 'hinweis').length, 200);
+  assert.deepStrictEqual(systemhinweiseTrennen(flut(201)), [{ art: 'text', text: flut(201) }]);
+  assert.strictEqual(systemhinweiseZaehlen(flut(201), true), 0);
+  assert.strictEqual((ergebnisSatz(flut(201), esc).html.match(/<details class="lv-e/g) || []).length, 0);
+});
