@@ -290,3 +290,90 @@ Ergänzt nach den Reviews an #251 (architektur-reviewer, rechtschreib-reviewer).
 - [ ] Planer: eine Scheibe „Paaren über die Kennung“ (Punkte 1 ohne `tokens`, 2, 3) als Bug-Anforderung mit eigener Interaction unter D2 „Laufansicht“. Die Regel zu `tokens` steht in der Anforderung von #263.
 - [ ] PO: den Formatnachtrag zu Z. 371 (`id?`, `zu?`, `tokens?`) ins Protokoll; entscheiden, ob ein Lauf ohne Kennungen eine Marke bekommt (Empfehlung: nein).
 - [ ] Director/Factory: entscheiden, ob die alten Transkripte neu abgelegt werden (Punkt 4), solange die Rohprotokolle noch liegen, also bis etwa 2026-12-20.
+
+## Nachtrag 2026-11-22 N3: Tokens — Kennzahl aus dem Kosteneintrag, je Antwort an ihrer ersten Zeile, „Teuerste Schritte“ nach neuen Tokens (Karte #263)
+
+**Status bleibt `Akzeptiert`.** Karte #263 (Vorrang, Auftrag des Betreibers: „Wenn die Daten schon da sind, sollten wir sie auch anzeigen.“) soll neben „Was hat am längsten gedauert?“ auch „Was hat am meisten gekostet?“ beantworten. N3 baut die Regel zu `tokens` aus N2 Punkt 1 und legt die Anzeige fest. Alles wird weiter aus den gelesenen Einträgen und aus der Karte gerechnet. Server, OpenAPI und Format bleiben, wie sie sind. kanbanD rechnet aus Tokens nie einen Betrag, kennt kein Modell und keine Preistabelle (PO Z. 569).
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #263, Lauf 263-architekt-1)
+**Erprobt durch**: Zählung über die 300 neuesten Claude-Protokolle von Rollenläufen der Factory (2026-11-22 14:25), umgewandelt mit `transkript.wandle` und gemessen mit `kosten.claude` der Factory (Stand `90fc807`). Last 1,2, `nice -n 10`. Die Wegwerf-Skripte liegen in der Ablage der Factory `gemeinsam/scratchpad/arch-263/`. Die Leistung ist begründet, nicht gemessen (Punkt 5).
+
+### Belegt
+
+- **Code**: `eintragPruefen` (`web/lauf.js:77`) liest `tokens` noch nicht. `laeufe.js:43` reicht `tokens` des Kosteneintrags schon an die Zeile des Laufs weiter, `laufKopfHtml` (`web/lauf.js:520`) zeigt davon nur den Betrag. Der Kostenbericht zeigt Tokens als volle Zahl mit Tausenderpunkt (`web/ansicht.js:319`).
+- **Erzeuger**: Der Kosteneintrag trägt als `tokens` die Summe von Eingabe, Ausgabe, Cache-Lesen und Cache-Schreiben über alle Antworten des Laufs, jede Antwort einmal (Factory `werkzeuge/kosten.py:26–49`, `board.py:727`). Das Transkript trägt dieselben vier Werte je Antwort am ersten Eintrag, den die Antwort erzeugt (`transkript.py:70–93`). Eine Antwort, die nur aus einem Denkblock besteht, erzeugt keinen Eintrag, und ihre Tokens fehlen im Transkript.
+- **Abgleich**: In 299 von 300 Läufen ist die Summe aus dem Transkript gleich dem Wert des Kosteneintrags. Im übrigen Lauf fehlen 4,3 %, und die Ursache ist genau eine Antwort nur mit Denkblock.
+- **Antworten**: 11.772 Antworten. 11.060 enthalten genau einen Aufruf, 662 zwei oder mehr (5,6 %), 50 keinen. 560 beginnen mit einer Nachricht und enthalten danach einen Aufruf. Die weiteren Einträge einer Antwort folgen unmittelbar auf ihren ersten, und zwischen zwei Antworten steht immer ein Eintrag von `werkzeug` oder `mensch`, denn das Modell antwortet nur auf eine Eingabe.
+- **Anteile**: Cache-Lesen macht 96,9 % aller Tokens aus, Cache-Schreiben 2,6 %, Ausgabe 0,5 %, Eingabe weniger als 0,01 %.
+- **Rangfolge** (278 Läufe mit mindestens 10 Antworten, je die drei größten Antworten, Lage 0 = Anfang, 1 = Ende des Laufs):
+
+  | Größe | Lage im Median | im letzten Fünftel | Ergebnistext direkt davor, Median |
+  |---|---|---|---|
+  | Summe aller vier | 0,94 | 96 % | 333 Zeichen |
+  | Ausgabe | 0,77 | 46 % | 1.038 Zeichen |
+  | neue Tokens (Eingabe + Cache-Schreiben + Ausgabe) | 0,17 | 7 % | 9.859 Zeichen |
+
+  Die Summe misst die Länge des Kontexts, also die Stelle im Lauf, und nicht den Schritt. Die neuen Tokens zeigen die Antworten nach großen Ergebnissen, also das, was ein Schritt dem Kontext hinzugefügt hat.
+
+### Optionen
+
+| Frage | Variante | Stärke | Schwäche |
+|---|---|---|---|
+| Kennzahl je Lauf (Technikfrage 1) | **K1 — Kosteneintrag, ersatzweise Summe aus dem Transkript** (gewählt) | dieselbe Quelle wie der Betrag daneben; vollständig, auch bei Antworten nur mit Denkblock; live wie die Kosten | zwei Quellen; im seltenen Abweichungsfall passt die Summe der Zeilen nicht genau zum Kopf |
+| | K2 — nur die Summe aus dem Transkript | eine Quelle, Zeilen und Kopf passen immer | fehlt bei Altbestand ganz (Wunsch 4 der Karte); an der Grenze nur ein Teil; kann vom gebuchten Betrag daneben abweichen |
+| | K3 — beide zeigen, Abweichung kennzeichnen | nichts wird verschwiegen | neuer Zustand mit Wortlaut für einen Fall von 1 zu 300 mit harmlosem Grund |
+| Zuordnung je Schritt (Technikfrage 2) | **Z1 — an der Zeile des Eintrags, der das Feld trägt; weitere Zeilen derselben Antwort verweisen darauf** (gewählt) | genau die Angabe des Erzeugers, nichts erfunden; jede Antwort zählt genau einmal | die Zahl steht bei einer Antwort mit Nachricht und Aufruf an der Nachricht; ein paralleler zweiter Aufruf zeigt keine eigene Zahl |
+| | Z2 — gleichmäßig auf die Aufrufe der Antwort aufteilen | jede Schrittzeile hat eine Zahl | erfundene Werte: Wie sich Ausgabe und Kontext auf die Aufrufe verteilen, weiß niemand; Rundungsreste |
+| | Z3 — eigene Zeile „Antwort“ vor ihren Einträgen | sauber getrennt | neue Zeilenart in der Insel, mehr Zeilen als heute (bei 95 % der Antworten steht nur ein Eintrag), eigene Zeichnung |
+| „Teuerste Schritte“ (Technikfrage 3) | S1 — Summe aller vier | entspricht der Kennzahl im Kopf | wählt zu 96 % das Ende des Laufs (Belegt) und beantwortet die Frage nicht |
+| | S2 — Ausgabe | eindeutig dem Schritt zuzurechnen, teuerste Tokenart | 0,5 % aller Tokens; große gelesene Texte, die den Kontext treiben, sieht sie nicht |
+| | **S3 — neue Tokens: Eingabe + Cache-Schreiben + Ausgabe** (gewählt) | ohne Preis und ohne Gewichtung; misst, was die Antwort dem Kontext hinzufügt und selbst erzeugt; findet die Schritte nach großen Ergebnissen | lässt Cache-Lesen weg, das im Lauf den größten Teil der Kosten ausmacht; zählt einen Token Ausgabe so viel wie einen Token Cache-Schreiben, obwohl er mehr kostet |
+| | S4 — gewichtet nach Preisverhältnis (etwa Cache-Lesen 0,1) | nah am Geld | ist eine Preistabelle und damit ausgeschlossen (PO Z. 569); veraltet mit jedem Modell |
+
+### Entscheidung
+
+1. **Lesen**: `eintragPruefen` liefert zusätzlich `tokens` nach N2 Punkt 1, sonst `null`. Das Feld wird nur an Einträgen von `agent` übernommen, und die Werte sind ganze Zahlen ≥ 0 (`Number.isSafeInteger`). Ein fehlender Schlüssel zählt in jeder Summe als 0. Ein falsch geformtes Feld gilt als fehlend, der Eintrag bleibt lesbar. Ein Objekt aus `tokens` wird nie gezeichnet, gezeichnet werden nur daraus gerechnete Zahlen.
+2. **Kennzahl je Lauf (Technikfrage 1)**: Variante K1.
+   - Der Kopf zeigt die Tokens neben den Kosten und aus derselben Quelle: `tokens` des Kosteneintrags dieser Kennung (`laeufe.js:43`). Sie sind live wie die Kosten (N1 Punkt 5), und die Auswertung wird dafür nicht neu gerechnet.
+   - Fehlt der Kosteneintrag oder sein `tokens`, und trägt mindestens ein gelesener Eintrag `tokens`, zeigt der Kopf die Summe aller vier Werte über die gelesenen Einträge, gekennzeichnet als „aus dem Transkript gezählt“. An der Grenze steht „mindestens“ davor, wie bei der Dauer (N1 Punkt 1).
+   - Fehlt beides, steht „–“ mit Lesetext.
+   - Weichen Kosteneintrag und Transkript ab, gilt der Kosteneintrag, ohne Hinweis. Er ist die gebuchte Zahl, aus der der Betrag daneben gerechnet ist (ADR-0028). Die bekannte Ursache einer Abweichung ist eine Antwort nur mit Denkblock, die keine Zeile hat.
+   - Die Auswertung liefert die Summe aus dem Transkript als `tokens: {summe, neu, ein, aus, cache_lesen, cache_schreiben}`, ohne `tokens` im Transkript `null`. Ob der Kopf daraus eine Aufteilung zeigt (etwa „davon neu …“), entscheidet die Gestaltung.
+3. **Zuordnung je Schritt (Technikfrage 2)**: Variante Z1.
+   - Eine **Antwort** beginnt an einem Eintrag von `agent` mit `tokens` und umfasst die unmittelbar folgenden Einträge von `agent` ohne `tokens`. Sie endet am nächsten Eintrag eines anderen `wer` oder am nächsten Eintrag mit `tokens`. Ein Ergebnis hat `wer=werkzeug` und beendet die Antwort damit immer.
+   - Die Tokens stehen an der **Zeile des Eintrags, der sie trägt**: an einer Nachricht von `agent` oder an einer Schrittzeile, deren Aufruf sie trägt. Weitere Zeilen derselben Antwort zeigen „–“ mit dem Lesetext, dass sie in der Antwort darüber gezählt sind. Einträge von `agent` ohne Antwort mit `tokens` zeigen „–“ mit dem Lesetext „keine Angabe“. Das gilt auch für jeden Eintrag eines Transkripts ganz ohne `tokens` (Wunsch 4 der Karte).
+   - Nachrichten von `mensch`, allein stehende Ergebnisse sowie Denk- und Wartezeilen tragen keine Token-Angabe. Die Denkzeile vor einer Antwort und ihre Tokens bleiben getrennt, denn die Lücke gehört nach N1 Punkt 1 dem späteren Eintrag und hängt an keiner Antwort.
+   - Die Zeile zeigt die **neuen Tokens** (Punkt 4), unauffällig wie die Dauer. Aufgeklappt stehen die vier Werte einzeln. Die Summe aller vier gehört nicht in die Zeile, denn sie wächst mit dem Kontext und liest sich wie ein Zähler.
+   - Die Auswertung liefert je Antwort `{nr, tokens, neu, nachNr}`. `nr` ist die Nummer der Zeile, an der die Tokens stehen. `nachNr` ist die Zeile des Schritts, dessen Ergebnis unmittelbar vor der Antwort stand, sonst `null`.
+4. **„Teuerste Schritte“ (Technikfrage 3)**: Variante S3.
+   - Rangfolge nach **neuen Tokens** = `ein + cache_schreiben + aus` je Antwort, absteigend, bei Gleichstand die frühere zuerst. Die drei ersten stehen als Liste neben „Längste Schritte“. Gesprungen wird wie dort über einen Knopf mit `data-act` an `lv-s<nr>`, nie über `href="#…"`, und das Nachführen aus N1 „Nach dem Bau“ gilt auch hier. Die Knöpfe tragen eigene Kennungen (`lv-teu-<i>`), damit sie nicht mit `lv-top-<i>` kollidieren.
+   - Beschriftet wird eine Antwort mit ihrem ersten Aufruf (`schrittText`), ohne Aufruf mit „Nachricht von Agent“. Ob dazu „nach <Schritt aus `nachNr`>“ steht, entscheidet die Gestaltung. Die Zählung zeigt, dass der Anlass meist das große Ergebnis davor ist.
+   - Die Liste erscheint nur, wenn mindestens eine Antwort `tokens` trägt.
+   - **In Kauf genommen**: Cache-Lesen zählt nicht mit, obwohl es im Lauf den größten Teil der Kosten ausmacht. Es ist der Preis des schon vorhandenen Kontexts und keinem einzelnen Schritt zuzurechnen. Ein Token Ausgabe zählt so viel wie ein Token Cache-Schreiben. Ohne Preis kann deshalb ein großer gelesener Text vor einer langen Ausgabe stehen, die mehr gekostet hat.
+5. **Leistung (Technikfrage 4)**: Es bleibt bei **einer Auswertung je Lesen** und **O(n)**. `tokens` wird je Eintrag in O(1) geprüft. Die laufende Antwort, die Summen und die Zeile des letzten Ergebnisses sind je eine Variable. Die drei teuersten Antworten werden in einem Durchlauf über eine Liste fester Länge 3 bestimmt, ohne alle Antworten zu sortieren. Kopf und Liste zeichnen aus der Auswertung, die Kennzahl aus dem Kosteneintrag kommt live aus der Karte. `grep -c "laufAuswerten(" web/app.js` bleibt 1, und jeder Aufruf von `laufHtml` gibt die Auswertung mit (N1 „Nach dem Bau“).
+6. **Abgrenzung zu #253 und #261 (Technikfrage 5)**: Die Karten werden nicht gebündelt, aber nacheinander gebaut, in der Reihenfolge **#263 → #253 → #261**.
+   - Alle drei ändern dieselben Stellen in `web/lauf.js`: den Rückgabewert von `laufAuswerten` (`:325`), die Zusammenfassung der Schrittzeile in `schrittHtml` (`:233`, Bereich `.du`), `laufTopHtml` (`:268`) und `.lv-gl` in `web/kd-app.css`. #263 und #261 ändern zusätzlich `laufKopfHtml` bzw. die Zeilen. Gleichzeitig gebaut, kollidieren sie beim Rebase (vgl. `AI-Team/gelerntes.md`, #201).
+   - **#263 zuerst**, denn die Karte ist klein, rein additiv und ohne Vorgänger. Sie macht aus `laufTopHtml` eine Listenfunktion für beide Listen (Titel, Kennungspräfix, Einträge, Wertform).
+   - **#253 danach** (`braucht:263`): Die Gliederung links nimmt beide Listen auf, statt nur „Längste Schritte“.
+   - **#261 zuletzt** (`braucht:253`): Punkt 3 der Ergänzung, die Beschriftung mit der Absicht, wirkt dann über die eine Listenfunktion auf beide Listen. Der neue Satz der Zeilen übernimmt die Token-Angabe als festen Bestandteil der Zusammenfassung.
+   - Bündeln von #263 in #253 wurde verworfen. #253 hat Architektur und Zuschnitt schon (N1, PO Z. 522), und eine größere Karte verzögert die Vorrang-Wünsche beider.
+
+### Durchsetzung
+
+- Node-Tests `eintragPruefen`/`laufAuswerten` (`e2e/einheit/`):
+  - `tokens` an einem Eintrag von `agent` wird gelesen. Es fällt weg an einem Ergebnis und an einer Nachricht von `mensch`, als Zahl, als Liste, mit `-1`, `1.5`, `2**53` und mit unbekanntem Schlüssel allein. Der Eintrag bleibt in jedem Fall lesbar.
+  - Antwort mit Nachricht und zwei parallelen Aufrufen: Die Tokens stehen an der Nachricht, beide Aufrufe zeigen den Verweis, und die Tokens aller Antworten ergeben zusammen die Summe des Transkripts.
+  - Zwei Antworten ohne Eintrag eines anderen `wer` dazwischen, beide mit `tokens`, werden zwei Antworten.
+  - Rangfolge: Eine Antwort mit großer Summe, aber kleinen neuen Tokens steht nicht in der Liste. Gleichstand ergibt die frühere zuerst. Ohne `tokens` gibt es keine Liste.
+  - Kopf: Ein Kosteneintrag mit `tokens` geht vor dem Transkript. Ohne Kosteneintrag gilt die Summe des Transkripts mit Kennzeichnung, an der Grenze mit „mindestens“. Ohne beides steht „–“.
+  - Ein Transkript ohne `tokens` ergibt dieselbe Auswertung wie vor der Karte, bis auf `tokens: null` und die leere Liste (`deepEqual`).
+- E2E: Ein gebuchter Kosteneintrag mit `tokens` ändert die Tokens im Kopf, und die Insel bleibt (`el.__probe`, wie N1). Ein Sprung aus „Teuerste Schritte“ lässt `location.hash` gleich und setzt den Fokus auf die Zeile.
+- Messprobe als Beobachtung im Bericht, nicht im Gate: 20.000 Zeilen mit `tokens` an jedem Eintrag von `agent` bleiben unter 300 ms (Q5 aus N1 Punkt 7).
+- Review-Punkt `architektur-reviewer`: Gerechnet wird nur in `web/lauf.js` und einmal je Lesen. Kein Preis, kein Modell, kein Betrag aus Tokens (PO Z. 569). Keine Liste wird nach allen Antworten sortiert.
+- Review-Punkt `code-reviewer`: Die Werte aus `tokens` gehen nur als Zahl ins HTML.
+
+### Folgeaufgaben
+
+- [ ] Planer: **eine Scheibe** „Tokens je Lauf und je Schritt“ als eigene Interaction unter D2 „Laufansicht“: Punkte 1–5, höchstens zehn Kriterien. Das Label `braucht:263` an #253 und `braucht:253` an #261 setzt der Director.
+- [ ] PO: Zahlform im Kopf und in der Zeile (Vorschlag: volle Zahl mit Tausenderpunkt wie im Kostenbericht, `web/ansicht.js:319`, oder Kurzform „1,2 Mio.“/„35 Tsd.“); Name der Größe in Zeile und Liste („neue Tokens“); Titel der Liste („Teuerste Schritte“); Lesetexte für „in der Antwort darüber gezählt“, „keine Angabe“ und „aus dem Transkript gezählt“; ob die Liste „nach <Schritt>“ nennt (Empfehlung: ja).
+- [ ] Gestalter: D0009 `#laufansicht` nachzeichnen: Feld „Tokens“ im Kopf neben „Kosten“, Token-Angabe in der Zeile neben der Dauer, Liste „Teuerste Schritte“ neben „Längste Schritte“. Freigabe durch den PO.
+- [ ] Director/Factory: Die Transkripte, die vor Factory-Commit `89cb890` abgelegt wurden, tragen keine `tokens`. Sie lassen sich mit dem Werkzeug aus N2 Punkt 4 neu ablegen, solange die Rohprotokolle liegen (bis etwa 2026-12-20).
