@@ -2184,14 +2184,13 @@ function laufOeffnen(kennung) {
   adresseGewechselt();
 }
 
-/** „Längste Schritte“ (R00234 FA 10): die Zeile unter den Seitenkopf holen und ihr den Fokus geben, ohne die Adresse zu ändern und
-    ohne Ansage; bei `prefers-reduced-motion: reduce` ohne Animation. */
-function laufSpringen(id) {
+/** „Längste Schritte“ (R00234 FA 10): die Zeile unter den Seitenkopf holen, ohne die Adresse zu ändern und ohne Ansage; bei
+    `prefers-reduced-motion: reduce` ohne Animation. */
+function laufZeileZeigen(id) {
   const zeile = document.getElementById(id);
   if (!zeile) return;
   const ohneBewegung = matchMedia('(prefers-reduced-motion: reduce)').matches;
   zeile.scrollIntoView({ block: 'start', behavior: ohneBewegung ? 'instant' : 'smooth' });
-  zeile.focus({ preventScroll: true });
 }
 
 /** Zurück ins Aufgabenfenster mit der Ansicht „Läufe“ (FA 3): über „Ansehen“ geöffnet ein Schritt zurück, sonst ersetzt. */
@@ -3531,7 +3530,14 @@ async function aktion(a, arg, wert) {
       case 'review-oeffnen': reviewOeffnen(arg); return;
       case 'lauf-oeffnen': laufOeffnen(arg); return;
       case 'lauf-zurueck': laufZurueck(); return;
-      case 'lauf-springe': laufSpringen(arg); return;
+      case 'lauf-springe': {
+        // der Fokus geht über die Rangfolge des Neuzeichnens (S.ui.fokus); gerollt wird danach, an die Zeile unter dem Seitenkopf
+        if (!document.getElementById(arg)) return;
+        u.fokus = '#' + CSS.escape(arg);
+        render();
+        laufZeileZeigen(arg);
+        return;
+      }
       case 'lauf-erneut': {
         // „Erneut versuchen“ (FA 8): derselbe Knoten, gesperrt bis zum Ergebnis; ein Klick in dieser Zeit liest nicht noch einmal
         const v = u.lauf;
