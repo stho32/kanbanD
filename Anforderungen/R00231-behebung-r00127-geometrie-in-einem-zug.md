@@ -1,6 +1,6 @@
 ---
 id: R00231
-status: Offen
+status: Erledigt
 datum: 2026-11-22
 ursprung: Bug-Report
 ursprungslauf: R00127
@@ -69,17 +69,17 @@ Ein neuer Test in `r00127-kartendetails-tabs.spec.js` (Beschreibung Touch): der 
 
 ### Bug behoben
 
-- [ ] **AK 1 Hilfe `masse`:** `masse(page, selektor)` steht in `e2e/tests/hilfen.js` und wird exportiert. Gegeben eine Probeseite mit `<div id="m" style="width:50px;height:30px">`: `masse(page, '#m')` liefert `width` 50 und `height` 30; `masse(page, '#fehlt')` liefert `null`. Die Hilfe ruft genau ein `page.evaluate` auf; `locator.evaluate`, `elementHandle` und `boundingBox()` kommen in ihr nicht vor.
-- [ ] **AK 2 Fünf Messstellen:** In r00127 messen `:312` (Kopf: `scrollWidth ≤ clientWidth`, `clientHeight ≤ max(36, --kd-ziel) + 2`), `:320` (Menü links und rechts im Bild), `:341` (Auslöser ≥ 24), `:365` (Auslöser ≥ 44) und `:371` (je Menüeintrag ≥ 44) über `masse` unter `expect.poll`. Schwellen und Meldungstexte bleiben, wie sie sind. `rechteck` und jede andere Maßlesung über `locator.evaluate`, `elementHandle` oder `boundingBox()` kommen in der Datei nicht mehr vor: die Suche `grep -nE 'rechteck|elementHandle|boundingBox|\.evaluate\(el' e2e/tests/r00127-kartendetails-tabs.spec.js` findet keine Codezeile mehr (Kommentare ausgenommen; heute trifft sie `:61`, `:312`, `:320`, `:341`, `:365`, `:371`). Liefert `masse` `null`, wird die Prüfung nicht grün.
-- [ ] **AK 3 Abnahme-Probe der Karte (wörtlich nach ADR-0026 N3):** Eine zusätzliche Variante lässt die Seite in jedem Frame neu zeichnen (`requestAnimationFrame`-Schleife mit `render()`) und misst dann den Auslöser (Touch, ≥ 44). Sie ist mit `masse` 10 von 10 Mal grün (`--repeat-each=10 --workers=1`). Mit dem alten `rechteck(locator)` ist sie 10 von 10 Mal rot. Heute: die Variante gibt es nicht; die Messart von heute ist 10 von 10 rot (Probe des architekt).
-- [ ] **AK 4 Wiederholung:** `:332` und `:356` (Zeilen am Stand nach dem Bau) sind mit `--repeat-each=20 --workers=1` 40 von 40 Mal grün, 0 flaky.
-- [ ] **AK 5 Mutanten:** jeder Mutant wird von einem benannten Test getötet, in einer eigenen Kopie, nicht im Worktree.
+- [x] **AK 1 Hilfe `masse`:** `masse(page, selektor)` steht in `e2e/tests/hilfen.js` und wird exportiert. Gegeben eine Probeseite mit `<div id="m" style="width:50px;height:30px">`: `masse(page, '#m')` liefert `width` 50 und `height` 30; `masse(page, '#fehlt')` liefert `null`. Die Hilfe ruft genau ein `page.evaluate` auf; `locator.evaluate`, `elementHandle` und `boundingBox()` kommen in ihr nicht vor.
+- [x] **AK 2 Fünf Messstellen:** In r00127 messen `:312` (Kopf: `scrollWidth ≤ clientWidth`, `clientHeight ≤ max(36, --kd-ziel) + 2`), `:320` (Menü links und rechts im Bild), `:341` (Auslöser ≥ 24), `:365` (Auslöser ≥ 44) und `:371` (je Menüeintrag ≥ 44) über `masse` unter `expect.poll`. Schwellen und Meldungstexte bleiben, wie sie sind. `rechteck` und jede andere Maßlesung über `locator.evaluate`, `elementHandle` oder `boundingBox()` kommen in der Datei nicht mehr vor: die Suche `grep -nE 'rechteck|elementHandle|boundingBox|\.evaluate\(el' e2e/tests/r00127-kartendetails-tabs.spec.js` findet keine Codezeile mehr (Kommentare ausgenommen; heute trifft sie `:61`, `:312`, `:320`, `:341`, `:365`, `:371`). Liefert `masse` `null`, wird die Prüfung nicht grün.
+- [x] **AK 3 Abnahme-Probe der Karte (wörtlich nach ADR-0026 N3):** Eine zusätzliche Variante lässt die Seite in jedem Frame neu zeichnen (`requestAnimationFrame`-Schleife mit `render()`) und misst dann den Auslöser (Touch, ≥ 44). Sie ist mit `masse` 10 von 10 Mal grün (`--repeat-each=10 --workers=1`). Mit dem alten `rechteck(locator)` ist sie 10 von 10 Mal rot. Heute: die Variante gibt es nicht; die Messart von heute ist 10 von 10 rot (Probe des architekt).
+- [x] **AK 4 Wiederholung:** `:332` und `:356` (Zeilen am Stand nach dem Bau) sind mit `--repeat-each=20 --workers=1` 40 von 40 Mal grün, 0 flaky.
+- [x] **AK 5 Mutanten:** jeder Mutant wird von einem benannten Test getötet, in einer eigenen Kopie, nicht im Worktree.
   - (m1) `masse` löst über `elementHandle` auf und misst danach → die Variante aus AK 3 rot (Mutante der Karte).
   - (m2) die Variante aus AK 3 misst mit dem alten `rechteck` → rot.
   - (m3) `masse` liefert bei fehlendem Knoten `{width: 0, height: 0, …}` statt `null` → AK 1 rot.
 
   Lässt sich ein Mutant nicht töten, meldet der entwickler das mit Begründung.
-- [ ] **AK 6 Bug-Vorlage:** Kein Produktivcode geändert (`git diff --stat` nur unter `e2e/tests/`). Keine Erwartung abgeschwächt, kein Timeout pauschal erhöht, keine `retries`, kein neues `waitForTimeout`. Alle Tests aller Ebenen grün.
+- [x] **AK 6 Bug-Vorlage:** Kein Produktivcode geändert (`git diff --stat` nur unter `e2e/tests/`). Keine Erwartung abgeschwächt, kein Timeout pauschal erhöht, keine `retries`, kein neues `waitForTimeout`. Alle Tests aller Ebenen grün.
 
 ## Implementierungshinweise
 
