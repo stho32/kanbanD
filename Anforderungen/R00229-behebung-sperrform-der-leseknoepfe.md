@@ -1,6 +1,6 @@
 ---
 id: R00229
-status: Neu
+status: Erledigt
 datum: 2026-11-21
 ursprung: Bug-Report
 ursprungslauf: R00219
@@ -77,18 +77,18 @@ AK 8 ist eine Einheitenprobe in Node: Sie liest `web/*.css`, entfernt Kommentare
 
 ### Bug behoben
 
-- [ ] **AK 1 „Neu lesen“ in „Läufe“:** Gegeben #1, Ansicht „Läufe“, Lesen gehalten, wenn der Knopf gesperrt ist, dann ist seine berechnete Schrift in hell und dunkel die Farbe von `--kd-faint`, `opacity` 1, die Fläche bleibt durchsichtig, kein Rand (Breite 0), der Zeiger ist Z, und die Schrift steht ≥ 3:1 gegen den ersten deckenden Grund (`kontrastAm`, `e2e/tests/hilfen.js:293`). Heute: `--kd-muted` (rot).
-- [ ] **AK 2 „Neu lesen“ in „Commits“ (Ergänzung des architekt):** Gegeben #4, Ansicht „Commits“, Lesen gehalten, dann gilt dasselbe wie in AK 1, hell und dunkel. Heute: `--kd-muted` (rot).
-- [ ] **AK 3 „Erneut versuchen“ in „Läufe“:** Gegeben 503 an #1 und ein gehaltenes zweites Lesen über „Erneut versuchen“, dann ist am gesperrten Knopf in hell und dunkel die Schrift die Farbe von `--kd-faint`, die Kontur (`border-color`) die von `--kd-line`, die Fläche die von `--kd-surface`, `opacity` 1, der Zeiger Z und die Schrift ≥ 3:1 gegen den ersten deckenden Grund (`kontrastAm`, `e2e/tests/hilfen.js:293`). Heute: Schrift `--kd-muted`, Kontur `--kd-line-strong` (rot).
-- [ ] **AK 4 Hover neutral:** Gegeben die gesperrten Knöpfe aus AK 1–3, wenn der Zeiger darüber steht, dann sind Schrift, Kontur und Fläche dieselben berechneten Werte wie ohne Zeiger, und keine Fläche wechselt auf `--kd-sunken`. Heute: „Erneut versuchen“ in „Läufe“ wechselt auf `--kd-sunken` (rot).
-- [ ] **AK 5 Fokusring unverändert:** Gegeben einer der Knöpfe aus AK 1–3 hat per Tab den Fokus, wenn er gesperrt wird, dann sind `outline-style`, `outline-width`, `outline-color` und `outline-offset` dieselben berechneten Werte wie am selben fokussierten Knopf im freien Zustand, hell und dunkel; `outline-style` ist `solid` und `outline-width` mindestens 2 px (R00219 AK 10, R00205 AK 10). Heute grün (Wächter).
+- [x] **AK 1 „Neu lesen“ in „Läufe“:** Gegeben #1, Ansicht „Läufe“, Lesen gehalten, wenn der Knopf gesperrt ist, dann ist seine berechnete Schrift in hell und dunkel die Farbe von `--kd-faint`, `opacity` 1, die Fläche bleibt durchsichtig, kein Rand (Breite 0), der Zeiger ist Z, und die Schrift steht ≥ 3:1 gegen den ersten deckenden Grund (`kontrastAm`, `e2e/tests/hilfen.js:293`). Heute: `--kd-muted` (rot).
+- [x] **AK 2 „Neu lesen“ in „Commits“ (Ergänzung des architekt):** Gegeben #4, Ansicht „Commits“, Lesen gehalten, dann gilt dasselbe wie in AK 1, hell und dunkel. Heute: `--kd-muted` (rot).
+- [x] **AK 3 „Erneut versuchen“ in „Läufe“:** Gegeben 503 an #1 und ein gehaltenes zweites Lesen über „Erneut versuchen“, dann ist am gesperrten Knopf in hell und dunkel die Schrift die Farbe von `--kd-faint`, die Kontur (`border-color`) die von `--kd-line`, die Fläche die von `--kd-surface`, `opacity` 1, der Zeiger Z und die Schrift ≥ 3:1 gegen den ersten deckenden Grund (`kontrastAm`, `e2e/tests/hilfen.js:293`). Heute: Schrift `--kd-muted`, Kontur `--kd-line-strong` (rot).
+- [x] **AK 4 Hover neutral:** Gegeben die gesperrten Knöpfe aus AK 1–3, wenn der Zeiger darüber steht, dann sind Schrift, Kontur und Fläche dieselben berechneten Werte wie ohne Zeiger, und keine Fläche wechselt auf `--kd-sunken`. Heute: „Erneut versuchen“ in „Läufe“ wechselt auf `--kd-sunken` (rot).
+- [x] **AK 5 Fokusring unverändert:** Gegeben einer der Knöpfe aus AK 1–3 hat per Tab den Fokus, wenn er gesperrt wird, dann sind `outline-style`, `outline-width`, `outline-color` und `outline-offset` dieselben berechneten Werte wie am selben fokussierten Knopf im freien Zustand, hell und dunkel; `outline-style` ist `solid` und `outline-width` mindestens 2 px (R00219 AK 10, R00205 AK 10). Heute grün (Wächter).
 
 ### Nichts anderes ändert sich
 
-- [ ] **AK 6 Freie Form bleibt:** Gegeben die drei Knöpfe frei, dann sind Schrift, Kontur, Fläche, Hover und Zeiger (`pointer`) dieselben berechneten Werte wie am Stand `3041b300`: „Neu lesen“ in `--kd-accent-ink`; „Erneut versuchen“ in `--kd-text` mit Kontur `--kd-line-strong` und Hover `--kd-sunken`. Heute grün (Wächter).
-- [ ] **AK 7 Laufansicht und Menüeintrag bleiben:** Gegeben die Laufansicht (R00221) mit gesperrtem „Erneut versuchen“, dann sind Schrift `--kd-faint`, Kontur `--kd-line`, Fläche `--kd-surface`, Hover neutral und Fokusring wie am Stand `3041b300`; nur der Zeiger ist Z. Ebenso behält der aktuelle Eintrag im Ansichtsmenü (`aria-disabled="true"`, kein Auslöser) seine Schrift `--kd-muted`. Heute grün (Wächter; der Zeiger der Laufansicht ist heute `default`).
-- [ ] **AK 8 Eine Regel je Komponente (ADR-0025 N5):** Gegeben `web/*.css` ohne Kommentare, dann steht keine Selektorliste mit `.cl-knopf[aria-disabled="true"]` oder `.cl-textknopf[aria-disabled="true"]` hinter einem Ansichtspräfix, kein Selektor beginnt mit `[aria-disabled="true"]`, und je Komponente gibt es eine Form für gesperrt und für gesperrt mit `:hover`. Heute rot: drei Selektoren mit Präfix (`.lf-panel .cl-knopf…`, `.lv-ganz .cl-knopf…`, `.lv-ganz .cl-knopf…:hover`), geprobt am Stand `3041b300`.
-- [ ] **AK 9 Mutanten:** Jeder Mutant wird von einem benannten Test getötet. Die Mutanten laufen in einer eigenen Kopie, nicht im Worktree.
+- [x] **AK 6 Freie Form bleibt:** Gegeben die drei Knöpfe frei, dann sind Schrift, Kontur, Fläche, Hover und Zeiger (`pointer`) dieselben berechneten Werte wie am Stand `3041b300`: „Neu lesen“ in `--kd-accent-ink`; „Erneut versuchen“ in `--kd-text` mit Kontur `--kd-line-strong` und Hover `--kd-sunken`. Heute grün (Wächter).
+- [x] **AK 7 Laufansicht und Menüeintrag bleiben:** Gegeben die Laufansicht (R00221) mit gesperrtem „Erneut versuchen“, dann sind Schrift `--kd-faint`, Kontur `--kd-line`, Fläche `--kd-surface`, Hover neutral und Fokusring wie am Stand `3041b300`; nur der Zeiger ist Z. Ebenso behält der aktuelle Eintrag im Ansichtsmenü (`aria-disabled="true"`, kein Auslöser) seine Schrift `--kd-muted`. Heute grün (Wächter; der Zeiger der Laufansicht ist heute `default`).
+- [x] **AK 8 Eine Regel je Komponente (ADR-0025 N5):** Gegeben `web/*.css` ohne Kommentare, dann steht keine Selektorliste mit `.cl-knopf[aria-disabled="true"]` oder `.cl-textknopf[aria-disabled="true"]` hinter einem Ansichtspräfix, kein Selektor beginnt mit `[aria-disabled="true"]`, und je Komponente gibt es eine Form für gesperrt und für gesperrt mit `:hover`. Heute rot: drei Selektoren mit Präfix (`.lf-panel .cl-knopf…`, `.lv-ganz .cl-knopf…`, `.lv-ganz .cl-knopf…:hover`), geprobt am Stand `3041b300`.
+- [x] **AK 9 Mutanten:** Jeder Mutant wird von einem benannten Test getötet. Die Mutanten laufen in einer eigenen Kopie, nicht im Worktree.
   - (m1) Schrift von `.cl-textknopf` gesperrt wieder `--kd-muted` → AK 1 und AK 2 rot
   - (m2) Schrift von `.cl-knopf` gesperrt wieder `--kd-muted` → AK 3 und AK 7 rot
   - (m3) Hover von `.cl-knopf` gesperrt auf `--kd-sunken` → AK 4 rot
@@ -98,7 +98,7 @@ AK 8 ist eine Einheitenprobe in Node: Sie liest `web/*.css`, entfernt Kommentare
   - (m7) `cursor:pointer` am gesperrten `.cl-textknopf` bzw. `.cl-knopf` → AK 1 bzw. AK 3 rot
 
   Lässt sich ein Mutant nicht töten, meldet der entwickler das mit Begründung.
-- [ ] **AK 10 Bug-Vorlage:** Die Reproduktionstests (AK 1–4, AK 8) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün; `r00219-ansicht-laeufe.spec.js:516` erwartet `default` statt `progress` und der Titel des Tests `:506` sagt „Zeiger default“; sonst ändert sich keine bestehende Erwartung.
+- [x] **AK 10 Bug-Vorlage:** Die Reproduktionstests (AK 1–4, AK 8) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün; `r00219-ansicht-laeufe.spec.js:516` erwartet `default` statt `progress` und der Titel des Tests `:506` sagt „Zeiger default“; sonst ändert sich keine bestehende Erwartung.
 
 ## Implementierungshinweise
 
