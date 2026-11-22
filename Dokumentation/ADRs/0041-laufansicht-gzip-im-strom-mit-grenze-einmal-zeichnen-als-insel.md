@@ -385,3 +385,109 @@ Der PO hat den Lesetext in `AI-Team/po-entscheidungen.md` Z. 576 entschieden: Ei
 - [ ] PO: Zahlform im Kopf und in der Zeile (Vorschlag: volle Zahl mit Tausenderpunkt wie im Kostenbericht, `web/ansicht.js:319`, oder Kurzform „1,2 Mio.“/„35 Tsd.“); Name der Größe in Zeile und Liste („neue Tokens“); Titel der Liste („Teuerste Schritte“); Lesetexte für „in der Antwort darüber gezählt“, „keine Angabe“ und „aus dem Transkript gezählt“; ob die Liste „nach <Schritt>“ nennt (Empfehlung: ja).
 - [ ] Gestalter: D0009 `#laufansicht` nachzeichnen: Feld „Tokens“ im Kopf neben „Kosten“, Token-Angabe in der Zeile neben der Dauer, Liste „Teuerste Schritte“ neben „Längste Schritte“. Freigabe durch den PO.
 - [ ] Director/Factory: Die Transkripte, die vor Factory-Commit `89cb890` abgelegt wurden, tragen keine `tokens`. Sie lassen sich mit dem Werkzeug aus N2 Punkt 4 neu ablegen, solange die Rohprotokolle liegen (bis etwa 2026-12-20).
+
+## Nachtrag 2026-11-22 N4: Satz der Einträge — Aufruf strukturiert und abgesetzt, Ergebnis gekürzt, Marken für Gekürztes und Systemhinweise, Pfade als Links, Edit und Write als Diff (Karte #261)
+
+**Status bleibt `Akzeptiert`.** Karte #261 (Auftrag des Betreibers vom 2026-11-22, „Es ist noch schwer lesbar“, mit der Ergänzung im Kommentar des Directors 12:33) will, dass sich ein Lauf wie ein gesetztes Protokoll liest. Alles Neue betrifft **nur den Satz** der Einträge in der Insel. Lesen, Grenzen, Auswertung, Format (PO Z. 371 mit N2), Server und OpenAPI bleiben, wie sie sind. Punkte 1–7 und N1–N3 gelten weiter. Gebaut wird nach #253 (N3 Punkt 6).
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #261, Lauf 261-architekt-1)
+**Erprobt durch**: Zählung über alle 89 Transkripte des Factory-Boards (7.313 Einträge, nur gelesen, 2026-11-22 16:53) und eine Messprobe in Node 20 (Last 4,2–5,0 bei 8 Kernen, `nice -n 10`), beides mit Wegwerf-Skripten in der Ablage der Factory `gemeinsam/scratchpad/arch-261/`. Der Satz ist dort als Prototyp gebaut (nur Stringbau, ohne DOM), nicht im Code.
+
+### Belegt
+
+- **Code (Stand `d2762e46`)**:
+  - Nachrichten laufen schon durch `markdownHtml` (`nachrichtTextHtml`, `web/lauf.js:258`). Wunsch 6 des Kommentars ist also seit #251 gebaut. Es fehlen nur Pfade als Links.
+  - Systemhinweise sind eingeklappt, aber nur als **ganze Nachricht**, die mit `<system-reminder>` beginnt (`eingeklapptFinden`, `:562`). In Ergebnissen bleiben sie Text.
+  - Aufgeklappt stehen Aufruf und Ergebnis als zwei `pre` mit den Wörtern „Aufruf“ und „Ergebnis“ (`schrittHtml`, `:285`). Der Aufruf ist dabei roher JSON-Text in einer Zeile.
+  - `markdownInline` verlinkt nackte `http(s)`-Adressen, aber keine Pfade. Inline-Code wird vor allem anderen geschützt (`web/markdown.js:83`). Ein Pfad in Backticks kann also heute nie ein Link werden.
+  - `vscodeLink(wurzel, pfad, zeile)` mit Kodierung je Pfadteil und die Regel „kein Link, wenn das Sichtbarmachen den Pfad ändert“ gibt es schon (`web/review-uebersicht.js:99–106`, `:136–141`; R00236 FA 4–6). `web/ansicht.js:392` ist das ältere Muster nur mit `esc`. R00236 AK 4 hat es als Mutanten verworfen.
+  - Die Syntaxfarben laufen über Prism im Worker mit Frist und zweistufigem Zeichnen (ADR-0040). Wiederverwendbar ohne diese Mechanik sind die sieben Rollen und ihre Farben `--kd-tk-*` (`web/kd-tokens.css:59`, `:97`, `:134`). Die Klassen `.tk-*` gelten heute nur unter `.dz .c` (`web/kd-app.css:1582`).
+  - PO Z. 494: „Name und Werkzeugtext ergeben nie einen Link … Die Ausgaben der Werkzeuge bleiben ohnehin Text.“
+- **Zählung (89 Transkripte)**:
+  - 3.459 Aufrufe, **alle** mit einem JSON-Objekt als Text und keiner mit einem verschachtelten Wert. Bash ist mit 2.887 (83 %) der Löwenanteil, dann Read 211, Write 28, Edit 7, sonst MCP-Werkzeuge mit flachen Feldern.
+  - **151 Ergebnisse (4,4 %) sind `<persisted-output>`** in genau einer Form: `Output too large (<Größe>). Full output saved to: <Pfad>`, Leerzeile, `Preview (first 2KB):`, Vorschau. In 3 davon steht ein `Exit code` ≠ 0 in der Vorschau, und `fehlerErkennen` sieht ihn heute nicht, denn die erste Zeile ist `<persisted-output>`.
+  - **49 Ergebnisse tragen `<system-reminder>`**, 47 davon nicht am Ende des Texts.
+  - 1.339 Ergebnisse (39 %) haben mehr als 20 Zeilen. 210 enthalten eine Schlusszeile eines Testlaufs (`\d+ passed|failed`, `test result:`).
+  - 96 von 395 Nachrichten nennen einen absoluten Pfad.
+- **Messprobe (Node, nur Stringbau)**:
+
+  | Stand | Zeilen | Text | `laufHtml` heute | Satz neu (Prototyp, zusätzlich) |
+  |---|---|---|---|---|
+  | größter echter Lauf | 381 | 0,7 MB | 35–46 ms | 9–14 ms |
+  | echte Läufe aneinandergehängt bis zur Grenze von 16 MiB | 7.166 | 14,7 MB | 591 ms | 233 ms |
+
+  Der Prototyp ersetzt die heutigen `pre` des Aufrufs und des Ergebnisses. Was an DOM und Layout dazukommt, misst erst der Bau (Punkt 9).
+
+### Optionen
+
+**Wo und wann gesetzt wird**
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **E1 — eifrig im HTML der Insel, einmal je Lesen, mit festen Grenzen je Eintrag** (gewählt) | Ein Weg wie heute (Punkt 5). Strg+F findet alles, auch in zugeklappten `details` (Chromium klappt sie bei einem Treffer auf; aus dem Gedächtnis, nicht geprobt, die E2E-Probe nimmt `textContent`). Deterministisch und in Node testbar. Gemessen +40 % Stringbau an der Grenze, +14 ms beim größten echten Lauf | Das HTML wächst mit jeder neuen Marke. Ohne Grenze wäre eine einzelne riesige Eingabe (Write mit 8 MB) teuer |
+| E2 — träge beim ersten Aufklappen (`toggle`), aus dem gemerkten Eintrag | Kosten nur für Geöffnetes | Strg+F findet Zugeklapptes nicht mehr (dasselbe Argument wie gegen Z3). Eine zweite Quelle für den Inhalt der Insel neben dem einmal gesetzten HTML |
+| E3 — Prism-Worker (ADR-0040) auch für die Laufansicht | dieselbe Färbung wie im Review, auch für Code in Edit und Write | Zweistufiges Zeichnen mit Frist widerspricht „einmal zeichnen“ (Punkt 4). JSON braucht keinen Tokenizer, denn `JSON.parse` liefert die Struktur schon |
+
+**Woher die Marken für lange Pfade kommen** (Wunsch 2 des Kommentars)
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **M1 — aus dem Auftrag gelesen** (erste Nachricht von `mensch`, N1 Punkt 5): die Zeilen mit `Projekt:`, `Arbeitsort:` und `Ablage:` und einem absoluten Pfad (gewählt) | Keine neue Angabe im Format, kein Server. Liefert genau die drei Wurzeln aus dem Wunsch. Es ist dieselbe Art „erkannte Form“ wie `Ergebnis:` und `<system-reminder>` (N1) | kanbanD liest Schlüssel eines Erzeugers. Ein anderer Erzeuger ergibt keine Marken, dann stehen die Pfade voll da |
+| M2 — neues optionales Feld im Format (etwa eine Kopfzeile mit Wurzeln) | neutral und genau | Format und Factory ändern sich zugleich. Alte Transkripte haben keine Marken |
+| M3 — aus dem Bestand des Boards (`S.zustand.ordner`, Wurzeln der Anwendungen) | kein Text des Erzeugers | Der Browser kennt die Wurzeln der Anwendungen nur aus `GET …/diff`. Worktree und Ablage kennt kanbanD gar nicht |
+
+### Entscheidung
+
+**Gewählt: E1 und M1.** In Kauf genommen: Marken, Systemhinweise, gekürzte Ausgaben und Testzeilen werden an Formen erkannt, die Claude Code und die Factory heute schreiben. Andere Erzeuger fallen auf den heutigen Satz zurück. Code in Edit und Write bleibt ohne Syntaxfarben.
+
+1. **Ort**: Ein neues reines Modul **`web/lauf-satz.js`** (Browser und Node, wie `web/lauf.js`) setzt den aufgeklappten Teil einer Schrittzeile und die Marken: `aufrufSatz`, `ergebnisSatz`, `shellUmbruch`, `jsonHtml`, `editDiff`, `gekuerztErkennen`, `systemhinweiseTrennen`, `testzeileFinden`, `pfadMarken`, `pfadLinkHtml`. `web/lauf.js` ruft es aus `schrittHtml` und `nachrichtHtml` auf. Lesen und Auswerten bleiben in `web/lauf.js`. Grund: `web/lauf.js` hat 861 Zeilen, und der Satz ist ein eigenes Unterthema. `web/app.js` ändert sich nicht.
+2. **Aufruf** (Wünsche 3, 4, 8):
+   - Aufgeklappt steht der Aufruf **in einem eigenen Block mit Fläche und Rahmen** und das Ergebnis abgesetzt darunter, beides in derselben Zeile (Wunsch 8). Das ist reine Gestaltung, D0009.
+   - **Bash** (`command` als Text): ein Shell-Block in Festbreite mit Umbruch. `description` steht nicht noch einmal darin, sie steht schon als Absicht in der Zusammenfassung (N1 Punkt 3). Weitere Felder (`timeout`, `run_in_background`) stehen darunter als „Schlüssel: Wert“.
+   - **`shellUmbruch`**: Ein Zeilenumbruch kommt **nach** `&&`, `||` und `;`, wenn der Operator auf oberster Ebene steht. Er kommt nie innerhalb von `'…'`, `"…"`, `$(…)` oder Backticks, nie nach `\`, nie bei `;;`, nie hinter einem `#`, das ein Wort beginnt (Kommentar bis Zeilenende), und nie mehr hinter dem ersten `<<` (Heredoc, der Rest bleibt wie er ist). Eingefügt wird nur `\n`, ohne Einrückung. Darum bleibt ein kopierter Block ausführbar und bedeutet dasselbe. Ein Durchlauf, O(n).
+   - **Andere Werkzeuge mit flachem Objekt**: Die Felder stehen als „Schlüssel: Wert“ in der Reihenfolge des Objekts. Ein Wert mit `\n` steht als Block in Festbreite. Ein Pfadfeld (Punkt 5) ist ein Link.
+   - **Rückfall, nur wenn nötig**: Ist der Text kein Objekt oder trägt er einen verschachtelten Wert, steht er als **formatiertes JSON** (zwei Leerzeichen Einzug). Gefärbt wird mit den Rollen aus ADR-0037 Punkt 5: Schlüssel, Text, Zahl, `true`/`false`/`null`. Welche Rolle der Schlüssel bekommt, entscheidet die Gestaltung. Der Satz entsteht aus dem Ergebnis von `JSON.parse`, ohne Tokenizer und ohne Worker. Kein JSON → der Text wie heute.
+   - **Edit und Write als Diff** (Kommentar Punkt 1): Edit zeigt `old_string` als entfernte und `new_string` als hinzugefügte Zeilen. Gleiche Zeilen am Anfang und am Ende stehen als Kontext, es gibt kein LCS (O(n)). Write zeigt `content` ganz als hinzugefügt. Farben und Marken `−`/`+` wie auf der Review-Seite (`--kd-c-red`, `--kd-c-green`), ohne Syntaxfarben. `replace_all: true` steht als Feld darunter.
+   - Was „Schlüssel: Wert“, Diff und Shell-Block zeigen, sind **dieselben Zeichen** wie im Text des Aufrufs, durch `sichtbarHtml` bzw. `esc`. Das Zeichenbudget bleibt, wie es ist: Der Aufruf wird einmal ganz gebucht (`zeichenBuchen`). Reicht das Budget nicht für den ganzen Aufruf (`rest > 0`), steht er wie heute als `pre`.
+3. **Ergebnis** (Wünsche 4, 5, 7, 9):
+   - Das Ergebnis steht in Festbreite und behält seine Umbrüche, **nie Markdown** (R00221 FA 10, PO Z. 494). Ein JSON-Objekt als Ergebnis wird formatiert wie der Rückfall in Punkt 2.
+   - **Kürzung**: Die ersten **20 Zeilen** stehen offen. Der Rest steht in einem eingebetteten `details` mit „weitere <n> Zeilen“ (Wortlaut PO). Er ist im DOM, Strg+F findet ihn, und das Aufklappen ist reiner DOM-Zustand der Insel (Punkt 5).
+   - **Testzeile**: `testzeileFinden` sucht nur in den **letzten 20 Zeilen** nach der letzten Zeile in einer der Formen `<n> passed`, `<n> failed`, `test result: ok|FAILED. <n> passed; <n> failed`, `# pass <n>`, `# fail <n>`. Diese Zeile steht zusätzlich über der Kürzung hervorgehoben: Fehler-Ton, wenn eine Zahl der Fehlschläge > 0 ist, sonst Erfolg-Ton.
+   - **`<persisted-output>`**: `gekuerztErkennen` erkennt einen Text, der nach führendem Leerraum mit `<persisted-output>` beginnt. Er liest Größe und Pfad aus `Output too large (<Größe>). Full output saved to: <Pfad>` und als Vorschau den Teil nach `Preview (…):` bis `</persisted-output>`. Die Zeile trägt dann die Marke „von Claude Code gekürzt“ mit Größe und dem Pfad als Link (Punkt 5). Darunter steht die Vorschau, gesetzt wie ein Ergebnis. Wortlaut PO. Passt das Innere nicht zur Form, steht nur die Marke ohne Pfad und darunter der Text wie heute.
+   - **Fehler in gekürzter Ausgabe**: `fehlerErkennen` (N1 Punkt 4) prüft bei einem erkannten `<persisted-output>` die erste Zeile der Vorschau statt der des Texts. Das ändert die Zahl der Fehler im Kopf bei den 3 gezählten Fällen von 0 auf 1. Die Regel „nur der Anfang, nie eine Suche nach ‚error‘“ bleibt.
+   - **Systemhinweise mitten im Text**: `systemhinweiseTrennen` schneidet jeden Block `<system-reminder>…</system-reminder>` aus Ergebnis und Nachricht und setzt ihn an seiner Stelle als eingeklapptes `details` „Systemhinweis“ (wie N1 Punkt 5). Ein Block ohne Ende reicht bis zum Ende des Texts. Der Filter „Systemhinweise“ aus #253 blendet diese eingebetteten Hinweise über dieselbe Klasse aus (CSS an der Wurzel der Insel, N1 Punkt 2).
+4. **„Längste Schritte“ mit der Absicht** (Kommentar Punkt 3): `laengsteListe` beschriftet einen Schritt mit seiner Absicht (`description`) und setzt den Befehl gekürzt und gedämpft darunter. Ohne Absicht steht der Befehl allein wie heute. Das läuft über die eine Listenfunktion `schrittListeHtml` (N3 Punkt 6) und gilt für „Teuerste Schritte“ ebenso, wenn die Antwort einen Aufruf mit Absicht hat.
+5. **Pfade als Links** (Wünsche 1, 3, Kommentar Punkt 1):
+   - Ein Link entsteht **nur** über `vscodeLink` (`web/review-uebersicht.js`), also als `vscode://file` + Pfad mit `encodeURIComponent` je Teil, mit `:<zeile>` nur, wenn es eine Zeile gibt. Wie R00236 FA 6 gibt es keinen Link, wenn `sichtbarTeile` den Pfad ändern würde (Bidi- und Steuerzeichen). Das Muster `web/ansicht.js:392` (nur `esc`) wird nicht übernommen.
+   - **In Nachrichten**: `markdownInline` bekommt eine Option `pfade` (Vorgabe aus). Nur `web/lauf.js` setzt sie, Beschreibung und Kommentare bleiben unverändert (ADR-0030 Punkt 7: ein Kern, die Form schaltet der Aufrufer ein). Verlinkt werden absolute Pfade (`/…` mit mindestens zwei Teilen) und relative Pfade mit mindestens einem `/` und einer Endung, ohne `..`, nur wenn die Marke „Arbeitsort“ (Punkt 6) bekannt ist. Relative Pfade gelten dann gegen diese Wurzel. Beide auch mit `:<zeile>`. Ist der **ganze Inhalt eines Inline-Codes** ein solcher Pfad, wird der Code in den Link gesetzt (`<a><code>…</code></a>`), sonst bleibt Code Code (ADR-0030 Punkt 5). Gesucht wird in einem Durchlauf, linear (ADR-0030 Punkt 9).
+   - **In Aufrufen**: Nur das Feld `file_path` (auch `notebook_path`) von Read, Edit, Write, NotebookEdit wird ein Link. Read mit `offset` springt an diese Zeile. Edit springt an die erste Zeilennummer im Ergebnis, wenn das Ergebnis die Form von `cat -n` trägt (`^\s*\d+` und Tabulator oder `→`), sonst ohne Zeile. Write ohne Zeile. Pfade in `command` und in Ergebnissen werden **kein** Link. Ausnahme ist der Pfad aus `<persisted-output>`, denn er ist eine Angabe von Claude Code und keine Ausgabe des Werkzeugs. Damit bleibt PO Z. 494 („Ausgaben der Werkzeuge bleiben Text“) bestehen. Die beiden Ausnahmen bestätigt der PO.
+   - **Nie in der Zusammenfassung**: `summary` ist selbst ein Bedienelement, ein Link darin wäre verschachtelt (wie ADR-0030 Punkt 8). Links stehen nur im aufgeklappten Teil und in Nachrichten.
+6. **Marken für lange Pfade** (Kommentar Punkt 2, M1):
+   - `pfadMarken(auftrag)` liest aus dem Text der ersten Nachricht von `mensch` (N1 Punkt 5) die Teile `Projekt: <abs. Pfad>`, `Arbeitsort: … <abs. Pfad>` und `Ablage: <abs. Pfad>` (je Zeile, auch mehrere durch `·` getrennt; Satzzeichen am Ende des Pfads fallen weg). Daraus werden ‹<letzter Teil des Projektpfads>›, ‹Worktree #<n>› (wenn der Pfad auf `karte-<n>` endet, sonst ‹Arbeitsort›) und ‹Ablage›. Wortlaut der Marken: PO.
+   - Ein Pfad, der mit einer Wurzel beginnt (der längste Treffer gewinnt, nur an einer Grenze `/`), wird als Marke + Rest gezeigt. Der **volle Pfad** steht im `title` und ist das, was **kopiert** wird. Die Marke ist erzeugter Inhalt (`::before` mit `content: attr(…)`), der volle Anfang steht als visuell verborgener Text im DOM. Strg+F findet dann den vollen Pfad, und der Bildschirmleser liest ihn. Der Link zielt immer auf den vollen Pfad.
+   - Marken gelten in Nachrichten, im Aufruf (auch in `command` als Text, ohne Link), in der Zusammenfassung und im Pfad aus `<persisted-output>`. In Ergebnissen gelten sie nicht, dort bleibt der Text, wie er ist.
+   - Ohne erkannte Zeile gibt es keine Marken, und Pfade stehen voll da.
+7. **Grenzen je Eintrag (E1)**: Feste Grenzen halten den schlechtesten Fall klein, ohne Zeitmessung (wie ADR-0037 L2). „Schlüssel: Wert“, JSON-Satz und Diff nur, wenn der Text des Aufrufs höchstens **64 KiB** und höchstens **2.000 Zeilen** hat. `shellUmbruch` nur, wenn `command` höchstens **16 KiB** hat. Die Pfadsuche in Nachrichten nur bis zum Budget, das `markdownHtml` ohnehin hat. Darüber steht der Eintrag wie heute als `pre`. Die Zahlen sind Konstanten in `web/lauf-satz.js` und stehen nicht in der Oberfläche.
+8. **Leistung**: Gesetzt wird einmal je Lesen beim Bau des HTML der Insel. Bei Live, Filter und Blättern wird nichts neu gesetzt (N1 Punkt 6). `JSON.parse` je Aufruf läuft höchstens zweimal, einmal in der Auswertung (`kurzbefehl`) und einmal im Satz. Ziel bleibt Q5 (< 300 ms für den größten echten Lauf) und an der Grenze ≈ 1–1,5 s (Punkt 7).
+9. **Messung im Bau** (Beobachtung im Bericht, nicht im Gate, wie Punkt 7): Zeit von der Antwort bis zum gezeichneten Bild für den größten echten Lauf und für eine Datei an der Grenze, je **vor und nach** #261. Liegt der Anstieg an der Grenze über 50 %, kommt die Frage an den architekten zurück (Rückfalloption E2 nur für die Kürzung „weitere n Zeilen“).
+
+### Durchsetzung
+
+- Node-Tests `web/lauf-satz.js` (`e2e/einheit/`):
+  - `shellUmbruch`: `a && b; c` ergibt drei Zeilen. Unverändert bleiben `echo "a && b"`, `echo 'x;y'`, `$(a; b)`, `a \&& b`, `case x in a) ;; esac`, `echo a # b; c` und alles hinter `cat <<EOF`. Der Mutant „Umbruch auch in Anführungszeichen“ ist rot.
+  - `editDiff`: Präfix und Suffix als Kontext, leeres `old_string`, gleiche Texte.
+  - `gekuerztErkennen`: die echte Form, Größe in KB und MB, eine fremde Form ohne Pfad, kein `<persisted-output>` am Anfang; `fehlerErkennen` mit `Exit code 1` als erster Zeile der Vorschau.
+  - `systemhinweiseTrennen`: zwei Blöcke mitten im Text, ein Block ohne Ende.
+  - `testzeileFinden`: `2448 passed`, `1 failed, 3 passed`, `test result: FAILED. 3 passed; 1 failed`, eine Testzeile vor den letzten 20 Zeilen wird nicht gefunden.
+  - `pfadMarken`: der Kopf eines echten Auftrags, längster Treffer, `/a/bc` ist kein Treffer für die Wurzel `/a/b`.
+  - Pfad-Links: Kodierung wie R00236 AK 4 (`a/b?c#d%e:12.rs`), U+202E im Pfad ergibt keinen Link, `..` ergibt keinen, ohne Arbeitsort ergibt ein relativer Pfad keinen, ein Pfad in Inline-Code mit Text daneben bleibt Code ohne Link. In der Zusammenfassung steht kein `<a`.
+  - Grenzen: Aufruf mit 64 KiB + 1 Byte und mit 2.001 Zeilen steht als `pre`. Ein Aufruf über dem Zeichenbudget steht als `pre`.
+- `markdownInline` ohne Option `pfade` liefert für alle bestehenden Tests dasselbe HTML (Wächter: Beschreibung und Kommentare unverändert).
+- E2E: Edit als Diff mit Link auf `vscode://file…`; ein `<persisted-output>` trägt die Marke und den Link; „weitere n Zeilen“ klappt auf, und die Insel bleibt (`el.__probe`); der Filter „Systemhinweise“ blendet einen eingebetteten Hinweis aus; Strg+F-Ersatz: `document.body.innerText` bzw. `textContent` der Insel enthält den vollen Pfad hinter einer Marke.
+- Review-Punkt `security-reviewer`: Jeder Link der Insel beginnt mit `vscode://file/`, `http://`, `https://` oder `mailto:` und entsteht nur über `vscodeLink` oder `markdownInline`. Kein Text aus Aufruf oder Ergebnis geht an `esc`/`sichtbarHtml` vorbei ins HTML. Kein Link steht in `summary`.
+- Review-Punkt `architektur-reviewer`: Der Satz liegt nur in `web/lauf-satz.js`, Lesen und Auswerten nur in `web/lauf.js`. `grep -c "laufAuswerten(" web/app.js` bleibt 1. Die Grenzen aus Punkt 7 sind Konstanten.
+
+### Folgeaufgaben
+
+- [ ] PO: Zuschnitt (Vorschlag: zwei Scheiben, siehe unten); Wortlaute für die Marke „gekürzt“, für „weitere n Zeilen“, für die Pfad-Marken und für „Systemhinweis“ im Ergebnis; Bestätigung der zwei Link-Ausnahmen zu Z. 494 (Pfadfeld des Aufrufs, Pfad aus `<persisted-output>`); Kürzung auch für Write und große Diffs; Testzeile oben oder an ihrer Stelle.
+- [ ] Gestalter: D0009 `#laufansicht` nachzeichnen. Aufruf als abgesetzter Block, Shell-Block, „Schlüssel: Wert“, JSON-Rückfall mit Rollenfarben, Diff für Edit und Write, Marke „gekürzt“, „weitere n Zeilen“, Testzeile, eingebetteter Systemhinweis, Pfad-Marke mit Tooltip, „Längste Schritte“ zweizeilig. Freigabe durch den PO.
+- [ ] Planer, Vorschlag **zwei Scheiben** nach #253. **C1 „Satz“**: Punkte 2 (ohne Pfad-Links), 3, 4, 7. **C2 „Pfade“**: Punkte 5 und 6 sowie die Links in Edit/Write/Read und aus `<persisted-output>`. C2 braucht C1, denn beide ändern `schrittHtml`. Grund: C2 trägt alle neuen Links aus fremdem Text und die Erkennung des Auftrags. Das ist der Teil mit Sicherheitsbezug, und er bekommt so eine eigene Prüfung.
