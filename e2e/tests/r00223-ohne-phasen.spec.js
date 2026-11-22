@@ -381,4 +381,54 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
     await page.evaluate(() => { const los = () => { render(); requestAnimationFrame(los); }; requestAnimationFrame(los); });
     await fieberLesen(page, 'bei Neuzeichnen in jedem Frame');
   });
+
+  test('R00232 AK 14: Tabellenansicht von Wie lange noch rollt nur im Rahmen „Prognose je Tag“ — Dokument und .body.bericht ohne Querscrollen, Rahmen per Tab erreichbar', async ({ page }) => {
+    test.setTimeout(90000);
+    k = await kanbanStarten(ausgangslage(R));
+    await vorbereiten(page);
+    const funde = [];
+    for (const slug of ['entwicklung', 'breit']) {
+      await bericht(page, k, slug, 'prognose');
+      for (const breite of BREITEN) {
+        await breiteSetzen(page, breite);
+        await bereit(page);
+        const m = await prognoseTabelleMessen(page);
+        expect(m, `${slug} ${breite}: Tabellenansicht vorhanden`).not.toBeNull();
+        for (const wo of ['dokument', 'bericht']) if (m[wo][0] > m[wo][1]) funde.push(`${slug} ${breite} ${wo}: ${m[wo][0]} > ${m[wo][1]}`);
+        expect.soft(m.rahmen, `${slug} ${breite}: Rahmen um die Tabelle`).toEqual({ beschriftung: 'Prognose je Tag', tabindex: '0', mitTabelle: true, masse: expect.any(Array) });
+        // Positivprobe: bei 375 px ist die Tabelle breiter als die Seite — quer rollt dann der Rahmen, nicht die Seite
+        if (breite === 375 && m.rahmen) expect(m.rahmen.masse[0], `${slug} 375: der Rahmen rollt quer`).toBeGreaterThan(m.rahmen.masse[1]);
+      }
+      expect.soft(funde.filter(f => f.startsWith(slug)), `${slug}: kein Querscrollen von Dokument und .body.bericht`).toEqual([]);
+      // Tastatur: vom Kopf der Tabellenansicht führt Tab in den Rahmen, die Rolle trägt die Beschriftung
+      await breiteSetzen(page, 375);
+      await bereit(page);
+      const kopf = page.locator('#main details.tabellenansicht > summary');
+      await kopf.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('#main details.tabellenansicht')).toHaveAttribute('open', '');
+      await page.keyboard.press('Tab');
+      await expect(page.getByRole('group', { name: 'Prognose je Tag' }), `${slug}: Rahmen hat den Fokus`).toBeFocused();
+      await breiteSetzen(page, 1280);
+    }
+    expect(funde).toEqual([]);
+  });
 });
+
+// ---- Testsprache für R00232 AK 14 (am Ende, damit die Zeilen der bestehenden Testfälle bleiben) ---------------------
+/** R00232 AK 14 an „Wie lange noch“: Tabellenansicht offen, im selben Aufruf gemessen (ADR-0026 N4 Regel 9) — Dokument und
+ *  `.body.bericht` je `scrollWidth`/`clientWidth`, dazu der Rahmen um die Tabelle (Beschriftung, Tab-Halt, eigene Breiten). */
+async function prognoseTabelleMessen(page) {
+  return page.evaluate(() => {
+    const box = document.querySelector('#main details.tabellenansicht');
+    if (!box) return null;
+    box.open = true;
+    const masse = e => e ? [e.scrollWidth, e.clientWidth] : null;
+    const rahmen = box.querySelector(':scope > .bericht-rahmen');
+    return {
+      dokument: masse(document.documentElement),
+      bericht: masse(document.querySelector('#main .body.bericht')),
+      rahmen: rahmen && { beschriftung: rahmen.getAttribute('aria-label'), tabindex: rahmen.getAttribute('tabindex'), mitTabelle: !!rahmen.querySelector(':scope > table'), masse: masse(rahmen) },
+    };
+  });
+}
