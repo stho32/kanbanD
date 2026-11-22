@@ -254,7 +254,8 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     const name5 = await axName(5);
     expect(name5.startsWith('Bash')).toBe(true);
     expect(name5).toContain('Fehler: Exit code 1');
-    expect(name5.endsWith('1 s')).toBe(true);
+    // R00238: hinter der Dauer liest sich die Token-Angabe (T1 ohne tokens: „Tokens unbekannt“)
+    expect(name5).toMatch(/1 s\s*Tokens unbekannt$/);
     const name8 = await axName(8);
     expect(name8).toContain('Fehler: ');
     expect(name8).toContain('File does not exist.');

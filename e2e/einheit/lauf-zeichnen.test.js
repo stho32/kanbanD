@@ -367,8 +367,9 @@ test('AK 5: Nr 5 ohne Absicht ohne Platzhalter; Nr 7 und 8 parallel mit 2 s und 
 });
 
 test('AK 6: Fehlerzeilen Nr 5 und Nr 8 rot mit Warnzeichen aria-hidden und Lesetext „Fehler: “ vor dem Kürzel; Nr 3 und Nr 11 nicht', () => {
-  assert.strictEqual(summaryName(liVon('lv-s5')), 'Bashgrep -n kd-muted web/laeufe.jsFehler: Exit code 11 s');
-  assert.strictEqual(summaryName(liVon('lv-s8')), 'Readparallelb.mdFehler: &lt;tool_use_error&gt;File does not exist.&lt;/tool_use_error&gt;3 s');
+  // R00238: hinter der Dauer liest sich die Token-Angabe (ohne tokens im Transkript „Tokens unbekannt“)
+  assert.strictEqual(summaryName(liVon('lv-s5')), 'Bashgrep -n kd-muted web/laeufe.jsFehler: Exit code 11 sTokens unbekannt');
+  assert.strictEqual(summaryName(liVon('lv-s8')), 'Readparallelb.mdFehler: &lt;tool_use_error&gt;File does not exist.&lt;/tool_use_error&gt;3 sTokens unbekannt');
   for (const id of ['lv-s5', 'lv-s8']) {
     assert.match(liVon(id), /<details class="lv-s fehl/);
     assert.match(liVon(id), /<span class="eg"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">[\s\S]*?<\/svg><span class="vh">Fehler: <\/span>/);
@@ -424,4 +425,58 @@ test('AK 9: Längste Schritte von T1 — drei Knöpfe der Reihe nach, je mit Zie
   assert.strictEqual(laufTopHtml({ ...t1, top3: [] }, esc), '');
   const schritt = laufTopHtml({ ...t1, top3: [{ art: 'werkzeug', nr: 7, schritt: true, dauer: 2500, was: 'Read <a.md>' }] }, esc);
   assert.match(schritt, /data-arg="lv-s7"><span class="was">Read &lt;a.md&gt;<\/span><span class="d">2 s<\/span>/);
+});
+
+/* ── R00238 B1241: Token-Angabe je Zeile, vier Werte aufgeklappt und unter der Nachricht (FA 6, FA 7; N3 Punkt 3, N3.1) ── */
+
+const t8Li = eintraegeVon(laufHtml(T8_ZEILEN, false, esc, t8));
+const t8Von = id => t8Li.find(li => li.startsWith(`<li id="${id}"`));
+const angabeVon = li => (/<span class="tk">([\s\S]*?)<\/span>(?=<\/div>|<\/summary>)/.exec(li) || [null, null])[1];
+
+test('R00238 AK 4: T8 — neue Tokens an den Trägern 2, 5, 7, 12; gekürzt mit Lesefassung, 451 nur einmal', () => {
+  assert.deepStrictEqual(['lv-s2', 'lv-s5', 'lv-s7', 'lv-s12'].map(id => [sichtbar(angabeVon(t8Von(id))), vorgelesen(angabeVon(t8Von(id)))]), [
+    ['18 Tsd. neue Tokens', '18 Tausend neue Tokens'], ['35 Tsd. neue Tokens', '35 Tausend neue Tokens'], ['451 neue Tokens', '451 neue Tokens'], ['61 Tsd. neue Tokens', '61 Tausend neue Tokens']]);
+  assert.match(t8Von('lv-s2'), /<div class="lv-wer"><span>Agent<\/span><span class="mono">10:00:05<\/span><span class="tk">/, 'an der Nachricht rechts in der Kopfzeile');
+});
+
+test('R00238 AK 4: T8 — Nr 3 verweist auf die Antwort darüber, Nr 9 „Tokens unbekannt“; Nr 1, 11, Wartezeile und Ergebnisse ohne Angabe', () => {
+  assert.deepStrictEqual([sichtbar(angabeVon(t8Von('lv-s3'))), vorgelesen(angabeVon(t8Von('lv-s3')))], ['–', 'Tokens in der Antwort darüber gezählt']);
+  assert.deepStrictEqual([sichtbar(angabeVon(t8Von('lv-s9'))), vorgelesen(angabeVon(t8Von('lv-s9')))], ['–', 'Tokens unbekannt']);
+  for (const id of ['lv-s1', 'lv-s11', 'lv-s11-vor']) assert.doesNotMatch(t8Von(id), /class="tk"/, id);
+  assert.strictEqual(t8Li.filter(li => li.includes('class="tk"')).length, 6, 'genau die sechs Zeilen von agent');
+  assert.doesNotMatch(t8Li.join(''), /aria-label/);
+});
+
+test('R00238 AK 4: in der Werkzeugzeile steht die Angabe nach der Dauer (DOM wie bei 641–980 px untereinander)', () => {
+  assert.match(t8Von('lv-s5'), /<span class="du"><span>1 s<\/span>[\s\S]*?<\/span><span class="tk">[\s\S]*?<\/span><\/summary>/);
+});
+
+test('R00238 AK 4: aufgeklappt vor „Aufruf“ die Überschrift „Tokens“ mit den vier Werten voll, nur am Träger', () => {
+  const ganz = /<div class="lv-s-ganz">([\s\S]*?)<\/div>/.exec(t8Von('lv-s5'))[1];
+  assert.match(ganz, /^<span class="k">Tokens<\/span><p class="lv-tk4">[\s\S]*?<\/p><span class="k">Aufruf<\/span>/);
+  const werte = /<p class="lv-tk4">([\s\S]*?)<\/p>/.exec(ganz)[1];
+  assert.strictEqual(sichtbar(werte), 'Eingabe 1 · Cache-Schreiben 34.800 · Ausgabe 300 · Cache-Lesen 18.000');
+  assert.strictEqual(vorgelesen(werte), 'Eingabe 1, Cache-Schreiben 34.800, Ausgabe 300, Cache-Lesen 18.000');
+  for (const id of ['lv-s3', 'lv-s9']) assert.doesNotMatch(t8Von(id), /lv-tk4/, id);
+});
+
+test('R00238 AK 5: unter einer Nachricht von agent mit tokens immer die Zeile „Tokens“ mit vier Werten, außerhalb jeder Klappe', () => {
+  const zeile = li => /<p class="lv-tokens">([\s\S]*?)<\/p>/.exec(li);
+  assert.strictEqual(sichtbar(zeile(t8Von('lv-s2'))[1]), 'Tokens Eingabe 3 · Cache-Schreiben 18.000 · Ausgabe 120 · Cache-Lesen 0');
+  assert.strictEqual(vorgelesen(zeile(t8Von('lv-s2'))[1]), 'Tokens Eingabe 3, Cache-Schreiben 18.000, Ausgabe 120, Cache-Lesen 0');
+  assert.strictEqual(sichtbar(zeile(t8Von('lv-s12'))[1]), 'Tokens Eingabe 2 · Cache-Schreiben 60.000 · Ausgabe 1.500 · Cache-Lesen 53.200');
+  assert.match(t8Von('lv-s2'), /<div class="lv-text">[\s\S]*<\/div><p class="lv-tokens">/, 'unter dem Text');
+  assert.doesNotMatch(t8Von('lv-s2'), /<details/, 'ohne Aufklappen');
+  for (const id of ['lv-s1', 'lv-s11', 'lv-s5', 'lv-s7']) assert.doesNotMatch(t8Von(id), /lv-tokens/, id);
+  const zweite = eintraegeVon(laufHtml([e(1, 'nachricht', 'agent', 'a', { tokens: { ein: 1, aus: 0, cache_lesen: 0, cache_schreiben: 0 } }), e(2, 'nachricht', 'agent', 'b', { tokens: null })], false, esc));
+  assert.match(zweite[0], /lv-tokens/);
+  assert.doesNotMatch(zweite[1], /lv-tokens/, 'eine Nachricht ohne eigenes tokens als zweite in einer Antwort');
+  assert.strictEqual(vorgelesen(angabeVon(zweite[1])), 'Tokens in der Antwort darüber gezählt');
+});
+
+test('R00238 AK 4 · US-5: T1 ohne tokens — jede Zeile von agent „–“ mit „Tokens unbekannt“, sonst keine Angabe, keine Zeile „Tokens“', () => {
+  const mitAngabe = t1Li.filter(li => li.includes('class="tk"')).map(li => /^<li id="([^"]+)"/.exec(li)[1]);
+  assert.deepStrictEqual(mitAngabe, ['lv-s3', 'lv-s5', 'lv-s7', 'lv-s8', 'lv-s11', 'lv-s14', 'lv-s15']);
+  for (const id of mitAngabe) assert.deepStrictEqual([sichtbar(angabeVon(liVon(id))), vorgelesen(angabeVon(liVon(id)))], ['–', 'Tokens unbekannt'], id);
+  assert.doesNotMatch(t1Html, /lv-tokens|lv-tk4/);
 });

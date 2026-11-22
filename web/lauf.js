@@ -177,7 +177,14 @@
     const eintragAm = new Map(a.schritte.filter(s => s.ergebnisNr !== null).map(s => [s.ergebnisNr, null]));
     for (const { nr, eintrag } of zeilen) if (eintragAm.has(nr)) eintragAm.set(nr, eintrag);
     const laengste = a.top3.length ? a.top3[0].dauer : null;
-    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, laengste, esc, budget };
+    const tokens = tokenKontext(a.tokens);
+    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, laengste, tokens, esc, budget };
+  }
+
+  /** Neue Tokens je Träger (Nummer der Zeile) und die Folgezeilen einer Antwort aus der Auswertung; ohne `tokens` beide leer. */
+  function tokenKontext(t) {
+    if (t === null || t === undefined) return { neuAm: new Map(), folge: {} };
+    return { neuAm: new Map(t.antworten.map(x => [x.nr, x.neu])), folge: t.folge };
   }
 
   function zeileMitLueckeHtml(zeile, z) {
@@ -204,7 +211,7 @@
   function eintragHtml({ nr, eintrag }, z) {
     if (!eintrag) return `<li id="lv-s${nr}" tabindex="-1" class="lv-f meld fehl" role="note">${ACHTUNG}<p>${nichtLesbar(nr)}</p></li>`;
     if (eintrag.art === 'nachricht' && z.eingeklappt[nr]) return eingeklapptHtml(nr, eintrag, z.eingeklappt[nr], z.esc, z.budget);
-    if (eintrag.art === 'nachricht') return nachrichtHtml(nr, eintrag, z.esc, z.budget);
+    if (eintrag.art === 'nachricht') return nachrichtHtml(nr, eintrag, z);
     if (z.gepaart.has(nr)) return '';
     return schrittHtml(z.schrittAm.get(nr), eintrag, z);
   }
@@ -215,12 +222,36 @@
     return gebuchtHtml(zeichenBuchen(name, budget), z => zeileHtml(z, esc), esc);
   }
 
-  /** Nachricht offen: Kürzel, Name, Wer, Uhrzeit; der Text je Zeile sichtbar gemacht, dann Markdown (maskiert, ADR-0030). */
-  function nachrichtHtml(nr, e, esc, budget) {
+  /** Nachricht offen: Kürzel, Name, Wer, Uhrzeit, Token-Angabe; der Text je Zeile sichtbar gemacht, dann Markdown (maskiert,
+      ADR-0030); trägt sie `tokens`, darunter die Zeile „Tokens“ mit den vier Werten (R00238 FA 7). */
+  function nachrichtHtml(nr, e, z) {
+    const { esc, budget } = z;
     const uhrzeit = uhrzeitText(e.zeit);
     const name = e.name === null ? '' : `<b>${nameHtml(e.name, esc, budget)}</b>`;
     const zeit = uhrzeit === null ? '' : `<span class="mono">${uhrzeit}</span>`;
-    return `<li id="lv-s${nr}" tabindex="-1" class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}</div><div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div></li>`;
+    let vierWerte = '';
+    if (e.wer === 'agent' && e.tokens) vierWerte = `<p class="lv-tokens"><span class="k">Tokens</span> <span class="lv-tk4">${vierWerteHtml(e.tokens)}</span></p>`;
+    return `<li id="lv-s${nr}" tabindex="-1" class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}${tokenAngabeHtml(nr, e, z.tokens)}</div><div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div>${vierWerte}</li>`;
+  }
+
+  const IN_DER_ANTWORT_DARUEBER = 'Tokens in der Antwort darüber gezählt';
+  const TOKENS_UNBEKANNT = 'Tokens unbekannt';
+
+  /** Token-Angabe einer Zeile von `agent` (R00238 FA 6): am Träger die neuen Tokens, an einer Folgezeile der Antwort „–“ mit Verweis,
+      sonst „–“ mit „Tokens unbekannt“; Zeilen anderer `wer` tragen keine. */
+  function tokenAngabeHtml(nr, eintrag, tokens) {
+    if (eintrag.wer !== 'agent') return '';
+    const neu = tokens.neuAm.get(nr);
+    if (neu !== undefined) return `<span class="tk">${neueTokensHtml(neu)}</span>`;
+    if (tokens.folge[nr] !== undefined) return `<span class="tk">${ohneWert(IN_DER_ANTWORT_DARUEBER)}</span>`;
+    return `<span class="tk">${ohneWert(TOKENS_UNBEKANNT)}</span>`;
+  }
+
+  const WERT_TRENNER = '<span aria-hidden="true"> · </span><span class="vh">, </span>';
+  /** „Eingabe <n> · Cache-Schreiben <n> · Ausgabe <n> · Cache-Lesen <n>“, volle Zahlen; vorgelesen mit Kommata (UX S6). */
+  function vierWerteHtml(t) {
+    const werte = [['Eingabe', t.ein], ['Cache-Schreiben', t.cache_schreiben], ['Ausgabe', t.aus], ['Cache-Lesen', t.cache_lesen]];
+    return werte.map(([wort, n]) => `${wort} ${tokenVoll(n)}`).join(WERT_TRENNER);
   }
 
   /** Text einer Nachricht oder des Berichts: gebucht, je Zeile sichtbar gemacht, dann Markdown (maskiert). */
@@ -262,10 +293,13 @@
     const absicht = s.absicht === null ? '' : `<span class="ab">${esc(sichtbarText(s.absicht))}</span>`;
     const fehler = s.fehler ? `${ACHTUNG}<span class="vh">Fehler: </span>` : '';
     const kuerzelTeil = ergebnisGebucht ? `<span class="eg">${fehler}${ersteZeileHtml(ergebnisGebucht, esc)}</span>` : '';
-    const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span></summary>`;
+    let angabe = '', tokensGanz = '';
+    if (aufruf) angabe = tokenAngabeHtml(s.nr, aufruf, z.tokens);
+    if (aufruf && aufruf.wer === 'agent' && aufruf.tokens) tokensGanz = `<span class="k">Tokens</span><p class="lv-tk4">${vierWerteHtml(aufruf.tokens)}</p>`;
+    const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span>${angabe}</summary>`;
     const teil = (wort, b) => (b ? `<span class="k">${wort}</span><pre>${gebuchtHtml(b, t => zeilenHtml(t, esc), esc)}</pre>` : '');
     const klasse = `lv-s${s.fehler ? ' fehl' : ''}${s.absicht === null ? ' ohne-ab' : ''}`;
-    return `<li id="lv-s${s.nr}" tabindex="-1"><details class="${klasse}">${summary}<div class="lv-s-ganz">${teil('Aufruf', aufrufGebucht)}${teil('Ergebnis', ergebnisGebucht)}</div></details></li>`;
+    return `<li id="lv-s${s.nr}" tabindex="-1"><details class="${klasse}">${summary}<div class="lv-s-ganz">${tokensGanz}${teil('Aufruf', aufrufGebucht)}${teil('Ergebnis', ergebnisGebucht)}</div></details></li>`;
   }
 
   /** Dauer der Werkzeugzeile mit Balken; „–“ mit Lesetext: ohne Partner „kein Ergebnis“ bzw. „kein Aufruf“, sonst „Dauer unbekannt“. */

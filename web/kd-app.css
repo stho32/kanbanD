@@ -1763,8 +1763,21 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-text table{display:block;max-width:100%;overflow-x:auto}
 /* Werkzeugzeile: Aufruf und Ergebnis als eine Zeile (R00234 FA 6, FA 7); Befehl und Absicht brechen um, nur das Kürzel kürzt mit „…“ */
 .lv-s{margin-left:29px;border:1px solid var(--kd-line);background:var(--kd-surface);min-width:0}
-.lv-s>summary{display:grid;grid-template-columns:14px max-content minmax(0,1fr) minmax(0,220px) 64px;grid-template-areas:"pf nm bf eg du" ". . ab eg du";align-items:center;column-gap:var(--kd-s3);padding:2px var(--kd-s3);min-block-size:max(28px,var(--kd-ziel));cursor:pointer;list-style:none;font-size:12px}
-.lv-s.ohne-ab>summary{grid-template-areas:"pf nm bf eg du"}
+.lv-s>summary{display:grid;grid-template-columns:14px max-content minmax(0,1fr) minmax(0,220px) auto 64px;grid-template-areas:"pf nm bf eg tk du" ". . ab eg tk du";align-items:center;column-gap:var(--kd-s3);padding:2px var(--kd-s3);min-block-size:max(28px,var(--kd-ziel));cursor:pointer;list-style:none;font-size:12px}
+.lv-s.ohne-ab>summary{grid-template-areas:"pf nm bf eg tk du"}
+/* Token-Angabe (R00238 FA 6): unauffällig wie die Dauer; ab 981 px links daneben, 641–980 px darunter, unter 641 px in der ersten Zeile */
+.lv .tk{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lv-s .tk{grid-area:tk;justify-self:end}
+.lv-wer .tk{margin-left:auto;color:var(--kd-muted)}
+@media (min-width:641px) and (max-width:980px){
+  .lv-s>summary{grid-template-columns:14px max-content minmax(0,1fr) minmax(0,220px) minmax(64px,auto);grid-template-areas:"pf nm bf eg du" ". . ab eg tk"}
+  .lv-s.ohne-ab>summary{grid-template-areas:"pf nm bf eg du" ". . . eg tk"}
+}
+.lv-tokens{grid-column:2;margin:4px 0 0;font-size:11.5px;color:var(--kd-muted);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.lv-tokens .k{font-weight:600;letter-spacing:.04em}
+.lv-s-ganz .lv-tk4{margin:2px 0 0;font-size:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+/* das Komma für Bildschirmleser bleibt im Textfluss (Schriftgröße 0): als abgesetztes Element läse es sich „3 , Cache-Schreiben“ */
+.lv-tk4 .vh{position:static;width:auto;height:auto;margin:0;overflow:visible;clip-path:none;font-size:0}
 .lv-s>summary::-webkit-details-marker{display:none}
 .lv-s>summary:hover{background:var(--kd-sunken)}
 .lv-s>summary:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:-2px}
@@ -1878,7 +1891,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .lv-rumpf{padding:var(--kd-s3) var(--kd-s3) var(--kd-s5)}
   .lv-n{padding:var(--kd-s3)}
   .lv-s,.lv-f,.lv-d,.lv-e.sys{margin-left:12px}
-  .lv-s>summary,.lv-s.ohne-ab>summary{grid-template-columns:14px minmax(0,1fr) auto;grid-template-areas:"pf nm du" ". bf bf" ". ab ab" ". eg eg";row-gap:1px;padding:4px var(--kd-s3)}
+  .lv-s>summary,.lv-s.ohne-ab>summary{grid-template-columns:14px minmax(0,1fr) auto auto;grid-template-areas:"pf nm tk du" ". bf bf bf" ". ab ab ab" ". eg eg eg";row-gap:1px;padding:4px var(--kd-s3)}
   .lv-s-ganz,.lv-e>.lv-text{padding-left:var(--kd-s3)}
   .lv-d{grid-template-columns:10px auto minmax(12px,1fr) 48px}
   .lv-e>summary{grid-template-columns:14px minmax(0,1fr) auto;grid-template-areas:"pf nm zt" ". z1 z1"}
