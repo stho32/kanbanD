@@ -22,7 +22,8 @@ const EINTRAEGE = `${INSEL} > li`;
 const STATUS = '#lv-status';
 const BERICHT = '#lauf .lv-ber';
 const OHNE_BERICHT = '#lauf .lv-ohne-ber';
-const TOP = '#lauf .lv-top button';
+// jeder Eintrag von „Längste Schritte“, gleich welches Element (Mutant m7 macht daraus einen Verweis)
+const TOP = '#lauf .lv-top li > :first-child';
 
 const zeile = o => JSON.stringify(o) + '\n';
 const t1Text = (aenderung = e => e) => T1.map((e, i) => zeile(aenderung({ ...e }, i + 1))).join('');
@@ -118,6 +119,8 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     await gelesen(page);
     expect(ohneLeerraum(await page.locator(GESAMT).innerText())).toBe('GESAMTDAUER Dauer unbekannt Weniger als zwei Einträge tragen eine Zeit.');
     await expect(page.locator('#lauf .lv-top')).toHaveCount(0);
+    await expect(page.locator(`${INSEL} .lv-s .du`)).toHaveText([/^–Dauer unbekannt$/]);
+    await expect(page.locator(`${INSEL} .du i`)).toHaveCount(0);
   });
 
   for (const fall of ['T5 fehlt', 'T1 mit 503', 'T1 gehalten']) {
@@ -367,7 +370,7 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     expect(ausserhalb, 'das Ziel liegt vor dem Sprung außerhalb des Fensters').toBe(true);
     const stand = await page.evaluate(() => new Promise(fertig => {
       const seite = document.getElementById('lauf');
-      document.querySelector('#lauf .lv-top button').click();
+      document.querySelector('#lauf .lv-top li > :first-child').click();
       requestAnimationFrame(() => {
         const erstes = [scrollY, seite.scrollTop];
         setTimeout(() => fertig({ erstes, ende: [scrollY, seite.scrollTop] }), 600);
