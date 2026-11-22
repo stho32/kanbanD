@@ -64,6 +64,7 @@ test.describe('R00237 Laufansicht: Paaren über die Kennung', () => {
     await expect(entwickler.locator('summary .eg')).toContainText('entwickler');
     await expect(page.locator(TOP)).toHaveText([/10 s$/, /2 s$/]);
     expect((await kennzahlen(page)).find(([name]) => name === 'Fehler erkannt')[1]).toBe('1');
+    await expect(page.locator('#lauf')).not.toContainText('toolu_');
   });
 
   test('AK 2, AK 9 · US-2: T6o ohne Felder — wie vor der Karte: cat regeln 3 s, cat entwickler 9 s mit Fehler', async ({ page }) => {

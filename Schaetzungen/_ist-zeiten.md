@@ -1096,3 +1096,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #262 R00237 | B1233 id und zu lesen (kennungLesen), falsch geformt gilt als fehlend | Standard | 0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-22 | Karte #262 R00237 | B1234 Paaren nach G1 (Map, zwei Warteschlangen mit Kopfzeiger, Zähler für parallel), Tests grün, Messprobe | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-22 | Karte #262 R00237 | B1235 E2E Laufansicht: T6, T6o, zu ohne Aufruf, Kennung `<b>x</b>`; vor dem Fix am Stand B1232 rot (3 s statt 10 s), danach grün | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-22 | Karte #262 R00237 | B1236 Mutanten m1–m8 je rot (m1–m7 Node in eigener Kopie, m8 E2E über KD_MUTANTE), Altbestand 47 von 47 gleich, Messprobe 10.000/5.000, volles Gate (cargo 1232, node 1610+1 übersprungen, e2e 2484, Wartezeit 45 s), R00237 Erledigt | Standard | 0,5-1h | 0,7h | 0,7h | autonom |
