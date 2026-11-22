@@ -7,6 +7,11 @@ use serde::Serialize;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Range;
 
+/// Version der Einteilung im `ETag` des Gesamt-Diffs (Legacy-Review #234): jede Änderung der Einteilung erhöht diese Version.
+/// Sie steht neben `GRENZEN_VERSION`, die auch die `ETag`s von `diff.rs` und `nachfolger.rs` trägt; 2 seit ADR-0032 N8
+/// (netto unverändert erscheint nirgends, Folge gruppenweise bis zum Fixpunkt, `datei=` bis 20 MB).
+pub const EINTEILUNG_VERSION: u32 = 2;
+
 /// Bytegrenze des Namenslaufs (Startwert, Hypothese, ADR-0032 N6.8; etwa 40.000 Einträge).
 pub const GRENZE_NAMEN: usize = 4_194_304;
 /// Mehr fremde Commits in der Spanne → ganz als Folge (ADR-0032 Punkt 7.5).
