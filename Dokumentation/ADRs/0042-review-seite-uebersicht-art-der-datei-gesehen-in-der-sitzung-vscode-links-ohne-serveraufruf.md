@@ -1,6 +1,6 @@
 # ADR-0042: Review-Seite übersichtlicher — Art der Datei aus festen Pfadregeln, „Gesehen“ nur in der Sitzung, Wortmarke über Präfix und Suffix, Pfad und VS Code über `vscode://file` mit der Wurzel aus der Diff-Antwort, „Diff in VS Code“ ohne Serveraufruf durch „Patch herunterladen“ ersetzt
 
-**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung.
+**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt.
 **Datum**: 2026-11-22
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #252, Lauf 252-architekt-1)
 **Kontext-Anforderung**: — (Karte #252, Auftrag des Betreibers vom 2026-11-22 nach dem Entwurf „Review ‚Ein Commit‘ – Vorschlag“; die Anforderungen schreibt der planer). Bezug: R00207, R00210, R00217, R00224; ADR-0030 Punkt 4, ADR-0032 (N2.4, N4 S2, N5.1, N6.9), ADR-0033 (Punkte 5 und 8, N1), ADR-0040; Artboard D0009
@@ -113,3 +113,60 @@
 - `web/ansicht.js:392`, `:818`, `:890`, `:1019`; `web/app.js:1309`, `:4439`; `web/markdown.js:4`; `web/diff.js:36`, `:231`, `:274–316`; `src/git/arbeitsrepo.rs:228–240`
 - VS Code 1.147.0, `resources/app/out/mainImpl.js` (`getWindowOpenableFromProtocolUrl`, `shouldBlockOpenable`), `resources/app/extensions/git/dist/main.js` (`handleUri`: nur `/clone`), gelesen am 2026-11-22
 - ADR-0030, ADR-0032, ADR-0033, ADR-0040; R00206, R00207, R00209, R00210, R00217
+
+## Nachtrag 2026-11-22 N1: nach dem Bau von S1 — Balken je Gruppe, Aufklapper bis 1099 px, Modul `web/review-uebersicht.js`; „VS Code“ an der ersten hinzugefügten Zeile, kein Diff in VS Code; „Gesehen“ dauerhaft im Browser (Karte #252)
+
+**Status bleibt `Akzeptiert`.** Der Nachtrag führt die ADR an den Bau von S1 (`karte/252` bis 9f83f5d9, R00235) und an die Entscheidungen von product-owner und Betreiber heran. N1.1 und N1.2 beschreiben Gebautes (Ist), N1.3 und N1.4 sind Soll für die Folgekarten #255 (S4) und #257 (S3). Der Text der Punkte 1–9 oben bleibt stehen; wo er abweicht, gilt dieser Nachtrag.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #252, Lauf 252-architekt-2)
+**Erprobt durch**: S1 gebaut und geprüft (Commits 37b47c27 bis 9f83f5d9; `e2e/tests/r00235-review-gruppen.spec.js`, Einheitentests; Architektur-Review 252-architektur-reviewer-1 bestanden). N1.3 und N1.4: nichts gebaut.
+
+### Anlass
+
+- Der architektur-reviewer meldet Drift zu Punkt 9: oben steht „relativ zur größten Datei der Seite“, Code und po-entscheidungen Z. 548 rechnen je Gruppe.
+- Der Aufklapper „Dateien (<n>) und Commits“ (po-entscheidungen Z. 549) ist gebaut, steht aber in keiner Entscheidung.
+- po-entscheidungen Z. 545 präzisiert Punkt 6, Z. 534–535 kippen Punkt 2. Der Betreiber hat Z. 533 entschieden (Kommentar an #252, 2026-11-22 09:05).
+
+### N1.1 Größenbalken je Gruppe (präzisiert Punkt 9; Ist)
+
+- Die Skala ist die **größte Summe `plus + minus` derselben Gruppe**, nicht der Seite (Z. 548). In „Ein Commit“ sind das die Gruppen Code, Tests, Doku und Planung der Seite. In „Alle Änderungen“ ist es die Gruppe **je Abschnitt** einer Anwendung.
+- Je Zahl über 0 gibt es einen Teil mit dem Anteil `zahl / größte Summe`. Jeder Teil ist **mindestens 1 px** lang. Eine 0 ergibt keinen Teil.
+- Die volle Länge (44 px, `--rv-balken`) und die Mindestlänge legt allein das CSS fest. Die Rechnung liefert nur Anteile.
+- Der Balken bleibt `aria-hidden`. Die Aussage tragen die Zahlen daneben und die Zahlen im Gruppenkopf. Sie tragen auch den Vergleich über Gruppen hinweg.
+- Fundstellen: `groessteSumme`, `balkenTeile` (`web/review-uebersicht.js`); `gruppierteListeHtml`, `balkenHtml` (`web/diff.js:437`, `:451`); „Alle Änderungen“ über `diff.gruppierteListeHtml` (`web/gesamt.js:243`); `.rv-gb` (`web/kd-app.css:1672–1674`).
+- Inkauf: Gleich lange Balken in zwei Gruppen bedeuten nicht gleich viele Zeilen. Das ist gewollt, denn gelesen wird Gruppe für Gruppe (Z. 538).
+
+### N1.2 Aufklapper „Dateien (<n>) und Commits“ und das Modul der Gruppierung (ergänzt Punkt 1; Ist)
+
+- **Bis 1099 px** steht die linke Spalte (Dateiliste und Commits) hinter dem Knopf „Dateien (<n>) und Commits“. So steht der Code auf schmalen Breiten zuerst (Z. 549). Ab 1100 px blendet das CSS den Knopf aus, und die Liste steht links. Die Grenze ist die bestehende von `.rv-rumpf`, keine neue Zahl.
+- Jede Adresse beginnt mit zugeklapptem Aufklapper, auch beim Blättern zu einem anderen Commit (`railOffen: false`). Der Zustand lebt nur in `S.ui.review` und wird nirgends gespeichert. Der Knopf trägt `aria-expanded` und `aria-controls`, nach dem Klick bleibt der Fokus auf ihm.
+- `<n>` ist in „Ein Commit“ die Zahl der Dateien des Commits. In „Alle Änderungen“ ist es die Summe über die Abschnitte, und der Knopf steuert die Listen aller geladenen Abschnitte mit Dateien.
+- Fundstellen: `reviewAufklapperHtml` (`web/app.js:1953`), Aufrufe `:1885` (Alle Änderungen) und `:1943` (Ein Commit), Anfangszustand `:1170`, Handler `review-rail` `:3619`; CSS `web/kd-app.css:1676–1682`.
+- **Modul `web/review-uebersicht.js`** (Wahl aus Punkt 1 getroffen): reine Funktionen ohne DOM, im Browser und in Node nutzbar wie `web/diff.js`, vor `diff.js` geladen. Es enthält:
+  - `dateiArt(pfad)` → `code` | `test` | `doku` nach Punkt 1
+  - `dateiPfad(d)` → Pfad der Einteilung: `pfad` einer Folge-Datei (ADR-0033 N1.4), sonst der neue, bei `D` der alte
+  - `dateiGruppen(dateien)` → Gruppen `{art, name, indizes, n, plus, minus}` in fester Reihenfolge, leere entfallen
+  - `gruppierteFolge(dateien)` → Indizes in der Folge, in der gezeichnet und das Budget gezählt wird
+  - `testHinweis(d)` → „bestehender Test geändert“ | „Test gelöscht“ | '' (Punkt 3, Wortlaut Z. 537)
+  - `grosseNeueDatei(d)` → `A` mit mehr als 500 hinzugefügten Zeilen (Z. 536)
+  - `groessteSumme(dateien, indizes)`, `balkenTeile(d, groesste)` → N1.1
+- Das Modul hängt von nichts ab. `web/diff.js` und `web/gesamt.js` lesen es. Ausgeliefert wird es über die bestehende Liste der eingebetteten Dateien (`src/web/statisch.rs:30`). Am Server kommt nichts anderes dazu.
+
+### N1.3 „VS Code“ an der ersten hinzugefügten Zeile, kein Diff in VS Code (präzisiert Punkte 6 und 7; Soll #255)
+
+- **Sprungziel des Knopfs „VS Code“** ist die **erste hinzugefügte Zeile** der Datei (Nummer der neuen Seite, Z. 545). Hat die Datei keine hinzugefügte Zeile, gilt die erste Zeile der neuen Seite im ersten Hunk, wie in Punkt 6. Hat sie keinen Hunk (reine Umbenennung, Binärdatei), steht der Link ohne `:<zeile>`. Diesen letzten Fall ergänze ich als architekt; der planer von #255 prüft ihn als Randfall.
+- Der Tooltip nennt dieselbe Zahl („In VS Code an Zeile <z> öffnen“, Z. 537). Nummern an den Zeilen bleiben wie in Punkt 6.
+- **Es gibt keinen echten Diff in VS Code.** Der Betreiber hat Z. 533 mit „1“ beantwortet: „Patch“ und der Sprung „VS Code“ an die Zeile genügen. Damit gibt es keine Folgekarte, keinen lokalen Programmaufruf und keine Token- oder `Origin`-Mechanik. Option D4 ist damit endgültig. Der Satz in Punkt 7 „Ein späterer Diff-Weg braucht eine neue ADR …“ bleibt als Bedingung stehen, falls der Betreiber die Frage neu öffnet.
+- Durchsetzung bei #255: Einheit „Sprungziel“ mit einer Datei, deren erster Hunk drei Kontextzeilen vor der ersten `+`-Zeile hat (Ziel ist die `+`-Zeile, nicht der Hunk-Anfang), einer Datei nur mit entfernten Zeilen (Ziel ist die erste Zeile der neuen Seite im Hunk) und einer reinen Umbenennung (ohne `:<zeile>`). Der Review-Punkt „kein `spawn` und kein `Command::new` außer `git`“ gilt weiter.
+
+### N1.4 „Gesehen“ dauerhaft im Browser (ersetzt Punkt 2, G1 → G2; Soll #257)
+
+Der product-owner hat G2 gewählt, abweichend von meiner Empfehlung (Z. 534). Sein Grund trägt: Die Review-Seite öffnet in einem eigenen Tab (Z. 367), mit `sessionStorage` wäre der Fortschritt dort und nach jeder Pause weg. Die Schwäche von G2 aus der Tabelle oben („wächst ohne Ende“) löst die Obergrenze unten. G3 (an der Karte) bleibt verworfen.
+
+- **Ort**: `localStorage`, Schlüssel `kanbanD.gesehen.<board-slug>.<nr>` nach dem Muster der übrigen Ansichtswahl (`kanbanD.spalten-zu.<slug>`, `web/app.js:129`).
+- **Inhalt**: ein JSON-Objekt `{"zeit": <ms seit 1970>, "gesehen": [<schlüssel>…]}`. Die Schlüssel der Einträge und der Fingerabdruck bleiben wie in Punkt 2 (`<voller hash>\u0000<pfad>` bzw. `alle\u0000<anwendung>\u0000<pfad>\u0000<fingerabdruck>`). Eine geänderte Datei gilt also wieder als ungesehen. `zeit` ist der Zeitpunkt des letzten Setzens oder Entfernens an dieser Karte.
+- **Obergrenze**: höchstens 200 Karten je Browser. Wird ein Haken gesetzt und gibt es danach mehr als 200 Schlüssel mit dem Präfix `kanbanD.gesehen.`, fällt der mit der kleinsten `zeit` weg (Z. 534). Ein Wert, der sich nicht lesen lässt, gilt als leer und wird beim nächsten Setzen überschrieben. Beim Aufräumen zählt er als der älteste.
+- **Zwei Tabs**: Jeder Haken liest den Wert frisch, ändert genau seinen Eintrag und schreibt zurück. So geht der Haken eines anderen Tabs nicht verloren, außer beide schreiben im selben Augenblick. Das nehme ich in Kauf. Ein Tab, der schon offen ist, zeigt den Haken des anderen erst beim nächsten Zeichnen. Ein `storage`-Ereignis ist nicht nötig.
+- **Wirkung des Hakens** (Z. 535): Setzen klappt die Datei ein, Entfernen klappt sie auf. Beim Laden beginnen gesehene Dateien eingeklappt. Wie die Doku (Punkt 1) zählen sie nicht ins Zeichenbudget und unterbrechen die Folge nicht. Die Ausnahme „die erste Datei immer“ gilt für die erste Datei, die danach öffnen darf. Der Fortschritt „<k> von <n> gesehen“ zählt weiter **alle** Dateien.
+- **Fehlerpfad** wie in Punkt 2: Fehlt `localStorage` oder wirft es (Kontingent, gesperrt), gilt „Gesehen“ nur bis zum Neuzeichnen, ohne Meldung. Nichts geht an den Server, nichts an die Karte.
+- **Durchsetzung** (ersetzt die E2E-Zeile zu „Gesehen“ in den Konsequenzen): Ein Haken ergibt „1 von 8“. Ein neuer Tab im selben Browser-Kontext behält ihn, ein neuer Kontext nicht. Ändert ein neuer Commit die Datei, ist sie in „Alle Änderungen“ wieder ungesehen. Einheit „Obergrenze“: 201 Karten nacheinander gesetzt ergeben 200 Schlüssel, und die älteste fehlt. Ein unlesbarer Wert wirft nicht. Ein Mutant, der `sessionStorage` schreibt, wird im Tab-Test rot.
+- Inkauf: „Gesehen“ gilt je Browser und Gerät, nicht je Mensch und nicht an der Karte. Wer im Browser die Website-Daten löscht, verliert den Fortschritt.
