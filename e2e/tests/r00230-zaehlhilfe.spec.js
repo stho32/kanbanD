@@ -36,6 +36,12 @@ test.describe('R00230 AK 1 Zählhilfe ansagenZaehlen', () => {
     expect(await nach(page, zaehler, () => { document.getElementById('voll').textContent = ''; })).toEqual([]);
   });
 
+  test('AK 1: aus einer Region wird nur etwas entfernt, Text bleibt stehen → 0 Einträge (Entfernen ist keine Ansage, aria-relevant)', async ({ page }) => {
+    expect(await nach(page, zaehler, () => { document.getElementById('status').insertAdjacentHTML('beforeend', '<span id="weg"> mehr</span>'); })).toHaveLength(1);
+    await zaehler.beginnen();
+    expect(await nach(page, zaehler, () => { document.getElementById('weg').remove(); })).toEqual([]);
+  });
+
   test('AK 1: leeres Live-Element eingehängt → 0 Einträge', async ({ page }) => {
     expect(await nach(page, zaehler, () => { document.getElementById('ablage').insertAdjacentHTML('beforeend', '<p role="status"></p><div aria-live="assertive"> </div>'); })).toEqual([]);
   });
