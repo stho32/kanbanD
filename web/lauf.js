@@ -179,7 +179,7 @@
     for (const { nr, eintrag } of zeilen) if (eintragAm.has(nr)) eintragAm.set(nr, eintrag);
     const laengste = a.top3.length ? a.top3[0].dauer : null;
     const tokens = tokenKontext(a.tokens);
-    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, laengste, tokens, esc, budget };
+    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, wurzeln: a.wurzeln, laengste, tokens, esc, budget };
   }
 
   /** Neue Tokens je Träger (Nummer der Zeile) und die Folgezeilen einer Antwort aus der Auswertung; ohne `tokens` beide leer. */
@@ -228,7 +228,7 @@
 
   function eintragHtml({ nr, eintrag }, z) {
     if (!eintrag) return `<li id="lv-s${nr}" tabindex="-1" class="lv-f meld fehl" role="note">${ACHTUNG}<p>${nichtLesbar(nr)}</p></li>`;
-    if (eintrag.art === 'nachricht' && z.eingeklappt[nr]) return eingeklapptHtml(nr, eintrag, z.eingeklappt[nr], z.esc, z.budget);
+    if (eintrag.art === 'nachricht' && z.eingeklappt[nr]) return eingeklapptHtml(nr, eintrag, z.eingeklappt[nr], z);
     if (eintrag.art === 'nachricht') return nachrichtHtml(nr, eintrag, z);
     if (z.gepaart.has(nr)) return '';
     return schrittHtml(z.schrittAm.get(nr), eintrag, z);
@@ -249,7 +249,7 @@
     const zeit = uhrzeit === null ? '' : `<span class="mono">${uhrzeit}</span>`;
     let vierWerte = '';
     if (e.wer === 'agent' && e.tokens) vierWerte = `<p class="lv-tokens"><span class="k">Tokens</span> <span class="lv-tk4">${vierWerteHtml(e.tokens)}</span></p>`;
-    return `<li id="lv-s${nr}" tabindex="-1" class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}${tokenAngabeHtml(nr, e, z.tokens)}</div><div class="lv-text">${nachrichtMitHinweisenHtml(e.text, esc, budget)}</div>${vierWerte}</li>`;
+    return `<li id="lv-s${nr}" tabindex="-1" class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}${tokenAngabeHtml(nr, e, z.tokens)}</div><div class="lv-text">${nachrichtMitHinweisenHtml(e.text, esc, budget, z.wurzeln)}</div>${vierWerte}</li>`;
   }
 
   const IN_DER_ANTWORT_DARUEBER = 'Tokens in der Antwort darüber gezählt';
@@ -272,37 +272,49 @@
     return werte.map(([wort, n]) => `${wort} ${tokenVoll(n)}`).join(WERT_TRENNER);
   }
 
-  /** Text einer Nachricht oder des Berichts: gebucht, je Zeile sichtbar gemacht, dann Markdown (maskiert). */
-  function nachrichtTextHtml(text, esc, budget) {
-    return gebuchtHtml(zeichenBuchen(text, budget), markdownTeilHtml, esc);
+  /** Text einer Nachricht oder des Berichts: gebucht, je Zeile sichtbar gemacht, dann Markdown (maskiert); trägt das Budget den ganzen
+      Text, mit Pfaden als Links und Marken (R00242 FA 3), sonst wie bisher. */
+  function nachrichtTextHtml(text, esc, budget, wurzeln) {
+    const b = zeichenBuchen(text, budget);
+    if (b.rest) return gebuchtHtml(b, teil => markdownTeilHtml(teil, null), esc);
+    return markdownTeilHtml(text, nachrichtPfade(wurzeln, esc));
   }
 
-  /** Ein Abschnitt einer Nachricht: je Zeile sichtbar gemacht, dann Markdown (maskiert); leer bleibt leer. */
-  function markdownTeilHtml(teil) {
+  /** Ein Abschnitt einer Nachricht: je Zeile sichtbar gemacht, dann Markdown (maskiert); leer bleibt leer. Mit `pfade` geht der rohe
+      Text an Markdown, das Pfade vor dem Sichtbarmachen sucht. */
+  function markdownTeilHtml(teil, pfade) {
     if (!teil) return '';
-    return markdownHtml(teil.split('\n').map(sichtbarText).join('\n'), 1);
+    if (pfade === null) return markdownHtml(teil.split('\n').map(sichtbarText).join('\n'), 1);
+    return markdownHtml(teil, 1, { pfade });
+  }
+
+  /** Die Option `pfade` für Markdown (R00242 FA 3): sichtbar gemacht wie bisher, Pfade und Inline-Code aus `lauf-satz.js`. */
+  function nachrichtPfade(wurzeln, esc) {
+    const zeile = t => esc(sichtbarText(t));
+    return { sichtbar: sichtbarText, finden: roh => satz.pfadeFinden(roh, wurzeln, zeile), code: roh => satz.pfadImCodeHtml(roh, wurzeln, zeile) };
   }
 
   /** Text einer Nachricht in der Liste (R00240 FA 10): eingebettete Systemhinweise an ihrer Stelle eingeklappt, der Rest als Markdown.
       Reicht das Budget nicht für den ganzen Text, steht er wie bisher. */
-  function nachrichtMitHinweisenHtml(text, esc, budget) {
+  function nachrichtMitHinweisenHtml(text, esc, budget, wurzeln) {
     const b = zeichenBuchen(text, budget);
-    if (b.rest) return gebuchtHtml(b, markdownTeilHtml, esc);
+    if (b.rest) return gebuchtHtml(b, teil => markdownTeilHtml(teil, null), esc);
+    const pfade = nachrichtPfade(wurzeln, esc);
     return satz.systemhinweiseTrennen(text).map(t => {
       if (t.art === 'hinweis') return satz.systemhinweisHtml(t.text, z => zeileHtml(z, esc));
-      return markdownTeilHtml(t.text);
+      return markdownTeilHtml(t.text, pfade);
     }).join('');
   }
 
   const EINGEKLAPPT_WORT = { auftrag: 'Auftrag', systemhinweis: 'Systemhinweis' };
 
   /** Auftrag und Systemhinweis (FA 9) eingeklappt an ihrer Stelle: Wort, erste Zeile, Uhrzeit; aufgeklappt der Text als Nachricht. */
-  function eingeklapptHtml(nr, e, art, esc, budget) {
+  function eingeklapptHtml(nr, e, art, { esc, budget, wurzeln }) {
     const uhrzeit = uhrzeitText(e.zeit);
     const zeit = uhrzeit === null ? '' : `<span class="zt">${uhrzeit}</span>`;
     const klasse = art === 'systemhinweis' ? 'lv-e sys' : 'lv-e';
     const summary = `<summary>${PFEIL}<span class="nm">${EINGEKLAPPT_WORT[art]}</span><span class="z1">${kurzTextHtml(ersteZeileGekuerzt(e.text), esc)}</span>${zeit}</summary>`;
-    return `<li id="lv-s${nr}" tabindex="-1"${artAttribut(zeileArt(e, art))}><details class="${klasse}">${summary}<div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div></details></li>`;
+    return `<li id="lv-s${nr}" tabindex="-1"${artAttribut(zeileArt(e, art))}><details class="${klasse}">${summary}<div class="lv-text">${nachrichtTextHtml(e.text, esc, budget, wurzeln)}</div></details></li>`;
   }
 
   const PK_KLASSE = { agent: 'pk-a', mensch: 'pk-m', werkzeug: 'pk-0' };
@@ -385,7 +397,7 @@
   function laufBerichtHtml(a, esc) {
     if (!a.bericht) return `<p class="lv-ohne-ber">${KEIN_BERICHT}</p>`;
     const budget = { lauf: ZEICHEN_JE_LAUF, gebucht: 0 };
-    return `<article class="lv-ber ${a.bericht.ergebnis}" aria-labelledby="lv-ber-t"><h2 id="lv-ber-t">Bericht</h2><div class="lv-text">${nachrichtTextHtml(a.bericht.text, esc, budget)}</div></article>`;
+    return `<article class="lv-ber ${a.bericht.ergebnis}" aria-labelledby="lv-ber-t"><h2 id="lv-ber-t">Bericht</h2><div class="lv-text">${nachrichtTextHtml(a.bericht.text, esc, budget, a.wurzeln)}</div></article>`;
   }
   const KEIN_BERICHT = 'Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile „Ergebnis:“.';
 

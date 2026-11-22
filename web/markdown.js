@@ -52,8 +52,9 @@
   /** Eine Zeile ohne Blöcke (ADR-0030 Punkt 7): Code, Links, nackte Adressen, fett, kursiv, durchgestrichen — jede neue Form
    *  der Zeile entsteht hier und gilt damit für beide Einstiege, `markdownInline` und `markdownHtml`. Jede fertige Marke wird
    *  sofort durch einen Platzhalter (U+0000 Nummer U+0000) ersetzt: keine spätere Stufe greift in die Ausgabe einer früheren, und
-   *  eine Adresse wird nie formatiert (ADR-0030 Punkt 5). U+0000 aus dem Text wird vorher entfernt, sonst ließe sich der Platzhalter fälschen. */
-  function markdownInline(text) {
+   *  eine Adresse wird nie formatiert (ADR-0030 Punkt 5). U+0000 aus dem Text wird vorher entfernt, sonst ließe sich der Platzhalter fälschen.
+   *  Mit der Option `pfade` (R00242 FA 3, Vorgabe aus) ist `text` roh: Pfade und Code entstehen vor `pfade.sichtbar` und `esc`. */
+  function markdownInline(text, optionen = {}) {
     const fertig = [];
     const schuetze = html => `\u0000${fertig.push(html) - 1}\u0000`;
     /** Ein Platzhalter kann in einer geschützten Marke stehen (Link in kursivem Text): eingesetzt wird bis in die Tiefe. */
@@ -79,12 +80,36 @@
     };
     const link = (u, innen) => schuetze(`<a href="${u}" target="_blank" rel="noopener">${innen}</a>`);
     const gueltig = u => erlaubt(u.replace(/&amp;/g, '&'));
-    let s = esc(String(text).replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (m, c) => schuetze(`<code>${c}</code>`));
+    let s;
+    if (optionen.pfade) s = pfadeUndCode(String(text), optionen.pfade, schuetze);
+    else s = esc(String(text).replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (m, c) => schuetze(`<code>${c}</code>`));
     s = ersetzeLinks(s, (t, u) => (gueltig(u) ? link(u, einsetzen(hervorheben(t))) : t));
     s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)\u0000]+)/g, (m, vor, u) => gueltig(u) ? vor + link(u, u) : m);
     s = hervorheben(s);
     if (!fertig.length) return s;
     return einsetzen(s);
+  }
+
+  /** Roher Text → maskierter, sichtbar gemachter Text, in dem Code und die Links der Pfade geschützt stehen (R00242 FA 3): `pfade.code`
+   *  setzt einen Inline-Code, den ein Pfad ganz füllt, `pfade.finden` liefert die Pfade eines Textstücks; ein Durchlauf. */
+  function pfadeUndCode(roh, pfade, schuetze) {
+    const sichtbar = t => esc(pfade.sichtbar(t).replace(/\u0000/g, ''));
+    const textMitPfaden = stueck => {
+      let aus = '', ab = 0;
+      for (const fund of pfade.finden(stueck)) {
+        aus += sichtbar(stueck.slice(ab, fund.von)) + schuetze(fund.html);
+        ab = fund.bis;
+      }
+      return aus + sichtbar(stueck.slice(ab));
+    };
+    let s = '', ab = 0;
+    for (const m of roh.matchAll(/`([^`]+)`/g)) {
+      let code = pfade.code(m[1]);
+      if (code === null) code = `<code>${sichtbar(m[1])}</code>`;
+      s += textMitPfaden(roh.slice(ab, m.index)) + schuetze(code);
+      ab = m.index + m[0].length;
+    }
+    return s + textMitPfaden(roh.slice(ab));
   }
 
   /** Der Text einer Zeile ohne Markdown-Zeichen, maskiert wie die Ausgabe von `markdownInline` — für zugängliche Namen;
@@ -135,8 +160,8 @@
   }
 
   /** Die Hülle zum Scrollen trägt ihre drei Attribute fest: sie macht die Tabelle mit der Tastatur erreichbar (R00176). */
-  function tabelleHtml(kopfzeile, spalten, zeilen) {
-    const zeile = (marke, texte) => `<tr>${spalten.map((klasse, i) => `<${marke}${klasse}>${markdownInline(texte[i] || '')}</${marke}>`).join('')}</tr>`;
+  function tabelleHtml(kopfzeile, spalten, zeilen, zelle) {
+    const zeile = (marke, texte) => `<tr>${spalten.map((klasse, i) => `<${marke}${klasse}>${zelle(texte[i] || '')}</${marke}>`).join('')}</tr>`;
     let rumpf = '';
     if (zeilen.length) rumpf = `<tbody>${zeilen.map(z => zeile('td', zellen(z))).join('')}</tbody>`;
     return `<div class="md-tab" tabindex="0" role="group" aria-label="Tabelle"><table><thead>${zeile('th', zellen(kopfzeile))}</thead>${rumpf}</table></div>`;
@@ -152,22 +177,32 @@
   const MAX_EBENEN = 8, TAB_BREITE = 4;
   const einrueckung = leerraum => leerraum.length + (TAB_BREITE - 1) * (leerraum.split('\t').length - 1);
 
-  /** Markdown → HTML. Überschriften werden um `stufe` verschoben (# → h(1+stufe)). */
-  function markdownHtml(md, stufe = 2) {
-    const zeilen = (md || '').replace(/\r\n/g, '\n').split('\n');
+  /** Markdown → HTML. Überschriften werden um `stufe` verschoben (# → h(1+stufe)). Mit der Option `pfade` (R00242 FA 3) ist `md` roh:
+   *  die Blöcke erkennt der sichtbar gemachte Text wie ohne Option, den Inhalt einer Zeile setzt `markdownInline` aus dem rohen. */
+  function markdownHtml(md, stufe = 2, optionen = {}) {
+    const roh = (md || '').replace(/\r\n/g, '\n').split('\n');
+    let zeilen = roh;
+    if (optionen.pfade) zeilen = roh.map(optionen.pfade.sichtbar);
+    /** Inhalt `rest` am Ende der Zeile `i`: ein Präfix aus Block-Zeichen trägt nie ein sichtbar gemachtes Zeichen, also ist er roh gleich lang. */
+    const inline = (i, rest) => {
+      if (!optionen.pfade) return markdownInline(rest);
+      return markdownInline(roh[i].slice(zeilen[i].length - rest.length), optionen);
+    };
+    let tabelle = { zeilen, zelle: markdownInline };
+    if (optionen.pfade) tabelle = { zeilen: roh, zelle: t => markdownInline(t, optionen) };
     const aus = [];
     let absatz = [];
     /** Die offenen Listen von außen nach innen, je mit Art und Einrückung; der letzte Punkt jeder Ebene ist noch offen. */
     const ebenen = [];
     /** Bis zu dieser Zeile (ausschließlich) wird keine Tabelle gesucht: der Block war zu groß und bleibt Text. */
     let textBis = 0, zellenFrei = MAX_ZELLEN;
-    const absatzEnde = () => { if (absatz.length) { aus.push(`<p>${absatz.map(markdownInline).join('<br>')}</p>`); absatz = []; } };
+    const absatzEnde = () => { if (absatz.length) { aus.push(`<p>${absatz.map(i => inline(i, zeilen[i])).join('<br>')}</p>`); absatz = []; } };
     const ebeneZu = () => aus.push(`</li></${ebenen.pop().art}>`);
     const ebeneAuf = (art, breite) => { aus.push(`<${art}><li>`); ebenen.push({ art, breite }); };
     const listeEnde = () => { while (ebenen.length) ebeneZu(); };
     /** Ein Punkt gehört zur innersten Ebene, die nicht tiefer eingerückt ist als er; mindestens zwei Zeichen mehr öffnen eine
      *  neue Ebene in ihrem offenen Punkt, eine andere Art (Punkt statt Nummer) beginnt auf gleicher Ebene eine neue Liste. */
-    const listenpunkt = (art, breite, text) => {
+    const listenpunkt = (art, breite, html) => {
       while (ebenen.length > 1 && ebenen[ebenen.length - 1].breite > breite) ebeneZu();
       const innen = ebenen[ebenen.length - 1];
       // nur die äußerste Ebene kann tiefer eingerückt sein als der Punkt: sie rückt mit ihm nach links
@@ -175,7 +210,7 @@
       if (!innen || (breite > innen.breite + 1 && ebenen.length < MAX_EBENEN)) ebeneAuf(art, breite);
       else if (innen.art === art) aus.push('</li><li>');
       else { ebeneZu(); ebeneAuf(art, innen.breite); }
-      aus.push(markdownInline(text));
+      aus.push(html);
     };
     for (let i = 0; i < zeilen.length; i++) {
       const z = zeilen[i];
@@ -199,21 +234,21 @@
         else {
           zellenFrei -= zellenzahl;
           absatzEnde(); listeEnde();
-          aus.push(tabelleHtml(z, spalten, zeilen.slice(i + 2, ende)));
+          aus.push(tabelleHtml(tabelle.zeilen[i], spalten, tabelle.zeilen.slice(i + 2, ende), tabelle.zelle));
           i = ende - 1;
           continue;
         }
       }
       let m;
-      if ((m = UEBERSCHRIFT.exec(z))) { absatzEnde(); listeEnde(); const h = Math.min(6, m[1].length + stufe); aus.push(`<h${h}>${markdownInline(m[2])}</h${h}>`); }
+      if ((m = UEBERSCHRIFT.exec(z))) { absatzEnde(); listeEnde(); const h = Math.min(6, m[1].length + stufe); aus.push(`<h${h}>${inline(i, m[2])}</h${h}>`); }
       else if ((m = PUNKT.exec(z)) || (m = NUMMER.exec(z))) {
         absatzEnde();
         let art = 'ul';
         if (NUMMER.test(z)) art = 'ol';
-        listenpunkt(art, einrueckung(m[1]), m[2]);
-      } else if ((m = ZITAT.exec(z))) { absatzEnde(); listeEnde(); aus.push(`<blockquote>${markdownInline(m[1])}</blockquote>`); }
+        listenpunkt(art, einrueckung(m[1]), inline(i, m[2]));
+      } else if ((m = ZITAT.exec(z))) { absatzEnde(); listeEnde(); aus.push(`<blockquote>${inline(i, m[1])}</blockquote>`); }
       else if (!z.trim()) { absatzEnde(); listeEnde(); }
-      else { listeEnde(); absatz.push(z); }
+      else { listeEnde(); absatz.push(i); }
     }
     absatzEnde(); listeEnde();
     return aus.join('');

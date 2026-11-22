@@ -659,6 +659,54 @@
     return `<a class="lv-pfad" href="${esc(ziel)}" title="${esc(name)}"${beschriftung}>${inhalt}</a>`;
   }
 
+  /* ── Pfade in Nachrichten (R00242 FA 3): für die Option `pfade` von markdownInline, gesucht im rohen Text ── */
+
+  /** Absolut (`/…`) oder relativ (Teile aus Wortzeichen, `.`, `~`, `@`, `+`, `-` mit mindestens einem `/`, auch mit `:<zeile>`). */
+  const PFAD_QUELLE = String.raw`\/[^\s\`<>"'*()\[\]]+|[\w.~@+-]+(?:\/[\w.~@+-]+)+(?::\d+)?`;
+  /** Ein Pfad beginnt am Anfang, nach Leerraum oder nach `(`, nie als Adresse eines Markdown-Links `](…)`. */
+  const PFAD_IM_TEXT = new RegExp(String.raw`(?<![^\s(])(?<!\]\()(?:${PFAD_QUELLE})`, 'g');
+  const PFAD_GANZ = new RegExp(`^(?:${PFAD_QUELLE})$`);
+
+  /** Roher Text → `[{von, bis, html}]` der Pfade, die ein Link werden; in einem Durchlauf. */
+  function pfadeFinden(roh, wurzeln, zeile) {
+    const funde = [];
+    for (const treffer of roh.matchAll(PFAD_IM_TEXT)) {
+      const stelle = pfadStelle(treffer[0]);
+      const html = stelleHtml(stelle, wurzeln, zeile, inhalt => inhalt);
+      if (html !== null) funde.push({ von: treffer.index, bis: treffer.index + stelle.geschrieben.length, html });
+    }
+    return funde;
+  }
+
+  /** Füllt ein Pfad den ganzen Inhalt eines Inline-Codes, steht der Code im Link; sonst null (Code bleibt Code). */
+  function pfadImCodeHtml(roh, wurzeln, zeile) {
+    if (!PFAD_GANZ.test(roh)) return null;
+    const stelle = pfadStelle(roh);
+    if (stelle.geschrieben !== roh) return null;
+    return stelleHtml(stelle, wurzeln, zeile, inhalt => `<code>${inhalt}</code>`);
+  }
+
+  /** Treffer → `{geschrieben, pfad, sprung}`: Satzzeichen und `/` am Ende gehören nicht dazu, `:<zeile>` am Ende ist die Zeile. */
+  function pfadStelle(treffer) {
+    const geschrieben = treffer.replace(PFAD_ENDE, '');
+    const mitZeile = /^(.+):(\d+)$/.exec(geschrieben);
+    if (mitZeile === null) return { geschrieben, pfad: geschrieben, sprung: null };
+    return { geschrieben, pfad: mitZeile[1], sprung: Number(mitZeile[2]) };
+  }
+
+  /** Link einer Stelle oder null: absolut mit Marke, relativ nur mit Endung, gegen die Wurzel „Arbeitsort“ und so, wie geschrieben,
+      der volle Anfang davor unsichtbar. Sichtbar steht der Text, wie er geschrieben ist, samt `:<zeile>`. */
+  function stelleHtml({ geschrieben, pfad, sprung }, wurzeln, zeile, huelle) {
+    if (pfad.startsWith('/')) {
+      if (!linkfaehig(pfad)) return null;
+      return linkHtml(pfad, sprung, huelle(pfadInhaltHtml(geschrieben, wurzeln, zeile)));
+    }
+    const arbeitsort = wurzeln.find(w => w.art === 'arbeitsort');
+    if (arbeitsort === undefined || !/\.[A-Za-z]\w*$/.test(pfad) || !pfadSauber(pfad)) return null;
+    const anfang = `<span class="lv-anf"><span class="vh">${zeile(`${arbeitsort.wurzel}/`)}</span></span>`;
+    return linkHtml(`${arbeitsort.wurzel}/${pfad}`, sprung, huelle(anfang + zeile(geschrieben)));
+  }
+
   /* ── Budget der Marken: ein Satz zeigt nie mehr markierbare Zeichen, als `zeichenBuchen` (lauf.js) im Text gebucht hat ── */
 
   /** Was `zeichenBuchen` als Marke zählt (MARKIERBAR in lauf.js); ein Node-Test hält beide gleich. */
@@ -680,5 +728,5 @@
   }
 
   Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
-  Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml });
+  Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml, pfadeFinden, pfadImCodeHtml });
 })(typeof module !== 'undefined' ? module.exports : window);

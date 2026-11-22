@@ -554,7 +554,10 @@ test('R00240 AK 9: Rückfall auf pre über 64 KiB, über 2.000 Zeilen und über 
     assert.match(html, /<div class="lv-auf"><span class="k">Aufruf<\/span><pre>/, text.slice(0, 30));
     assert.doesNotMatch(html, /lv-kv|lv-json/);
   }
-  assert.doesNotMatch(laufHtml(t13Zeilen(), false, esc), /<a[\s>]/);
+  // R00242: Pfade in Nachrichten und im Pfadfeld sind Links nach VS Code; ein anderer Link entsteht weiter nicht
+  const links = laufHtml(t13Zeilen(), false, esc).match(/<a[\s>][^>]*>/g);
+  assert.ok(links.length > 0);
+  for (const a of links) assert.match(a, /^<a class="lv-pfad" href="vscode:\/\/file\//, a);
 });
 
 test('R00240 AK 6, AK 9: Nr 5 — Zusammenfassung „Von Claude Code gekürzt“ mit Symbol ohne Größe, nirgends <persisted-output>, Fehlerform, Kopf 1 Fehler', () => {
