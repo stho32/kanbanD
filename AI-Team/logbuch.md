@@ -1845,3 +1845,16 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-22 | #247 | Auto-Reviews | ux-reviewer | bestanden | 3 min | kein Muss, kein Sollte · claude · sonnet · Lauf 247-ux-reviewer-2 · 1,17 $ · Karte gesamt 8,75 $ |
 | 2026-11-22 | #246 | Architektur | architekt | bestanden | 11 min | ADR-0026 N4, drei Ursachen · claude · opus · Lauf 246-architekt-1 · 3,82 $ · Karte gesamt 3,82 $ |
 | 2026-11-22 | #246 | Detailplanung | product-owner | bestanden | 1 min | PO Z. 516 Zuschnitt a · claude · opus · Lauf 246-product-owner-1 · 0,62 $ · Karte gesamt 4,44 $ |
+| 2026-11-22 | #247 | Entwicklertest | entwicklertester | bestanden | 4 min | US-1..US-3 bestanden · claude · sonnet · Lauf 247-entwicklertester-1 · 0,45 $ · Karte gesamt 9,20 $ |
+| 2026-11-22 | #246 | Detailplanung | planer | bestanden | 5 min | R00232, I0222, 2 Bubbles · claude · opus · Lauf 246-planer-1 · 1,91 $ · Karte gesamt 6,35 $ |
+
+**Retrospektive #247** (Sperrform der Leseknöpfe, R00229, ADR-0025 N5; 2026-11-22; Gate ganz grün auf d160f2da, ausgeliefert. Karte gesamt rund 9 $.)
+- **Gut:**
+  - Der architekt machte aus zwei Stellen eine Regel je Komponente (N5) und fand die dritte Fundstelle in „Commits“.
+  - Die Pixeltests vergleichen mit der Rolle im Thema statt mit festen Zahlen.
+  - Die Node-Probe verbietet künftig Ansichtspräfixe.
+- **Lehre (Kriterium gegen Bestand):** AK 5 verlangte für alle Knöpfe einen Ring „solid ≥ 2 px“. In „Commits“ war es schon vor der Karte der Standardring. Der code-reviewer gab `anforderung_falsch` zurück, und eine Planungsrunde kam dazu. Ein Wächter-Kriterium („Heute grün“) wird vor dem Bau am Ist-Stand jeder genannten Ansicht geprobt.
+- **Lehre (paralleles Gate):** Der entwickler startete sein Gate neu, ohne erneut auf ein Gate des Directors zu prüfen; die Last stieg auf 9. Der Auftrag verlangt die Prüfung jetzt „unmittelbar vor jedem Start, auch vor einem Neustart“.
+- **Lehre (Mutanten über die Route):** `mutanteEinsetzen` greift still nicht, wenn der Pfad nicht `/web/…` ist. Der erste Mutantenlauf war deshalb wertlos grün.
+- **Härtung, nicht gebaut:** Spezifität (0,2,0) der Komponentenregel gegen künftige Ansichtsregeln; die AK-8-Probe übersieht Nesting und `:is()`; das gesperrte „Neu lesen“ ist unterstrichen wie ein Link (gestalter, D0009).
+| 2026-11-22 | #247 | Erledigt | director | Retrospektive | – | 3 Lehren (Wächter am Ist-Stand proben, Gate-Prüfung vor Neustart, Mutantenpfad /web/) |
