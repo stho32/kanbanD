@@ -4,7 +4,7 @@ name: Struktur für Hilfstechnik
 art: Aspekt
 geltung: Makro
 befund: Einheitlich
-hausantwort: "ADR-0018 (Akzeptiert): Landmarks im Rahmen, eine h1 je Route nur in vHaupt(), Abschnitte h2, Karte listitem in list mit Namen aus kartenName(), aria-current wie die Klasse an (Leiste oder offenes Menü „…“, Nachtrag N1), aria-expanded am Klapp-Knopf, Ansichtswechsel des Aufgabenfensters als Menü mit aria-checked statt tablist (Nachtrag N2); Probe über alle Routen"
+hausantwort: "ADR-0018 (Akzeptiert): Landmarks im Rahmen, eine h1 je Route nur in vHaupt(), Abschnitte h2, Karte listitem in list mit Namen aus kartenName(), aria-current wie die Klasse an (Leiste oder offenes Menü „…“, Nachtrag N1), aria-expanded am Klapp-Knopf, Ansichtswechsel des Aufgabenfensters als Menü mit aria-checked statt tablist (Nachtrag N2); ein Ereignis, eine Live-Ansage, Meldungen in Ansichten mit Statusbereich ohne Live-Rolle (Nachtrag N4); Probe über alle Routen"
 betrifft:
   - A00009
 herkunft: code
@@ -15,6 +15,9 @@ quellen:
   - web/reiter.js
   - web/fokus.js
   - web/markdown.js
+  - e2e/tests/hilfen.js
+  - web/commits.js
+  - web/gesamt.js
   - web/kd-app.css
   - e2e/tests/ziele.spec.js
   - e2e/tests/r00065-mehrfachauswahl.spec.js
@@ -60,10 +63,17 @@ Soll nach [ADR-0018](../../ADRs/0018-struktur-fuer-hilfstechnik-aus-dem-renderer
   - „Anhänge“ ist keine Ansicht; die Liste steht im Inhalt nach den Teilaufgaben.
   - Dasselbe gilt für das Aktionsmenü des Fensterkopfs (#144): höchstens zwei Menü-Auslöser im Kopf (Ansicht, Aktionen), keine Blätterknöpfe.
 
+- **Ansagen** (erweitert nach ADR-0018 Nachtrag N4, Karte #245, PO Z. 481):
+  - Ein Ereignis ergibt genau eine Live-Ansage; Start und Ergebnis eines Lesens sind zwei Ereignisse.
+  - Sagt der Statusbereich einer Ansicht ein Ereignis an, trägt die sichtbare Meldung dazu kein `role="alert"`, kein `role="status"` und kein `aria-live`. Ohne solchen Statusbereich behält die Meldung ihre Live-Rolle.
+  - Statusbereiche heute: `#commits-status` und `#nf-meld` („Commits“), `#rv-ansage` (Abschnitte auf „Alle Änderungen“), `#laeufe-status`, `#lv-status`.
+  - Wiederholt sich dasselbe Ereignis, wird der Statusbereich vorher geleert; Leeren zählt nicht als Ansage.
+
 Durchsetzung:
 - E2E-Probe über alle Routen nach dem Muster von `e2e/tests/ziele.spec.js`, mit Mutante. Die Routenliste wird gegen die Verzweigungen von `vHaupt()` abgeglichen.
 - Unit-Test `kartenName` in `e2e/einheit/`.
 - E2E-Probe am Aufgabenfenster (Nachtrag N2): kein `[role="tablist"]` in `#fenster`; genau ein `aria-checked="true"` unter den Menüeinträgen und es ist die gezeichnete Ansicht; Auslöser mit `aria-haspopup="menu"` und `aria-expanded`; Pfeile/`Pos1`/`Ende`/`Enter`/`Esc` mit Rückgabe an den Auslöser; kein `aria-current` in `#fenster`; nach einem Live-Ereignis bleibt die Ansicht gewählt. Unit: `reiterSchluessel` ohne `anhaenge`, Rückfall für `anhaenge` und einen unbekannten Schlüssel.
+- Ansagen (Nachtrag N4): gemeinsame Zählhilfe `ansagenZaehlen` in `e2e/tests/hilfen.js` (nicht leere Textänderungen in `[role=status],[role=alert],[aria-live]`, Fenster vom Freigeben der Antwort bis zum gezeichneten Ergebnis), mit Mutante „Live-Rolle zurück an der Meldung“; Review-Punkt für `architektur-reviewer`, `code-reviewer` und `ux-reviewer`: eine Meldung mit Live-Rolle neben einem Statusbereich, der dasselbe Ereignis ansagt, oder eine Ansage-Probe ohne die gemeinsame Hilfe ist ein Befund.
 - Review-Punkt für `architektur-reviewer` und `code-reviewer`: ein zweiter Ansichts-Zustand, eine zweite Ansichtsliste, eine eigene Umschaltung in einer Sicht oder ein Fenstermenü ohne Ebene in `web/fokus.js` ist ein Befund.
 
 ## Systemantwort

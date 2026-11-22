@@ -11,7 +11,7 @@
 - Landmarks aus `header`/`nav`/`main`/`footer`: je genau eine Fundstelle `banner`, `navigation`, `main`, `contentinfo`.
 - Gegenprobe Option B: Unter einer `option` zeigt Chromium die Kinder ebenfalls. Die Spezifikation (ARIA 1.2, „Children Presentational: True“) und Screenreader behandeln sie dagegen als Text. Dieses Screenreader-Verhalten ist nicht gemessen.
 
-**Nachträge**: 2026-11-12 — Leiste auf zwei Ziele, die vier seltenen Ziele im Menü „…“, daraus geweitete Regel 5 (R00140/I0126, Karte #105), siehe [Nachtrag N1](#nachtrag-2026-11-12-n1-leiste-auf-zwei-ziele-vier-seltene-ziele-im-menü-geweitete-regel-5-r00140). 2026-11-12 — Ansichtswechsel des Aufgabenfensters als Menü statt `tablist`, Aktionen des Fensterkopfs im Menü, Anhänge im Inhalt (R00127, Karten #145/#144), siehe [Nachtrag N2](#nachtrag-2026-11-12-n2-menü-statt-reiterleiste-menü-für-die-aktionen-des-fensters-r00127-145-144). 2026-11-16 — Menü „Berichte“ zeichnet den offenen Bericht aus, „höchstens ein“ zählt je Ebene (R00184, Karte #111), siehe Nachtrag N3 am Ende. Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* zeigen, wo die Nachträge gelten.
+**Nachträge**: 2026-11-12 — Leiste auf zwei Ziele, die vier seltenen Ziele im Menü „…“, daraus geweitete Regel 5 (R00140/I0126, Karte #105), siehe [Nachtrag N1](#nachtrag-2026-11-12-n1-leiste-auf-zwei-ziele-vier-seltene-ziele-im-menü-geweitete-regel-5-r00140). 2026-11-12 — Ansichtswechsel des Aufgabenfensters als Menü statt `tablist`, Aktionen des Fensterkopfs im Menü, Anhänge im Inhalt (R00127, Karten #145/#144), siehe [Nachtrag N2](#nachtrag-2026-11-12-n2-menü-statt-reiterleiste-menü-für-die-aktionen-des-fensters-r00127-145-144). 2026-11-16 — Menü „Berichte“ zeichnet den offenen Bericht aus, „höchstens ein“ zählt je Ebene (R00184, Karte #111), siehe Nachtrag N3 am Ende. 2026-11-22 — ein Ereignis, eine Ansage; Meldungen in Ansichten mit Statusbereich ohne Live-Rolle, Inventur der Review-Seite und von „Commits“ (PO Z. 481, Karte #245), siehe Nachtrag N4 am Ende. Der Text oberhalb der Nachträge ist der Stand der Annahme und bleibt unverändert; Marken *(→ N1)* zeigen, wo die Nachträge gelten.
 
 Ist im Code (gelesen, kanbanD `b17c412`):
 - Die Karte ist `div.ka` mit `tabindex=0`, ohne Rolle und Namen, mit `aria-selected="true"` bei Auswahl (`web/ansicht.js:529`). Defekte und fehlende Karten liegen bei `:537` und `:640`.
@@ -290,3 +290,57 @@ Entscheidung 1 betrifft die Rolle der Karte. Die Entscheidungen 2 (Name) und 3 (
 **Anlass**: Karte #111, Entscheidung des product-owner vom 2026-11-08 (`AI-Team/po-entscheidungen.md` Z. 179), [R00184](../../Anforderungen/R00184-fokusring-im-kopf-aktueller-bericht-und-ueberschriften-im-aufgabenfenster.md) (I0174); eingetragen vom planer im Auftrag des Directors, zu bestätigen durch den architekt.
 
 Im Menü „Berichte“ trägt der Eintrag des offenen Berichts `an` und `aria-current="page"` aus demselben Wahrheitswert (Helfer `aktuelleSeite`), wie Regel 5 es für jede Markierung verlangt. Das „höchstens ein“ aus N1 zählt je Ebene: der Auslöser „Berichte“ in der Leiste bzw. im Seitenmenü behält seine Markierung, im offenen Menü „Berichte“ kommt genau ein Eintrag der Ebene darunter hinzu. Die Probe aus N1 (`aktuelleSeitePruefen`) öffnet das Menü „…“ und bleibt unverändert; die neue Probe zählt im Menü „Berichte“ für sich.
+
+## Nachtrag 2026-11-22 N4: Ein Ereignis, eine Ansage, und die Ansicht mit Statusbereich sagt nur dort an (#245, PO Z. 481)
+
+**Anlass**: Karte #245 „Genau eine Ansage in ‚Commits‘ und auf der Review-Seite“, stehende Regel des product-owner `AI-Team/po-entscheidungen.md` Z. 481 (a) und (c), UX-Review von #232 (Abschnittsfehler auf „Alle Änderungen“ doppelt angesagt). Lauf 245-architekt-1, Entscheider: Claude (autonom, architekt, Auftrag Director der Software-Factory). Stand gelesen: Zweig `karte/245`, `ca101ad6`.
+
+**Kontext.** Es gibt keine zentrale Stelle, die entscheidet, wer ansagt. Jede Ansicht schreibt `role="status"`, `role="alert"` oder `aria-live` selbst in ihre Vorlage, und Halter in `render()` sichern die Knoten der Statusbereiche (`commitsStatusBehalten`, `laeufeKnotenBehalten`, `ansageBehalten`, `web/app.js:2610–2615`). Dieselbe Doppelung wurde deshalb viermal einzeln gefunden und behoben: in „Läufe“ (#217, R00219 AK 10), in der Laufansicht (#210, ADR-0041), am Nachfolger (#220, R00218 AK 13) und jetzt auf „Alle Änderungen“. Auch die Proben gibt es fünfmal mit verschiedener Zählweise (`e2e/tests/r00218-nachfolger.spec.js:197`, `r00219-ansicht-laeufe.spec.js:832`, `r00220-transkripte-schalter.spec.js`, `r00221-laufansicht.spec.js`, `r00224-grund-bei-404.spec.js:123`). Einige zählen eingehängte Knoten, andere leere Texte.
+
+**Inventur** (Stand `ca101ad6`):
+
+| Stelle | Live-Rolle | Ereignis | Wer sagt es noch an | Urteil |
+|---|---|---|---|---|
+| `web/gesamt.js:358`, `:361`, `:366` (`abschnittFehlerHtml`: Antwortbudget, 404 `repository_fehlt`, übrige) | `alert` | Abschnitt gescheitert | `#rv-ansage` (`web/app.js:1801`), Text aus `ansageText` „…, ohne <Anwendung>: ließ sich nicht lesen.“ (`web/gesamt.js:132`, gesetzt `web/app.js:1704`) | **doppelt**, ändern |
+| `web/gesamt.js:333` | `status` | Abschnitt beginnt zu lesen | niemand | eine, Start-Ereignis (Z. 484 S-B) |
+| `web/diff.js:332`, `:333`, `:352` / `:353`, `:354` (Datei lädt, wartet, Fehler beim Nachladen) | `status` / `alert` | Datei-Ereignis | niemand, `#rv-ansage` nennt keine Dateien | eine |
+| `web/diff.js:449`, `:450`, `:459` / `:452`, `:456`, `:476` (Seitenmeldung `meldungHtml`) | `alert` / `status` | Diff bzw. erste Anwendung gescheitert | `#rv-ansage` bleibt leer, solange `alle.erste` nicht `da` ist (`web/app.js:1701`) | eine |
+| `web/diff.js:426` `#rv-pos` | `aria-live` | Blättern „i von n“ | niemand | eine |
+| `web/diff.js:488` `.rv-randb` | `status` | Commit außerhalb der Folge | niemand | eine |
+| `web/app.js:1826`, `:1843`, `:1859` / `:1802`, `:1804`, `:1837`, `:1838`, `:1845` | `alert` / `status` | Seitenmeldungen, Laden | `#rv-ansage` leer (`web/app.js:1821` „bleibt leer“) | eine |
+| `web/commits.js:375`, `:383` `#commits-status` | `status` | Laden, Fehler, gelesen, Suche, Erfolg | ist der Statusbereich, die Fehlermeldung steht in ihm selbst | eine |
+| `web/commits.js:301` `#nf-meld` | `status` | Schreibfehler am Kandidaten | `#commits-status` wird vorher geleert (`web/app.js:1277`), leeren zählt nicht | eine |
+| `web/commits.js:315` `#nf-gruppe` | keine (`group`, `aria-describedby`) | Ergebnis der Suche | `#commits-status` nur bei gewandertem Fokus (`web/app.js:1259–1260`) | eine |
+| `web/laeufe.js:206` `#laeufe-status` | `status` | alle Ereignisse der Ansicht | `.meld` ohne Rolle | eine (R00219 AK 10) |
+| `web/lauf.js:247` `#lv-status` | `status` | alle Ereignisse der Ansicht | `lv_fehl` ohne Rolle | eine (ADR-0041 Punkt 5) |
+
+Die einzige Doppelung im Bestand sind die drei Abschnittsfehler auf „Alle Änderungen“. In „Commits“ und auf „Ein Commit“ steht heute je Ereignis genau eine Ansage.
+
+**Optionen.**
+
+| | Option | Stärke | Schwäche |
+|---|---|---|---|
+| A | Nur die drei Stellen in `gesamt.js` ohne `role` | kleinster Eingriff | die nächste Ansicht doppelt wieder, wie viermal zuvor; nichts prüft es außerhalb der Karte |
+| **B** | **Regel hier (Makro über X00005), Fix lokal, eine gemeinsame Zählhilfe in `e2e/tests/hilfen.js`, Review-Punkt** | billig; jede neue Ansicht wird an derselben Probe gemessen; bestehende Statusbereiche und ihre Halter bleiben | Durchsetzung über Probe und Review, nicht über die Struktur des Codes |
+| C | Ein seitenweiter Statusbereich `#ansage` mit `ansagen(text)`, Meldungen nie live | Doppelung strukturell ausgeschlossen | Umbau aller Ansichten und Halter; bricht R00205 AK 6/10, R00218 AK 13, R00219 AK 10, R00210 Ansage; Fenster ohne Statusbereich (ADR-0015, `role="alert"` im Fuß) brauchen trotzdem einen Sonderweg |
+| D | Meldungsbausteine leiten `role` aus einem Flag „Ansicht hat Statusbereich“ ab | eine Funktion entscheidet | die meisten Meldungen sind handgeschriebene Vorlagen (`gesamt.js`, `diff.js`, `ansicht.js`); das Flag muss je Aufruf richtig stehen, die Frage wandert nur |
+
+**Entscheidung: B.**
+
+1. **Ein Ereignis ergibt genau eine Live-Ansage** (PO Z. 481 a). Start und Ergebnis eines Lesens sind zwei Ereignisse (Z. 484 S-B, Z. 487).
+2. **Sagt der Statusbereich einer Ansicht ein Ereignis an, trägt die sichtbare Meldung dazu kein `role="alert"`, kein `role="status"` und kein `aria-live`.** Ansichten ohne einen Statusbereich, der das Ereignis ansagt, behalten die Live-Rolle an der Meldung (Fenster nach ADR-0015, Seitenmeldungen der Review-Seite, Dateifehler).
+3. **Für „Alle Änderungen“ ist `#rv-ansage` der Statusbereich der Abschnitte.** `abschnittFehlerHtml` (`web/gesamt.js:352–367`) zeichnet die drei Fehlerformen ohne `role`. Angesagt wird der Abschnittsfehler einmal in `#rv-ansage`, wenn alle Abschnitte entschieden sind (R00210 FA 3). Das bedeutet auch: Ein früh scheiternder Abschnitt wird erst angesagt, wenn der letzte Abschnitt entschieden ist. Sichtbar steht er sofort. Ton, Symbol, Wortlaut, „Erneut versuchen“ und Fokus bleiben unverändert.
+4. **Wird dasselbe Ereignis wiederholt**, leert der Statusbereich sich vorher, wie `reviewAbschnittErneut` es tut (`web/app.js:1774`). Ein unveränderter Text wird nicht neu gesprochen. Leeren zählt nicht als Ansage.
+5. **Gezählt wird überall gleich**, über eine gemeinsame Hilfe `ansagenZaehlen(page)` in `e2e/tests/hilfen.js`: Ein `MutationObserver` am Dokument erfasst nicht leere Textänderungen in Elementen, die auf `[role=status],[role=alert],[aria-live]` passen, oder in deren Inhalt. Dazu zählt ein eingehängtes Live-Element, das schon Text trägt. Ein leerer oder von einem Halter wieder eingesetzter Knoten zählt nicht. Das Zählfenster reicht vom Freigeben der gehaltenen Antwort bis zum gezeichneten Ergebnis (wie R00219 AK 10). Die fünf eigenen Zähler der Specs dürfen bleiben. Neue Proben nutzen die Hilfe.
+
+**Begründung und akzeptierte Schwäche.** B setzt die stehende Regel dort durch, wo sie zuletzt verletzt wurde, und gibt jeder neuen Ansicht dieselbe Probe, ohne gebaute und abgenommene Statusbereiche umzubauen. C ist erst zu prüfen, wenn trotz Hilfe und Review-Punkt eine weitere Doppelung durchkommt. Ich nehme in Kauf, dass nichts im Code eine zweite Live-Rolle verhindert. Es fällt erst in der Probe oder im Review auf.
+
+**Folgen für Anforderungen.** R00210 AK 4a („mit … `role="alert"`“) und die Ansage-Probe (Z. 178, „der Abschnittsfehler hat `role="alert"`“) sowie R00224 FA 1/AK 1 (Live-Rolle wie die übrigen Abschnittsfehler) widersprechen Regel 3. Die Bug-Anforderung zu #245 löst diese Teile ab. Die Proben `e2e/tests/r00210-alle-aenderungen.spec.js:485` und die AK-1-Probe in `r00224-grund-bei-404.spec.js` werden auf „kein `role`, eine Ansage in `#rv-ansage`“ umgestellt. Die Kriterien zieht der planer nach.
+
+**Abnahme** (heute rot): Gegeben #11 auf „Alle Änderungen“ und die Anwendung `wb` antwortet je Fall mit 503 Antwortbudget, 503 Zeitgrenze, 404 `repository_fehlt`, 500 und ohne Verbindung. Dann zählt `ansagenZaehlen` je Fall vom Freigeben bis zum gezeichneten Abschnitt genau eine Ansage, und die steht in `#rv-ansage` („… ohne Anwendung wb: ließ sich nicht lesen.“). `.rv-abs-f` trägt kein `role` und kein `aria-live`. Zwei gescheiterte Abschnitte ergeben zusammen eine Ansage, die beide nennt. „Erneut versuchen“ mit erneutem Fehler ergibt ab der Freigabe wieder genau eine Ansage. Die Mutante „`role="alert"` zurück an `.rv-abs-f`“ ist rot. Für „Commits“ (Fehler beim Lesen, Suche gescheitert bei gewandertem Fokus, Schreibfehler 409 allgemein und 423) und „Ein Commit“ (Diff 503, 500; Datei-Nachladen 503) prüft dieselbe Hilfe genau eine Ansage als Rückfallschutz. Diese Fälle sind heute schon grün.
+
+**Durchsetzung** (Makro, X00005): die gemeinsame Hilfe und die Probe oben; Review-Punkt für `architektur-reviewer`, `code-reviewer` und `ux-reviewer`: Eine neue Ansicht mit Statusbereich, deren Meldung zusätzlich eine Live-Rolle trägt, oder eine Probe zu Ansagen ohne `ansagenZaehlen` ist ein Befund.
+
+**Nebenwirkung.** Für die Abschnittsfehler entfällt die offene Frage aus ADR-0015 („wird ein bei jedem `render()` neu eingefügtes `role="alert"` wiederholt angesagt?“), denn sie tragen keine Live-Rolle mehr. Für die übrigen `alert`-Meldungen bleibt sie offen.
+
+**Offen.** (a) Die Ladesätze der Abschnitte (`web/gesamt.js:333`) und der Dateien (`web/diff.js:332–333`) sind eigene Live-Regionen neben `#rv-ansage`. Beim ersten Lesen mehrerer Anwendungen sagt die Seite so mehrere Starts an. Nach Z. 484 S-B ist das zulässig, aber nicht ausdrücklich entschieden: Frage an den product-owner. (b) Antwortbudget ist an der Datei `role="status"` (`web/diff.js:352`) und am Abschnitt bisher `role="alert"`. Mit Regel 3 entfällt die Rolle am Abschnitt; die Datei bleibt `status`, die übrigen Dateifehler `alert`. Ob die Dringlichkeit dort vereinheitlicht wird, ist eine Frage an den ux-reviewer, keine Doppelung.
