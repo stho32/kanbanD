@@ -22,3 +22,4 @@ IDs aus `AI-Team/quellen.md`, die diese Rolle besonders braucht.
 ## Gelerntes
 
 - noch keine
+- 2026-11-22 (#234): Ändert eine Karte die Antwort eines Endpunkts mit ETag/304, gehört die Probe „ETag des Vorgängers gegen das neue Programm“ (vier Varianten, dazu ein dauerhaftes Browserprofil erst alt, dann neu) zum Review. Eine 304 auf eine veraltete Antwort fangen grüne Tests nicht.

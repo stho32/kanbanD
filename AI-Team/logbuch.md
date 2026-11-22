@@ -1787,3 +1787,22 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Offen, an #245:** Sammelansage und Summenzeile sagen weiter „… ohne Anwendung wb: ließ sich nicht lesen.“
 - **Härtung, nicht gebaut:** Ternaries in neuem Code (J11); das Kürzel wird an drei Stellen aus dem Verweis gelesen; `app.js:1597` behandelt jede 404 mit `zustand` wie `repository_fehlt` (heute liefert der Server nur diesen Zustand).
 | 2026-11-22 | #232 | Erledigt | director | Retrospektive | – | 3 Lehren (innerText, unrouteAll, node v20), Härtung notiert |
+| 2026-11-22 | #234 | Nacharbeit | entwickler | bestanden | 1 h 4 min | 3 Muss behoben; Gate cargo 1214, node 1507, PW 2339/0 · claude · opus · Lauf 234-entwickler-2 · 11,04 $ · Karte gesamt 29,80 $ |
+| 2026-11-22 | #234 | Auto-Reviews | architekt | bestanden | 1 min | N8.6 G1/G2 berichtigt · claude · opus · Lauf 234-architekt-3 · 0,60 $ · Karte gesamt 30,40 $ |
+| 2026-11-22 | #234 | Auto-Reviews | planer | bestanden | 1 min | R00225 AK 10 angeglichen · claude · opus · Lauf 234-planer-3 · 0,42 $ · Karte gesamt 30,82 $ |
+| 2026-11-22 | #234 | Auto-Reviews | code-reviewer | bestanden | 5 min | Muss 1+2 behoben · claude · sonnet · Lauf 234-code-reviewer-2 · 1,49 $ · Karte gesamt 32,31 $ |
+| 2026-11-22 | #234 | Auto-Reviews | legacy-reviewer | bestanden | 6 min | ETag-Muss behoben, Bestand bytegleich · claude · sonnet · Lauf 234-legacy-reviewer-2 · 1,23 $ · Karte gesamt 33,54 $ |
+| 2026-11-22 | #234 | Entwicklertest | entwicklertester | bestanden | 3 min | US-1..US-5 und Abnahme-Probe bestanden · claude · sonnet · Lauf 234-entwicklertester-1 · 0,39 $ · Karte gesamt 33,93 $ |
+
+**Retrospektive #234** (Satz über fremde Commits bei 0 fremden, R00225, ADR-0032 N8/N8.6; 2026-11-22; Gate auf be5dbacd grün bis auf 2 Wackler, ausgeliefert. Karte gesamt rund 34 $: Bau 6,30 $, Nacharbeit 11,04 $, dazu 2 Läufe des architekt und 3 des planer für N8.6 und R00225.)
+- **Gut:**
+  - **architekt:** Er fand die Ursache im Vertrag der API statt in der Oberfläche (N8).
+  - **code-reviewer:** Er fand zwei Lücken (Umbenennungsgruppe, `datei=` hinter dem Schnitt) mit Probe gegen das ausgelieferte Programm.
+  - **legacy-reviewer:** Er fand den unveränderten ETag. Ein Browser hätte nach dem Upgrade mit 304 die alte, falsche Ansicht behalten. Belegt hat er das mit einem dauerhaften Browserprofil (P7).
+  - **Nachprüfung:** Erstmals mit „ERSTER SCHRITT“ im Auftrag nannten die Sonnet-Prüfer `gemeinsam/` mit Zeilenzahl.
+- **Lehre (Antwort mit ETag):** Ändert eine Karte die Antwort eines Endpunkts mit ETag, muss eine Versionskonstante im ETag steigen. Die Probe dafür: der ETag des Vorgängers gegen das neue Programm. Grüne Tests decken eine 304 auf eine veraltete Antwort nicht auf. Diese Probe gehört künftig in jedes Legacy-Review solcher Karten.
+- **Lehre (Planung am Gruppenbegriff):** Ein ADR, das eine Menge je Pfad definiert, während der Code je Umbenennungsgruppe arbeitet (`folge_listen`), erzeugt stille Verluste. Der architekt prüft neue Regeln gegen die vorhandenen Gruppenregeln (N7.1), bevor er sie akzeptiert.
+- **Lehre (Lastprobe nachts):** Der entwickler fuhr nachts die Lastprobe R00208. Die Regel steht jetzt im Projekt-Gelernten und im Auftrag.
+- **Offen für den Tag:** Lastprobe R00208 nach der Nacharbeit; die ADR-Notiz „jede Änderung der Einteilung erhöht `EINTEILUNG_VERSION`“ gehört ins ETag-Kapitel N6.10 (Nachzug architekt).
+- **Härtung, nicht gebaut:** Mit `datei=` (20 MB) kann eine gespaltene Gruppe über den 1-MB-Schnitt anders eingeteilt werden als ohne. Das ist latent und erst ab etwa 10.000 Einträgen möglich.
+| 2026-11-22 | #234 | Erledigt | director | Retrospektive | – | 3 Lehren (ETag-Version, Gruppenbegriff, Lastprobe nachts), Tagprobe offen |
