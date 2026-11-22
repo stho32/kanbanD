@@ -1858,3 +1858,17 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Lehre (Mutanten über die Route):** `mutanteEinsetzen` greift still nicht, wenn der Pfad nicht `/web/…` ist. Der erste Mutantenlauf war deshalb wertlos grün.
 - **Härtung, nicht gebaut:** Spezifität (0,2,0) der Komponentenregel gegen künftige Ansichtsregeln; die AK-8-Probe übersieht Nesting und `:is()`; das gesperrte „Neu lesen“ ist unterstrichen wie ein Link (gestalter, D0009).
 | 2026-11-22 | #247 | Erledigt | director | Retrospektive | – | 3 Lehren (Wächter am Ist-Stand proben, Gate-Prüfung vor Neustart, Mutantenpfad /web/) |
+| 2026-11-22 | #249 | Entwicklung | entwickler | bestanden | 1 h 2 min | Gate cargo 1225, node 1523, PW 2370/1 Wackler r00106:850 · claude · sonnet · Lauf 249-entwickler-1 · 1,62 $ · Karte gesamt 6,15 $ |
+| 2026-11-22 | #249 | Auto-Reviews | code-reviewer | befund | 4 min | Muss: Review-Kopf verliert Unterlinie · claude · sonnet · Lauf 249-code-reviewer-1 · 1,20 $ · Karte gesamt 7,35 $ |
+| 2026-11-22 | #244 | Architektur | architekt | bestanden | 4 min | ADR-0005 N4 · claude · opus · Lauf 244-architekt-1 · 1,27 $ · Karte gesamt 1,27 $ |
+| 2026-11-22 | #249 | Auto-Reviews | ux-reviewer | bestanden | 4 min | kein neues Muss, Sollte Feldgrenze schmal · claude · sonnet · Lauf 249-ux-reviewer-3 · 1,16 $ · Karte gesamt 8,51 $ |
+| 2026-11-22 | #244 | Detailplanung | planer | bestanden | 5 min | R00233, I0223, 5 Bubbles · claude · opus · Lauf 244-planer-1 · 1,93 $ · Karte gesamt 3,20 $ |
+| 2026-11-22 | #245 | Entwicklung | entwickler | bestanden | 53 min | Gate cargo 1225, node 1528, PW 2397/0 · claude · opus · Lauf 245-entwickler-1 · 7,21 $ · Karte gesamt 12,74 $ |
+| 2026-11-22 | #251 | Architektur | architekt | bestanden | 6 min | ADR-0041 N1 · claude · opus · Lauf 251-architekt-1 · 1,87 $ · Karte gesamt 1,87 $ |
+| 2026-11-22 | #245 | Auto-Reviews | code-reviewer | bestanden | 8 min | kein Muss · claude · sonnet · Lauf 245-code-reviewer-1 · 1,69 $ · Karte gesamt 14,43 $ |
+| 2026-11-22 | #251 | Detailplanung | product-owner | bestanden | 4 min | Z. 517–523 · claude · opus · Lauf 251-product-owner-1 · 1,32 $ · Karte gesamt 3,19 $ |
+| 2026-11-22 | #245 | Auto-Reviews | ux-reviewer | bestanden | 3 min | keine Befunde · claude · sonnet · Lauf 245-ux-reviewer-2 · 1,20 $ · Karte gesamt 15,63 $ |
+| 2026-11-22 | #245 | Entwicklertest | entwicklertester | bestanden | 3 min | 6 Szenarien, kein Muss · claude · sonnet · Lauf 245-entwicklertester-1 |
+| 2026-11-22 | #252 | Architektur | architekt | bestanden | 7 min | ADR-0042 · claude · opus · Lauf 252-architekt-1 · 2,04 $ · Karte gesamt 2,04 $ |
+| 2026-11-22 | #251 | Detailplanung | gestalter | bestanden | 11 min | D0009 #laufansicht, 5d303b43 · claude · sonnet · Lauf 251-gestalter-1 · 3,54 $ · Karte gesamt 6,73 $ |
+| 2026-11-22 | #251 | Detailplanung | product-owner | bestanden | 2 min | Artboard frei, Z. 524–530 · claude · opus · Lauf 251-product-owner-2 |
