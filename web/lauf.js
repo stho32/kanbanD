@@ -345,27 +345,100 @@
       `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. */
   function laufAuswerten(zeilen, grenze) {
     const summe = { werkzeug: 0, denken: 0, warten: 0 };
-    const luecken = [], schritte = [], offen = offeneAufrufe();
+    const luecken = [], schritte = [], offen = offeneAufrufe(), tokens = tokenZaehlung();
     let vorher = null, mitZeit = 0;
     for (const { nr, eintrag } of zeilen) {
-      if (!eintrag) continue;
+      if (!eintrag) { unlesbarZaehlen(tokens); continue; }
       const ms = zeitMs(eintrag.zeit);
       const schritt = eintrag.art === 'werkzeugaufruf' ? aufrufOeffnen(nr, eintrag, ms, offen) : null;
       if (schritt) schritte.push(schritt);
-      if (eintrag.art === 'werkzeugergebnis') ergebnisZuordnen(nr, eintrag, ms, offen, schritte);
+      const ergebnisSchritt = eintrag.art === 'werkzeugergebnis' ? ergebnisZuordnen(nr, eintrag, ms, offen, schritte) : null;
+      tokensZaehlen(tokens, nr, eintrag, schritt, ergebnisSchritt);
       if (ms === null) continue;
       mitZeit++;
       if (vorher !== null) {
         const dauer = Math.max(0, ms - vorher), art = lueckenArt(eintrag);
         summe[art] += dauer;
         if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS) luecken.push({ vorNr: nr, art, dauer, vor: schritt ? schrittText(schritt) : `Nachricht von ${eintrag.name || WER_WORT[eintrag.wer]}` });
+        if (art === 'warten' && dauer >= DENKZEILE_AB_MS) tokens.wartenSeit = dauer;
       }
       vorher = ms;
     }
     const gesamt = summe.werkzeug + summe.denken + summe.warten, bekannt = mitZeit >= 2;
     const kennzahlen = { werkzeugaufrufe: schritte.filter(s => s.aufruf).length, fehler: schritte.filter(s => s.fehler).length };
     const top3 = bekannt ? laengsteSchritte(schritte, luecken) : [];
-    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen) };
+    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen), tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer) };
+  }
+
+  /* ── Tokens je Antwort (R00238, ADR-0041 N3 Punkte 2–5, N3.1): im selben Durchlauf, je Eintrag O(1) ── */
+
+  /** Zustand des Durchlaufs: Summen, Antworten, Folgezeilen, die laufende Antwort, der Schritt, dessen Ergebnis unmittelbar davor
+      stand, die Dauer der letzten gezeichneten Wartezeile seit der vorigen Antwort und die drei teuersten (Liste fester Länge). */
+  function tokenZaehlung() {
+    return { summe: 0, neu: 0, ein: 0, aus: 0, cache_lesen: 0, cache_schreiben: 0, antworten: [], folge: {}, laufend: null, nachSchritt: null, wartenSeit: null, teuer: [] };
+  }
+
+  /** Eine Antwort beginnt an einem Eintrag von `agent` mit `tokens` und umfasst die unmittelbar folgenden Einträge von `agent` ohne
+      `tokens`; jeder andere Eintrag beendet sie. Ihr erster Aufruf beschriftet sie in „Teuerste Schritte“. */
+  function tokensZaehlen(z, nr, eintrag, schritt, ergebnisSchritt) {
+    const mitTokens = eintrag.tokens !== null && eintrag.tokens !== undefined;
+    if (mitTokens) antwortBeginnen(z, nr, eintrag.tokens);
+    else if (z.laufend !== null && eintrag.wer === 'agent') z.folge[nr] = z.laufend.nr;
+    else z.laufend = null;
+    if (z.laufend !== null && schritt !== null && z.laufend.ersterAufruf === null) z.laufend.ersterAufruf = schritt;
+    z.nachSchritt = ergebnisSchritt;
+  }
+
+  /** Eine unlesbare Zeile beendet die laufende Antwort; danach stand kein Ergebnis mehr unmittelbar vor der nächsten. */
+  function unlesbarZaehlen(z) {
+    z.laufend = null;
+    z.nachSchritt = null;
+  }
+
+  /** Neue Tokens = Eingabe + Cache-Schreiben + Ausgabe (N3 Punkt 4). `warten_davor` gilt nur ohne `nachNr` (N3.1); danach gilt die
+      Wartezeile für keine weitere Antwort. */
+  function antwortBeginnen(z, nr, tokens) {
+    const neu = tokens.ein + tokens.cache_schreiben + tokens.aus;
+    let nachNr = null, wartenDavor = z.wartenSeit;
+    if (z.nachSchritt !== null) { nachNr = z.nachSchritt.nr; wartenDavor = null; }
+    z.antworten.push({ nr, tokens, neu, nachNr, warten_davor: wartenDavor });
+    for (const schluessel of TOKEN_SCHLUESSEL) z[schluessel] += tokens[schluessel];
+    z.summe += tokens.ein + tokens.aus + tokens.cache_lesen + tokens.cache_schreiben;
+    z.neu += neu;
+    z.wartenSeit = null;
+    z.laufend = { nr, neu, nachSchritt: z.nachSchritt, wartenDavor, ersterAufruf: null };
+    teuerEinordnen(z.teuer, z.laufend);
+  }
+
+  const TEUERSTE = 3;
+  /** Hält die teuersten Antworten absteigend nach neuen Tokens, bei Gleichstand die frühere zuerst — ohne alle zu sortieren. */
+  function teuerEinordnen(teuer, antwort) {
+    let stelle = teuer.findIndex(t => antwort.neu > t.neu);
+    if (stelle < 0) stelle = teuer.length;
+    if (stelle >= TEUERSTE) return;
+    teuer.splice(stelle, 0, antwort);
+    if (teuer.length > TEUERSTE) teuer.pop();
+  }
+
+  function tokensAbschliessen({ summe, neu, ein, aus, cache_lesen, cache_schreiben, antworten, folge }) {
+    if (!antworten.length) return null;
+    return { summe, neu, ein, aus, cache_lesen, cache_schreiben, antworten, folge };
+  }
+
+  /** Die teuersten in Worten: erster Aufruf oder „Nachricht von Agent“, dazu „nach <Schritt>“ oder „nach <Dauer> Warten“. */
+  function teuersteAbschliessen(teuer) {
+    return teuer.map(t => ({ nr: t.nr, neu: t.neu, was: antwortText(t), nach: anlassText(t) }));
+  }
+
+  function antwortText(antwort) {
+    if (antwort.ersterAufruf === null) return 'Nachricht von Agent';
+    return schrittText(antwort.ersterAufruf);
+  }
+
+  function anlassText(antwort) {
+    if (antwort.nachSchritt !== null) return `nach ${schrittText(antwort.nachSchritt)}`;
+    if (antwort.wartenDavor !== null) return `nach ${dauerText(antwort.wartenDavor)} Warten`;
+    return null;
   }
 
   /** Die drei längsten Schritt-, Denk- und Wartezeilen, nach Dauer absteigend, bei Gleichstand die frühere Zeile zuerst — eine Denk-
@@ -464,13 +537,14 @@
     return irgendeiner.schritt;
   }
 
-  /** Ein Ergebnis gehört zu seinem Aufruf (`aufrufFinden`); ohne Aufruf ist es ein eigener Schritt ohne Dauer. */
+  /** Ein Ergebnis gehört zu seinem Aufruf (`aufrufFinden`); ohne Aufruf ist es ein eigener Schritt ohne Dauer. Liefert den Schritt. */
   function ergebnisZuordnen(nr, eintrag, ms, offen, schritte) {
     const fehler = fehlerErkennen(eintrag.text);
     const schritt = aufrufFinden(eintrag, offen);
     if (schritt === null) {
-      schritte.push({ nr, ergebnisNr: nr, aufruf: false, name: eintrag.name, befehl: null, absicht: null, dauer: null, parallel: false, fehler, beginn: null, laufendeNummer: null, gepaart: true });
-      return;
+      const allein = { nr, ergebnisNr: nr, aufruf: false, name: eintrag.name, befehl: null, absicht: null, dauer: null, parallel: false, fehler, beginn: null, laufendeNummer: null, gepaart: true };
+      schritte.push(allein);
+      return allein;
     }
     schritt.ergebnisNr = nr;
     schritt.fehler = fehler;
@@ -478,6 +552,7 @@
     offen.anzahl--;
     if (offen.begonnen > schritt.laufendeNummer + 1) schritt.parallel = true;
     if (ms !== null && schritt.beginn !== null) schritt.dauer = Math.max(0, ms - schritt.beginn);
+    return schritt;
   }
 
   /** Der Schritt ohne Rechengrößen; ein Aufruf, der bis zum Ende offen blieb, ist parallel, wenn nach ihm ein weiterer begann. */

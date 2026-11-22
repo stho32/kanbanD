@@ -197,8 +197,8 @@ const ALTBESTAND_T1 = {
   eingeklappt: { 1: 'auftrag', 2: 'systemhinweis' },
 };
 
-test('R00238 AK 2: Altbestand — T1 ohne tokens ergibt dieselbe Auswertung wie vor #263', () => {
-  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false), ALTBESTAND_T1);
+test('R00238 AK 2: Altbestand — T1 ohne tokens ergibt dieselbe Auswertung wie vor #263, bis auf tokens: null und eine leere Liste der teuersten', () => {
+  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false), { ...ALTBESTAND_T1, tokens: null, teuer3: [] });
 });
 
 /* ── R00238 B1238: Zahlform der Tokens (PO Z. 573, 574; UX S1) ── */
@@ -229,4 +229,112 @@ test('R00238 FA 2: gekürzte Zahl sichtbar aria-hidden, ausgeschrieben in .vh; v
   assert.strictEqual(lauf.tokenZahlHtml(9999), '9.999');
   assert.strictEqual(lauf.neueTokensHtml(1), '1 neues Token');
   assert.strictEqual(lauf.neueTokensHtml(61502), '<span aria-hidden="true">61 Tsd.</span><span class="vh">61 Tausend</span> neue Tokens');
+});
+
+/* ── R00238 B1239: Antworten, Summe, `warten_davor`, drei teuerste (ADR-0041 N3 Punkte 2–5, N3.1) ── */
+
+const { T8 } = require('../tests/laufansicht-t8');
+/** Wie im Programm: jede Zeile geht durch `eintragPruefen`, die Nummer ist die Stelle (ab 1). */
+const wieGelesen = eintraege => eintraege.map((o, i) => ({ nr: i + 1, eintrag: lauf.eintragPruefen(JSON.parse(JSON.stringify(o))) }));
+const T8_ZEILEN = wieGelesen(T8);
+const tk = (ein, aus, cache_lesen, cache_schreiben) => ({ ein, aus, cache_lesen, cache_schreiben });
+const s = sek => `2026-11-22T10:00:00+01:00`.replace('10:00:00', `10:${String(Math.floor(sek / 60)).padStart(2, '0')}:${String(sek % 60).padStart(2, '0')}`);
+const msg = (wer, sek, tokens) => ({ art: 'nachricht', wer, text: 'x', zeit: sek === null ? 'gestern' : s(sek), ...(tokens ? { tokens } : {}) });
+const call = (sek, befehl, tokens) => ({ art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: JSON.stringify({ command: befehl }), zeit: s(sek), ...(tokens ? { tokens } : {}) });
+const res = sek => ({ art: 'werkzeugergebnis', wer: 'werkzeug', text: 'ok', zeit: s(sek) });
+
+test('R00238 Rechenbeispiel T8: Summe aller vier 239.177, neue Tokens 115.177, Einzelwerte über die gelesenen Einträge', () => {
+  const a = laufAuswerten(T8_ZEILEN, false);
+  const { antworten, folge, ...summe } = a.tokens;
+  assert.deepStrictEqual(summe, { summe: 239177, neu: 115177, ein: 7, aus: 1970, cache_lesen: 124000, cache_schreiben: 113200 });
+});
+
+test('R00238 AK 4, AK 7: T8 — Antworten 2, 5, 7, 12 mit neuen Tokens, nachNr und warten_davor; Nr 9 ist keine Antwort', () => {
+  const a = laufAuswerten(T8_ZEILEN, false);
+  assert.deepStrictEqual(a.tokens.antworten, [
+    { nr: 2, tokens: tk(3, 120, 0, 18000), neu: 18123, nachNr: null, warten_davor: null },
+    { nr: 5, tokens: tk(1, 300, 18000, 34800), neu: 35101, nachNr: 3, warten_davor: null },
+    { nr: 7, tokens: tk(1, 50, 52800, 400), neu: 451, nachNr: 5, warten_davor: null },
+    { nr: 12, tokens: tk(2, 1500, 53200, 60000), neu: 61502, nachNr: null, warten_davor: 317000 },
+  ]);
+  assert.strictEqual(a.tokens.antworten.reduce((n, x) => n + x.neu, 0), 115177, 'die neuen Tokens aller Antworten ergeben zusammen 115.177');
+  assert.deepStrictEqual(a.tokens.folge, { 3: 2 }, 'Nr 3 gehört zur Antwort von Nr 2; Nr 9 zu keiner (Antwort endet am Ergebnis)');
+  assert.deepStrictEqual(a.luecken.filter(l => l.art === 'warten').map(l => [l.vorNr, dauerText(l.dauer)]), [[11, '5 min 17 s']]);
+});
+
+test('R00238 AK 6: T8 — „Teuerste Schritte“ 12, 5, 2 nach neuen Tokens; Nr 7 mit der zweitgrößten Summe fehlt', () => {
+  assert.deepStrictEqual(laufAuswerten(T8_ZEILEN, false).teuer3, [
+    { nr: 12, neu: 61502, was: 'Nachricht von Agent', nach: 'nach 5 min 17 s Warten' },
+    { nr: 5, neu: 35101, was: 'Bash grep -n tokens web/lauf.js', nach: 'nach Read regeln.md' },
+    { nr: 2, neu: 18123, was: 'Read regeln.md', nach: null },
+  ]);
+});
+
+test('R00238 AK 4: Antwort aus Nachricht und zwei parallelen Aufrufen — Tokens an der Nachricht, beide Aufrufe verweisen; Summe der Antworten = Summe des Transkripts', () => {
+  const a = laufAuswerten(wieGelesen([msg('mensch', 0), msg('agent', 2, tk(5, 10, 100, 1000)), call(3, 'a'), call(3, 'b'), res(4), res(5), call(6, 'c', tk(1, 1, 1, 1))]), false);
+  assert.deepStrictEqual(a.tokens.antworten.map(x => [x.nr, x.neu]), [[2, 1015], [7, 3]]);
+  assert.deepStrictEqual(a.tokens.folge, { 3: 2, 4: 2 });
+  assert.deepStrictEqual(a.schritte.filter(x => x.aufruf).map(x => x.parallel), [true, true, false]);
+  assert.strictEqual(a.tokens.antworten.reduce((n, x) => n + x.neu, 0), a.tokens.neu);
+  assert.strictEqual(a.teuer3[0].was, 'Bash a', 'beschriftet mit dem ersten Aufruf der Antwort');
+});
+
+test('R00238 AK 4: zwei Antworten mit tokens ohne Eintrag eines anderen wer dazwischen sind zwei Antworten', () => {
+  const a = laufAuswerten(wieGelesen([msg('agent', 0, tk(1, 0, 0, 0)), call(1, 'a', tk(2, 0, 0, 0)), msg('agent', 2)]), false);
+  assert.deepStrictEqual(a.tokens.antworten.map(x => [x.nr, x.neu]), [[1, 1], [2, 2]]);
+  assert.deepStrictEqual(a.tokens.folge, { 3: 2 }, 'die Nachricht ohne tokens gehört zur zweiten Antwort');
+});
+
+test('R00238 AK 4: eine Antwort endet an einem Eintrag von mensch, an einem Ergebnis und an einer unlesbaren Zeile', () => {
+  const zeilen = wieGelesen([msg('agent', 0, tk(1, 0, 0, 0)), msg('mensch', 1), msg('agent', 2), msg('agent', 3, tk(1, 0, 0, 0)), res(4), call(5, 'x'), msg('agent', 6, tk(1, 0, 0, 0))]);
+  zeilen.push({ nr: 8, eintrag: null }, { nr: 9, eintrag: lauf.eintragPruefen(msg('agent', 7)) });
+  assert.deepStrictEqual(laufAuswerten(zeilen, false).tokens.folge, {});
+});
+
+test('R00238 AK 6: Rangfolge nach neuen Tokens — große Summe mit wenig neuen fehlt; Gleichstand die frühere zuerst; nie mehr als drei', () => {
+  const zeilen = wieGelesen([
+    call(0, 'a', tk(0, 10, 0, 0)), res(1), call(2, 'b', tk(0, 5, 9999999, 0)), res(3), call(4, 'c', tk(0, 10, 0, 0)), res(5),
+    call(6, 'd', tk(0, 10, 0, 0)), res(7), call(8, 'e', tk(0, 11, 0, 0)), res(9),
+  ]);
+  assert.deepStrictEqual(laufAuswerten(zeilen, false).teuer3.map(t => [t.was, t.neu]), [['Bash e', 11], ['Bash a', 10], ['Bash c', 10]]);
+});
+
+test('R00238 AK 7: warten_davor — 5.000 ms ergibt 5.000, 4.900 ms null; die letzte von zwei Wartezeilen', () => {
+  const ms = (sek, milli) => s(sek).replace('+01:00', `.${String(milli).padStart(3, '0')}+01:00`);
+  const fuenf = laufAuswerten(wieGelesen([msg('agent', 0, tk(1, 0, 0, 0)), msg('mensch', 5), msg('agent', 6, tk(1, 0, 0, 0))]), false);
+  assert.strictEqual(fuenf.tokens.antworten[1].warten_davor, 5000);
+  const knapp = laufAuswerten(wieGelesen([msg('agent', 0, tk(1, 0, 0, 0)), { ...msg('mensch', 0), zeit: ms(4, 900) }, msg('agent', 6, tk(1, 0, 0, 0))]), false);
+  assert.strictEqual(knapp.tokens.antworten[1].warten_davor, null, '4.900 ms ist keine Wartezeile');
+  const zwei = laufAuswerten(wieGelesen([msg('agent', 0, tk(1, 0, 0, 0)), msg('mensch', 10), msg('mensch', 30), msg('agent', 31, tk(1, 0, 0, 0))]), false);
+  assert.strictEqual(zwei.tokens.antworten[1].warten_davor, 20000, 'die letzte, also die der Antwort nächste');
+});
+
+test('R00238 AK 7: warten_davor null bei gesetztem nachNr; eine Wartezeile gilt nicht für die nächste Antwort; Lücke ohne gültige zeit setzt nichts', () => {
+  const mitNach = laufAuswerten(wieGelesen([msg('mensch', 0), msg('mensch', 10), call(11, 'a'), res(12), msg('agent', 13, tk(1, 0, 0, 0))]), false);
+  assert.deepStrictEqual(mitNach.tokens.antworten.map(x => [x.nachNr, x.warten_davor]), [[3, null]]);
+  assert.strictEqual(mitNach.teuer3[0].nach, 'nach Bash a');
+  const naechste = laufAuswerten(wieGelesen([msg('mensch', 0), msg('mensch', 10), msg('agent', 11, tk(1, 0, 0, 0)), msg('agent', 12, tk(1, 0, 0, 0))]), false);
+  assert.deepStrictEqual(naechste.tokens.antworten.map(x => x.warten_davor), [10000, null]);
+  assert.deepStrictEqual(naechste.teuer3.map(t => t.nach), ['nach 10 s Warten', null]);
+  const ohneZeit = laufAuswerten(wieGelesen([msg('agent', 0, tk(1, 0, 0, 0)), msg('mensch', null), msg('agent', 40, tk(1, 0, 0, 0))]), false);
+  assert.deepStrictEqual(ohneZeit.tokens.antworten.map(x => x.warten_davor), [null, null]);
+});
+
+test('R00238 AK 2: ohne tokens im Transkript tokens null und keine teuersten; der Kopf zählt nur gelesene Einträge', () => {
+  const a = laufAuswerten(wieGelesen([msg('agent', 0), call(1, 'a'), res(2)]), false);
+  assert.deepStrictEqual([a.tokens, a.teuer3], [null, []]);
+});
+
+test('R00238 FA 9: T9 — 20.000 Zeilen, jeder Aufruf mit {aus: 10}: Summe 100.000, teuerste die Zeilen 1, 3, 5 (Beobachtung Dauer)', () => {
+  const beginn = Date.parse('2026-11-22T08:00:00+01:00');
+  const iso = ms => new Date(ms).toISOString();
+  const zeilen = Array.from({ length: 20000 }, (_, i) => ({ nr: i + 1, eintrag: lauf.eintragPruefen(i % 2
+    ? { art: 'werkzeugergebnis', wer: 'werkzeug', text: String(i), zeit: iso(beginn + i * 1000) }
+    : { art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: JSON.stringify({ command: `echo ${i + 1}` }), zeit: iso(beginn + i * 1000), tokens: { aus: 10 } }) }));
+  const vor = process.hrtime.bigint();
+  const a = laufAuswerten(zeilen, true);
+  const dauer = Number(process.hrtime.bigint() - vor) / 1e6;
+  assert.deepStrictEqual([a.tokens.summe, a.tokens.neu, a.tokens.antworten.length], [100000, 100000, 10000]);
+  assert.deepStrictEqual(a.teuer3.map(t => [t.nr, t.neu]), [[1, 10], [3, 10], [5, 10]]);
+  console.log(`# Beobachtung: laufAuswerten über 20.000 Zeilen mit tokens in ${dauer.toFixed(1)} ms`);
 });
