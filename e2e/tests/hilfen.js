@@ -329,4 +329,76 @@ async function mutanteEinsetzen(ziel) {
   });
 }
 
-module.exports = { mutanteEinsetzen, commitSteht, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+/**
+ * Zählhilfe für Live-Ansagen (R00230 AK 1, ADR-0018 N4 Punkt 5): verzeichnet ab dem Einsetzen bzw. ab `beginnen()` je Ansage
+ * einen Eintrag `{ ort, text }`. Eine Ansage ist eine nicht leere Textänderung in einem Element mit `[role=status]`, `[role=alert]`
+ * oder `[aria-live]` (auch in seinem Inhalt) oder ein solches Element, das mit Text eingehängt wird. Leeren zählt nicht; ein Knoten,
+ * der mit unverändertem Text an seinen Platz zurückkehrt (Halter in `render()`), auch nicht. Wirkt auf die jetzige Seite und auf
+ * jede danach geladene. Ob ein Eintrag ein Ladesatz ist, entscheidet die Probe, nicht die Hilfe.
+ */
+async function ansagenZaehlen(page) {
+  await page.addInitScript(ansagenBeobachten);
+  await page.evaluate(ansagenBeobachten);
+  return {
+    beginnen: () => page.evaluate(() => window.KD_ANSAGEN.beginnen()),
+    eintraege: () => page.evaluate(() => window.KD_ANSAGEN.eintraege()),
+  };
+}
+
+/** Läuft im Browser: ein `MutationObserver` am Dokument, je Stapel von Änderungen jede betroffene Live-Region höchstens einmal. */
+function ansagenBeobachten() {
+  if (window.KD_ANSAGEN) return;
+  const LIVE = '[role="status"],[role="alert"],[aria-live]';
+  const zuletztGehoert = new WeakMap();
+  let eintraege = [];
+  const textVon = region => region.textContent.trim();
+  const merken = region => zuletztGehoert.set(region, textVon(region));
+  const regionUm = knoten => {
+    const element = knoten.nodeType === 1 ? knoten : knoten.parentElement;
+    if (!element) return null;
+    return element.closest(LIVE);
+  };
+  const ortVon = region => {
+    if (region.id) return '#' + region.id;
+    const vorfahr = region.parentElement && region.parentElement.closest('[id]');
+    const klassen = [...region.classList].map(k => '.' + CSS.escape(k)).join('');
+    const selektor = region.localName + klassen;
+    if (!vorfahr) return selektor;
+    const gleiche = [...vorfahr.querySelectorAll(selektor)];
+    if (gleiche.length < 2) return `#${vorfahr.id} ${selektor}`;
+    return `#${vorfahr.id} ${selektor}:nth-child(${[...region.parentElement.children].indexOf(region) + 1})`;
+  };
+  const eingehaengteRegionen = knoten => {
+    if (knoten.nodeType !== 1) return [];
+    const darin = [...knoten.querySelectorAll(LIVE)];
+    if (knoten.matches(LIVE)) darin.unshift(knoten);
+    return darin;
+  };
+  const stapelVerarbeiten = aenderungen => {
+    const geaendert = new Set(), eingehaengt = new Set();
+    for (const m of aenderungen) {
+      const umgebend = regionUm(m.target);
+      if (umgebend && (m.type === 'characterData' || m.addedNodes.length)) geaendert.add(umgebend);
+      m.addedNodes.forEach(n => eingehaengteRegionen(n).forEach(r => eingehaengt.add(r)));
+    }
+    const betroffen = new Set([...geaendert, ...eingehaengt]);
+    for (const region of betroffen) {
+      if (!region.isConnected) continue;
+      const text = textVon(region);
+      const zurueckMitGleichemText = !geaendert.has(region) && zuletztGehoert.get(region) === text;
+      merken(region);
+      if (!text || zurueckMitGleichemText) continue;
+      eintraege.push({ ort: ortVon(region), text });
+    }
+  };
+  document.querySelectorAll(LIVE).forEach(merken);
+  const beobachter = new MutationObserver(stapelVerarbeiten);
+  beobachter.observe(document, { childList: true, subtree: true, characterData: true });
+  const nachziehen = () => stapelVerarbeiten(beobachter.takeRecords());
+  window.KD_ANSAGEN = {
+    beginnen() { nachziehen(); eintraege = []; },
+    eintraege() { nachziehen(); return eintraege.slice(); },
+  };
+}
+
+module.exports = { ansagenZaehlen, mutanteEinsetzen, commitSteht, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
