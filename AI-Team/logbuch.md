@@ -1872,3 +1872,25 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-22 | #252 | Architektur | architekt | bestanden | 7 min | ADR-0042 · claude · opus · Lauf 252-architekt-1 · 2,04 $ · Karte gesamt 2,04 $ |
 | 2026-11-22 | #251 | Detailplanung | gestalter | bestanden | 11 min | D0009 #laufansicht, 5d303b43 · claude · sonnet · Lauf 251-gestalter-1 · 3,54 $ · Karte gesamt 6,73 $ |
 | 2026-11-22 | #251 | Detailplanung | product-owner | bestanden | 2 min | Artboard frei, Z. 524–530 · claude · opus · Lauf 251-product-owner-2 |
+| 2026-11-22 | #249 | Nacharbeit | entwickler | bestanden | 27 min | Nacharbeit 1: Muss 1, S1, S2 · claude · sonnet · Lauf 249-entwickler-2 · 0,85 $ · Karte gesamt 9,36 $ |
+| 2026-11-22 | #249 | Auto-Reviews | code-reviewer | bestanden | 5 min | Nachprüfung: Muss 1 behoben · claude · sonnet · Lauf 249-code-reviewer-2 |
+| 2026-11-22 | #251 | Detailplanung | planer | bestanden | 8 min | R00234, I0224 B1206–B1213 · claude · opus · Lauf 251-planer-1 |
+| 2026-11-22 | #251 | Detailplanung | ux-reviewer | befund | 2 min | Muss F1, Sollte F2–F6 · claude · sonnet · Lauf 251-ux-reviewer-1 |
+| 2026-11-22 | #249 | Entwicklertest | entwicklertester | bestanden | 3 min | US-1 bis US-4 · claude · sonnet · Lauf 249-entwicklertester-1 |
+| 2026-11-22 | #251 | Detailplanung | planer | bestanden | 4 min | R00234 nachgeschärft, 286416e5 · claude · opus · Lauf 251-planer-2 |
+| 2026-11-22 | #251 | Detailplanung | ux-reviewer | bestanden | 1 min | Nachprüfung: F1–F6 geschlossen · claude · sonnet · Lauf 251-ux-reviewer-2 |
+| 2026-11-22 | #252 | Detailplanung | product-owner | bestanden | 4 min | Z. 531–538, eine Frage an den Betreiber · claude · opus · Lauf 252-product-owner-1 |
+
+**Retrospektive #245** (genau eine Ansage auf der Review-Seite, R00230, ADR-0018 N4; 2026-11-22; Gate ganz grün auf 170d7153, ausgeliefert. Karte gesamt rund 16 $, die Kosten des Entwicklertests fehlen.)
+- **Gut:** Die Zählhilfe `ansagenZaehlen` erkennt Halter am Knoten, nicht an der id, und ist damit für spätere Ansage-Karten wiederverwendbar. Code-Review, UX-Review und Entwicklertest liefen ohne Muss durch, also ohne Nacharbeit.
+- **Gefunden, nicht verursacht:** „Ein Commit“ sagt bei einem echten 404 die Seitenmeldung doppelt an (#254 im Backlog). Gefunden hat das erst der Entwicklertest mit einem echten Fehler statt eines Mocks.
+- **Lehre:** Fehler über einen umbenannten Repository-Ordner echt herstellen; das deckt mehr auf als ein Mock.
+
+**Retrospektive #249** (Repository-Feld breit, erster Start ohne Querscrollen, R00228; 2026-11-22; Gate ganz grün auf 0c2967c2, ausgeliefert. Karte gesamt rund 9,4 $ und die nicht gemessenen Läufe.)
+- **Nacharbeit 1:** Die Umbenennung `.anw` → `.rv-anw` verlor die Unterlinie, die vorher von der Einrichten-Klasse kam. Der Stilvergleich kannte nur die Eigenschaften der neuen Regel.
+- **Lehre:** Ein Vorher-Nachher-Stilvergleich nimmt alle berechneten Eigenschaften auf, die sichtbar sind, also auch Rand und Höhe, nicht nur die, die man ändert.
+- **Rebase nach #245:** Die Konflikte in Gelerntes und Ist-Zeiten waren mechanisch und sind vereint. Im Code gab es keine Kollision.
+- **Director:** Der Entwicklertest startete einmal bei Last 7,3, und am Ende des Gates auf main lag die Last bei 7–8. Ursache war das Gate des entwicklers an #240, das parallel lief. warte-gate.sh prüft nur beim Start.
+- **Director:** Seit 06:45 fehlen die Kosten mehrerer Läufe, weil die Aufträge den Auftragskopf mit „#<Karte>“ nicht mehr wörtlich trugen. Seither steht der Kopf wieder im Auftrag.
+| 2026-11-22 | #245 | Erledigt | director | Retrospektive | – | 1 Lehre (Fehler echt herstellen) |
+| 2026-11-22 | #249 | Erledigt | director | Retrospektive | – | 2 Lehren (Stilvergleich vollständig, Kopf wörtlich für Kostenmessung) |
