@@ -148,3 +148,42 @@ async fn board_ohne_spalten_ist_ungueltig() {
     assert_eq!(s, 400);
     assert!(f["fehler"].as_str().unwrap().contains("keine Spalte"));
 }
+
+/// R00233 AK 2 (Abnahme-Probe 2 aus N4, Probe der Karte #244): hält jemand außerhalb von kanbanD
+/// `.git/index.lock`, scheitert ein `PATCH` mit 500 — nach dem Entfernen der Sperre steht der Ordner auf HEAD.
+#[tokio::test]
+async fn gehaltene_sperre_laesst_nach_gescheitertem_patch_den_ordner_sauber() {
+    let tmp = tempfile::tempdir().unwrap();
+    gemeinsam::mit_drei_aufgaben(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let kopf = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let sperre = tmp.path().join(".git/index.lock");
+    std::fs::write(&sperre, "").unwrap();
+    let (s, f) = senden(Method::PATCH, &lauf.adresse, "api/aufgaben/1", "st", json!({"titel": "neu"})).await;
+    std::fs::remove_file(&sperre).unwrap();
+    assert_eq!(s, 500, "{f}");
+    let meldung = f["fehler"].as_str().unwrap();
+    assert!(meldung.contains("index.lock") && meldung.contains("zurückgenommen:"), "{meldung}");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "Status leer");
+    assert!(lies(tmp.path(), "aufgaben/0001-eins.md").contains("title: eins"), "die Karte heißt weiter „eins“");
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), kopf, "kein neuer Commit");
+}
+
+/// R00233 AK 2, Variante `POST` mit `key` (N1): die neue Datei verschwindet, derselbe Schlüssel legt nach dem
+/// Entfernen der Sperre neu an.
+#[tokio::test]
+async fn gehaltene_sperre_laesst_nach_gescheitertem_anlegen_keine_datei_und_der_schluessel_legt_danach_an() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let kopf = git(tmp.path(), &["rev-parse", "HEAD"]);
+    let sperre = tmp.path().join(".git/index.lock");
+    std::fs::write(&sperre, "").unwrap();
+    let (s, f) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "halb", "key": "halb-1"})).await;
+    std::fs::remove_file(&sperre).unwrap();
+    assert_eq!(s, 500, "{f}");
+    assert_eq!(git(tmp.path(), &["status", "--porcelain"]), "", "Status leer");
+    assert!(!tmp.path().join("aufgaben/0001-halb.md").exists(), "keine halbe Karte");
+    assert_eq!(git(tmp.path(), &["rev-parse", "HEAD"]), kopf, "kein Commit");
+    let (s, a) = senden(Method::POST, &lauf.adresse, "api/aufgaben", "st", json!({"titel": "halb", "key": "halb-1"})).await;
+    assert_eq!((s, &a["neu"]), (201, &json!(true)), "derselbe Schlüssel legt neu an: {a}");
+}

@@ -256,3 +256,155 @@ fn staende_tragen_den_commit_autor() {
     let staende = kanband::git::staende(t.path(), "a.md").unwrap();
     assert_eq!(staende[2].autor.wer(), "Extern");
 }
+
+// R00233 (ADR-0005 N4): hält jemand außerhalb von kanbanD `.git/index.lock`, scheitert der Commit schon an
+// `git add` — die Rücknahme darf die Sperre selbst nicht brauchen. „Sperre setzen“ heißt eine leere
+// `.git/index.lock` vor dem Aufruf, „Sperre entfernen“ heißt sie danach löschen.
+
+fn eingerichtet_mit(t: &std::path::Path, dateien: &[(&str, &str)]) {
+    for (pfad, inhalt) in dateien {
+        let ziel = t.join(pfad);
+        std::fs::create_dir_all(ziel.parent().unwrap()).unwrap();
+        std::fs::write(ziel, inhalt).unwrap();
+    }
+    git(t, &["add", "-A"]);
+    git(t, &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "eingerichtet"]);
+}
+
+fn sperre_setzen(t: &std::path::Path) {
+    std::fs::write(t.join(".git/index.lock"), "").unwrap();
+}
+
+fn sperre_entfernen(t: &std::path::Path) {
+    std::fs::remove_file(t.join(".git/index.lock")).unwrap();
+}
+
+fn zwischendateien(t: &std::path::Path) -> Vec<String> {
+    let mut funde = vec![];
+    let mut offen = vec![t.to_path_buf()];
+    while let Some(ordner) = offen.pop() {
+        for e in std::fs::read_dir(&ordner).unwrap().flatten() {
+            let p = e.path();
+            if p.file_name().is_some_and(|n| n == ".git") {
+                continue;
+            }
+            if e.file_type().unwrap().is_dir() {
+                offen.push(p);
+            } else if p.to_string_lossy().ends_with(".kanbanD-tmp") {
+                funde.push(p.to_string_lossy().into_owned());
+            }
+        }
+    }
+    funde
+}
+
+/// R00233 AK 1 (Abnahme-Probe 1 aus N4): Sperre gehalten, alle drei Arten — geändert, gelöscht, neu.
+#[test]
+fn gehaltene_sperre_nimmt_geaenderte_geloeschte_und_neue_pfade_zurueck() {
+    let t = repo();
+    eingerichtet_mit(t.path(), &[("a.md", "alt"), ("d.md", "da")]);
+    std::fs::write(t.path().join("a.md"), "neu").unwrap();
+    std::fs::remove_file(t.path().join("d.md")).unwrap();
+    std::fs::write(t.path().join("n.md"), "neu").unwrap();
+    sperre_setzen(t.path());
+    let pfade = ["a.md".to_string(), "d.md".to_string(), "n.md".to_string()];
+    let fehler = committen(t.path(), &pfade, &stefan(), "scheitert").unwrap_err();
+    sperre_entfernen(t.path());
+    let meldung = fehler.meldung();
+    assert!(meldung.contains("index.lock"), "der Grund des Commits steht vorn: {meldung}");
+    assert!(meldung.contains("zurückgenommen:"), "Erfolg der Rücknahme: {meldung}");
+    assert!(!meldung.contains("Rücknahme unvollständig"), "kein Fehlschlag der Rücknahme: {meldung}");
+    assert_eq!(git(t.path(), &["status", "--porcelain"]), "", "Status leer");
+    assert_eq!(std::fs::read_to_string(t.path().join("a.md")).unwrap(), "alt");
+    assert_eq!(std::fs::read_to_string(t.path().join("d.md")).unwrap(), "da");
+    assert!(!t.path().join("n.md").exists(), "die neue Datei ist weg");
+    assert_eq!(git(t.path(), &["rev-list", "--count", "HEAD"]), "1", "kein neuer Commit");
+}
+
+/// R00233, eigene Variante zu AK 1: die Wurzel ist ein Unterordner des Repositories — der Inhalt aus HEAD
+/// wird relativ zur Wurzel gelesen, nicht relativ zur Wurzel des Repositories.
+#[test]
+fn gehaltene_sperre_im_unterordner_nimmt_relativ_zum_unterordner_zurueck() {
+    let t = repo();
+    eingerichtet_mit(t.path(), &[("a.md", "oben"), ("kanban/a.md", "alt")]);
+    let k = t.path().join("kanban");
+    std::fs::write(k.join("a.md"), "neu").unwrap();
+    sperre_setzen(t.path());
+    let fehler = committen(&k, &["a.md".into()], &stefan(), "scheitert").unwrap_err();
+    sperre_entfernen(t.path());
+    assert!(fehler.meldung().contains("zurückgenommen:"), "{fehler:?}");
+    assert_eq!(std::fs::read_to_string(k.join("a.md")).unwrap(), "alt");
+    assert_eq!(git(t.path(), &["status", "--porcelain"]), "", "Status leer");
+}
+
+/// R00233 AK 3 (Abnahme-Probe 3 aus N4): lässt sich ein Pfad nicht zurückschreiben (Elternordner nicht
+/// beschreibbar), nennt die Meldung ihn, und die übrigen Pfade sind trotzdem zurückgenommen.
+#[test]
+fn gehaltene_sperre_und_gescheitertes_zurueckschreiben_nimmt_den_rest_trotzdem_zurueck() {
+    use std::os::unix::fs::PermissionsExt;
+    let t = repo();
+    eingerichtet_mit(t.path(), &[("zu/a.md", "alt"), ("d.md", "da")]);
+    std::fs::write(t.path().join("zu/a.md"), "neu").unwrap();
+    std::fs::remove_file(t.path().join("d.md")).unwrap();
+    std::fs::write(t.path().join("n.md"), "neu").unwrap();
+    let zu = t.path().join("zu");
+    std::fs::set_permissions(&zu, std::fs::Permissions::from_mode(0o555)).unwrap();
+    sperre_setzen(t.path());
+    let pfade = ["zu/a.md".to_string(), "d.md".to_string(), "n.md".to_string()];
+    let fehler = committen(t.path(), &pfade, &stefan(), "scheitert").unwrap_err();
+    sperre_entfernen(t.path());
+    std::fs::set_permissions(&zu, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let meldung = fehler.meldung();
+    assert!(meldung.contains("Rücknahme unvollständig") && meldung.contains("zu/a.md"), "{meldung}");
+    assert!(!meldung.contains("zurückgenommen:"), "kein Erfolg behauptet: {meldung}");
+    assert_eq!(std::fs::read_to_string(t.path().join("d.md")).unwrap(), "da", "die Rücknahme macht weiter");
+    assert!(!t.path().join("n.md").exists(), "die neue Datei ist weg");
+    assert_eq!(zwischendateien(t.path()), Vec::<String>::new(), "keine Nachbardatei");
+}
+
+/// R00233 AK 5 (N4 Punkt 4): zurückgeschrieben werden nur gewöhnliche Dateien, das Ausführbit wie in HEAD;
+/// eine Verknüpfung bleibt unberührt und steht als nicht wiederhergestellt in der Meldung.
+#[test]
+fn gehaltene_sperre_schreibt_nur_gewoehnliche_dateien_zurueck() {
+    use std::os::unix::fs::PermissionsExt;
+    let t = repo();
+    eingerichtet_mit(t.path(), &[("a.md", "a"), ("x.sh", "alt")]);
+    std::fs::set_permissions(t.path().join("x.sh"), std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::os::unix::fs::symlink("a.md", t.path().join("l.md")).unwrap();
+    git(t.path(), &["add", "-A"]);
+    git(t.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "x.sh ausführbar, l.md verknüpft"]);
+    assert_eq!(git(t.path(), &["ls-tree", "HEAD", "--format=%(objectmode) %(path)", "--", "x.sh", "l.md"]), "120000 l.md\n100755 x.sh");
+    std::fs::write(t.path().join("x.sh"), "neu").unwrap();
+    std::fs::remove_file(t.path().join("l.md")).unwrap();
+    std::fs::write(t.path().join("l.md"), "neu").unwrap();
+    sperre_setzen(t.path());
+    let fehler = committen(t.path(), &["x.sh".into(), "l.md".into()], &stefan(), "scheitert").unwrap_err();
+    sperre_entfernen(t.path());
+    let x = t.path().join("x.sh");
+    assert_eq!(std::fs::read_to_string(&x).unwrap(), "alt");
+    assert_eq!(std::fs::metadata(&x).unwrap().permissions().mode() & 0o111, 0o111, "x.sh ist ausführbar");
+    assert_eq!(git(t.path(), &["status", "--porcelain", "--", "x.sh"]), "", "x.sh steht auf HEAD");
+    let l = t.path().join("l.md");
+    assert!(std::fs::symlink_metadata(&l).unwrap().file_type().is_file(), "l.md bleibt die gewöhnliche Datei");
+    assert_eq!(std::fs::read_to_string(&l).unwrap(), "neu");
+    let meldung = fehler.meldung();
+    assert!(meldung.contains("l.md ließ sich nicht wiederherstellen: Art 120000"), "{meldung}");
+    assert!(meldung.contains("Rücknahme unvollständig"), "{meldung}");
+}
+
+/// R00233 AK 8 (m6): gelingt das Anlegen der Nachbardatei, scheitert aber das Umbenennen (an der Stelle von
+/// `a.md` steht ein nicht leerer Ordner), bleibt keine Nachbardatei liegen, und die Meldung nennt den Pfad.
+#[test]
+fn gescheitertes_umbenennen_laesst_keine_nachbardatei_liegen() {
+    let t = repo();
+    eingerichtet_mit(t.path(), &[("a.md", "alt")]);
+    std::fs::remove_file(t.path().join("a.md")).unwrap();
+    std::fs::create_dir(t.path().join("a.md")).unwrap();
+    std::fs::write(t.path().join("a.md/drin"), "x").unwrap();
+    sperre_setzen(t.path());
+    let fehler = committen(t.path(), &["a.md".into()], &stefan(), "scheitert").unwrap_err();
+    sperre_entfernen(t.path());
+    let meldung = fehler.meldung();
+    assert!(meldung.contains("Rücknahme unvollständig") && meldung.contains("a.md ließ sich nicht wiederherstellen"), "{meldung}");
+    assert_eq!(zwischendateien(t.path()), Vec::<String>::new(), "keine Nachbardatei");
+}
