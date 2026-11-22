@@ -27,8 +27,6 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::{Read, Write};
-use std::os::unix::ffi::OsStrExt;
-use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::Arc;
@@ -746,7 +744,7 @@ pub(crate) fn git_teil(ordner: &Path, befehl: Befehl, args: &[&str], pfade: &[&[
     assert!(befehl.liefert_teil(), "{} liefert nie einen Teil — git() benutzen", befehl.name());
     let mut c = kommando(ordner, befehl, args, std::env::vars_os().map(|(name, _)| name));
     // `--` auch ohne Pfade: eine Datei mit dem Namen einer Revision macht sie sonst mehrdeutig
-    c.arg("--").args(pfade.iter().map(|p| std::ffi::OsStr::from_bytes(p)));
+    c.arg("--").args(pfade.iter().map(|p| plattform::pfad(p)));
     vorab_pruefen(&c)?;
     let zeitgrenze = grenze_bis(frist)?;
     AUFRUFE.with(|n| n.set(n.get() + 1));
@@ -778,7 +776,9 @@ enum Gelesen {
 /// Der gemeinsame innere Teil von [`git`] und [`git_teil`]: starten, schreiben, mitlesen, warten, Gruppe beenden.
 fn lesend_ausfuehren(mut c: Command, eingabe: Option<&[u8]>, zeitgrenze: Duration, grenze: Option<Grenze>) -> Result<Gelesen, Arbeitsrepofehler> {
     let art = if eingabe.is_some() { Stdio::piped() } else { Stdio::null() };
-    let mut kind = c.stdin(art).stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0).spawn().map_err(|e| match e.kind() {
+    c.stdin(art).stdout(Stdio::piped()).stderr(Stdio::piped());
+    plattform::eigene_gruppe(&mut c);
+    let mut kind = c.spawn().map_err(|e| match e.kind() {
         std::io::ErrorKind::ArgumentListTooLong => Arbeitsrepofehler::ArgumenteZuLang(e.to_string()),
         _ => Arbeitsrepofehler::Start(e.to_string()),
     })?;
@@ -813,8 +813,7 @@ fn lesend_ausfuehren(mut c: Command, eingabe: Option<&[u8]>, zeitgrenze: Duratio
     };
     // Git ist fertig: was es in seiner Gruppe zurückließ, endet jetzt. Die Gruppe trägt Gits PID; solange ein Mitglied
     // lebt, vergibt der Kern sie nicht neu — lebt keines mehr, trifft das Signal niemanden.
-    // SAFETY: `kill` liest nur seine beiden Zahlen
-    unsafe { kill(-gruppe, SIGKILL) };
+    plattform::gruppe_toeten(gruppe);
     let aus = bis_zum_ende(&stdout, ende)?;
     if zuviel.load(Ordering::SeqCst) {
         return ueber_der_grenze(grenze, aus);
@@ -842,17 +841,9 @@ fn bis_zum_ende(strom: &Receiver<Vec<u8>>, ende: Instant) -> Result<Vec<u8>, Arb
     }
 }
 
-unsafe extern "C" {
-    /// `kill(2)` der C-Bibliothek, die jedes Rust-Programm unter Unix ohnehin bindet.
-    fn kill(pid: i32, signal: i32) -> i32;
-}
-
-const SIGKILL: i32 = 9;
-
 /// Beendet die Prozessgruppe `gruppe` (Git und alle seine Kinder) und holt den Prozess ab.
 fn gruppe_beenden(gruppe: i32, kind: &mut std::process::Child) {
-    // SAFETY: `kill` liest nur seine beiden Zahlen; die Gruppe ist die des eigenen, noch nicht abgeholten Kindes
-    unsafe { kill(-gruppe, SIGKILL) };
+    plattform::gruppe_toeten(gruppe);
     let _ = kind.kill();
     let _ = kind.wait();
 }
@@ -920,6 +911,54 @@ fn vorabgrenze() -> usize {
 #[cfg(test)]
 pub fn vorabgrenze_setzen(grenze: Option<usize>) {
     VORABGRENZE.with(|g| g.set(grenze));
+}
+
+/// Was Unix und Windows verschieden machen: Pfade als Bytes und die Prozessgruppe, in der Git mit seinen Kindern läuft.
+#[cfg(unix)]
+mod plattform {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
+
+    unsafe extern "C" {
+        /// `kill(2)` der C-Bibliothek, die jedes Rust-Programm unter Unix ohnehin bindet.
+        fn kill(pid: i32, signal: i32) -> i32;
+    }
+
+    const SIGKILL: i32 = 9;
+
+    /// Der Pfad wörtlich, wie Git ihn geliefert hat.
+    pub(super) fn pfad(p: &[u8]) -> &OsStr {
+        OsStr::from_bytes(p)
+    }
+
+    /// Git startet in einer eigenen Gruppe, deren Nummer seine PID ist.
+    pub(super) fn eigene_gruppe(c: &mut Command) {
+        c.process_group(0);
+    }
+
+    /// Beendet alles, was noch in der Gruppe lebt; lebt keines mehr, trifft das Signal niemanden.
+    pub(super) fn gruppe_toeten(gruppe: i32) {
+        // SAFETY: `kill` liest nur seine beiden Zahlen; die Gruppe ist die des eigenen, noch nicht abgeholten Kindes
+        unsafe { kill(-gruppe, SIGKILL) };
+    }
+}
+
+/// Windows kennt keine Prozessgruppe, die sich wie unter Unix beenden ließe — beendet wird nur Git selbst
+/// (`Child::kill` in [`super::gruppe_beenden`]); Pfade gibt Git für Windows als UTF-8 aus.
+#[cfg(not(unix))]
+mod plattform {
+    use std::ffi::OsString;
+    use std::process::Command;
+
+    pub(super) fn pfad(p: &[u8]) -> OsString {
+        OsString::from(String::from_utf8_lossy(p).into_owned())
+    }
+
+    pub(super) fn eigene_gruppe(_: &mut Command) {}
+
+    pub(super) fn gruppe_toeten(_: i32) {}
 }
 
 #[cfg(test)]
