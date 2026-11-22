@@ -13,8 +13,8 @@ const FARBEN_DATEI = path.join(__dirname, 'r00222-farben.json');
 
 // ---- Testsprache: Ausgangslage ------------------------------------------------------------------------------------------
 
-/** Arbeits-Repository R: WBS `Dokumentation/Planung/kd.md`, `Anforderungen/`; C1 ändert `a.txt` (eine Zeile weg, eine dazu),
- *  legt `bidi.txt` mit U+202E an und löscht `weg.txt` — Diff-Zeichen, Bidi-Marke und alle drei Statuswörter. */
+/** Arbeits-Repository R: WBS `Dokumentation/Planung/kd.md`, `Anforderungen/`; C1 ändert `a.dat` (eine Zeile weg, eine dazu),
+ *  legt `bidi.dat` mit U+202E an und löscht `weg.dat` — Diff-Zeichen, Bidi-Marke und alle drei Statuswörter. */
 function arbeitsRepository() {
   const r = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kanband-r00222-')));
   const git = (...a) => execFileSync('git', ['-C', r, ...a], { encoding: 'utf8' }).trim();
@@ -22,14 +22,14 @@ function arbeitsRepository() {
   fs.mkdirSync(path.join(r, 'Anforderungen'));
   fs.writeFileSync(path.join(r, 'Dokumentation/Planung/kd.md'), '# WBS\n\n| ID | Ebene | Eltern | Name | Status |\n|---|---|---|---|---|\n| I0007 | Interaction | — | Liste | rot |\n');
   fs.writeFileSync(path.join(r, 'Anforderungen/R00001.md'), '# R00001\n');
-  fs.writeFileSync(path.join(r, 'a.txt'), 'alt\nbleibt\n');
-  fs.writeFileSync(path.join(r, 'weg.txt'), 'weg\n');
+  fs.writeFileSync(path.join(r, 'a.dat'), 'alt\nbleibt\n');
+  fs.writeFileSync(path.join(r, 'weg.dat'), 'weg\n');
   git('init', '-q', '-b', 'main');
   git('add', '-A');
   git('-c', 'user.name=Ada', '-c', 'user.email=a@a', 'commit', '-q', '-m', 'C0 Anfang');
-  fs.writeFileSync(path.join(r, 'a.txt'), 'neu\nbleibt\n');
-  fs.writeFileSync(path.join(r, 'bidi.txt'), 'a‮b\n');
-  fs.rmSync(path.join(r, 'weg.txt'));
+  fs.writeFileSync(path.join(r, 'a.dat'), 'neu\nbleibt\n');
+  fs.writeFileSync(path.join(r, 'bidi.dat'), 'a‮b\n');
+  fs.rmSync(path.join(r, 'weg.dat'));
   git('add', '-A');
   git('-c', 'user.name=Ada', '-c', 'user.email=a@a', 'commit', '-q', '-m', 'C1 Export');
   return { r, c1: git('rev-parse', 'HEAD'), wbs: `${r}/Dokumentation/Planung/kd.md`, anf: `${r}/Anforderungen` };
