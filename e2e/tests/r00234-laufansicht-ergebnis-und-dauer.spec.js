@@ -132,13 +132,14 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
       if (fall === 'T1 gehalten') await expect(page.locator(STATUS)).toHaveText('Liest das Transkript …');
       else await gelesen(page);
       const kosten = fall === 'T5 fehlt' ? '0,42 $' : '1,79 $';
-      expect(await kennzahlen(page)).toEqual([['Ergebnis', '–'], ['Werkzeugaufrufe', '–'], ['Fehler erkannt', '–'], ['Commits', '–'], ['Kosten', kosten]]);
+      expect(await kennzahlen(page)).toEqual([['Ergebnis', '–'], ['Werkzeugaufrufe', '–'], ['Fehler erkannt', '–'], ['Commits', '–'], ['Kosten', kosten], ['Tokens', '–']], 'R00238: Tokens dahinter');
       expect(await gesamtSichtbar(page)).toBe('Gesamtdauer –');
       const lesetext = fall === 'T1 gehalten' ? 'wird gelesen' : 'nicht verfügbar';
       const snapshot = await page.locator(KOPF).ariaSnapshot();
       expect(snapshot).not.toContain('–');
       for (const name of ['Gesamtdauer', 'Ergebnis', 'Werkzeugaufrufe', 'Fehler erkannt', 'Commits']) expect(snapshot).toMatch(new RegExp(`${name}[\\s\\S]*?${lesetext}`, 'i'));
-      expect(snapshot.split(lesetext).length - 1).toBe(5);
+      // R00238: beim Lesen sagt auch die Kennzahl „Tokens“ „wird gelesen“, ohne Einträge sonst „Tokens unbekannt“
+      expect(snapshot.split(lesetext).length - 1).toBe(fall === 'T1 gehalten' ? 6 : 5);
       expect(snapshot.replace(/ /g, ' ')).toContain(kosten);
       expect(await page.locator(`${KOPF} [aria-label]`).count()).toBe(0);
       if (fall === 'T5 fehlt') await expect(page.locator('#lauf .lv-leer')).toContainText('Das Transkript liegt nicht auf diesem Rechner.');
@@ -150,11 +151,11 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     await ablegen(k);
     await laufOeffnen(page, T.T1);
     await gelesen(page);
-    expect(await kennzahlen(page)).toEqual([['Ergebnis', 'bestanden'], ['Werkzeugaufrufe', '6'], ['Fehler erkannt', '2'], ['Commits', '1'], ['Kosten', '1,79 $']]);
+    expect(await kennzahlen(page)).toEqual([['Ergebnis', 'bestanden'], ['Werkzeugaufrufe', '6'], ['Fehler erkannt', '2'], ['Commits', '1'], ['Kosten', '1,79 $'], ['Tokens', '–']], 'R00238: Tokens dahinter');
     await expect(page.locator('#lauf .lv-leiste')).not.toContainText('BETRAG');
     await laufOeffnen(page, T.T4);
     await gelesen(page);
-    expect(await kennzahlen(page)).toEqual([['Ergebnis', '–'], ['Werkzeugaufrufe', '1'], ['Fehler erkannt', '0'], ['Commits', '–'], ['Kosten', '–']]);
+    expect(await kennzahlen(page)).toEqual([['Ergebnis', '–'], ['Werkzeugaufrufe', '1'], ['Fehler erkannt', '0'], ['Commits', '–'], ['Kosten', '–'], ['Tokens', '–']], 'R00238: Tokens dahinter');
     await expect(page.locator('#lauf .lv-leiste')).not.toContainText('BETRAG');
     const snapshot = await page.locator(KENNZAHLEN).ariaSnapshot();
     expect(snapshot).not.toContain('–');

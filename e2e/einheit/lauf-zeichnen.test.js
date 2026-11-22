@@ -234,7 +234,7 @@ test('AK 1, AK 3: Kopf von T1 — Gesamtdauer mit Aufteilung, Ergebnis, Werkzeug
   const html = laufKopfHtml({ zustand: 'eintraege', auswertung: t1, kosten: KOSTEN }, esc);
   const gd = [...gesamtdauer(html).matchAll(/<span class="[^"]*">([^<]*)<\/span>/g)].map(m => m[1]);
   assert.deepStrictEqual(gd, ['Gesamtdauer', '2 min 30 s', 'Werkzeuge 13 s · Denken 1 min 11 s · Warten 1 min 6 s']);
-  assert.deepStrictEqual(kennzahlen(html).map(k => [k[0], k[1]]), [['Ergebnis', 'bestanden'], ['Werkzeugaufrufe', '6'], ['Fehler erkannt', '2'], ['Commits', '1'], ['Kosten', '1,79 $']]);
+  assert.deepStrictEqual(kennzahlen(html).map(k => [k[0], k[1]]), [['Ergebnis', 'bestanden'], ['Werkzeugaufrufe', '6'], ['Fehler erkannt', '2'], ['Commits', '1'], ['Kosten', '1,79 $'], ['Tokens', '–']], 'R00238: Tokens dahinter');
   assert.doesNotMatch(html, /Betrag/);
   assert.doesNotMatch(html, /aria-label/);
 });
@@ -252,14 +252,15 @@ test('FA 3: ein Teil mit 0 ms entfällt; an der Grenze „mindestens“ und der 
 test('AK 3: T4 ohne Bericht und ohne Kosten — „–“ mit Lesetext „kein Bericht erkannt“ bzw. „kein Kosteneintrag“', () => {
   const ohne = { ...t1, bericht: null, kennzahlen: { werkzeugaufrufe: 1, fehler: 0 } };
   const k = kennzahlen(laufKopfHtml({ zustand: 'eintraege', auswertung: ohne, kosten: null }, esc));
-  assert.deepStrictEqual(k, [['Ergebnis', '–', 'kein Bericht erkannt'], ['Werkzeugaufrufe', '1', '1'], ['Fehler erkannt', '0', '0'], ['Commits', '–', 'kein Bericht erkannt'], ['Kosten', '–', 'kein Kosteneintrag']]);
+  assert.deepStrictEqual(k, [['Ergebnis', '–', 'kein Bericht erkannt'], ['Werkzeugaufrufe', '1', '1'], ['Fehler erkannt', '0', '0'], ['Commits', '–', 'kein Bericht erkannt'], ['Kosten', '–', 'kein Kosteneintrag'], ['Tokens', '–', 'Tokens unbekannt']], 'R00238: Tokens dahinter');
 });
 
 test('AK 2, AK 3: ohne gelesene Einträge „–“ mit „wird gelesen“ bzw. „nicht verfügbar“; Kosten bleiben aus der Karte', () => {
   for (const [zustand, lesetext] of [['liest', 'wird gelesen'], ['ohne', 'nicht verfügbar']]) {
     const html = laufKopfHtml({ zustand, auswertung: null, kosten: { amount: 0.42, currency: 'USD' } }, esc);
     assert.deepStrictEqual([sichtbar(gesamtdauer(html)), vorgelesen(gesamtdauer(html))], ['Gesamtdauer–', `Gesamtdauer${lesetext}`], zustand);
-    assert.deepStrictEqual(kennzahlen(html), [...['Ergebnis', 'Werkzeugaufrufe', 'Fehler erkannt', 'Commits'].map(n => [n, '–', lesetext]), ['Kosten', '0,42 $', '0,42 $']], zustand);
+    const tokensLesetext = zustand === 'liest' ? 'wird gelesen' : 'Tokens unbekannt';
+    assert.deepStrictEqual(kennzahlen(html), [...['Ergebnis', 'Werkzeugaufrufe', 'Fehler erkannt', 'Commits'].map(n => [n, '–', lesetext]), ['Kosten', '0,42 $', '0,42 $'], ['Tokens', '–', tokensLesetext]], `${zustand} (R00238: Tokens dahinter)`);
     assert.doesNotMatch(html, /aria-label/);
   }
 });
@@ -269,6 +270,54 @@ test('FA 4: Ergebnis befund und blockiert tragen ihre Form; Commits ohne Zeile �
   assert.match(html('befund'), /<span class="erg warn">[\s\S]*befund<\/span>/);
   assert.match(html('blockiert'), /<span class="erg fehl">[\s\S]*blockiert<\/span>/);
   assert.deepStrictEqual(kennzahlen(html('befund'))[3], ['Commits', '–', 'nicht verfügbar']);
+});
+
+/* ── R00238 B1240: Kennzahl „Tokens“ rechts neben „Kosten“ (FA 4; ADR-0041 N3 Punkt 2, Variante K1) ── */
+
+const { T8 } = require('../tests/laufansicht-t8');
+const T8_ZEILEN = T8.map((o, i) => ({ nr: i + 1, eintrag: require('../../web/lauf.js').eintragPruefen(JSON.parse(JSON.stringify(o))) }));
+const t8 = laufAuswerten(T8_ZEILEN, false);
+/** Die Kennzahl „Tokens“: [Wert sichtbar, Wert vorgelesen, Zeilen darunter]. */
+function tokensFeld(html) {
+  const div = /<div class="([^"]*)"><dt>Tokens<\/dt><dd>([\s\S]*?)<\/dd><\/div>/.exec(html);
+  const wert = /<span class="tw">([\s\S]*?)<\/span>(?=<span class="auf">|$)/.exec(div[2])[1];
+  const auf = [...div[2].matchAll(/<span class="auf">([^<]*)<\/span>/g)].map(m => m[1]);
+  return { klasse: div[1], sichtbar: sichtbar(wert), vorgelesen: vorgelesen(wert), auf };
+}
+
+test('R00238 AK 3: T8 ohne Kosteneintrag — „Tokens“ als letzte Kennzahl rechts neben „Kosten“, „239 Tsd.“ vorgelesen „239 Tausend“, darunter „aus dem Transkript gezählt“', () => {
+  const html = laufKopfHtml({ zustand: 'eintraege', auswertung: t8, kosten: null }, esc);
+  assert.deepStrictEqual(kennzahlen(html).map(k => k[0]).slice(-2), ['Kosten', 'Tokens']);
+  assert.deepStrictEqual(tokensFeld(html), { klasse: '', sichtbar: '239 Tsd.', vorgelesen: '239 Tausend', auf: ['aus dem Transkript gezählt'] });
+  assert.doesNotMatch(html, /aria-label/);
+});
+
+test('R00238 AK 3: ein Kosteneintrag mit tokens geht vor dem Transkript, ohne Satz — auch beim Lesen und wenn das Transkript fehlt', () => {
+  const kosten = { amount: 0.95, currency: 'USD', tokens: 1234567 };
+  for (const [zustand, auswertung] of [['eintraege', t8], ['liest', null], ['ohne', null]]) {
+    assert.deepStrictEqual(tokensFeld(laufKopfHtml({ zustand, auswertung, kosten }, esc)), { klasse: '', sichtbar: '1,2 Mio.', vorgelesen: '1,2 Millionen', auf: [] }, zustand);
+  }
+  assert.deepStrictEqual(tokensFeld(laufKopfHtml({ zustand: 'ohne', auswertung: null, kosten: { amount: 0.42, currency: 'USD', tokens: 52000 } }, esc)).sichtbar, '52 Tsd.');
+  assert.deepStrictEqual(tokensFeld(laufKopfHtml({ zustand: 'eintraege', auswertung: t8, kosten: { amount: 0.42, currency: 'USD', tokens: 0 } }, esc)).sichtbar, '0', '0 gebuchte Tokens sind ein Wert');
+});
+
+test('R00238 AK 3: Kosteneintrag ohne tokens oder mit falschem Wert — Summe aus dem Transkript mit Satz; an der Grenze „mindestens“', () => {
+  for (const tokens of [null, undefined, -5, 1.5, '7', 2 ** 53]) {
+    const html = laufKopfHtml({ zustand: 'eintraege', auswertung: t8, kosten: { amount: 0.95, currency: 'USD', tokens } }, esc);
+    assert.deepStrictEqual(tokensFeld(html).sichtbar, '239 Tsd.', String(tokens));
+  }
+  const grenze = laufKopfHtml({ zustand: 'eintraege', auswertung: { ...t8, grenze: true }, kosten: null }, esc);
+  assert.deepStrictEqual(tokensFeld(grenze), { klasse: '', sichtbar: 'mindestens 239 Tsd.', vorgelesen: 'mindestens 239 Tausend', auf: ['aus dem Transkript gezählt bis zur Grenze des Transkripts'] });
+});
+
+test('R00238 AK 3: ohne beides „–“ mit „Tokens unbekannt“, beim Lesen „wird gelesen“ — das Zeichen aria-hidden, kein aria-label', () => {
+  const faelle = [['eintraege', t1, KOSTEN, 'Tokens unbekannt'], ['liest', null, null, 'wird gelesen'], ['liest', null, KOSTEN, 'wird gelesen'], ['ohne', null, KOSTEN, 'Tokens unbekannt']];
+  for (const [zustand, auswertung, kosten, lesetext] of faelle) {
+    const html = laufKopfHtml({ zustand, auswertung, kosten }, esc);
+    assert.deepStrictEqual(tokensFeld(html), { klasse: 'ohne', sichtbar: '–', vorgelesen: lesetext, auf: [] }, zustand);
+    assert.match(html, /<dt>Tokens<\/dt><dd><span class="tw"><span class="lv-leerwert" aria-hidden="true">–<\/span><span class="vh">/);
+    assert.doesNotMatch(html, /aria-label/);
+  }
 });
 
 // R00234 B1210: Bericht zuerst, gepaarte Werkzeugzeilen, Denk- und Wartezeilen, Auftrag und Systemhinweise eingeklappt (FA 5–9;

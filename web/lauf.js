@@ -678,8 +678,27 @@
         + feld('Fehler erkannt', String(k.fehler), k.fehler ? 'fehl' : '') + feld('Commits', commitsHtml(a.bericht), a.bericht && a.bericht.commits !== null ? '' : 'ohne');
     }
     kennzahlen += feld('Kosten', kostenWert, kosten ? '' : 'ohne');
+    const tokens = tokensKopf(zustand, a, kosten);
+    kennzahlen += feld('Tokens', tokens.html, tokens.klasse);
     return `<div class="lv-aw"><div class="lv-gd"><span class="k">Gesamtdauer</span>${a ? dauerKopfHtml(a) : `<span class="w">${leer}</span>`}</div><dl class="lv-kz">${kennzahlen}</dl></div>`;
   }
+
+  const GEZAEHLT = 'aus dem Transkript gezählt';
+  const GEZAEHLT_GRENZE = 'aus dem Transkript gezählt bis zur Grenze des Transkripts';
+
+  /** Kennzahl „Tokens“ (R00238 FA 4, ADR-0041 N3 Punkt 2, K1): `tokens` des Kosteneintrags dieser Kennung, sonst die Summe aller vier
+      Werte über die gelesenen Einträge mit Satz darunter, an der Grenze „mindestens“; sonst „–“ mit Lesetext. */
+  function tokensKopf(zustand, a, kosten) {
+    const wert = inhalt => `<span class="tw">${inhalt}</span>`;
+    if (kosten && gebuchteTokens(kosten.tokens)) return { html: wert(tokenZahlHtml(kosten.tokens)), klasse: '' };
+    if (a && a.tokens && a.grenze) return { html: wert(`mindestens ${tokenZahlHtml(a.tokens.summe)}`) + `<span class="auf">${GEZAEHLT_GRENZE}</span>`, klasse: '' };
+    if (a && a.tokens) return { html: wert(tokenZahlHtml(a.tokens.summe)) + `<span class="auf">${GEZAEHLT}</span>`, klasse: '' };
+    if (zustand === 'liest') return { html: wert(ohneWert(LESETEXT.liest)), klasse: 'ohne' };
+    return { html: wert(ohneWert('Tokens unbekannt')), klasse: 'ohne' };
+  }
+
+  /** Nur eine ganze Zahl ≥ 0 gilt als gebucht; alles andere wie ein fehlendes Feld — ins HTML geht nur eine Zahl. */
+  const gebuchteTokens = n => Number.isSafeInteger(n) && n >= 0;
 
   /** Wert und Zeilen unter „Gesamtdauer“ (FA 3): Dauer mit Aufteilung, an der Grenze „mindestens“, sonst „Dauer unbekannt“. */
   function dauerKopfHtml(a) {

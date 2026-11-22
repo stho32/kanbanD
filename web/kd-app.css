@@ -1857,6 +1857,8 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-kz dd .mono{font-size:14px}
 .lv-kz .ohne dd{color:var(--kd-muted);font-weight:400}
 .lv-kz .fehl dd{color:var(--kd-status-error-ink)}
+.lv-kz dd .tw,.lv-kz dd .auf{display:block}
+.lv-kz dd .auf{font-size:12px;font-weight:400;color:var(--kd-muted);white-space:normal;overflow-wrap:anywhere}
 .lv-leerwert{color:var(--kd-muted)}
 .erg{display:inline-flex;align-items:center;gap:4px;padding:0 6px;font-size:13px;font-weight:600;line-height:22px}
 .erg svg.i{width:12px;height:12px}
