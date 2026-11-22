@@ -1771,3 +1771,19 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-22 | #234 | Auto-Reviews | product-owner | bestanden | 1 min | PO Z. 514 · claude · opus · Lauf 234-product-owner-2 · 0,56 $ · Karte gesamt 15,17 $ |
 | 2026-11-22 | #234 | Auto-Reviews | planer | bestanden | 3 min | R00225 nach N8.6, B1189-B1192 · claude · opus · Lauf 234-planer-2 · 1,35 $ · Karte gesamt 16,52 $ |
 | 2026-11-22 | #234 | Auto-Reviews | legacy-reviewer | befund | 12 min | Muss: ETag unverändert, 304 auf veraltete Antwort · claude · sonnet · Lauf 234-legacy-reviewer-1 · 2,24 $ · Karte gesamt 18,76 $ |
+| 2026-11-22 | #232 | Entwicklung | entwickler | bestanden | 56 min | Gate cargo 1199, node 1519, PW 2353/2 Wackler (je 3x grün) · claude · opus · Lauf 232-entwickler-1 · 7,72 $ · Karte gesamt 16,79 $ |
+| 2026-11-22 | #232 | Auto-Reviews | code-reviewer | bestanden | 9 min | kein Muss · claude · sonnet · Lauf 232-code-reviewer-1 · 2,77 $ · Karte gesamt 19,56 $ |
+| 2026-11-22 | #232 | Auto-Reviews | ux-reviewer | bestanden | 4 min | kein Muss, M1/M2 umgesetzt · claude · sonnet · Lauf 232-ux-reviewer-3 · 1,23 $ · Karte gesamt 20,79 $ |
+| 2026-11-22 | #232 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | keine Funde · claude · sonnet · Lauf 232-rechtschreib-reviewer-1 · 0,41 $ · Karte gesamt 21,20 $ |
+| 2026-11-22 | #232 | Entwicklertest | entwicklertester | bestanden | 2 min | US-1..US-8 bestanden · claude · sonnet · Lauf 232-entwicklertester-1 · 0,43 $ · Karte gesamt 21,63 $ |
+
+**Retrospektive #232** (Review-Seite nennt den Grund einer 404 in Worten, R00224; 2026-11-22; Gate grün auf 40a254e2, ausgeliefert. Karte gesamt rund 22 $, davon 7,72 $ für den Bau, Vorlauf rund 9 $ bei drei Runden UX-Vorprüfung.)
+- **Gut:**
+  - **UX-Vorprüfung mit dem echten CSS:** Der ux-reviewer hat die geplante Form gemessen statt nur den Text zu lesen. Er fand, dass `.rv-meld` Überschrift und Absätze inline setzt („erreichbar.Ordner fehlt“). Ohne diese Messung wäre der Fehler erst im Review aufgefallen.
+  - **Kein Muss im Bau:** Code-, UX- und Rechtschreib-Review sowie der Entwicklertest waren beim ersten Durchgang bestanden, das Gate auf main im ersten Lauf grün.
+- **Lehre (Probe „steht darunter“):** In Chromium liefert jedes `<p>` in `innerText` zwei Zeilenumbrüche, auch wenn es inline angezeigt wird. Proben auf die Lage messen mit `getBoundingClientRect`, nie mit `innerText`. Das kostete eine dritte Planungsrunde.
+- **Lehre (Mutationsprobe über Routen):** `page.unrouteAll()` entfernt auch die `KD_MUTANTE`-Route. Ein Test, der Routen zurücksetzt, muss die Mutante neu einsetzen (`routenZuruecksetzen` in der Spec r00224). Ältere Specs (z. B. r00210 AK 4/4a) rufen `unrouteAll` nach `mutanteEinsetzen` auf; ihre Mutationsproben sind dort womöglich zum Schein grün.
+- **Lehre (Umgebung):** Das `node` der Shell ist v20.20.2. Das gequotete Muster `"e2e/einheit/*.js"` aus der Konfiguration findet dort keine Dateien. Das Gate läuft deshalb mit ungequoteter Shell-Expansion `node --test e2e/einheit/*.js`.
+- **Offen, an #245:** Sammelansage und Summenzeile sagen weiter „… ohne Anwendung wb: ließ sich nicht lesen.“
+- **Härtung, nicht gebaut:** Ternaries in neuem Code (J11); das Kürzel wird an drei Stellen aus dem Verweis gelesen; `app.js:1597` behandelt jede 404 mit `zustand` wie `repository_fehlt` (heute liefert der Server nur diesen Zustand).
+| 2026-11-22 | #232 | Erledigt | director | Retrospektive | – | 3 Lehren (innerText, unrouteAll, node v20), Härtung notiert |
