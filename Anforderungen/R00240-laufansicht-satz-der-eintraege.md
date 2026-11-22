@@ -51,9 +51,9 @@ Der Betreiber fand die Laufansicht „noch schwer lesbar“ (Karte #261). Heute 
 
 ## Akzeptanzkriterien
 
-**Ausgangslage** (herstellbar über die API wie in R00234: die gz-Datei erzeugt der Test mit `zlib` und legt sie über `POST /api/aufgaben/1/transkripte` ab). Mensch `sh`, Browser headless (Chromium) in `Europe/Berlin`, Board `fabrik` mit `record-transcripts: true`. Aufgabe #1 trägt T13 = `entwickler@2026-11-23T09:00+01:00` ohne Kosteneintrag. Alle Inhalte sind erfunden. Die Formen von `<persisted-output>` und `<system-reminder>` sind denen echter Transkripte nachgebildet.
+**Ausgangslage** (herstellbar über die API wie in R00234: die gz-Datei erzeugt der Test mit `zlib` und legt sie über `POST /api/aufgaben/1/transkripte` ab). Mensch `sh`, Browser headless (Chromium) in `Europe/Berlin`, Board `fabrik` mit `record-transcripts: true`. Aufgabe #1 trägt T13 = `entwickler@2026-11-21T09:00+01:00` ohne Kosteneintrag (Datum 2026-11-21, weil der Server Zeitpunkte in der Zukunft ablehnt). Alle Inhalte sind erfunden. Die Formen von `<persisted-output>` und `<system-reminder>` sind denen echter Transkripte nachgebildet.
 
-**T13** (Zeit 2026-11-23, Versatz +01:00; Text der Aufrufe als JSON):
+**T13** (Zeit 2026-11-21, Versatz +01:00; Text der Aufrufe als JSON):
 
 | Nr | art · wer | zeit | Inhalt |
 |---|---|---|---|
