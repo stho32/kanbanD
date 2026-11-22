@@ -572,7 +572,7 @@ Gemessen an der Insel mit 1.003 Zeilen (1.000er-Lauf des Kriteriums) und mit 10.
 
 ## Nachtrag 2026-11-23 N6: Ergebnis mit Farbcodes lesbar (nur eine feste Liste, nie versteckt), fehlgeschlagenes Edit als „nicht angewendet“, Fehlerfarbe nur an Zeile und Ergebnis (Karte #267)
 
-**Status**: `Vorgeschlagen` — bis der product-owner Frage 1 und 2 (siehe Folgeaufgaben) beantwortet hat. Punkt 3 (CSS-Ursache) ist unabhängig davon. Punkte 1–7 und N1–N5 gelten weiter; N6 ändert den Satz aus N4 nur an drei Stellen.
+**Status**: `Akzeptiert` — der product-owner hat die Fragen 1–3 am 2026-11-23 wie empfohlen entschieden (`AI-Team/po-entscheidungen.md`, Z. 625–627): Variante C, Diff bei Fehlschlag gedämpft sichtbar, Kurzform behält die Marke. Punkte 1–7 und N1–N5 gelten weiter; N6 ändert den Satz aus N4 nur an drei Stellen.
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #267, Lauf 267-architekt-1)
 **Erprobt durch**: Zählung am 2026-11-23 über 144 echte Transkripte (nur GET auf :7422, Aufgaben 1–270; Skripte `gemeinsam/scratchpad/arch-267/` der Factory, Kopien nach der Zählung gelöscht). Punkt 3 aus CSS und Bild `etst-261/edit49.png` gelesen, nicht gebaut.
 
@@ -599,7 +599,7 @@ Gemessen an der Insel mit 1.003 Zeilen (1.000er-Lauf des Kriteriums) und mit 10.
 3. **Nichts kann sich verstecken**: jede erlaubte Farbe hat auf der Fläche des Ergebnisses in beiden Themes mindestens 4,5 : 1; die Folge selbst verschwindet nur, wenn sie ganz in der Liste steht. Die Rohform bleibt im Transkript-Download.
 4. **Grenzen**: höchstens 2.000 Spannen je Ergebnis (`SATZ_GRENZEN.farben`); darüber bleiben die weiteren Folgen Marken und laufen in das Budget von FA 10. Erlaubte Folgen zählen **nicht** gegen das Budget (sonst äßen 252 `U+001B` die 1.000 je Text); `MARKIERBAR` bekommt dafür einen Vorgriff („`U+001B` nicht, wenn eine erlaubte Folge folgt“), an allen drei Orten gleich, der Gleichheitstest wird entsprechend erweitert.
 5. **Ort**: reine Funktion in `web/lauf-satz.js` (Zeile + Zustand → Teile mit Klasse), vom `zeile`-Parameter von `ergebnisSatz` genutzt; `web/lauf-satz.js` bleibt frei von `innerHTML`, `document` usw. (Fitness Function N4).
-6. **Fehlgeschlagenes Edit/Write**: ist `s.fehler`, setzt `aufrufSatz` über dem Diff eine Zeile „Nicht angewendet — der Schritt ist fehlgeschlagen.“ (sichtbarer Text, nicht nur Farbe) und der Diff bekommt die Klasse `nicht-angewendet`: keine grünen und roten Flächen, Zeilen gedämpft, `+`/`−` bleiben; der Lesetext „hinzugefügt:/entfernt:“ wird „vorgesehen hinzuzufügen:/zu entfernen:“. Der Diff bleibt sichtbar, weil er zeigt, was beabsichtigt war. Ohne Ergebnis im Transkript bleibt der Diff wie heute (der Ausgang ist unbekannt, `KEIN_ERGEBNIS` steht darunter).
+6. **Fehlgeschlagenes Edit/Write**: ist `s.fehler`, setzt `aufrufSatz` über dem Diff eine Zeile „Nicht angewendet — der Schritt ist fehlgeschlagen.“ (sichtbarer Text, nicht nur Farbe) und der Diff bekommt die Klasse `nicht-angewendet`: keine grünen und roten Flächen, Zeilen gedämpft, `+`/`−` bleiben; der Lesetext „hinzugefügt:“ wird „vorgesehen hinzuzufügen:“, „entfernt:“ wird „vorgesehen zu entfernen:“. Der Satz „Nicht angewendet — der Schritt ist fehlgeschlagen.“ trägt den Gedankenstrich U+2014 und den Punkt am Ende; `+` und `−` bleiben als Zeichen. Der Diff bleibt sichtbar, weil er zeigt, was beabsichtigt war. Ohne Ergebnis im Transkript bleibt der Diff wie heute (der Ausgang ist unbekannt, `KEIN_ERGEBNIS` steht darunter).
 7. **Fehlerfarbe nur an der Zeile und am Ergebnis**: `.lv-s-ganz` setzt `color:var(--kd-text)` zurück (das ist die Ursache), `.lv-s.fehl .lv-erg` bekommt `color:var(--kd-status-error-ink)`; Aufruf, Diff, Felder bleiben neutral. Das allgemeine `.fehl` wird nicht umbenannt (viele Treffer in `web/kd-app.css`, kein Gewinn).
 
 **In Kauf genommen**: Eine Liste von sieben Codes deckt, was die Zählung zeigt (2, 22, 0, 31, 32); `1` und `33` sind Zugabe für Cargo- und Testausgaben ohne Beleg im Bestand. Ein Programm, das eine andere Folge schreibt, zeigt weiter Marken. Die Farben tragen keine Bedeutung allein: der Fehlerzustand steht als Wort „Fehler:“ in der Zeile (N1).
@@ -613,5 +613,5 @@ Gemessen an der Insel mit 1.003 Zeilen (1.000er-Lauf des Kriteriums) und mit 10.
 
 ### Folgeaufgaben
 
-- [ ] product-owner: Fragen 1–3 aus dem Bericht (Variante C oder B; Diff bei Fehlschlag gedämpft statt verborgen; Kurzform).
+- [x] product-owner: Fragen 1–3 aus dem Bericht (Variante C oder B; Diff bei Fehlschlag gedämpft statt verborgen; Kurzform) — entschieden 2026-11-23, alle wie empfohlen (`AI-Team/po-entscheidungen.md` Z. 625–627); Zeichnung D0009 Bild 14 freigegeben (Z. 628).
 - [ ] Entwickler (Karte #267, eine Karte, Reihenfolge 7 → 6 → 1–5): je Punkt Probe zuerst; Änderungen in `web/kd-app.css`, `web/lauf-satz.js`, `web/lauf.js` (`schrittHtml` gibt `s.fehler` an `aufrufSatz`, Ergebnis-Zeile mit Zustand), Probe-Dateien.
