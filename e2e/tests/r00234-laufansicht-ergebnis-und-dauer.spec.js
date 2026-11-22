@@ -404,4 +404,108 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     expect(await aenderungen(page)).toBe(0);
     expect(await page.evaluate(() => document.activeElement.closest('#lv-s1') !== null && document.activeElement.tagName)).toBe('SUMMARY');
   });
+  /* ── AK 10 Breite, Themen, Ziele, Ansage ── */
+
+  const BREITEN = [320, 641, 980, 1280];
+  /** Überläufe an Dokument, Bildlaufbehälter, jeder Werkzeugzeile und je Befehl und Absicht. */
+  const ueberlaeufe = page => page.evaluate(() => {
+    const zuBreit = el => el.scrollWidth > el.clientWidth;
+    const aus = [];
+    if (zuBreit(document.documentElement)) aus.push(`Dokument ${document.documentElement.scrollWidth} > ${document.documentElement.clientWidth}`);
+    if (zuBreit(document.getElementById('lauf'))) aus.push('#lauf');
+    for (const el of document.querySelectorAll('#lv-insel .lv-s, #lv-insel .lv-s .bf, #lv-insel .lv-s .ab, #lauf .lv-aw, #lauf .lv-kz > div, #lauf .lv-kz dt, #lauf .lv-top button')) {
+      if (zuBreit(el)) aus.push(`${el.closest('li[id]') ? el.closest('li[id]').id : ''} ${el.className} ${el.scrollWidth} > ${el.clientWidth}`);
+    }
+    return aus;
+  });
+
+  for (const [variante, aenderung] of [
+    ['Befehl aus 45.000 Zeichen', (e, nr) => (nr === 3 ? { ...e, text: JSON.stringify({ command: 'ls ' + 'x '.repeat(22500), description: 'Nächste freie Nummer' }) } : e)],
+    ['Befehl und Absicht aus je 200 Zeichen ohne Leerzeichen', (e, nr) => (nr === 3 ? { ...e, text: JSON.stringify({ command: 'p'.repeat(200), description: 'a'.repeat(200) }) } : e)],
+  ]) {
+    test(`AK 10: Breite — T1 mit ${variante}: kein Querscrollen bei 320, 641, 980, 1280 px, hell und dunkel; umgebrochen, nicht abgeschnitten`, async ({ page }) => {
+      await ablegen(k, t1Text(aenderung));
+      await laufOeffnen(page, T.T1);
+      await gelesen(page);
+      await summaryVon(page, 5).click();
+      const fehler = [];
+      for (const farbe of ['light', 'dark']) {
+        await thema(page, farbe);
+        for (const b of BREITEN) {
+          await breiteSetzen(page, b);
+          fehler.push(...(await ueberlaeufe(page)).map(x => `${farbe} ${b}: ${x}`));
+          const abgeschnitten = await summaryVon(page, 3).locator('.bf, .ab').evaluateAll(es => es.map(e => getComputedStyle(e).textOverflow).filter(t => t !== 'clip'));
+          fehler.push(...abgeschnitten.map(t => `${farbe} ${b}: text-overflow ${t}`));
+        }
+      }
+      expect(fehler).toEqual([]);
+      await expect(summaryVon(page, 3).locator('.bf')).toHaveText(variante.startsWith('Befehl aus') ? /…$/ : 'p'.repeat(200));
+    });
+  }
+
+  test('AK 10: Themen — Text und Kennzahlen ≥ 4,5:1, auch die Fehlerzeile auf ihrer Fläche, hell und dunkel; T1, T4 und T5', async ({ page }) => {
+    await ablegen(k);
+    for (const kennung of [T.T1, T.T4, T.T5]) {
+      await laufOeffnen(page, kennung);
+      await gelesen(page);
+      if (kennung === T.T1) await summaryVon(page, 5).click();
+      for (const farbe of ['light', 'dark']) {
+        await thema(page, farbe);
+        expect(await kontrastVerstoesse(page, ['#kopf', '#lauf']), `${kennung} ${farbe}`).toEqual([]);
+      }
+    }
+  });
+
+  test('AK 10: Ziele bei feinem Zeiger — Knöpfe von „Längste Schritte“ und jede summary einer Werkzeugzeile ≥ 24 px hoch', async ({ page }) => {
+    await ablegen(k);
+    await laufOeffnen(page, T.T1);
+    await gelesen(page);
+    expect(await page.evaluate(() => matchMedia('(pointer: fine)').matches)).toBe(true);
+    const hoehen = await page.locator(`${TOP}, ${INSEL} .lv-s > summary`).evaluateAll(es => es.map(e => e.getBoundingClientRect().height));
+    expect(hoehen.length).toBe(9);
+    expect(Math.min(...hoehen)).toBeGreaterThanOrEqual(24);
+  });
+
+  test('AK 10: genau eine Ansage je Ergebnis im Statusbereich — beim Lesen und beim Ergebnis, nichts aus Kopf, Kennzahlen und Bericht', async ({ page }) => {
+    await ablegen(k);
+    await page.addInitScript(() => {
+      window.kdAnsagen = [];
+      document.addEventListener('DOMContentLoaded', () => new MutationObserver(eintraege => {
+        for (const e of eintraege) {
+          const ort = e.target.nodeType === 3 ? e.target.parentElement : e.target;
+          const region = ort && ort.closest && ort.closest('[role=status],[role=alert],[aria-live]');
+          if (region) window.kdAnsagen.push(`${region.id}: ${region.textContent}`);
+        }
+      }).observe(document, { subtree: true, childList: true, characterData: true }));
+    });
+    const gehalten = await halten(page);
+    await laufOeffnen(page, T.T1);
+    await expect(page.locator(STATUS)).toHaveText('Liest das Transkript …');
+    await gehalten.freigeben();
+    await gelesen(page);
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    // der Ladesatz kommt mit dem Statusbereich selbst ins Dokument; danach ändert sich nur er, genau einmal, und keine andere Region
+    expect(await page.evaluate(() => window.kdAnsagen.filter(t => !/: $/.test(t)))).toEqual(['lv-status: Ende des Transkripts']);
+  });
+});
+
+test.describe('R00234 Laufansicht: Ziele bei grobem Zeiger', () => {
+  test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
+  let k;
+  test.beforeEach(async ({ page }) => {
+    await mutanteEinsetzen(page);
+    await alsPerson(page, lv.MENSCH);
+    k = await kanbanStarten(lv.ausgangslage());
+  });
+  test.afterEach(() => k.stoppen());
+
+  test('AK 10: Knöpfe von „Längste Schritte“ und jede summary einer Werkzeugzeile ≥ 48 px hoch', async ({ page }) => {
+    await ablegen(k);
+    await page.goto(`${k.adresse}#/board/fabrik/aufgabe/1/lauf?kennung=${encodeURIComponent(T.T1)}`);
+    await expect(page.locator(STATUS)).toHaveText('Ende des Transkripts');
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+    const hoehen = await page.locator(`${TOP}, ${INSEL} .lv-s > summary`).evaluateAll(es => es.map(e => e.getBoundingClientRect().height));
+    expect(hoehen.length).toBe(9);
+    expect(Math.min(...hoehen)).toBeGreaterThanOrEqual(48);
+  });
 });

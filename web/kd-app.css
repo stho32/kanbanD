@@ -1832,7 +1832,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
    und die Kennzahlen; Farben nur aus Status-Tokens. */
 .lv-aw{display:flex;flex-wrap:wrap;align-items:stretch;background:var(--kd-surface);border-bottom:1px solid var(--kd-line-strong)}
 .lv-gd{display:flex;flex-direction:column;justify-content:center;gap:1px;padding:var(--kd-s3) var(--kd-s5);border-right:1px solid var(--kd-line);min-width:0}
-.lv-gd .k,.lv-kz dt{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted);text-transform:uppercase}
+.lv-gd .k,.lv-kz dt{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted);text-transform:uppercase;hyphens:auto;overflow-wrap:anywhere}
 .lv-gd .w{font-size:22px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .lv-gd .auf{font-size:12px;color:var(--kd-muted);overflow-wrap:anywhere}
 .lv-kz{display:flex;flex-wrap:wrap;margin:0;padding:0;min-width:0}
@@ -1849,7 +1849,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .erg.fehl{background:var(--kd-status-error-bg);color:var(--kd-status-error-ink);box-shadow:inset 0 0 0 1px var(--kd-status-error)}
 @media (max-width:640px){
   .lv-gd{flex:1 1 100%;border-right:0;border-bottom:1px solid var(--kd-line);padding:var(--kd-s3) var(--kd-s4)}
-  .lv-kz>div{padding:6px var(--kd-s4);flex:1 1 33%;border-bottom:1px solid var(--kd-line)}
+  .lv-kz>div{padding:6px var(--kd-s3);flex:1 1 auto;border-bottom:1px solid var(--kd-line)}
   .lv-kz dd{font-size:14px}
 }
 .lf-an{display:inline-flex;align-items:center;gap:6px;min-block-size:var(--kd-ziel);min-inline-size:var(--kd-ziel);font-weight:500}
