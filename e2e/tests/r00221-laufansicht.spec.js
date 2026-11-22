@@ -231,11 +231,32 @@ test.describe('R00221 Laufansicht', () => {
     expect(await e.nth(1).locator('pre').last().evaluate(p => getComputedStyle(p).fontFamily)).toMatch(/mono/i);
     await expect(e.nth(3)).toContainText('Passt.');
     await expect(e.nth(3).locator('.zt')).toHaveCount(0);
-    await expect(e.nth(4).locator('b')).toHaveCount(0);
+    await expect(e.nth(3).locator('.mono')).toHaveCount(0);
+    await expect(e.nth(3).locator('b')).toHaveCount(0);
     await expect(e.nth(4)).toHaveText(ENDE);
     expect(await page.locator(SEITE).innerText()).not.toContain('{"art"');
     expect(z.liste).toBe(0);
     expect(z.einzeln).toBe(1);
+  });
+
+  test('AK 6: eine Nachricht ohne Zeit und ohne Namen zeigt weder Uhrzeit noch Namen (Agent und Mensch, nicht als Auftrag eingeklappt)', async ({ page }) => {
+    const kennung = 'ohneangaben@2026-11-20T20:00+01:00';
+    const zeilen = [
+      '{"zeit":"2026-11-20T10:00:41+01:00","art":"nachricht","wer":"mensch","text":"Der Auftrag."}',
+      '{"art":"nachricht","wer":"agent","text":"Antwort ohne Angaben."}',
+      '{"art":"nachricht","wer":"mensch","text":"Rückfrage ohne Angaben."}',
+    ].join('\n') + '\n';
+    await lv.hochladen(k.adresse, 1, kennung, 'Entwicklung', lv.gz(zeilen));
+    await laufOeffnen(page, kennung);
+    const e = page.locator(EINTRAEGE);
+    await expect(e).toHaveCount(4);
+    await expect(e.nth(0).locator('details')).toHaveCount(1);
+    for (const i of [1, 2]) {
+      await expect(e.nth(i).locator('.lv-text')).toContainText('ohne Angaben.');
+      await expect(e.nth(i).locator('.mono')).toHaveCount(0);
+      await expect(e.nth(i).locator('b')).toHaveCount(0);
+    }
+    await expect(e.nth(3)).toHaveText(ENDE);
   });
 
   test('AK 6: Größe nach groesse aus bytes — 281.600 Byte stehen als „275,0 KB“', async ({ page }) => {
