@@ -569,3 +569,49 @@ Gemessen an der Insel mit 1.003 Zeilen (1.000er-Lauf des Kriteriums) und mit 10.
 
 - [ ] Entwickler (Karte #265): Regel nach Punkt 1, Stilprobe mit beiden Mutanten, Messprobe als Beobachtung. Keine Änderung an `web/lauf.js` oder `web/app.js`.
 - [ ] Merge: Dieser Nachtrag steht auf `karte/265`, abgeleitet von `karte/253`. Auf `main` steht schon N4 (#261). Beim Zusammenführen kommt N5 hinter N4.
+
+## Nachtrag 2026-11-23 N6: Ergebnis mit Farbcodes lesbar (nur eine feste Liste, nie versteckt), fehlgeschlagenes Edit als „nicht angewendet“, Fehlerfarbe nur an Zeile und Ergebnis (Karte #267)
+
+**Status**: `Vorgeschlagen` — bis der product-owner Frage 1 und 2 (siehe Folgeaufgaben) beantwortet hat. Punkt 3 (CSS-Ursache) ist unabhängig davon. Punkte 1–7 und N1–N5 gelten weiter; N6 ändert den Satz aus N4 nur an drei Stellen.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #267, Lauf 267-architekt-1)
+**Erprobt durch**: Zählung am 2026-11-23 über 144 echte Transkripte (nur GET auf :7422, Aufgaben 1–270; Skripte `gemeinsam/scratchpad/arch-267/` der Factory, Kopien nach der Zählung gelöscht). Punkt 3 aus CSS und Bild `etst-261/edit49.png` gelesen, nicht gebaut.
+
+### Belegt
+
+- **ANSI in Ergebnissen ist selten, aber echt**: 18 von 5.357 Ergebnissen (0,3 %) in 11 von 144 Dateien tragen `U+001B`, zusammen 252 Zeichen; in Aufrufen und Nachrichten kein einziges. Davon 228 SGR-Folgen `ESC[…m` mit den Codes 2 (97, dunkler), 22 (97, zurück), 0 (16), 32 (14, grün), 31 (4, rot); 16 `ESC(B` (Zeichensatz, aus `tput sgr0`); 8 Bytes Rauschen in einem binären Auszug (gzip-Kopf im Text). Hauptquelle ist die Fehlerausgabe des Playwright-MCP (`### Error … Call log:`, Bild `pw57.png`: eine Marke je Zeilenrand).
+- **Heute** setzt `zeichenBuchen` (`web/lauf.js:134`) jedes `U+001B` als Marke aus dem Budget (1.000 je Text, 10.000 je Lauf, ADR-0036 FA 10): 252 Marken kosten Platz und Lesbarkeit, ändern aber nichts an der Sicherheit. Die Klasse `MARKIERBAR` steht dreimal (`web/lauf.js:127`, `web/lauf-satz.js:572`, `web/diff.js`); ein Node-Test hält sie gleich.
+- **Fehlgeschlagenes Edit**: 4 von 48 Edit/Write-Ergebnissen sind `<tool_use_error>File has not been read yet…` (8 %). `schrittHtml` (`web/lauf.js:320`) kennt `s.fehler`, `aufrufSatz` (`web/lauf-satz.js:260`) bekommt es nicht und setzt den Diff mit `.lv-dif .add` grün.
+- **Rote Aufruf-Schrift ist ein Klassenzusammenstoß, keine Absicht**: das Element heißt `<details class="lv-s fehl">`; die allgemeine Regel `.fehl{color:var(--kd-warn);font-size:12px}` (`web/kd-app.css:673`, für Meldungen anderswo) färbt es, `.lv-s-ganz` (`:1811`) setzt keine Schriftfarbe, also erben Aufruf, Diff-Text und Ergebnis das Rot (`edit49.png`). Gewollt sind nur `.nm`, `.eg`, `.ab`, `.du` der Zeile (`:1810`). Dasselbe Element erbt `font-size:12px`.
+
+### Optionen (Punkt 1, Farbcodes)
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| A — Marken bleiben (heute) | nichts versteckt | 252 Kästchen verdecken den Text; löst die Karte nicht |
+| B — alle `ESC[…m` ausblenden, ein Satz „n Farbcodes ausgeblendet“ | kleinster Bau, keine Farbe zu prüfen | Bedeutung (rot/grün, gedämpft) geht verloren; die Folgen verschwinden ohne Spur im Text |
+| **C — feste Liste übersetzen, alles andere bleibt Marke** (empfohlen) | die Farben kommen an; unbekanntes, Fremdes und Binäres bleibt sichtbar markiert | eine Liste und ein Zustand je Ergebnis zu pflegen |
+| D — ANSI voll auslesen (Hintergrund, 256 Farben, `8` verbergen, `7` umkehren) | wie ein Terminal | öffnet genau den Weg, Text zu verstecken (Schrift in Hintergrundfarbe, `conceal`); verworfen |
+
+### Entscheidung (Soll, bei Wahl von C)
+
+1. **Übersetzt wird nur im Ergebnis**, nie in Aufruf, Nachricht, Name, Pfad oder Kurzform der Zeile (dort bleibt die Marke, N4 gilt). Erlaubt sind SGR-Folgen `ESC[<p>(;<p>)*m` mit höchstens 4 Teilen, jeder Teil leer, `0`, `1`, `2`, `22`, `31`, `32` oder `33`. Jede andere Folge (`ESC(B`, `ESC[8m`, `ESC[30m`, `ESC[38;5;…m`, Hintergründe, `ESC[` ohne Abschluss, einzelnes `ESC`) bleibt Marke wie heute.
+2. **Wirkung nur über feste Klassen**, nie `style` und nie ein Wert aus dem Text: `0` und `22` setzen zurück, `1` fett, `2` `--kd-muted`, `31` `--kd-status-error-ink`, `32` `--kd-status-ok-ink`, `33` `--kd-status-warn-ink`. Keine Hintergründe, keine Deckkraft, kein `display`. Der Zustand gilt je Ergebnis und endet mit ihm. Folgen, die den Zustand nicht ändern, öffnen keine neue Spanne.
+3. **Nichts kann sich verstecken**: jede erlaubte Farbe hat auf der Fläche des Ergebnisses in beiden Themes mindestens 4,5 : 1; die Folge selbst verschwindet nur, wenn sie ganz in der Liste steht. Die Rohform bleibt im Transkript-Download.
+4. **Grenzen**: höchstens 2.000 Spannen je Ergebnis (`SATZ_GRENZEN.farben`); darüber bleiben die weiteren Folgen Marken und laufen in das Budget von FA 10. Erlaubte Folgen zählen **nicht** gegen das Budget (sonst äßen 252 `U+001B` die 1.000 je Text); `MARKIERBAR` bekommt dafür einen Vorgriff („`U+001B` nicht, wenn eine erlaubte Folge folgt“), an allen drei Orten gleich, der Gleichheitstest wird entsprechend erweitert.
+5. **Ort**: reine Funktion in `web/lauf-satz.js` (Zeile + Zustand → Teile mit Klasse), vom `zeile`-Parameter von `ergebnisSatz` genutzt; `web/lauf-satz.js` bleibt frei von `innerHTML`, `document` usw. (Fitness Function N4).
+6. **Fehlgeschlagenes Edit/Write**: ist `s.fehler`, setzt `aufrufSatz` über dem Diff eine Zeile „Nicht angewendet — der Schritt ist fehlgeschlagen.“ (sichtbarer Text, nicht nur Farbe) und der Diff bekommt die Klasse `nicht-angewendet`: keine grünen und roten Flächen, Zeilen gedämpft, `+`/`−` bleiben; der Lesetext „hinzugefügt:/entfernt:“ wird „vorgesehen hinzuzufügen:/zu entfernen:“. Der Diff bleibt sichtbar, weil er zeigt, was beabsichtigt war. Ohne Ergebnis im Transkript bleibt der Diff wie heute (der Ausgang ist unbekannt, `KEIN_ERGEBNIS` steht darunter).
+7. **Fehlerfarbe nur an der Zeile und am Ergebnis**: `.lv-s-ganz` setzt `color:var(--kd-text)` zurück (das ist die Ursache), `.lv-s.fehl .lv-erg` bekommt `color:var(--kd-status-error-ink)`; Aufruf, Diff, Felder bleiben neutral. Das allgemeine `.fehl` wird nicht umbenannt (viele Treffer in `web/kd-app.css`, kein Gewinn).
+
+**In Kauf genommen**: Eine Liste von sieben Codes deckt, was die Zählung zeigt (2, 22, 0, 31, 32); `1` und `33` sind Zugabe für Cargo- und Testausgaben ohne Beleg im Bestand. Ein Programm, das eine andere Folge schreibt, zeigt weiter Marken. Die Farben tragen keine Bedeutung allein: der Fehlerzustand steht als Wort „Fehler:“ in der Zeile (N1).
+
+### Durchsetzung
+
+- **Node-Test (Gate), rein**: Eingabe `ESC[2m a ESC[22m` → Teile mit Klasse, kein `U+001B` im HTML; je Gegenprobe bleibt Marke: `ESC[8m`, `ESC[30m`, `ESC[38;5;196m`, `ESC[0;8m`, `ESC(B`, einzelnes `ESC`, 5 Teile; 3 MiB `ESC[31m` → höchstens 2.000 Spannen, Rest Marken im Budget. Test „`MARKIERBAR` gleich an drei Orten“ mit dem Vorgriff.
+- **Mutanten**: „`8` in der Liste“ und „Hintergrundfarbe zugelassen“ je von einer Probe getötet; „Zustand läuft über das Ergebnis hinaus“ von einer Zwei-Ergebnis-Probe.
+- **E2E**: Ergebnis aus `pw57` (Call log) zeigt 0 Marken und gedämpfte Spannen; Kontrast ≥ 4,5 : 1 je Klasse in hell und dunkel (`getComputedStyle`); Edit mit `tool_use_error` zeigt die Zeile „Nicht angewendet“ und keine `.add`-Fläche (Mutant „Klasse fehlt“); im Fehlerschritt hat Aufruf-Block die Farbe `--kd-text`, Zeile und Ergebnis die Fehlerfarbe (Mutant „Regel entfernt“).
+- **Review-Punkt `architektur-reviewer`/`security-reviewer`**: eine neue erlaubte Folge muss Farbe aus dem Token-Satz nehmen und die Kontrastprobe bestehen; Hintergrund, `conceal`, `invert` und Deckkraft sind nie erlaubt.
+
+### Folgeaufgaben
+
+- [ ] product-owner: Fragen 1–3 aus dem Bericht (Variante C oder B; Diff bei Fehlschlag gedämpft statt verborgen; Kurzform).
+- [ ] Entwickler (Karte #267, eine Karte, Reihenfolge 7 → 6 → 1–5): je Punkt Probe zuerst; Änderungen in `web/kd-app.css`, `web/lauf-satz.js`, `web/lauf.js` (`schrittHtml` gibt `s.fehler` an `aufrufSatz`, Ergebnis-Zeile mit Zustand), Probe-Dateien.
