@@ -1959,3 +1959,21 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Der Zweig „Index-Reset scheitert und weicht ab“ hat keinen Test.
 - **Director:** Während die Wache offen war, habe ich `dokumente 255` aufgerufen, entgegen der Regel. Auf main kamen nur Dokumente; Tests lesen die echte WBS nicht, also ohne Folge. **Lehre:** Vor `dokumente` mit `wiederaufnahme` bzw. dem Journal prüfen, ob eine Wache offen ist.
 | 2026-11-22 | #244 | Erledigt | director | Retrospektive | – | 1 Lehre (dokumente nie bei offener Wache) |
+| 2026-11-22 | #246 | Entwicklung | entwickler | blockiert | 1 h 11 min | AK 13: korrekte Probe deckt echtes Querscrollen der Prognose-Tabelle auf · claude · opus · Lauf 246-entwickler-1 · 9,08 $ · Karte gesamt 15,43 $ |
+| 2026-11-22 | #246 | Entwicklung | product-owner | bestanden | 2 min | Z. 567: Fix in #246 (AK 14) · claude · opus · Lauf 246-product-owner-2 · 0,81 $ · Karte gesamt 16,24 $ |
+| 2026-11-22 | #246 | Entwicklung | planer | bestanden | 0 min | AK 14, B1231 · claude · sonnet · Lauf 246-planer-2 · 0,18 $ · Karte gesamt 16,42 $ |
+| 2026-11-22 | #262 | Architektur | architekt | bestanden | 6 min | ADR-0041 N2 · claude · opus · Lauf 262-architekt-1 · 2,18 $ · Karte gesamt 2,18 $ |
+| 2026-11-22 | #262 | Detailplanung | product-owner | bestanden | 1 min | Z. 568–571 · claude · opus · Lauf 262-product-owner-1 · 0,59 $ · Karte gesamt 2,77 $ |
+| 2026-11-22 | #262 | Detailplanung | planer | bestanden | 7 min | R00237, I0227 B1232–B1236 · claude · opus · Lauf 262-planer-1 · 2,36 $ · Karte gesamt 5,13 $ |
+| 2026-11-22 | #246 | Entwicklung | entwickler | bestanden | 32 min | AK 1–14, Gate cargo 1233, node 1589, PW 2484/0 · claude · opus · Lauf 246-entwickler-2 · 2,67 $ · Karte gesamt 19,09 $ |
+| 2026-11-22 | #246 | Auto-Reviews | code-reviewer | bestanden | 6 min | kein Muss · claude · sonnet · Lauf 246-code-reviewer-1 · 0,48 $ · Karte gesamt 19,57 $ |
+| 2026-11-22 | #246 | Entwicklertest | entwicklertester | bestanden | 8 min | Wackler weg, AK 14 als Nutzer · claude · sonnet · Lauf 246-entwicklertester-1 · 0,43 $ · Karte gesamt 20,00 $ |
+| 2026-11-22 | #262 | Entwicklung | entwickler | bestanden | 39 min | AK 1–10, Altbestand 47/47 gleich, Gate grün · claude · sonnet · Lauf 262-entwickler-1 · 2,41 $ · Karte gesamt 7,54 $ |
+| 2026-11-22 | #262 | Auto-Reviews | code-reviewer | bestanden | 1 min | kein Muss, Fuzz 20000/0 · claude · sonnet · Lauf 262-code-reviewer-1 · 0,36 $ · Karte gesamt 7,90 $ |
+| 2026-11-22 | #262 | Auto-Reviews | legacy-reviewer | bestanden | 2 min | kein Befund, 57 Transkripte · claude · sonnet · Lauf 262-legacy-reviewer-1 · 0,46 $ · Karte gesamt 8,36 $ |
+| 2026-11-22 | #262 | Entwicklertest | entwicklertester | bestanden | 8 min | US-1–3, echte Läufe 98/98, 29/29, 17/17 · claude · sonnet · Lauf 262-entwicklertester-1 · 1,03 $ · Karte gesamt 9,39 $ |
+
+**Retrospektive #246** (Wackler unter Last, R00232, ADR-0026 N4; 2026-11-22; Gate auf main grün bis auf den neuen Wackler r00221:362, allein 3/3; ausgeliefert. Karte gesamt rund 20 $.)
+- **Gut:** Die korrekt lesende Probe deckte ein echtes Querscrollen der Prognose-Tabelle auf, das der alte Test verdeckt hatte. Der entwickler hat AK 13 rot committet, statt ihn abzuschwächen. Der PO hat den kleinen Fix in derselben Karte zugelassen (AK 14).
+- **Lehre:** Ein Test, der Zustand herstellt und erst später misst, kann über ein Neuzeichnen hinweg gar nichts messen. Herstellen und Messen gehören in einen Zug, dazu eine Positivprobe.
+| 2026-11-22 | #246 | Erledigt | director | Retrospektive | – | 1 Lehre (Herstellen und Messen im selben Zug, Positivprobe) |
