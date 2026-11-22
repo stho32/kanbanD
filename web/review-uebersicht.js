@@ -86,5 +86,83 @@
     return { plus: anteil(d.plus), minus: anteil(d.minus) };
   }
 
+  /* ── Pfad, VS Code und Patch je Datei (R00236, ADR-0042 Punkte 6 und 7, N1.3) ── */
+
+  /** diff.js lädt nach dieser Datei und braucht sie; gelesen wird es erst beim Aufruf. */
+  function diffModul() {
+    if (typeof module !== 'undefined') return require('./diff.js');
+    return window;
+  }
+
+  /** Jeder Teil eines Pfads mit `encodeURIComponent`, die Trenner `/` bleiben: kein Zeichen eines Namens wird Abfrage, Fragment oder
+      Zeile des Links (ADR-0042 „Durchsetzung“). */
+  const teileKodiert = pfad => String(pfad).split('/').map(encodeURIComponent).join('/');
+
+  /** `vscode://file` + Wurzel + `/` + Pfad, mit `:<zeile>` nur, wenn es eine Zeile gibt (FA 4, 5). */
+  function vscodeLink(wurzel, pfad, zeile) {
+    const link = `vscode://file${teileKodiert(wurzel)}/${teileKodiert(pfad)}`;
+    if (zeile === null) return link;
+    return `${link}:${zeile}`;
+  }
+
+  function vscodeTitel(zeile) {
+    if (zeile === null) return 'In VS Code öffnen';
+    return `In VS Code an Zeile ${zeile} öffnen`;
+  }
+
+  const HUNK_NEU = /^@@ -\d+(?:,\d+)? \+(\d+)/;
+
+  /** Die Datei, nach der Status und Sprungzeile gehen: bei einer Folge-Datei ihr letzter Schritt (FA 11), ein früherer springt nie ein. */
+  function massgeblich(d) {
+    if (Array.isArray(d.schritte)) return d.schritte[d.schritte.length - 1];
+    return d;
+  }
+
+  /** Die Zeile, an der VS Code öffnet: die erste hinzugefügte Zeile (Nummer der neuen Seite), ohne sie die erste Zeile der neuen Seite
+      im ersten Hunk; ohne geladenen `patch` (`gross`, `nachladen`, `zu_gross_zum_anzeigen`) oder ohne Hunk null (N1.3, PO Z. 545). */
+  function sprungZeile(d, hinweise) {
+    const quelle = massgeblich(d);
+    const { dateiZustand, patchZeilen } = diffModul();
+    if (dateiZustand(quelle, hinweise) !== 'patch') return null;
+    const zeilen = patchZeilen(quelle.patch);
+    const erstePlus = zeilen.find(z => z.art === 'plus');
+    if (erstePlus) return erstePlus.neu;
+    const ersterKopf = zeilen.find(z => z.art === 'kopf');
+    if (!ersterKopf) return null;
+    return Math.max(1, Number(HUNK_NEU.exec(ersterKopf.text)[1]));
+  }
+
+  /** Ändert das Sichtbarmachen (ADR-0033 Punkt 8) den Text nicht, enthält er weder Bidi- noch Steuerzeichen. */
+  const unveraendertSichtbar = text => diffModul().sichtbarTeile(String(text)).every(t => !t.marke);
+
+  /** Ein Link nach VS Code nur, wenn die Datei auf der neuen Seite steht (Status nicht `D`, bei einer Folge der letzte Schritt) und
+      weder Wurzel noch Pfad Bidi- oder Steuerzeichen tragen — sonst täuschte der sichtbare Pfad über das Ziel (ADR-0042 Punkt 6). */
+  function linkErlaubt(wurzel, d) {
+    if (!wurzel) return false;
+    if (massgeblich(d).status === 'D') return false;
+    return unveraendertSichtbar(wurzel) && unveraendertSichtbar(dateiPfad(d));
+  }
+
+  /** Was „Pfad“ kopiert: `<wurzel>/<pfad>` roh, wie im Commit, bei `D` der alte Pfad (FA 8). */
+  function kopierPfad(wurzel, d) {
+    return `${wurzel}/${dateiPfad(d)}`;
+  }
+
+  /** Der Patch einer Datei über die bestehende Route (ADR-0042 Punkt 7): in „Ein Commit“ mit `commit=`, in „Alle Änderungen“ mit
+      `anwendung=` des Abschnitts — ohne ihn nähme die Route die erste Anwendung der Karte (FA 10). */
+  function patchAdresse(nr, quelle, pfad) {
+    let auswahl = `anwendung=${encodeURIComponent(quelle.anwendung)}`;
+    if (quelle.commit) auswahl = `commit=${encodeURIComponent(quelle.commit)}`;
+    return `/api/aufgaben/${nr}/diff?${auswahl}&datei=${encodeURIComponent(pfad)}&format=patch`;
+  }
+
+  /** Name der heruntergeladenen Datei: `<letzter Pfadteil>.patch`, wenn er nur aus `[A-Za-z0-9._-]` besteht, sonst `datei.patch`. */
+  function patchName(pfad) {
+    const letzter = String(pfad).split('/').pop();
+    if (/^[A-Za-z0-9._-]+$/.test(letzter)) return `${letzter}.patch`;
+    return 'datei.patch';
+  }
+
   Object.assign(ziel, { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, testHinweis, grosseNeueDatei, groessteSumme, balkenTeile });
+  Object.assign(ziel, { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, kopierPfad, patchAdresse, patchName });
 })(typeof module !== 'undefined' ? module.exports : window);
