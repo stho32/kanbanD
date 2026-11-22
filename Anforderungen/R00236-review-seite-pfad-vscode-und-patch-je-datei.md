@@ -1,6 +1,6 @@
 ---
 id: R00236
-status: Neu
+status: Erledigt
 datum: 2026-11-22
 ---
 
@@ -60,8 +60,8 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
 
 ### Antwort der API
 
-- [ ] **AK 1 Wurzel in der Antwort** (ADR-0042 Punkt 6): Gegeben K-Pfad, wenn `GET /api/aufgaben/<nr>/diff?commit=<verweis>` und `GET /api/aufgaben/<nr>/diff` gelesen werden, dann trägt jede Antwort `"wurzel": "<W>"`, gleich der Ausgabe von `git -C <W>/plan rev-parse --show-toplevel`, nicht `<W>/plan`. In Aufgabe #4 trägt der Gesamt-Diff mit `anwendung=wb` `"wurzel": "<V>"`. `…&format=patch` ist bytegleich zur Antwort vor der Karte. Die OpenAPI-Beschreibung nennt `wurzel` in den Schemas `Diff` und `Gesamtdiff` und im Text von `GET …/diff`. Heute rot: das Feld fehlt.
-- [ ] **AK 2 Keine alte Wurzel per 304** (ADR-0042 Punkt 6, „Durchsetzung“): Gegeben eine Antwort 200 mit ETag `E` in beiden Formen.
+- [x] **AK 1 Wurzel in der Antwort** (ADR-0042 Punkt 6): Gegeben K-Pfad, wenn `GET /api/aufgaben/<nr>/diff?commit=<verweis>` und `GET /api/aufgaben/<nr>/diff` gelesen werden, dann trägt jede Antwort `"wurzel": "<W>"`, gleich der Ausgabe von `git -C <W>/plan rev-parse --show-toplevel`, nicht `<W>/plan`. In Aufgabe #4 trägt der Gesamt-Diff mit `anwendung=wb` `"wurzel": "<V>"`. `…&format=patch` ist bytegleich zur Antwort vor der Karte. Die OpenAPI-Beschreibung nennt `wurzel` in den Schemas `Diff` und `Gesamtdiff` und im Text von `GET …/diff`. Heute rot: das Feld fehlt.
+- [x] **AK 2 Keine alte Wurzel per 304** (ADR-0042 Punkt 6, „Durchsetzung“): Gegeben eine Antwort 200 mit ETag `E` in beiden Formen.
   - Wird danach das Register so geändert, dass `kd` auf eine Kopie des Repositorys unter `<tmp>/R2` zeigt (dieselben Commits), dann gibt die Anfrage mit `If-None-Match: E` 200 mit `"wurzel": "<tmp>/R2"`, nicht 304.
   - Ohne Änderung des Registers bleibt es bei 304, im Ein-Commit-Diff ohne Git-Prozess (Zähler `arbeitsrepo::aufrufe()` unverändert).
   - Gegeben der ETag, den das Programm vor dieser Karte zur selben Anfrage gebildet hat, als fester Wert in einem Literal-Test je Form (Vorbild `etag_nicht_wie_vor_der_einteilung_n8`, `src/dienst/gesamt_diff.rs:888`), dann ist der neue ETag ungleich diesem Wert, und die Anfrage mit ihm gibt 200 mit `wurzel`, nicht 304. Das gilt auch für `format=patch`. `GRENZEN_VERSION` bleibt 1 (ADR-0042 N2.2).
@@ -70,7 +70,7 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
 
 ### Sprung in VS Code
 
-- [ ] **AK 3 Sprungziel des Knopfs** (ADR-0042 N1.3, PO Z. 545): Gegeben K-Pfad auf der Review-Seite des Commits, dann zeigt „VS Code“ an:
+- [x] **AK 3 Sprungziel des Knopfs** (ADR-0042 N1.3, PO Z. 545): Gegeben K-Pfad auf der Review-Seite des Commits, dann zeigt „VS Code“ an:
   - `src/a.rs` auf `vscode://file<W kodiert>/src/a.rs:13` (erste hinzugefügte Zeile, nicht der Hunkanfang 10), Tooltip „In VS Code an Zeile 13 öffnen“
   - `src/nur-weg.rs` auf `…/src/nur-weg.rs:20`
   - `neu.rs` und `bild.png` auf `…/neu.rs` bzw. `…/bild.png` ohne `:<zeile>`, Tooltip „In VS Code öffnen“
@@ -79,9 +79,9 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
   - in Aufgabe #4 `b.js` auf `vscode://file<V kodiert>/b.js:5` (Wurzel von `wb`) und `src/f.rs` auf `…/src/f.rs:31` (letzter Schritt). Einheit: Eine Folge-Datei, deren letzter Schritt `gross` ohne `patch` ist, ergibt den Link ohne `:<zeile>`, auch wenn ein früherer Schritt einen `patch` hat
 
   `<W kodiert>` ist jeder Teil von `W` mit `encodeURIComponent`, also `…/R%20x`. „Pfad“ trägt an jeder Datei den Tooltip „Vollständigen Pfad kopieren“, „Patch“ den Tooltip „Patch dieser Datei herunterladen“ (FA 3). Heute rot.
-- [ ] **AK 4 Kodierung** (ADR-0042 „Durchsetzung“): Gegeben K-Pfad, dann zeigt „VS Code“ an `a/b?c#d%e:12.rs` auf `vscode://file<W kodiert>/a/b%3Fc%23d%25e%3A12.rs:1`. In der Einheitenprobe ergibt der Pfad `a/b?c#d%e:12.rs` mit der Wurzel `/w x` und Zeile 7 den Link `vscode://file/w%20x/a/b%3Fc%23d%25e%3A12.rs:7`. Der Mutant „nur `esc`“ (heutiges Muster `web/ansicht.js:392`) wird rot. Heute rot.
-- [ ] **AK 5 Kein Link, der täuschen könnte** (ADR-0042 Punkt 6): Gegeben K-Pfad, dann tragen `weg.rs` (D) und `bidi-‮datei.dat` kein „VS Code“, wohl aber „Pfad“ und „Patch“. Die Zeilennummern von `bidi-‮datei.dat` springen nicht und tragen keinen Tooltip. Auf der ganzen Seite zeigt kein `a[href^="vscode:"]` auf einen Pfad mit U+202E, roh oder kodiert (`%E2%80%AE`). In Aufgabe #4 auf „Alle Änderungen“ trägt die Folge-Datei `src/g.rs` (letzter Schritt `D`) kein „VS Code“, und ihre Nummern springen nicht. Sie trägt „Pfad“ (kopiert `<W>/src/g.rs`) und „Patch“ (`…/diff?anwendung=kd&datei=src%2Fg.rs&format=patch`). Einheit: Eine Wurzel mit U+202E ergibt für keine Datei einen Link. Heute rot, weil es keine Knöpfe gibt. Danach ist es der Wächter gegen die Mutanten m4 und m5.
-- [ ] **AK 6 Sprung an der Zeilennummer** (ADR-0042 Punkt 6, PO Z. 540 (b)): Gegeben K-Pfad mit `src/a.rs` offen.
+- [x] **AK 4 Kodierung** (ADR-0042 „Durchsetzung“): Gegeben K-Pfad, dann zeigt „VS Code“ an `a/b?c#d%e:12.rs` auf `vscode://file<W kodiert>/a/b%3Fc%23d%25e%3A12.rs:1`. In der Einheitenprobe ergibt der Pfad `a/b?c#d%e:12.rs` mit der Wurzel `/w x` und Zeile 7 den Link `vscode://file/w%20x/a/b%3Fc%23d%25e%3A12.rs:7`. Der Mutant „nur `esc`“ (heutiges Muster `web/ansicht.js:392`) wird rot. Heute rot.
+- [x] **AK 5 Kein Link, der täuschen könnte** (ADR-0042 Punkt 6): Gegeben K-Pfad, dann tragen `weg.rs` (D) und `bidi-‮datei.dat` kein „VS Code“, wohl aber „Pfad“ und „Patch“. Die Zeilennummern von `bidi-‮datei.dat` springen nicht und tragen keinen Tooltip. Auf der ganzen Seite zeigt kein `a[href^="vscode:"]` auf einen Pfad mit U+202E, roh oder kodiert (`%E2%80%AE`). In Aufgabe #4 auf „Alle Änderungen“ trägt die Folge-Datei `src/g.rs` (letzter Schritt `D`) kein „VS Code“, und ihre Nummern springen nicht. Sie trägt „Pfad“ (kopiert `<W>/src/g.rs`) und „Patch“ (`…/diff?anwendung=kd&datei=src%2Fg.rs&format=patch`). Einheit: Eine Wurzel mit U+202E ergibt für keine Datei einen Link. Heute rot, weil es keine Knöpfe gibt. Danach ist es der Wächter gegen die Mutanten m4 und m5.
+- [x] **AK 6 Sprung an der Zeilennummer** (ADR-0042 Punkt 6, PO Z. 540 (b)): Gegeben K-Pfad mit `src/a.rs` offen.
   - Klickt `sh` auf die Nummer 13 der neuen Seite, dann wird `vscode://file<W kodiert>/src/a.rs:13` geöffnet. Probe: `location.href` vor dem Wechsel abgefangen. Die Nummer trägt „In VS Code an Zeile 13 öffnen“.
   - Die Kontextzeile 10 springt mit 10.
   - Ein Klick auf eine Nummer der alten Seite (die entfernte Zeile 13 alt) öffnet nichts. Ein Klick in den Codetext der Zeile 13 öffnet ebenfalls nichts (`location.href` unverändert).
@@ -93,7 +93,7 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
 
 ### Pfad und Patch
 
-- [ ] **AK 7 Pfad kopieren** (ADR-0042 Punkt 6, PO Z. 537, 541): Gegeben K-Pfad in einem sicheren Kontext (`http://127.0.0.1`, Zwischenablage erlaubt).
+- [x] **AK 7 Pfad kopieren** (ADR-0042 Punkt 6, PO Z. 537, 541): Gegeben K-Pfad in einem sicheren Kontext (`http://127.0.0.1`, Zwischenablage erlaubt).
   - Drückt `sh` „Pfad“ an `src/a.rs`, dann liegt `<W>/src/a.rs` in der Zwischenablage.
   - An `weg.rs` liegt `<W>/weg.rs` darin, an `bidi-‮datei.dat` der Rohpfad mit U+202E (Länge in UTF-16 gleich `W.length + 1 + Länge des Namens`).
   - Unter dem Knopf steht „Pfad kopiert“ in einer Region mit `role="status"`, die schon vor dem Klick leer im Kopf der Datei stand: Der Knoten ist vor und nach dem Klick derselbe, nur sein Text ist neu, und er liegt nicht im Knopf. Der zugängliche Name des Knopfs ist vorher und nachher „Pfad“ (PO Z. 562). Die Knöpfe „VS Code“ und „Patch“ haben vor und nach dem Klick dieselbe `getBoundingClientRect()`, auf 0,5 px genau.
@@ -102,7 +102,7 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
   - Löst innerhalb der ersten 2 s ein Live-Ereignis (ein Kommentar an der Aufgabe über die API) ein Neuzeichnen aus, steht die Auflage danach noch, und `document.activeElement` ist vor und nach dem Neuzeichnen „Pfad“ an `src/a.rs` (PO Z. 563).
 
   Heute rot.
-- [ ] **AK 8 Ohne Zwischenablage** (ADR-0042 Punkt 6, PO Z. 537): Gegeben K-Pfad und eine Seite ohne `navigator.clipboard` (unsicherer Kontext, nachgestellt per Init-Skript), wenn `sh` „Pfad“ an `src/a.rs` drückt:
+- [x] **AK 8 Ohne Zwischenablage** (ADR-0042 Punkt 6, PO Z. 537): Gegeben K-Pfad und eine Seite ohne `navigator.clipboard` (unsicherer Kontext, nachgestellt per Init-Skript), wenn `sh` „Pfad“ an `src/a.rs` drückt:
   - Unter dem Kopf der Datei steht ein schreibgeschütztes Feld mit `<W>/src/a.rs`. Es hat den Fokus, und der Text ist ganz markiert (`selectionStart` 0, `selectionEnd` gleich der Länge).
   - Daneben steht „Pfad markiert — mit Strg + C kopieren“.
   - Es gibt keinen Eintrag in der Konsole und keinen Seitenfehler.
@@ -112,7 +112,7 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
   - Nach dem Blättern zu einem anderen Commit oder zu „Alle Änderungen“ steht kein Feld mehr (PO Z. 556).
 
   Dasselbe gilt, wenn `writeText` die Erlaubnis verweigert (abgewiesenes Promise). Heute rot.
-- [ ] **AK 9 Patch je Datei** (ADR-0042 Punkt 7): Gegeben K-Pfad.
+- [x] **AK 9 Patch je Datei** (ADR-0042 Punkt 7): Gegeben K-Pfad.
   - „Patch“ an `src/a.rs` ist ein Link `/api/aufgaben/<nr>/diff?commit=<verweis kodiert>&datei=src%2Fa.rs&format=patch` mit `download="a.rs.patch"`. Sein Inhalt ist bytegleich zur Antwort der Route und beginnt mit der Kopfzeile von Git.
   - An `a/b?c#d%e:12.rs` heißt die Datei `datei.patch`, `datei=` ist `a%2Fb%3Fc%23d%25e%3A12.rs`. An `ä.rs` heißt sie ebenfalls `datei.patch`.
   - In Aufgabe #4 zeigt „Patch“ an `b.js` im Abschnitt `wb` auf `…/diff?anwendung=wb&datei=b.js&format=patch` ohne `commit=`, und die Antwort ist 200 `text/x-diff`.
@@ -122,7 +122,7 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
 
 ### Breite, Bestand
 
-- [ ] **AK 10 Beide Ansichten, Breite, Tastatur, Bestand, Mutanten** (PO Z. 539 Änderung 1): Gegeben K-Pfad und Aufgabe #4 bei 320, 414, 980 und 1280 px, hell und dunkel.
+- [x] **AK 10 Beide Ansichten, Breite, Tastatur, Bestand, Mutanten** (PO Z. 539 Änderung 1): Gegeben K-Pfad und Aufgabe #4 bei 320, 414, 980 und 1280 px, hell und dunkel.
   - Die Knöpfe stehen in „Ein Commit“ und in „Alle Änderungen“ im Kopf jeder Datei, auch bei eingeklappten Dateien in offenen Gruppen.
   - Die Seite scrollt nicht quer (`document.documentElement.scrollWidth ≤ clientWidth`), auch nicht mit offenem Feld aus AK 8. Jeder Knopf liegt ganz in der Breite.
   - Jeder Knopf ist mindestens 24 px hoch, bei `pointer: coarse` mindestens 44 px.
