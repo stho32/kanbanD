@@ -248,30 +248,33 @@
 
   /** Eine Folge-Datei (N1.4): Kopf mit Pfad, „Folge · n Commits“ und Summe, ohne Statuswort; offen der Satz zur Folge, dann je
       Schritt ein Kopf als Verweis und darunter der Schritt wie eine Datei in B2. */
-  function folgeDateiHtml(d, a, i, stand, ctx, folgeSatz, hinweise, commits) {
+  function folgeDateiHtml(d, a, i, stand, ctx, sicht) {
+    const { folgeSatz, hinweise, commits } = sicht;
     const { esc } = ctx;
     const id = `${a}-${i}`, arg = `${a}:${i}`;
+    const kennung = { id, arg, quelle: abschnittQuelle(ctx, sicht) };
     const kopf = folgeKopf(d);
     let klappWort = 'zugeklappt';
     if (stand.offen) klappWort = 'aufgeklappt';
     const name = `${diff.sichtbarText(d.pfad)}, ${kopf.wort}, +${tausender(d.plus)} −${tausender(d.minus)}, ${klappWort}`;
     const knopfHtml = `<h4 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}" aria-label="${esc(name)}">${diff.symbol('pfeil', ' df-pf')}<span class="p">${diff.pfadHtml(d.pfad, esc)}</span><span class="st st-folge">${kopf.wort}</span><span class="z">${diff.zahlenHtml(d)}</span></button></h4>`;
     let inhalt = '';
-    if (stand.offen) inhalt = `<p class="df-folge" role="note">${folgeSatz}</p>${folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits)}`;
+    if (stand.offen) inhalt = `<p class="df-folge" role="note">${folgeSatz}</p>${folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits, diff.sprungBasis(kennung.quelle, d))}`;
     let beschaeftigt = '';
     if (stand.laden === 'laeuft') beschaeftigt = ' aria-busy="true"';
     let zu = ' hidden';
     if (stand.offen) zu = '';
-    return `<section class="df df-fo" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${knopfHtml}<div class="df-inhalt" id="rv-dc${id}"${zu}>${inhalt}</div></section>`;
+    return `<section class="df df-fo" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${diff.kopfMitAktionenHtml(knopfHtml, d, kennung, stand, hinweise, esc)}<div class="df-inhalt" id="rv-dc${id}"${zu}>${inhalt}</div></section>`;
   }
 
-  function folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits) {
+  /** `sprung`: Link nach VS Code ohne Zeile; die Nummern jedes Schritts springen mit der neuen Seite dieses Schritts (FA 11). */
+  function folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits, sprung) {
     const arg = `${a}:${i}`;
     if (stand.laden) return diff.hinweisHtml(d, arg, 'ohne', stand, ctx.esc);
     const koepfe = schrittKoepfe(d, commits);
     const zuGross = hinweise.some(h => h.art === 'zu_gross_zum_anzeigen' && h.datei === d.pfad);
-    if (zuGross) return `<p class="df-hin">Zu groß zum Anzeigen. Es stehen nur die Zahlen: +${tausender(d.plus)} −${tausender(d.minus)}. Jeder Schritt lässt sich über seinen Kopf einzeln ansehen.</p>${koepfe.map((k, j) => schrittHtml(d, d.schritte[j], k, `${a}-${i}-${j}`, arg, ctx, hinweise, false)).join('')}`;
-    return nachladenHtml(d, arg, hinweise) + koepfe.map((k, j) => schrittHtml(d, d.schritte[j], k, `${a}-${i}-${j}`, arg, ctx, hinweise, true)).join('');
+    if (zuGross) return `<p class="df-hin">Zu groß zum Anzeigen. Es stehen nur die Zahlen: +${tausender(d.plus)} −${tausender(d.minus)}. Jeder Schritt lässt sich über seinen Kopf einzeln ansehen.</p>${koepfe.map((k, j) => schrittHtml(d, d.schritte[j], k, `${a}-${i}-${j}`, arg, ctx, hinweise, false, sprung)).join('')}`;
+    return nachladenHtml(d, arg, hinweise) + koepfe.map((k, j) => schrittHtml(d, d.schritte[j], k, `${a}-${i}-${j}`, arg, ctx, hinweise, true, sprung)).join('');
   }
 
   /** Ein Knopf je Folge-Datei, wenn Schritte groß sind oder fehlen: `datei=` lädt alle Schritte zusammen (N1.6). */
@@ -292,7 +295,7 @@
 
   /** Ein Schritt: Kopf als Verweis auf den Commit (Name „Commit <kurz>, <Titel>, <Zustandswort>, +p −m“), darunter Merkmale,
       Hinweis und Code wie eine Datei in B2. Ohne passenden Commit bleibt der Kopf Text. */
-  function schrittHtml(d, s, k, id, arg, ctx, hinweise, mitRumpf) {
+  function schrittHtml(d, s, k, id, arg, ctx, hinweise, mitRumpf, sprung) {
     const { esc } = ctx;
     const titel = k.titel === null ? '' : `<span class="fs-t">${diff.sichtbarHtml(k.titel, esc)}</span>`;
     const inhalt = `<span class="mono">${diff.sichtbarHtml(k.kurz, esc)}</span>${titel}<span class="st ${k.klasse}">${esc(k.wort)}</span><span class="z">${diff.zahlenHtml(k)}</span>`;
@@ -306,7 +309,7 @@
       const zustand = diff.dateiZustand(s, hinweise);
       const saetze = diff.merkmalSaetze(s, zustand).map(t => `<p class="df-mm">${esc(t)}</p>`).join('');
       let code = '';
-      if (zustand === 'patch') code = diff.codeHtml(s.patch, d.pfad, esc);
+      if (zustand === 'patch') code = diff.codeHtml(s.patch, d.pfad, esc, sprung);
       rumpf = saetze + schrittHinweisHtml(s, arg, zustand, esc) + code;
     }
     return `<div class="fs" id="rv-d${id}"><h5 class="fs-k">${kopf}</h5>${rumpf}</div>`;
@@ -314,9 +317,12 @@
 
   /** Eine Datei des Abschnitts: Folge-Datei hier, Netto-Datei wie in B2 mit Kennung des Abschnitts; Kopf `h4` unter der Gruppe. */
   function gesamtDateiHtml(d, a, i, stand, ctx, sicht) {
-    if (istFolge(d)) return folgeDateiHtml(d, a, i, stand, ctx, sicht.folgeSatz, sicht.hinweise, sicht.commits);
-    return diff.dateiHtml(d, i, stand, sicht.hinweise, ctx.esc, { id: `${a}-${i}`, arg: `${a}:${i}` }, 4);
+    if (istFolge(d)) return folgeDateiHtml(d, a, i, stand, ctx, sicht);
+    return diff.dateiHtml(d, i, stand, sicht.hinweise, ctx.esc, { id: `${a}-${i}`, arg: `${a}:${i}`, quelle: abschnittQuelle(ctx, sicht) }, 4);
   }
+
+  /** In „Alle Änderungen“ gilt die Wurzel des Abschnitts, und der Patch nennt seine Anwendung statt eines Commits (FA 10, 11). */
+  const abschnittQuelle = (ctx, sicht) => ({ nr: ctx.nr, anwendung: sicht.anwendung, wurzel: sicht.wurzel });
 
   /** Eine Gruppe `art` des geladenen Abschnitts `a` (R00235 FA 10): Kopf `h3` unter der Anwendung, offen nach `ab.gruppen`. */
   function abschnittGruppeHtml(ab, a, art, ctx) {
@@ -326,7 +332,7 @@
     return diff.gruppeHtml(g, inhalt, ab.gruppen[art], { id: `${a}-${art}`, arg: `${a}:${art}` }, 3);
   }
 
-  const abschnittSicht = antwort => ({ ...abschnittHinweise(antwort.hinweise), hinweise: antwort.hinweise, commits: antwort.commits });
+  const abschnittSicht = antwort => ({ ...abschnittHinweise(antwort.hinweise), hinweise: antwort.hinweise, commits: antwort.commits, anwendung: antwort.anwendung, wurzel: antwort.wurzel });
 
   /** Eine Datei `i` des geladenen Abschnitts `a` (Neuzeichnen einer Datei in der stehenden Insel). */
   function abschnittDateiHtml(ab, a, i, ctx) {
