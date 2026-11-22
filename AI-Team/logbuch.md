@@ -1812,3 +1812,19 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-22 | #238 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | keine Funde · claude · sonnet · Lauf 238-rechtschreib-reviewer-1 · 0,29 $ · Karte gesamt 11,22 $ |
 | 2026-11-22 | #238 | Auto-Reviews | observability-reviewer | bestanden | 1 min | kein Muss, Hinweise an #239 · claude · sonnet · Lauf 238-observability-reviewer-1 · 0,22 $ · Karte gesamt 11,44 $ |
 | 2026-11-22 | #245 | Detailplanung | product-owner | bestanden | 1 min | PO Z. 515 · claude · opus · Lauf 245-product-owner-1 · 0,84 $ · Karte gesamt 2,85 $ |
+| 2026-11-22 | #238 | Entwicklertest | entwicklertester | bestanden | 7 min | US-1..US-7 bestanden (US-1..4 über Modultests) · claude · sonnet · Lauf 238-entwicklertester-1 · 0,78 $ · Karte gesamt 12,22 $ |
+| 2026-11-22 | #245 | Detailplanung | planer | bestanden | 8 min | R00230, I0220, 3 Bubbles · claude · opus · Lauf 245-planer-1 · 1,78 $ · Karte gesamt 4,63 $ |
+| 2026-11-22 | #245 | Detailplanung | ux-reviewer | bestanden | 3 min | kein Muss, 3 Sollte · claude · sonnet · Lauf 245-ux-reviewer-1 · 0,90 $ · Karte gesamt 5,53 $ |
+| 2026-11-22 | #243 | Entwicklung | entwickler | bestanden | 33 min | Gate cargo 1217, node 1519, PW 2357/1 Wackler r00127:356 · claude · sonnet · Lauf 243-entwickler-1 · 0,71 $ · Karte gesamt 2,49 $ |
+| 2026-11-22 | #243 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss; Prozess-Sollte node_modules-Symlink · claude · sonnet · Lauf 243-code-reviewer-1 · 0,91 $ · Karte gesamt 3,40 $ |
+| 2026-11-22 | #243 | Entwicklertest | entwicklertester | bestanden | 0 min | US-1..US-3 bestanden · claude · sonnet · Lauf 243-entwicklertester-1 · 0,13 $ · Karte gesamt 3,53 $ |
+
+**Retrospektive #238** (eigene Meldung „Lesegrenze … belegt“, R00226, ADR-0032 N9; 2026-11-22; Gate grün auf 20f4c4aa, ausgeliefert. Karte gesamt rund 12 $, kein Muss in Reviews und Entwicklertest.)
+- **Gut:**
+  - Der architekt fand den vierten Aufrufer (`nachfolger.rs`).
+  - Der planer erkannte vor dem Bau, dass die Probe über die API nur ein Wettlauf ist, und legte sie als deterministischen Modultest fest. Der entwicklertester urteilte über die Modultests und nannte das ausdrücklich.
+- **Lehre (Director, Merge-Wache):** Zwischen dem Zusammenführen und dem Gate-Ergebnis habe ich die Dokumente einer anderen Karte (#245) auf `main` übernommen. `board.py dokumente` gehört nicht in eine offene Wache.
+- **Lehre (Director, Warteschleife):** `pgrep -f "<muster>"` in einer Warteschleife findet die eigene Befehlszeile und wartet bis zur Zeitgrenze. Ein Gate eines anderen Laufs erkennt `pgrep -f "bash .*/gate-[0-9]+\.sh"` nur, wenn das Muster nicht selbst in der aufrufenden Zeile steht; sonst `ps` mit `grep -v $$` nutzen.
+- **Lehre (Rebase mit Doku-Strings):** Zwei Karten, die dieselbe Beschreibung eines Endpunkts ergänzen (`DIFF_LESEN`, OpenAPI), kollidieren beim Rebase. Mechanisch lösen, beide Sätze erhalten, dann `cargo test --lib` nachfahren.
+- **Härtung, nicht gebaut:** `diff::abbruch` kann privat werden. Ein Platz, der genau an der Frist frei wird, meldet die Zeitgrenze (Mikrosekunden, deckt sich mit AK 4).
+| 2026-11-22 | #238 | Erledigt | director | Retrospektive | – | 3 Lehren (Wache, pgrep, Doku-Rebase) |
