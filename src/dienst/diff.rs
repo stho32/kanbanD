@@ -272,6 +272,8 @@ pub struct Diffcommit {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Diff {
     pub anwendung: String,
+    /// absolute Wurzel des Arbeits-Repositorys aus `git rev-parse --show-toplevel` (R00236, ADR-0042 Punkt 6)
+    pub wurzel: String,
     pub commits: Vec<Diffcommit>,
     pub dateien: Vec<Diffdatei>,
     pub hinweise: Vec<Hinweis>,
@@ -304,7 +306,8 @@ impl Kanban {
         let anwendungen = Anwendungen::aus(&quellen);
         Verweisform::lesen(gespeichert).map_err(|f| zustand(Commitzustand::Unlesbar, Some(f.meldung)))?;
         let (anwendung, hash) = verweis_lesen(gespeichert, &anwendungen).map_err(|_| zustand(Commitzustand::AnwendungUnbekannt, None))?;
-        let etag = (hash.len() == 40 || hash.len() == HASH_MAX).then(|| etag(gespeichert, anfrage));
+        let start = arbeitsrepo::startpfad(self.ordner().wurzel(), anwendung);
+        let etag = (hash.len() == 40 || hash.len() == HASH_MAX).then(|| etag(gespeichert, start.as_deref(), anfrage));
         if let (Some(e), Some(b)) = (&etag, &anfrage.bekannt) {
             if b.split(',').any(|w| w.trim() == e) {
                 return Ok(Diffantwort::Unveraendert(e.clone()));
@@ -329,7 +332,7 @@ impl Kanban {
         let mut inhalt = inhalt_lesen(&wurzel, vergleich, m.dateien, auswahl, fassung, frist).map_err(|f| inhaltsfehler(f, nr, &voll))?;
         let commit = Diffcommit { verweis: gespeichert.to_string(), anwendung: anwendung.kuerzel.clone(), hash: voll.clone(), titel: titel_kuerzen(&m.titel), autor: m.autor, datum: m.datum, plus: m.plus, minus: m.minus, dateien: m.dateien };
         let bytes = match anfrage.format {
-            Diffformat::Json => json(&Diff { anwendung: anwendung.kuerzel.clone(), commits: vec![commit], dateien: inhalt.dateien, hinweise: inhalt.hinweise })?,
+            Diffformat::Json => json(&Diff { anwendung: anwendung.kuerzel.clone(), wurzel: wurzel.display().to_string(), commits: vec![commit], dateien: inhalt.dateien, hinweise: inhalt.hinweise })?,
             Diffformat::Patch => patch_text(&mut inhalt.dateien).into_bytes(),
         };
         let rumpf = self.antwortbudget.belegen(bytes).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Diff in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
@@ -383,16 +386,19 @@ fn inhaltsfehler(f: Inhaltsfehler, nr: u32, hash: &str) -> Fehler {
     }
 }
 
-/// `ETag` aus dem Verweis (wörtlich wie in der Datei), `datei`, `format` und der Version der Grenzen — ein Diff zu einem
-/// vollen Hash ändert sich nie, solange die Attribut-Dateien des Arbeits-Repositorys gleich bleiben (ADR-0032 N4.6).
-fn etag(verweis: &str, anfrage: &Diffanfrage) -> String {
+/// `ETag` aus dem Verweis (wörtlich wie in der Datei), dem Startordner, wie er an Git geht (fehlend ein fester
+/// Platzhalter), `datei`, `format` und der Version der Grenzen — ein Diff zu einem vollen Hash ändert sich nie, solange
+/// die Attribut-Dateien des Arbeits-Repositorys gleich bleiben (ADR-0032 N4.6); eine andere Wurzel kommt nur über einen
+/// anderen Startordner, deshalb steht er darin (ADR-0042 N2.2 Punkt 1).
+fn etag(verweis: &str, start: Option<&Path>, anfrage: &Diffanfrage) -> String {
     // FNV-1a 64 Bit: stabil über Programmversionen, ohne Abhängigkeit
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     let format = match anfrage.format {
         Diffformat::Json => "json",
         Diffformat::Patch => "patch",
     };
-    let teile = [verweis.as_bytes(), b"\0", anfrage.datei.as_deref().unwrap_or("\u{1}").as_bytes(), b"\0", format.as_bytes(), b"\0", &GRENZEN_VERSION.to_be_bytes()];
+    let start = start.map_or(b"\x01".as_slice(), |s| s.as_os_str().as_encoded_bytes());
+    let teile = [verweis.as_bytes(), b"\0", start, b"\0", anfrage.datei.as_deref().unwrap_or("\u{1}").as_bytes(), b"\0", format.as_bytes(), b"\0", &GRENZEN_VERSION.to_be_bytes()];
     for b in teile.iter().flat_map(|t| t.iter()) {
         h ^= u64::from(*b);
         h = h.wrapping_mul(0x0000_0100_0000_01b3);
@@ -547,6 +553,27 @@ mod tests {
         assert!(start.elapsed() < Duration::from_secs(2), "ohne Warten: {:?}", start.elapsed());
         drop(alles);
         assert!(k.diff_lesen(1, &anfrage(&c1, Diffformat::Patch), Instant::now() + Duration::from_secs(10)).is_ok());
+    }
+
+    // R00236 AK 2 (ADR-0042 N2.2 Punkt 1): ohne Änderung des Registers 304 ohne Git-Prozess, in beiden Formaten; der
+    // ETag trägt den Startordner (ein anderer ergibt einen anderen ETag), ohne Startordner einen festen Platzhalter
+    #[test]
+    fn etag_mit_startordner_304_ohne_git() {
+        let (_tmp, k, c1) = stand();
+        let frist = || Instant::now() + Duration::from_secs(10);
+        for format in [Diffformat::Json, Diffformat::Patch] {
+            let Diffantwort::Rumpf { etag: Some(e), .. } = k.diff_lesen(1, &anfrage(&c1, format), frist()).unwrap() else { panic!("{format:?}: kein ETag") };
+            let mut erneut = anfrage(&c1, format);
+            erneut.bekannt = Some(e.clone());
+            let vorher = arbeitsrepo::aufrufe();
+            let antwort = k.diff_lesen(1, &erneut, frist()).unwrap();
+            assert!(matches!(&antwort, Diffantwort::Unveraendert(x) if *x == e), "{format:?}: {antwort:?}");
+            assert_eq!(arbeitsrepo::aufrufe() - vorher, 0, "{format:?}: ohne Git");
+        }
+        let a = anfrage(&c1, Diffformat::Json);
+        assert_ne!(etag("kd:x", Some(Path::new("/a/plan")), &a), etag("kd:x", Some(Path::new("/b/plan")), &a));
+        assert_ne!(etag("kd:x", None, &a), etag("kd:x", Some(Path::new("/a/plan")), &a));
+        assert_eq!(etag("kd:x", None, &a), etag("kd:x", None, &a), "fester Platzhalter");
     }
 
     const BELEGT_KEIN_DIFF: &str = "Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — kein Diff";

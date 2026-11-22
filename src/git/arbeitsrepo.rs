@@ -229,9 +229,15 @@ pub fn wurzel(board_ordner: &Path, anwendung: &Anwendung) -> Result<PathBuf, Arb
     wurzel_bis(board_ordner, anwendung, Instant::now() + ZEITGRENZE)
 }
 
+/// Der Startordner, wie [`wurzel_bis`] ihn an Git gibt: der Board-Ordner verbunden mit dem Startordner des Registers —
+/// auch Teil des `ETag`s eines Ein-Commit-Diffs, der ohne Git gebildet wird (ADR-0042 N2.2 Punkt 1).
+pub fn startpfad(board_ordner: &Path, anwendung: &Anwendung) -> Option<PathBuf> {
+    anwendung.startordner().map(|s| board_ordner.join(s))
+}
+
 /// Wie [`wurzel`], mit der Gesamtgrenze des Lesens: der Prozess bekommt `min(10 s, Rest bis frist)`.
 pub fn wurzel_bis(board_ordner: &Path, anwendung: &Anwendung, frist: Instant) -> Result<PathBuf, Arbeitsrepofehler> {
-    let Some(start) = anwendung.startordner().map(|s| board_ordner.join(s)) else {
+    let Some(start) = startpfad(board_ordner, anwendung) else {
         return Err(Arbeitsrepofehler::RepositoryFehlt("kein Repository im Register (weder repository noch WBS oder Anforderungsordner)".into()));
     };
     if !start.is_dir() {

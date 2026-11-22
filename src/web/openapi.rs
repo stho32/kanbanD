@@ -26,7 +26,9 @@ Dauern: `0:45`, `1,5` (Stunden), `90 min`."
     tags(
         (name = "Ordner"), (name = "Boards"), (name = "Aufgaben"), (name = "Zeiten"), (name = "Personen"),
         (name = "Reservierungen"), (name = "Anwendungen"), (name = "Berichte"), (name = "API")
-    )
+    ),
+    // die Antwort von `GET …/diff` ohne commit (R00208); die Beschreibung des Endpunkts verweist auf „Schema Gesamtdiff“
+    components(schemas(crate::dienst::Gesamtdiff))
 )]
 pub struct ApiDoc;
 

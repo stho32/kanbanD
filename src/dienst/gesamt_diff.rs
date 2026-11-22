@@ -17,6 +17,8 @@ use std::time::Instant;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Gesamtdiff {
     pub anwendung: String,
+    /// absolute Wurzel des Arbeits-Repositorys dieser Anwendung aus `git rev-parse --show-toplevel` (R00236)
+    pub wurzel: String,
     /// `{basis, letzter}` (volle Hashes, `basis` null beim leeren Baum); null bei `ganz_als_folge` und ohne einbezogene Commits
     pub spanne: Option<Spanne>,
     pub commits: Vec<Diffcommit>,
@@ -76,7 +78,7 @@ impl Kanban {
         let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| super::lesegrenze::belegt("kein Diff"))?;
         let wurzel = arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist).map_err(repo_fehler)?;
         let spitzen = arbeitsrepo::fingerabdruck(&wurzel, frist).map_err(repo_fehler)?;
-        let etag = etag(&aufgabe.commits, &spitzen, &anwendung.kuerzel, anfrage);
+        let etag = etag(&aufgabe.commits, &spitzen, &anwendung.kuerzel, &wurzel, anfrage);
         if anfrage.bekannt.as_deref().is_some_and(|b| b.split(',').any(|w| w.trim() == etag)) {
             return Ok(Diffantwort::Unveraendert(etag));
         }
@@ -146,7 +148,7 @@ impl Gesamtlauf<'_> {
         nachher.extend(merges);
         nachher.extend(fehlend);
         nachher.extend(ausgelassen);
-        let mut diff = Gesamtdiff { anwendung: anwendung.kuerzel.clone(), spanne: None, commits: vec![], dateien: vec![], hinweise: vec![] };
+        let mut diff = Gesamtdiff { anwendung: anwendung.kuerzel.clone(), wurzel: wurzel.display().to_string(), spanne: None, commits: vec![], dateien: vec![], hinweise: vec![] };
         if karte.is_empty() {
             if self.anfrage.datei.is_some() {
                 return Err(datei_fehlt(nr));
@@ -696,8 +698,8 @@ fn text(mut diff: Gesamtdiff) -> String {
 }
 
 /// `ETag` (ADR-0032 N6.10, E3): alle Verweise der Karte wörtlich in Reihenfolge, Fingerabdruck der Zweigspitzen,
-/// Anwendung, `datei`, `format`, Version der Grenzen und Version der Einteilung.
-fn etag(verweise: &[String], spitzen: &str, anwendung: &str, anfrage: &Diffanfrage) -> String {
+/// Anwendung, Wurzel (R00236, ADR-0042 Punkt 6), `datei`, `format`, Version der Grenzen und Version der Einteilung.
+fn etag(verweise: &[String], spitzen: &str, anwendung: &str, wurzel: &Path, anfrage: &Diffanfrage) -> String {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     let format = match anfrage.format {
         Diffformat::Json => "json",
@@ -708,7 +710,7 @@ fn etag(verweise: &[String], spitzen: &str, anwendung: &str, anfrage: &Diffanfra
         teile.extend([v.as_bytes(), b"\0"]);
     }
     let (version, einteilung) = (GRENZEN_VERSION.to_be_bytes(), EINTEILUNG_VERSION.to_be_bytes());
-    teile.extend([b"\x01".as_slice(), spitzen.as_bytes(), b"\0", anwendung.as_bytes(), b"\0", anfrage.datei.as_deref().unwrap_or("\u{1}").as_bytes(), b"\0", format.as_bytes(), b"\0", &version, &einteilung]);
+    teile.extend([b"\x01".as_slice(), spitzen.as_bytes(), b"\0", anwendung.as_bytes(), b"\0", wurzel.as_os_str().as_encoded_bytes(), b"\0", anfrage.datei.as_deref().unwrap_or("\u{1}").as_bytes(), b"\0", format.as_bytes(), b"\0", &version, &einteilung]);
     for b in teile.iter().flat_map(|t| t.iter()) {
         h ^= u64::from(*b);
         h = h.wrapping_mul(0x0000_0100_0000_01b3);
@@ -887,7 +889,7 @@ mod tests {
     #[test]
     fn etag_nicht_wie_vor_der_einteilung_n8() {
         let verweise = [format!("kd:{}", "a".repeat(40))];
-        assert_ne!(etag(&verweise, "s", "kd", &anfrage(&[], None)), "\"gesamt-05092438c966be2e\"");
+        assert_ne!(etag(&verweise, "s", "kd", Path::new("/w"), &anfrage(&[], None)), "\"gesamt-05092438c966be2e\"");
     }
 
     // R00208 AK 5, ADR-0032 N6.10 (E3): 304 nach genau 2 Prozessen; ein neuer Commit auf einem beliebigen Zweig, eine
