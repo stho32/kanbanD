@@ -29,25 +29,28 @@
   /* ── Shell-Block (N4 Punkt 2): Umbruch nach &&, || und ; auf oberster Ebene, sonst ändert sich kein Zeichen ── */
 
   /** `command` → derselbe Text mit `\n` nach `&&`, `||` und `;` auf oberster Ebene: nie in `'…'`, `$'…'`, `"…"`, `$(…)`, `${…}` oder
-      Backticks, auch nicht verschachtelt, nie nach `\`, nie bei `;;`, nie hinter einem `#`, das ein Wort beginnt, nie ab dem ersten `<<`,
+      Backticks, auch nicht verschachtelt, nie nach `\`, nie bei `;;`, `;&` und `;;&`, nie hinter einem `#`, das ein Wort beginnt, nie ab dem ersten `<<`,
       nie am Ende oder vor einem `\n`. Bleibt am Ende eine Klammer oder ein Anführungszeichen offen, unverändert — im Zweifel kein Umbruch.
       Über 16 KiB unverändert. Ein Durchlauf. */
   function shellUmbruch(befehl) {
     if (bytesUeber(befehl, SATZ_GRENZEN.befehlBytes)) return befehl;
     const offen = [];
-    let aus = '';
+    let aus = '', klammern = 0;
     for (let i = 0; i < befehl.length;) {
       const art = offen[offen.length - 1];
+      if (art === undefined && befehl[i] === '(') klammern++;
       if (istCode(art) && befehl.startsWith('<<', i)) return aus + befehl.slice(i);
       let operator = null;
       if (art === undefined) operator = operatorAn(befehl, i);
+      if (caseInKlammer(befehl, i, offen, klammern)) return befehl;
       if (operator !== null) {
         aus += operator;
         i += operator.length;
-        if (operator !== ';;' && umbruchErlaubt(befehl[i])) aus += '\n';
+        if (!CASE_ENDEN.includes(operator) && umbruchErlaubt(befehl[i])) aus += '\n';
         continue;
       }
       const laenge = shellStueck(befehl, i, offen);
+      if (art === undefined && befehl[i] === ')' && klammern > 0) klammern--;
       aus += befehl.slice(i, i + laenge);
       i += laenge;
     }
@@ -104,7 +107,19 @@
   const wortbeginn = davor => davor === undefined || /[\s;&|()]/.test(davor);
   const umbruchErlaubt = danach => danach !== undefined && danach !== '\n';
 
+  /** Ende eines `case`-Zweigs: danach kein Umbruch, `;&` und `;;&` sind je ein Operator. */
+  const CASE_ENDEN = [';;&', ';;', ';&'];
+
+  /** Steht ab `i` das Wort `case` im Code innerhalb von `$(…)` oder `(…)`? Dann bleibt der ganze Befehl unverändert — im Zweifel kein Umbruch. */
+  function caseInKlammer(text, i, offen, klammern) {
+    if (klammern === 0 && !offen.some(art => art === '$(' || art === '(')) return false;
+    if (!istCode(offen[offen.length - 1]) || !text.startsWith('case', i)) return false;
+    return wortbeginn(text[i - 1]) && /[\s;&|()]|^$/.test(text[i + 4] ?? '');
+  }
+
   function operatorAn(text, i) {
+    const drei = CASE_ENDEN.find(ende => text.startsWith(ende, i));
+    if (drei !== undefined) return drei;
     const zwei = text.slice(i, i + 2);
     if (zwei === '&&' || zwei === '||' || zwei === ';;') return zwei;
     if (text[i] === ';') return ';';

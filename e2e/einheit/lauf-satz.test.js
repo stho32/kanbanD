@@ -466,3 +466,41 @@ test('Sollte Hinweis-Flut: 200 Hinweise werden eingeklappt, 201 bleiben Text, ge
   assert.strictEqual(systemhinweiseZaehlen(flut(201), true), 0);
   assert.strictEqual((ergebnisSatz(flut(201), esc).html.match(/<details class="lv-e/g) || []).length, 0);
 });
+
+/* Nacharbeit 2: `;&`, `;;&` sind je ein Operator ohne Umbruch; `case` innerhalb von $(…) oder (…) lässt den Befehl unverändert. */
+const { spawnSync } = require('node:child_process');
+const hatBash = spawnSync('bash', ['-c', 'true']).status === 0;
+const bashAusgabe = befehl => spawnSync('bash', ['-c', befehl], { encoding: 'utf8' });
+
+test('shellUmbruch: ;& und ;;& im case sind ein Operator, kein Umbruch dahinter', () => {
+  const durchfall = 'case x in x) echo a;& y) echo b;; esac; echo c';
+  assert.deepStrictEqual(shellUmbruch(durchfall).split('\n'), ['case x in x) echo a;& y) echo b;; esac;', ' echo c']);
+  const weiter = 'case x in x) echo a;;& x) echo b;; esac; echo c';
+  assert.deepStrictEqual(shellUmbruch(weiter).split('\n'), ['case x in x) echo a;;& x) echo b;; esac;', ' echo c']);
+});
+
+test('shellUmbruch: case innerhalb von $(…) oder (…) lässt den Befehl unverändert', () => {
+  for (const befehl of [
+    'echo "$(case x in a) echo "x;y" ;; esac)" ; echo c',
+    'echo $(case x in x) echo a;& y) echo b;; esac); echo c',
+    '(case x in a) echo a;; esac); echo c',
+    'echo $( (case x in a) echo a;; esac) ); echo c',
+  ]) assert.strictEqual(shellUmbruch(befehl), befehl, befehl);
+  assert.deepStrictEqual(shellUmbruch('echo casement; echo c').split('\n'), ['echo casement;', ' echo c'], 'casement ist nicht das Wort case');
+  assert.strictEqual(shellUmbruch('echo $(echo case); echo c'), 'echo $(echo case); echo c', 'im Zweifel unverändert');
+});
+
+test('shellUmbruch: Bash-Gegenprobe — ohne die eingefügten \\n läuft der Befehl gleich', { skip: !hatBash && 'bash fehlt' }, () => {
+  for (const befehl of [
+    'case x in x) echo a;& y) echo b;; esac; echo c',
+    'case x in x) echo a;;& x) echo b;; esac; echo c',
+    'echo "$(case x in a) echo "x;y" ;; esac)" ; echo c',
+    'echo "$(case a in a) echo "x;y" ;; esac)" ; echo c',
+  ]) {
+    const umbrochen = shellUmbruch(befehl);
+    assert.strictEqual(umbrochen.replace(/\n/g, ''), befehl.replace(/\n/g, ''));
+    const original = bashAusgabe(befehl), neu = bashAusgabe(umbrochen);
+    assert.strictEqual(original.status, 0, `Original läuft: ${befehl} ${original.stderr}`);
+    assert.deepStrictEqual({ s: neu.status, o: neu.stdout }, { s: original.status, o: original.stdout }, befehl);
+  }
+});
