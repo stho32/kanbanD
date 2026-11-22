@@ -3,6 +3,7 @@
 (function (ziel) {
   'use strict';
   const { ZUSTANDSWOERTER, anwendungName, zustandSatz, zustandsSymbol, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
+  const { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, grosseNeueDatei, testHinweis, groessteSumme, balkenTeile } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
 
   /** Zustände der Liste, zu denen es einen Diff gibt (ADR-0033 Punkt 2). */
   const MIT_DIFF = ['auf_zweig', 'verwaist'];
@@ -127,9 +128,10 @@
     return 'ohne';
   }
 
-  /** Welche Dateien beim ersten Aufbau offen sind (ADR-0033 Punkt 5): Dateien mit `patch` in Reihenfolge, ganz oder gar nicht,
-      solange die gezeichneten Zeilen einschließlich der Datei höchstens das Budget ergeben; die erste mit `patch` immer; nach der
-      ersten, die nicht passt, keine mehr. Gelöschte und Dateien ohne `patch` sind zu, zählen nicht und unterbrechen nicht. */
+  /** Welche Dateien beim ersten Aufbau offen sind (ADR-0033 Punkt 5, ADR-0042 Punkt 1): Dateien mit `patch` in der gruppierten Folge
+      (Code, Tests, Doku), ganz oder gar nicht, solange die gezeichneten Zeilen einschließlich der Datei höchstens das Budget ergeben;
+      die erste, die öffnen darf, immer; nach der ersten, die nicht passt, keine mehr. Gelöschte, Dateien ohne `patch`, Doku und große
+      neue Dateien sind zu, zählen nicht und unterbrechen nicht. `offen` und `budgetZu` (zu nur wegen des Budgets) stehen je Index der API. */
   function aufklappPlan(dateien, hinweise) {
     return aufklappPlanSeite(dateien, hinweise, { rest: BUDGET_ZEILEN, gesperrt: false, erste: true }).offen;
   }
@@ -137,6 +139,7 @@
   /** Gezeichnete Zeilen einer Datei, die beim Aufbau öffnen kann; null, wenn sie nicht zählt. Eine Folge-Datei (ADR-0033 N1.4)
       zählt über alle Schritte mit `patch`; ein Schritt ohne `patch` zählt nicht. */
   function planZeilen(d, hinweise) {
+    if (dateiArt(dateiPfad(d)) === 'doku' || grosseNeueDatei(d)) return null;
     if (Array.isArray(d.schritte)) {
       const mitPatch = d.schritte.filter(s => dateiZustand(s, hinweise) === 'patch');
       if (!mitPatch.length) return null;
@@ -150,16 +153,18 @@
       und „erste“ (die erste Datei der Seite öffnet immer) von Abschnitt zu Abschnitt weiter. Eine Folge-Datei öffnet ganz oder gar nicht. */
   function aufklappPlanSeite(dateien, hinweise, stand) {
     let { rest, gesperrt, erste } = stand;
-    const offen = dateien.map(d => {
-      const zeilen = planZeilen(d, hinweise);
-      if (zeilen === null || gesperrt) return false;
-      const passt = erste || zeilen <= rest;
+    const offen = dateien.map(() => false);
+    const budgetZu = dateien.map(() => false);
+    gruppierteFolge(dateien).forEach(i => {
+      const zeilen = planZeilen(dateien[i], hinweise);
+      if (zeilen === null) return;
+      const passt = !gesperrt && (erste || zeilen <= rest);
       erste = false;
-      if (!passt) { gesperrt = true; return false; }
+      if (!passt) { gesperrt = true; budgetZu[i] = true; return; }
       rest -= zeilen;
-      return true;
+      offen[i] = true;
     });
-    return { offen, stand: { rest, gesperrt, erste } };
+    return { offen, budgetZu, stand: { rest, gesperrt, erste } };
   }
 
   /** Zeilen in Blöcke zu höchstens 500. */
