@@ -1806,3 +1806,9 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Offen für den Tag:** Lastprobe R00208 nach der Nacharbeit; die ADR-Notiz „jede Änderung der Einteilung erhöht `EINTEILUNG_VERSION`“ gehört ins ETag-Kapitel N6.10 (Nachzug architekt).
 - **Härtung, nicht gebaut:** Mit `datei=` (20 MB) kann eine gespaltene Gruppe über den 1-MB-Schnitt anders eingeteilt werden als ohne. Das ist latent und erst ab etwa 10.000 Einträgen möglich.
 | 2026-11-22 | #234 | Erledigt | director | Retrospektive | – | 3 Lehren (ETag-Version, Gruppenbegriff, Lastprobe nachts), Tagprobe offen |
+| 2026-11-22 | #238 | Entwicklung | entwickler | bestanden | 44 min | Gate cargo 1207, node 1523, PW 2353/2 Wackler r00223 · claude · opus · Lauf 238-entwickler-1 · 4,52 $ · Karte gesamt 9,63 $ |
+| 2026-11-22 | #238 | Auto-Reviews | code-reviewer | bestanden | 3 min | kein Muss · claude · sonnet · Lauf 238-code-reviewer-1 · 1,30 $ · Karte gesamt 10,93 $ |
+| 2026-11-22 | #245 | Architektur | architekt | bestanden | 5 min | ADR-0018 N4 · claude · opus · Lauf 245-architekt-1 · 2,01 $ · Karte gesamt 2,01 $ |
+| 2026-11-22 | #238 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | keine Funde · claude · sonnet · Lauf 238-rechtschreib-reviewer-1 · 0,29 $ · Karte gesamt 11,22 $ |
+| 2026-11-22 | #238 | Auto-Reviews | observability-reviewer | bestanden | 1 min | kein Muss, Hinweise an #239 · claude · sonnet · Lauf 238-observability-reviewer-1 · 0,22 $ · Karte gesamt 11,44 $ |
+| 2026-11-22 | #245 | Detailplanung | product-owner | bestanden | 1 min | PO Z. 515 · claude · opus · Lauf 245-product-owner-1 · 0,84 $ · Karte gesamt 2,85 $ |
