@@ -324,7 +324,7 @@
       `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. */
   function laufAuswerten(zeilen, grenze) {
     const summe = { werkzeug: 0, denken: 0, warten: 0 };
-    const luecken = [], schritte = [], offen = [];
+    const luecken = [], schritte = [], offen = offeneAufrufe();
     let vorher = null, mitZeit = 0;
     for (const { nr, eintrag } of zeilen) {
       if (!eintrag) continue;
@@ -344,7 +344,7 @@
     const gesamt = summe.werkzeug + summe.denken + summe.warten, bekannt = mitZeit >= 2;
     const kennzahlen = { werkzeugaufrufe: schritte.filter(s => s.aufruf).length, fehler: schritte.filter(s => s.fehler).length };
     const top3 = bekannt ? laengsteSchritte(schritte, luecken) : [];
-    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(ohneBeginn), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen) };
+    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen) };
   }
 
   /** Die drei längsten Schritt-, Denk- und Wartezeilen, nach Dauer absteigend, bei Gleichstand die frühere Zeile zuerst — eine Denk-
@@ -402,28 +402,68 @@
     return eingeklappt;
   }
 
-  /** Ein Aufruf kommt in die Warteschlange; wartet dort schon einer, laufen alle offenen parallel (N1 Punkt 3). */
+  /** Die offenen Aufrufe eines Laufs (ADR-0041 N2, G1): `alle` und `ohneId` sind Warteschlangen mit Kopfzeiger (gepaarte werden
+      übersprungen, nie entfernt), `nachId` führt die Aufrufe mit Kennung — nur in einer `Map`, nie in einem Objekt. */
+  function offeneAufrufe() {
+    return { alle: [], alleKopf: 0, ohneId: [], ohneKopf: 0, nachId: new Map(), anzahl: 0, begonnen: 0 };
+  }
+
+  /** Ein Aufruf wird offen geführt; war bei seinem Beginn schon einer offen, laufen sie parallel (siehe `paarungAbschliessen`).
+      Die erste `id` gilt, ein späterer Aufruf mit derselben `id` zählt als Aufruf ohne `id`. */
   function aufrufOeffnen(nr, eintrag, ms, offen) {
-    const schritt = { nr, ergebnisNr: null, aufruf: true, name: eintrag.name, ...kurzbefehl(eintrag.text), dauer: null, parallel: offen.length > 0, fehler: false, beginn: ms };
-    offen.forEach(o => { o.parallel = true; });
-    offen.push(schritt);
+    const schritt = { nr, ergebnisNr: null, aufruf: true, name: eintrag.name, ...kurzbefehl(eintrag.text), dauer: null, parallel: offen.anzahl > 0, fehler: false, beginn: ms, laufendeNummer: offen.begonnen, gepaart: false };
+    offen.begonnen++;
+    offen.anzahl++;
+    offen.alle.push(schritt);
+    if (eintrag.id !== null && eintrag.id !== undefined && !offen.nachId.has(eintrag.id)) offen.nachId.set(eintrag.id, schritt);
+    else offen.ohneId.push(schritt);
     return schritt;
   }
 
-  /** Ein Ergebnis gehört zum ältesten offenen Aufruf; ohne offenen Aufruf ist es ein eigener Schritt ohne Dauer. */
+  /** Der älteste noch offene Aufruf einer Warteschlange oder null; der Kopfzeiger überspringt gepaarte, jeder höchstens einmal. */
+  function aeltesterOffener(schlange, kopf) {
+    let i = kopf;
+    while (i < schlange.length && schlange[i].gepaart) i++;
+    return { schritt: i < schlange.length ? schlange[i] : null, kopf: i };
+  }
+
+  /** Zu welchem offenen Aufruf ein Ergebnis gehört oder null: mit `zu` nur der Aufruf dieser Kennung (kein Rückfall), ohne `zu` der
+      älteste offene ohne `id`, sonst der älteste offene überhaupt. */
+  function aufrufFinden(eintrag, offen) {
+    if (eintrag.zu !== null && eintrag.zu !== undefined) {
+      const mitKennung = offen.nachId.get(eintrag.zu);
+      if (mitKennung === undefined || mitKennung.gepaart) return null;
+      return mitKennung;
+    }
+    const ohneKennung = aeltesterOffener(offen.ohneId, offen.ohneKopf);
+    offen.ohneKopf = ohneKennung.kopf;
+    if (ohneKennung.schritt !== null) return ohneKennung.schritt;
+    const irgendeiner = aeltesterOffener(offen.alle, offen.alleKopf);
+    offen.alleKopf = irgendeiner.kopf;
+    return irgendeiner.schritt;
+  }
+
+  /** Ein Ergebnis gehört zu seinem Aufruf (`aufrufFinden`); ohne Aufruf ist es ein eigener Schritt ohne Dauer. */
   function ergebnisZuordnen(nr, eintrag, ms, offen, schritte) {
     const fehler = fehlerErkennen(eintrag.text);
-    const schritt = offen.shift();
-    if (!schritt) {
-      schritte.push({ nr, ergebnisNr: nr, aufruf: false, name: eintrag.name, befehl: null, absicht: null, dauer: null, parallel: false, fehler, beginn: null });
+    const schritt = aufrufFinden(eintrag, offen);
+    if (schritt === null) {
+      schritte.push({ nr, ergebnisNr: nr, aufruf: false, name: eintrag.name, befehl: null, absicht: null, dauer: null, parallel: false, fehler, beginn: null, laufendeNummer: null, gepaart: true });
       return;
     }
     schritt.ergebnisNr = nr;
     schritt.fehler = fehler;
+    schritt.gepaart = true;
+    offen.anzahl--;
+    if (offen.begonnen > schritt.laufendeNummer + 1) schritt.parallel = true;
     if (ms !== null && schritt.beginn !== null) schritt.dauer = Math.max(0, ms - schritt.beginn);
   }
 
-  const ohneBeginn = ({ beginn, ...schritt }) => schritt;
+  /** Der Schritt ohne Rechengrößen; ein Aufruf, der bis zum Ende offen blieb, ist parallel, wenn nach ihm ein weiterer begann. */
+  function schrittAbschliessen({ beginn, laufendeNummer, gepaart, ...schritt }, begonnen) {
+    if (schritt.aufruf && !gepaart && begonnen > laufendeNummer + 1) schritt.parallel = true;
+    return schritt;
+  }
 
   /** Ein Ergebnis ist ein Fehler, wenn seine erste Zeile `Exit code <n>` mit n ≠ 0 lautet oder der Text mit `<tool_use_error>`
       beginnt (N1 Punkt 4) — nie eine Suche nach „error“. */

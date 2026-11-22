@@ -1094,3 +1094,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #246 R00232 | B1231 Rahmen „Prognose je Tag“ um die Tabellenansicht von „Wie lange noch“ (AK 14): Test AK 14 und `:326` zuerst rot (743/759 px bei 375/641 px, kein Rahmen), dann grün; Rebase auf main, volles Gate | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #262 R00237 | B1232 Literale T6o und T1 am Stand cddb15ac aufgenommen (AK 2 grün), T6 und Grenzfälle AK 1, 4–7 als Node-Tests rot (todo bis B1234) | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #262 R00237 | B1233 id und zu lesen (kennungLesen), falsch geformt gilt als fehlend | Standard | 0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-22 | Karte #262 R00237 | B1234 Paaren nach G1 (Map, zwei Warteschlangen mit Kopfzeiger, Zähler für parallel), Tests grün, Messprobe | Standard | 1-2h | 0,6h | 0,6h | autonom |
