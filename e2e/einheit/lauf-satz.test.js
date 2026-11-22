@@ -5,7 +5,7 @@ process.env.TZ = 'Europe/Berlin';
 const test = require('node:test');
 const assert = require('node:assert');
 const satz = require('../../web/lauf-satz.js');
-const { shellUmbruch, kuerzungHtml, editDiff, gekuerztErkennen, groesseDeutsch, systemhinweiseTrennen, testzeileFinden, aufrufSatz, ergebnisSatz, jsonZeilen, SATZ_GRENZEN } = satz;
+const { shellUmbruch, kuerzungHtml, editDiff, gekuerztErkennen, groesseDeutsch, systemhinweiseTrennen, systemhinweiseZaehlen, testzeileFinden, aufrufSatz, ergebnisSatz, jsonZeilen, SATZ_GRENZEN } = satz;
 const t13 = require('../tests/laufansicht-t13.js');
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -328,4 +328,75 @@ test('web/lauf-satz.js überschreibt im Browser keinen Namen eines anderen Modul
   const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
   for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
   assert.match(fs.readFileSync(path.join(ordner, 'index.html'), 'utf8'), /<script src="\/web\/lauf-satz\.js"><\/script>\n<script src="\/web\/lauf\.js"><\/script>/, 'vor lauf.js geladen');
+});
+
+/* ── Nacharbeit 1 (Code- und Security-Review #261) ── */
+
+/* Muss 1: tief verschachteltes JSON — Abnahme-Probe wörtlich: Lauf aus Nachricht, Aufruf-Text `[`×N`]`×N, Bash `{"command":"ls"}` mit
+   Ergebnis `{"a":`×N `1` `}`×N; alle Einträge und „Ende des Transkripts“, der tiefe Wert als `pre` oder gedeckelt, unter ~1 MB je Eintrag. */
+const lauf = require('../../web/lauf.js');
+const eintrag = (nr, art, wer, text, name = null) => ({ nr, eintrag: { art, wer, text, zeit: null, name } });
+const tiefeListe = n => '['.repeat(n) + ']'.repeat(n);
+const tiefesObjekt = n => '{"a":'.repeat(n) + '1' + '}'.repeat(n);
+const tieferLauf = (aufruf, ergebnis) => [
+  eintrag(1, 'nachricht', 'mensch', 'Auftrag'),
+  eintrag(2, 'werkzeugaufruf', 'agent', aufruf, 'Bash'),
+  eintrag(3, 'werkzeugergebnis', 'werkzeug', 'ok', 'Bash'),
+  eintrag(4, 'werkzeugaufruf', 'agent', '{"command":"ls"}', 'Bash'),
+  eintrag(5, 'werkzeugergebnis', 'werkzeug', ergebnis, 'Bash'),
+  eintrag(6, 'nachricht', 'agent', 'Ergebnis: bestanden'),
+];
+const eintraegeIn = html => html.split(/(?=<li\b)/).slice(1);
+
+for (const [variante, n, aufruf, ergebnis] of [
+  ['Aufruf', 1500, tiefeListe(1500), 'ok'], ['Aufruf', 5000, tiefeListe(5000), 'ok'], ['Aufruf', 30000, tiefeListe(30000), 'ok'],
+  ['Ergebnis', 1500, '{"command":"ls"}', tiefesObjekt(1500)], ['Ergebnis', 5000, '{"command":"ls"}', tiefesObjekt(5000)],
+  ['Ergebnis', 12000, '{"command":"ls"}', tiefesObjekt(12000)], ['Kontrolle', 20, tiefeListe(20), tiefesObjekt(20)],
+]) {
+  test(`Muss 1: ${variante} mit Tiefe ${n} — laufAuswerten und laufHtml zeigen alle Einträge und „Ende des Transkripts“, je Eintrag < 1 MB`, () => {
+    const zeilenDesLaufs = tieferLauf(aufruf, ergebnis);
+    const auswertung = lauf.laufAuswerten(zeilenDesLaufs, false);
+    const html = lauf.laufHtml(zeilenDesLaufs, false, esc, auswertung);
+    const li = eintraegeIn(html);
+    assert.strictEqual(li.length, 5, 'Nachricht, zwei Werkzeugzeilen, Nachricht, Ende');
+    assert.match(li[4], /Ende des Transkripts/);
+    for (const l of li) assert.ok(l.length < 1000000, `Eintrag mit ${l.length} Zeichen`);
+  });
+}
+
+test('Muss 1: Tiefe bis 32 als formatiertes JSON, ab 33 der Aufruf als pre (null) und das Ergebnis als Text', () => {
+  assert.match(aufrufSatz('X', tiefeListe(32), esc), /^<pre class="lv-json">/);
+  assert.strictEqual(aufrufSatz('X', tiefeListe(33), esc), null);
+  assert.match(aufrufSatz('X', `{"q":${tiefeListe(31)}}`, esc), /^<pre class="lv-json">/, 'Objekt zählt mit: 1 + 31');
+  assert.strictEqual(aufrufSatz('X', `{"q":${tiefeListe(32)}}`, esc), null);
+  assert.strictEqual(aufrufSatz('X', `{"q":"${'['.repeat(40)}"}`, esc).includes('<dl class="lv-kv">'), true, 'Klammern im Text zählen nicht');
+  assert.strictEqual(aufrufSatz('X', `{"q":"\\"${'['.repeat(40)}"}`, esc).includes('<dl class="lv-kv">'), true, 'auch nach \\" im Text');
+  assert.match(ergebnisSatz(tiefesObjekt(32), esc).html, /^<pre class="lv-json">/);
+  assert.strictEqual(ergebnisSatz(tiefesObjekt(33), esc).html, `<pre>${esc(tiefesObjekt(33))}</pre>`);
+});
+
+test('Muss 1: Tiefe 1500 — aufrufSatz null, ergebnisSatz als Text, systemhinweiseZaehlen wirft nicht', () => {
+  assert.strictEqual(aufrufSatz('X', tiefeListe(1500), esc), null);
+  assert.strictEqual(ergebnisSatz(tiefesObjekt(1500), esc).html, `<pre>${esc(tiefesObjekt(1500))}</pre>`);
+  assert.strictEqual(systemhinweiseZaehlen(tiefesObjekt(1500) + '\n<system-reminder>\nx\n</system-reminder>', true), 1);
+});
+
+test('Muss 1: ein JSON-Satz über der Grenze des HTML je Eintrag (flach breit, Tiefe 30) steht als pre bzw. Text', () => {
+  const breit = '['.repeat(29) + '[' + Array(20000).fill(1).join(',') + ']' + ']'.repeat(29);
+  assert.ok(Buffer.byteLength(breit) < SATZ_GRENZEN.aufrufBytes);
+  assert.strictEqual(aufrufSatz('X', breit, esc), null);
+  const breitObjekt = `{"l":${breit}}`;
+  assert.strictEqual(ergebnisSatz(breitObjekt, esc).html.startsWith('<pre class="lv-json">'), false);
+  const knapp = `{"l":[${Array(2000).fill(1).join(',')}]}`;
+  assert.match(aufrufSatz('X', knapp, esc), /^<pre class="lv-json">/, 'darunter bleibt der Satz');
+});
+
+test('Muss 1: Rückfall — wirft das Setzen einen RangeError, steht der Aufruf als pre (null) und das Ergebnis als Text', () => {
+  const wirft = t => {
+    if (t === '"a"') throw new RangeError('Maximum call stack size exceeded');
+    return esc(t);
+  };
+  assert.strictEqual(aufrufSatz('X', '{"q":{"a":1}}', wirft), null);
+  assert.strictEqual(ergebnisSatz('{"a":{"b":1}}', wirft).html, '<pre>{&quot;a&quot;:{&quot;b&quot;:1}}</pre>');
+  assert.throws(() => aufrufSatz('X', '{"q":{"a":1}}', () => { throw new TypeError('anderer Fehler'); }), TypeError, 'nur RangeError ist Rückfall');
 });

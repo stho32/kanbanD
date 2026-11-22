@@ -382,6 +382,60 @@ test.describe('R00240 Laufansicht: Satz der Einträge', () => {
   });
 });
 
+/* Nacharbeit 1, Muss 1 (Security-Review #261): tief verschachteltes JSON — Abnahme-Probe wörtlich. Je Variante ein eigener Lauf an #1. */
+const TIEF = [
+  ['Aufruf', 1500], ['Aufruf', 5000], ['Aufruf', 30000], ['Ergebnis', 1500], ['Ergebnis', 5000], ['Ergebnis', 12000], ['Kontrolle', 20],
+];
+const tiefeListe = n => '['.repeat(n) + ']'.repeat(n);
+const tiefesObjekt = n => '{"a":'.repeat(n) + '1' + '}'.repeat(n);
+const tiefKennung = i => `entwickler@2026-11-21T1${i}:30+01:00`;
+
+function tieferLauf(variante, n) {
+  let aufruf = tiefeListe(n), ergebnis = tiefesObjekt(n);
+  if (variante === 'Aufruf') ergebnis = 'ok';
+  if (variante === 'Ergebnis') aufruf = '{"command":"pwd"}';
+  return [
+    { zeit: '2026-11-21T09:00:00+01:00', art: 'nachricht', wer: 'mensch', text: 'Auftrag' },
+    { zeit: '2026-11-21T09:00:01+01:00', art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: aufruf },
+    { zeit: '2026-11-21T09:00:02+01:00', art: 'werkzeugergebnis', wer: 'werkzeug', text: 'ok' },
+    { zeit: '2026-11-21T09:00:03+01:00', art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: '{"command":"ls"}' },
+    { zeit: '2026-11-21T09:00:04+01:00', art: 'werkzeugergebnis', wer: 'werkzeug', text: ergebnis },
+    { zeit: '2026-11-21T09:00:05+01:00', art: 'nachricht', wer: 'agent', text: 'Ergebnis: bestanden' },
+  ];
+}
+
+test.describe('R00240 Laufansicht: tief verschachteltes JSON (Nacharbeit 1, Muss 1)', () => {
+  let k, s;
+  test.beforeEach(async ({ page }) => {
+    await mutanteEinsetzen(page);
+    await alsPerson(page, lv.MENSCH);
+    k = await kanbanStarten(lv.ausgangslage());
+    s = sprache(page, k);
+    for (const [i, [variante, n]] of TIEF.entries()) await lv.hochladen(k.adresse, 1, tiefKennung(i), 'Entwicklung', lv.gz(text(tieferLauf(variante, n))));
+  });
+  test.afterEach(() => k.stoppen());
+
+  test('Aufruf [×N]×N und Ergebnis {"a":×N 1}×N: alle Einträge und „Ende des Transkripts“, der tiefe Wert als pre, je Eintrag unter 1 MB', async ({ page }) => {
+    for (const [i, [variante, n]] of TIEF.entries()) {
+      await s.oeffnen(tiefKennung(i));
+      const eintraege = page.locator(`${INSEL} li`);
+      await expect(eintraege, `${variante} ${n}`).toHaveCount(5);
+      await expect(eintraege.last()).toHaveText('Ende des Transkripts');
+      await s.alleAufklappen();
+      const groessen = await eintraege.evaluateAll(lis => lis.map(li => li.outerHTML.length));
+      expect(Math.max(...groessen), `${variante} ${n}: größter Eintrag`).toBeLessThan(1000000);
+      let aufrufForm = 'pre.lv-json', ergebnisForm = 'pre.lv-json';
+      if (variante !== 'Kontrolle') { aufrufForm = 'pre:not(.lv-json)'; ergebnisForm = 'pre:not(.lv-json)'; }
+      if (variante === 'Aufruf') await expect(s.aufruf(2).locator(`:scope > ${aufrufForm}`), `${variante} ${n}`).toHaveCount(1);
+      if (variante === 'Ergebnis') await expect(s.ergebnis(4).locator(`:scope > ${ergebnisForm}`), `${variante} ${n}`).toHaveCount(1);
+      if (variante === 'Kontrolle') {
+        await expect(s.aufruf(2).locator(`:scope > ${aufrufForm}`)).toHaveCount(1);
+        await expect(s.ergebnis(4).locator(`:scope > ${ergebnisForm}`)).toHaveCount(1);
+      }
+    }
+  });
+});
+
 test.describe('R00240 Laufansicht: Satz bei grobem Zeiger', () => {
   test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
   let k, s;

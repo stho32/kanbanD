@@ -4,8 +4,9 @@
 (function (ziel) {
   'use strict';
 
-  /** Grenzen je Eintrag (N4 Punkt 7); darüber steht der Aufruf wie heute als `pre`. Nie in der Oberfläche. */
-  const SATZ_GRENZEN = Object.freeze({ aufrufBytes: 65536, aufrufZeilen: 2000, befehlBytes: 16384 });
+  /** Grenzen je Eintrag (N4 Punkt 7); darüber steht der Aufruf wie heute als `pre`, ein Ergebnis als Text. Nie in der Oberfläche.
+      `jsonTiefe` und `satzZeichen` deckeln Stapel und HTML eines JSON-Satzes. */
+  const SATZ_GRENZEN = Object.freeze({ aufrufBytes: 65536, aufrufZeilen: 2000, befehlBytes: 16384, jsonTiefe: 32, satzZeichen: 524288 });
   const OFFENE_ZEILEN = 20;
   const PFEIL_KLEIN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 
@@ -159,15 +160,47 @@
   const istObjekt = w => typeof w === 'object' && w !== null && !Array.isArray(w);
   const istFlach = o => Object.values(o).every(w => w === null || typeof w !== 'object');
 
-  /** Innerhalb der Grenzen für „Schlüssel: Wert“, JSON-Satz und Diff: höchstens 64 KiB und 2.000 Zeilen. */
+  /** Innerhalb der Grenzen für „Schlüssel: Wert“, JSON-Satz und Diff: höchstens 64 KiB, 2.000 Zeilen und 32 Ebenen Verschachtelung. */
   function satzErlaubt(text) {
     if (bytesUeber(text, SATZ_GRENZEN.aufrufBytes)) return false;
+    if (tiefeUeber(text, SATZ_GRENZEN.jsonTiefe)) return false;
     let zeilen = 1;
     for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) {
       zeilen++;
       if (zeilen > SATZ_GRENZEN.aufrufZeilen) return false;
     }
     return true;
+  }
+
+  /** Mehr als `grenze` offene `[` bzw. `{` außerhalb von JSON-Texten? Ein Durchlauf ohne Rekursion — der Satz selbst rekursiert je Ebene. */
+  function tiefeUeber(text, grenze) {
+    let tiefe = 0, imText = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (imText) {
+        if (c === '\\') i++;
+        else if (c === '"') imText = false;
+        continue;
+      }
+      if (c === '"') imText = true;
+      else if (c === '[' || c === '{') tiefe++;
+      else if (c === ']' || c === '}') tiefe--;
+      if (tiefe > grenze) return true;
+    }
+    return false;
+  }
+
+  /** `setzen()` → sein HTML, oder null, wenn es über `satzZeichen` läge oder der Stapel nicht reicht (RangeError): dann der Rückfall. */
+  function gedeckelt(setzen) {
+    let html;
+    try {
+      html = setzen();
+    } catch (fehler) {
+      if (fehler instanceof RangeError) return null;
+      throw fehler;
+    }
+    if (html.length > SATZ_GRENZEN.satzZeichen) return null;
+    return html;
   }
 
   /* ── Aufruf (N4 Punkt 2, FA 1–4, 13) ── */
@@ -179,8 +212,8 @@
     const gelesen = jsonLesen(text);
     if (gelesen === null) return null;
     const zaehler = markenZaehler(zeile);
-    const html = aufrufInhalt(name, gelesen.wert, zaehler.zeile);
-    if (zaehler.gezeigt() > markenIn(text)) return null;
+    const html = gedeckelt(() => aufrufInhalt(name, gelesen.wert, zaehler.zeile));
+    if (html === null || zaehler.gezeigt() > markenIn(text)) return null;
     return html;
   }
 
@@ -287,7 +320,9 @@
   function ergebnisKoerper(text, zeile) {
     if (!text.trim()) return { html: LEER, kurz: null, hinweise: 0 };
     const json = jsonErgebnis(text);
-    if (json !== null) return { html: jsonBlock(json, zeile, 'ergebnis'), kurz: null, hinweise: 0 };
+    let jsonHtml = null;
+    if (json !== null) jsonHtml = gedeckelt(() => jsonBlock(json, zeile, 'ergebnis'));
+    if (jsonHtml !== null) return { html: jsonHtml, kurz: null, hinweise: 0 };
     const teile = systemhinweiseTrennen(text);
     const hinweise = teile.filter(t => t.art === 'hinweis').length;
     const nurHinweise = hinweise > 0 && teile.every(t => t.art === 'hinweis' || !t.text.trim());
@@ -299,14 +334,14 @@
     return { html: testzeileHtml(testzeileFinden(text), zeile) + teileHtml(teile, zeile) + nachsatz, kurz, hinweise };
   }
 
-  /** Ein Ergebnis, das ganz ein JSON-Objekt ist, innerhalb der Grenzen und des Budgets der Marken; sonst null. */
+  /** Ein Ergebnis, das ganz ein JSON-Objekt ist, innerhalb der Grenzen, der Deckelung und des Budgets der Marken; sonst null. */
   function jsonErgebnis(text) {
     if (!text.trimStart().startsWith('{') || !satzErlaubt(text)) return null;
     const gelesen = jsonLesen(text);
     if (gelesen === null || !istObjekt(gelesen.wert)) return null;
     const zaehler = markenZaehler(t => t);
-    jsonZeilen(gelesen.wert, zaehler.zeile);
-    if (zaehler.gezeigt() > markenIn(text)) return null;
+    const gesetzt = gedeckelt(() => jsonZeilen(gelesen.wert, zaehler.zeile).join('\n'));
+    if (gesetzt === null || zaehler.gezeigt() > markenIn(text)) return null;
     return gelesen.wert;
   }
 
