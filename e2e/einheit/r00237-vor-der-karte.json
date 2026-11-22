@@ -1,0 +1,196 @@
+{
+ "T6o": {
+  "gesamt": 10000,
+  "werkzeug": 9000,
+  "denken": 1000,
+  "warten": 0,
+  "bekannt": true,
+  "grenze": false,
+  "luecken": [],
+  "schritte": [
+   {
+    "nr": 1,
+    "ergebnisNr": 3,
+    "aufruf": true,
+    "name": "Bash",
+    "befehl": "cat regeln",
+    "absicht": null,
+    "dauer": 3000,
+    "parallel": true,
+    "fehler": false
+   },
+   {
+    "nr": 2,
+    "ergebnisNr": 4,
+    "aufruf": true,
+    "name": "Bash",
+    "befehl": "cat entwickler",
+    "absicht": null,
+    "dauer": 9000,
+    "parallel": true,
+    "fehler": true
+   }
+  ],
+  "top3": [
+   {
+    "art": "werkzeug",
+    "nr": 2,
+    "schritt": true,
+    "dauer": 9000,
+    "was": "Bash cat entwickler"
+   },
+   {
+    "art": "werkzeug",
+    "nr": 1,
+    "schritt": true,
+    "dauer": 3000,
+    "was": "Bash cat regeln"
+   }
+  ],
+  "kennzahlen": {
+   "werkzeugaufrufe": 2,
+   "fehler": 1
+  },
+  "bericht": null,
+  "eingeklappt": {}
+ },
+ "T1": {
+  "gesamt": 150000,
+  "werkzeug": 13000,
+  "denken": 71000,
+  "warten": 66000,
+  "bekannt": true,
+  "grenze": false,
+  "luecken": [
+   {
+    "vorNr": 3,
+    "art": "denken",
+    "dauer": 21000,
+    "vor": "Bash ls Anforderungen | tail -2"
+   },
+   {
+    "vorNr": 7,
+    "art": "denken",
+    "dauer": 5000,
+    "vor": "Read a.md"
+   },
+   {
+    "vorNr": 13,
+    "art": "warten",
+    "dauer": 65000,
+    "vor": "Nachricht von Mensch"
+   },
+   {
+    "vorNr": 15,
+    "art": "denken",
+    "dauer": 38000,
+    "vor": "SubagentHandback R00229 angelegt."
+   }
+  ],
+  "schritte": [
+   {
+    "nr": 3,
+    "ergebnisNr": 4,
+    "aufruf": true,
+    "name": "Bash",
+    "befehl": "ls Anforderungen | tail -2",
+    "absicht": "Nächste freie Nummer",
+    "dauer": 4000,
+    "parallel": false,
+    "fehler": false
+   },
+   {
+    "nr": 5,
+    "ergebnisNr": 6,
+    "aufruf": true,
+    "name": "Bash",
+    "befehl": "grep -n kd-muted web/laeufe.js",
+    "absicht": null,
+    "dauer": 1000,
+    "parallel": false,
+    "fehler": true
+   },
+   {
+    "nr": 7,
+    "ergebnisNr": 9,
+    "aufruf": true,
+    "name": "Read",
+    "befehl": "a.md",
+    "absicht": null,
+    "dauer": 2500,
+    "parallel": true,
+    "fehler": false
+   },
+   {
+    "nr": 8,
+    "ergebnisNr": 10,
+    "aufruf": true,
+    "name": "Read",
+    "befehl": "b.md",
+    "absicht": null,
+    "dauer": 3000,
+    "parallel": true,
+    "fehler": true
+   },
+   {
+    "nr": 11,
+    "ergebnisNr": 12,
+    "aufruf": true,
+    "name": "Bash",
+    "befehl": "git status --short",
+    "absicht": "Arbeitsbaum prüfen",
+    "dauer": null,
+    "parallel": false,
+    "fehler": false
+   },
+   {
+    "nr": 15,
+    "ergebnisNr": null,
+    "aufruf": true,
+    "name": "SubagentHandback",
+    "befehl": "R00229 angelegt.",
+    "absicht": null,
+    "dauer": null,
+    "parallel": false,
+    "fehler": false
+   }
+  ],
+  "top3": [
+   {
+    "art": "warten",
+    "nr": 13,
+    "schritt": false,
+    "dauer": 65000,
+    "was": "wartet · vor Nachricht von Mensch"
+   },
+   {
+    "art": "denken",
+    "nr": 15,
+    "schritt": false,
+    "dauer": 38000,
+    "was": "denkt · vor SubagentHandback R00229 angelegt."
+   },
+   {
+    "art": "denken",
+    "nr": 3,
+    "schritt": false,
+    "dauer": 21000,
+    "was": "denkt · vor Bash ls Anforderungen | tail -2"
+   }
+  ],
+  "kennzahlen": {
+   "werkzeugaufrufe": 6,
+   "fehler": 2
+  },
+  "bericht": {
+   "nr": 15,
+   "text": "R00229 angelegt.\nErgebnis: bestanden\nCommits: f9e808a6 [DOC] R00229 · Arbeitsbaum sauber: ja",
+   "ergebnis": "bestanden",
+   "commits": 1
+  },
+  "eingeklappt": {
+   "1": "auftrag",
+   "2": "systemhinweis"
+  }
+ }
+}
