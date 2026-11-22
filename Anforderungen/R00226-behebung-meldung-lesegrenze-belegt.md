@@ -1,6 +1,6 @@
 ---
 id: R00226
-status: Neu
+status: Erledigt
 datum: 2026-11-21
 ursprung: Bug-Report
 ursprungslauf: R00204
@@ -101,26 +101,26 @@ Die Funktion aus Lösung Punkt 1 ist rein (Endung → `Fehler`). Ein Modultest i
 
 ### Bug behoben
 
-- [ ] **AK 1 Probe B, je Aufrufer (N9.4, wörtlich):** Bei gehaltenen Plätzen und Frist jetzt + 300 ms ergibt
+- [x] **AK 1 Probe B, je Aufrufer (N9.4, wörtlich):** Bei gehaltenen Plätzen und Frist jetzt + 300 ms ergibt
   - `commits_lesen` → `Fehler::Ausgelastet` „Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — keine Liste“,
   - `diff_lesen` mit `commit=kd:<K1>` → `Fehler::Ausgelastet` „Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — kein Diff“,
   - `diff_lesen` ohne `commit` (Gesamt-Diff) → derselbe Text „… — kein Diff“,
   - `nachfolger_suchen` für `kd:<K1>` → `Fehler::Ausgelastet` „Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — keine Suche nach dem Nachfolger“.
 
   Je Aufruf vergehen mindestens 300 ms, und `arbeitsrepo::aufrufe()` steigt um 0. Nach dem Freigeben der Plätze gelingt derselbe Aufruf. Heute: `Fehler::Zeitgrenze` mit „Git … antwortete nicht innerhalb von 10 s“ (rot).
-- [ ] **AK 2 Vertrag des Textes (N9.3 Punkt 3):** Jeder der drei Wortlaute beginnt mit `Lesegrenze`, passt nicht auf `/antwortete nicht (?:innerhalb von|in) \d+ s/`, beginnt nicht mit `Antwortbudget`, enthält keinen Pfad und keinen Verweis. Die Zahlen stammen aus `LESEN_HOECHSTENS` und `GESAMTGRENZE`: `grep -rn "von 4 gleichzeitigen\|Frist von 10 s" src/dienst` findet außerhalb von Testcode nichts.
-- [ ] **AK 3 Über HTTP:** `Fehler::Ausgelastet(<Wortlaut>)` ergibt Status 503 und den Rumpf genau `{"fehler":"<Wortlaut>"}`, ohne weiteres Feld. `grep -rni "retry-after\|RETRY_AFTER" src` findet nichts.
-- [ ] **AK 4 Probe Z, Gegenprobe je Aufrufer (N9.4):** Lesegrenze frei, Frist abgelaufen → `commits_lesen`, `diff_lesen` mit und ohne `commit` und `nachfolger_suchen` ergeben weiter `Fehler::Zeitgrenze` mit „antwortete nicht innerhalb von 10 s“ und ihrer Endung („— keine Liste“, „— kein Diff“, „— keine Suche nach dem Nachfolger“). Der Wortlaut der Zeitgrenze ändert sich nicht.
-- [ ] **AK 5 Probe O, Oberfläche (N9.4, PO Z. 512–513):** Mit `fehler` = Wortlaut des Endpunkts und Status 503 ergibt
+- [x] **AK 2 Vertrag des Textes (N9.3 Punkt 3):** Jeder der drei Wortlaute beginnt mit `Lesegrenze`, passt nicht auf `/antwortete nicht (?:innerhalb von|in) \d+ s/`, beginnt nicht mit `Antwortbudget`, enthält keinen Pfad und keinen Verweis. Die Zahlen stammen aus `LESEN_HOECHSTENS` und `GESAMTGRENZE`: `grep -rn "von 4 gleichzeitigen\|Frist von 10 s" src/dienst` findet außerhalb von Testcode nichts.
+- [x] **AK 3 Über HTTP:** `Fehler::Ausgelastet(<Wortlaut>)` ergibt Status 503 und den Rumpf genau `{"fehler":"<Wortlaut>"}`, ohne weiteres Feld. `grep -rni "retry-after\|RETRY_AFTER" src` findet nichts.
+- [x] **AK 4 Probe Z, Gegenprobe je Aufrufer (N9.4):** Lesegrenze frei, Frist abgelaufen → `commits_lesen`, `diff_lesen` mit und ohne `commit` und `nachfolger_suchen` ergeben weiter `Fehler::Zeitgrenze` mit „antwortete nicht innerhalb von 10 s“ und ihrer Endung („— keine Liste“, „— kein Diff“, „— keine Suche nach dem Nachfolger“). Der Wortlaut der Zeitgrenze ändert sich nicht.
+- [x] **AK 5 Probe O, Oberfläche (N9.4, PO Z. 512–513):** Mit `fehler` = Wortlaut des Endpunkts und Status 503 ergibt
   - `fehlerText` (`web/commits.js`) genau „Die Commits ließen sich nicht lesen: Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — keine Liste (503).“ — nicht „Das Repository antwortete nicht innerhalb von 10 Sekunden“;
   - `listeFehlerText` (`web/diff.js`) genau „Die Liste der Commits ließ sich nicht lesen: Lesegrenze … — keine Liste (503).“ mit dem vollen Wortlaut;
   - `nachfolgerDeuten` (`web/commits.js`) den Satz „Der Nachfolger ließ sich nicht suchen: Lesegrenze … — keine Suche nach dem Nachfolger (503).“ mit dem vollen Wortlaut;
   - `fehlerArt` (`web/diff.js`) für „… — kein Diff“ weiter `zeitgrenze`: Die Diff-Seite behält den Kopf „Zeitgrenze überschritten.“ und darunter „Der Diff ließ sich nicht lesen: Lesegrenze … — kein Diff (503).“ (PO Z. 513).
 
   Der vorhandene Fall „Zeitgrenzen-Text → Wortlaut des PO“ (`commits.test.js:145`) bleibt grün. `web/` wird nicht geändert.
-- [ ] **AK 6 API-Beschreibung (N9.3 Punkt 6):** Die Endpunktliste unter `/api` und die OpenAPI-Beschreibung nennen für `GET …/commits`, `GET …/diff` (mit und ohne `commit`) und `GET …/commits/{verweis}/nachfolger` beim 503 beide Fälle: Git über der Gesamtgrenze von 10 s, **oder** alle 4 Plätze der Lesegrenze bis zur Frist belegt, `fehler` beginnt mit „Lesegrenze“. Quelle: `src/web/endpunkte.rs` `COMMITS_LESEN`, `DIFF_LESEN`, `NACHFOLGER_SUCHEN` und die 503-Antworten in `src/web/mod.rs` (heute `:1191`, `:1206`, `:1282`). Die Beschreibung darf die Zahlen als Literal nennen wie die vorhandenen 503-Teile (`const &str`); AK 2 gilt nur für den Text in `fehler`.
-- [ ] **AK 7 README „Für Agenten“:** Die Abschnitte Commit-Liste, Nachfolger und Diff (heute `:170`, `:193`, `:221`) sagen in je einem Satz, dass 503 auch kommt, wenn alle 4 Plätze der Lesegrenze bis zur Frist belegt sind; `fehler` beginnt dann mit „Lesegrenze“, Git ist nicht gestartet, und kanbanD wiederholt nicht selbst. Der Abschnitt „Alle Änderungen der Karte lesen“ (`:223–246`) bleibt unverändert: Er verweist für Grenzen auf den Diff je Commit, und Karte #234 schreibt dort (R00225 AK 8).
-- [ ] **AK 8 Mutanten (N9.4):** Jeder Mutant wird von einem benannten Test getötet.
+- [x] **AK 6 API-Beschreibung (N9.3 Punkt 6):** Die Endpunktliste unter `/api` und die OpenAPI-Beschreibung nennen für `GET …/commits`, `GET …/diff` (mit und ohne `commit`) und `GET …/commits/{verweis}/nachfolger` beim 503 beide Fälle: Git über der Gesamtgrenze von 10 s, **oder** alle 4 Plätze der Lesegrenze bis zur Frist belegt, `fehler` beginnt mit „Lesegrenze“. Quelle: `src/web/endpunkte.rs` `COMMITS_LESEN`, `DIFF_LESEN`, `NACHFOLGER_SUCHEN` und die 503-Antworten in `src/web/mod.rs` (heute `:1191`, `:1206`, `:1282`). Die Beschreibung darf die Zahlen als Literal nennen wie die vorhandenen 503-Teile (`const &str`); AK 2 gilt nur für den Text in `fehler`.
+- [x] **AK 7 README „Für Agenten“:** Die Abschnitte Commit-Liste, Nachfolger und Diff (heute `:170`, `:193`, `:221`) sagen in je einem Satz, dass 503 auch kommt, wenn alle 4 Plätze der Lesegrenze bis zur Frist belegt sind; `fehler` beginnt dann mit „Lesegrenze“, Git ist nicht gestartet, und kanbanD wiederholt nicht selbst. Der Abschnitt „Alle Änderungen der Karte lesen“ (`:223–246`) bleibt unverändert: Er verweist für Grenzen auf den Diff je Commit, und Karte #234 schreibt dort (R00225 AK 8).
+- [x] **AK 8 Mutanten (N9.4):** Jeder Mutant wird von einem benannten Test getötet.
   - (m1) Jede Zeitgrenze heißt Lesegrenze (in einem der drei `abbruch`) → AK 4 rot.
   - (m2) Nur drei Aufrufer umgestellt (je einer der vier ausgelassen, vier Varianten) → AK 1 für den ausgelassenen rot.
   - (m3) Text ohne Präfix `Lesegrenze` → AK 1 und AK 2 rot.
@@ -129,7 +129,7 @@ Die Funktion aus Lösung Punkt 1 ist rein (Endung → `Fehler`). Ein Modultest i
   - (m6) `fehlerText` ersetzt jeden 503 durch den Wortlaut der Zeitgrenze → AK 5 rot.
 
   Lässt sich ein Mutant nicht töten, meldet der entwickler das mit Begründung.
-- [ ] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung außer `belegte_lesegrenze_ist_503_nach_der_frist` (neue Erwartung nach AK 1).
+- [x] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung außer `belegte_lesegrenze_ist_503_nach_der_frist` (neue Erwartung nach AK 1).
 
 ## Implementierungshinweise
 
