@@ -1,6 +1,6 @@
 # ADR-0042: Review-Seite übersichtlicher — Art der Datei aus festen Pfadregeln, „Gesehen“ nur in der Sitzung, Wortmarke über Präfix und Suffix, Pfad und VS Code über `vscode://file` mit der Wurzel aus der Diff-Antwort, „Diff in VS Code“ ohne Serveraufruf durch „Patch herunterladen“ ersetzt
 
-**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt.
+**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt. Nachtrag N2 (2026-11-22, Akzeptiert): Punkt 6 ergänzt (`ETag` von „Ein Commit“ mit dem Startordner, ohne Git, kein eigener Versionsteil), Wortlaute an Punkt 3 nach N1.2.
 **Datum**: 2026-11-22
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #252, Lauf 252-architekt-1)
 **Kontext-Anforderung**: — (Karte #252, Auftrag des Betreibers vom 2026-11-22 nach dem Entwurf „Review ‚Ein Commit‘ – Vorschlag“; die Anforderungen schreibt der planer). Bezug: R00207, R00210, R00217, R00224; ADR-0030 Punkt 4, ADR-0032 (N2.4, N4 S2, N5.1, N6.9), ADR-0033 (Punkte 5 und 8, N1), ADR-0040; Artboard D0009
@@ -68,8 +68,8 @@
    - In „Alle Änderungen“ gelten dieselben Gruppen je Abschnitt einer Anwendung. Folge-Dateien (ADR-0033 N1.4) werden nach ihrem Pfad eingeteilt.
 2. **„Gesehen“ (G1)**: Je Datei ein Kästchen „Gesehen“. Gespeichert wird in `sessionStorage` unter dem Schlüssel `kd-gesehen:<board-slug>:<nr>`, ein JSON-Feld von Schlüsseln. Im Ein-Commit-Fall lautet der Schlüssel `<voller hash>\u0000<pfad>`. In „Alle Änderungen“ lautet er `alle\u0000<anwendung>\u0000<pfad>\u0000<fingerabdruck>`. Der Fingerabdruck ist FNV-1a (32 Bit, hexadezimal) über `status`, `alt`, `neu`, `plus`, `minus` und, falls geladen, `patch`. Ändert ein neuer Commit die Datei, gilt sie wieder als ungesehen. Der Fortschritt „k von n gesehen“ zählt **alle** Dateien der Seite, auch die eingeklappte Doku. So bleibt sichtbar, dass Doku ungeprüft ist. Fehlt `sessionStorage` oder wirft es (Kontingent, privat), gilt „Gesehen“ nur bis zum Neuzeichnen, ohne Meldung. Nichts geht an den Server.
 3. **„Erwartung geändert“ (Frage 2)**: Ohne Kenntnis der Sprache lässt sich eine geänderte Erwartung nicht sicher erkennen. Eine Liste von Schlüsselwörtern (`assert`, `expect`, `toBe`, `Assert.`) wäre Sprachkenntnis, und ihr Fehlschlag wäre still. Deshalb gibt es nur einen Hinweis am Merkmal einer Datei der Art `test`:
-   - `M` mit mindestens einer entfernten Zeile (`minus > 0`): „Test geändert, nicht neu“.
-   - `D`: „Test entfernt“.
+   - `M` mit mindestens einer entfernten Zeile (`minus > 0`): „Test geändert, nicht neu“. *(Wortlaut nach N1.2 und N2.4: „bestehender Test geändert“)*
+   - `D`: „Test entfernt“. *(Wortlaut nach N1.2 und N2.4: „Test gelöscht“)*
    - `R` mit `minus > 0`: wie `M`.
    - Ein Bezug auf die Anforderung kommt nur aus den Chips des Commit-Titels (Punkt 5), nicht aus dem Inhalt.
 4. **Wortmarke (W1)**: In einem Lauf aufeinanderfolgender `minus`-Zeilen, dem direkt ein Lauf `plus`-Zeilen folgt, wird die i-te mit der i-ten gepaart, aber nur, wenn **beide Läufe gleich lang** sind. Sonst gibt es keine Marke. Je Paar werden das gemeinsame Präfix und das gemeinsame Suffix bestimmt (UTF-16, kein Schnitt in einem Ersatzpaar). Der Rest wird nach außen auf Wortgrenzen erweitert (`\p{L}\p{N}_`). Markiert wird `[von, bis)` auf beiden Seiten, wenn Präfix und Suffix zusammen mindestens 4 Einheiten lang sind und der Rest kürzer ist als die Zeile. Sonst ist ganz oder gar nichts gleich, und es gibt keine Marke. Zeilen über `GRENZE_ZEILE` (1.000) bekommen keine Marke. Die Marke ist ein `<mark class="wm">` in `zelleHtml`. Die Farbauflage (`farbigHtml`) schneidet ihre Stücke an `von` und `bis`, die Marke liegt außen. Sichtbar gemachte Zeichen (Bidi, Steuerzeichen, ADR-0033 Punkt 8) bleiben Marken in derselben Zählung wie bei der Farbe. Berechnet wird beim Zeichnen je Block zu 500 Zeilen, also in denselben Aufgaben wie heute. Ein Lauf, der über eine Blockgrenze geht, wird vorab auf der ganzen Zeilenliste gepaart (linear). Kosten: ein Durchgang über die Zeichen der geänderten Zeilen, ohne schlechtesten Fall. Mit `GRENZE_ZEILE` sind es höchstens 2.000 Vergleiche je Paar.
@@ -170,3 +170,49 @@ Der product-owner hat G2 gewählt, abweichend von meiner Empfehlung (Z. 534). Se
 - **Fehlerpfad** wie in Punkt 2: Fehlt `localStorage` oder wirft es (Kontingent, gesperrt), gilt „Gesehen“ nur bis zum Neuzeichnen, ohne Meldung. Nichts geht an den Server, nichts an die Karte.
 - **Durchsetzung** (ersetzt die E2E-Zeile zu „Gesehen“ in den Konsequenzen): Ein Haken ergibt „1 von 8“. Ein neuer Tab im selben Browser-Kontext behält ihn, ein neuer Kontext nicht. Ändert ein neuer Commit die Datei, ist sie in „Alle Änderungen“ wieder ungesehen. Einheit „Obergrenze“: 201 Karten nacheinander gesetzt ergeben 200 Schlüssel, und die älteste fehlt. Ein unlesbarer Wert wirft nicht. Ein Mutant, der `sessionStorage` schreibt, wird im Tab-Test rot.
 - Inkauf: „Gesehen“ gilt je Browser und Gerät, nicht je Mensch und nicht an der Karte. Wer im Browser die Website-Daten löscht, verliert den Fortschritt.
+
+## Nachtrag 2026-11-22 N2: `ETag` von „Ein Commit“ mit dem Startordner, ohne Git; kein eigener Versionsteil; Wortlaute aus N1.2 an Punkt 3 (Karte #255)
+
+**Status `Akzeptiert`.** Der Nachtrag beantwortet die Frage des planers zu R00236 FA 2 und ergänzt Punkt 6. Der Text der Punkte 1–9 und von N1 bleibt stehen. Wo er abweicht, gilt dieser Nachtrag.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #255, Lauf 255-architekt-1)
+**Erprobt durch**: Code gelesen auf `karte/255` (3110e7b0). Nichts gebaut.
+
+### Anlass
+
+- Punkt 6 legt `wurzel` nur für den Gesamt-Diff in den `ETag`. Im Gesamt-Diff läuft `rev-parse` vor dem `ETag` (`src/dienst/gesamt_diff.rs:77–79`), dort geht das ohne neuen Prozess.
+- In „Ein Commit“ entsteht der `ETag` vor jedem Git-Aufruf (`src/dienst/diff.rs:307`, Lesegrenze und `wurzel_bis` erst ab `:314–315`). Er hängt heute nur an Verweis, `datei`, `format` und `GRENZEN_VERSION` (`:388–395`). Ändert sich das Register, bestätigt ein 304 die alte Antwort. Mit `wurzel` in der Antwort hieße das: Der Link „VS Code“ zeigt auf die alte Wurzel.
+- Der Browser fragt von selbst mit `If-None-Match` nach und reicht bei 304 seinen gespeicherten Rumpf weiter (ADR-0033 N1, „Belegt“, `etag-probe.js`). Ein Rumpf aus der Zeit vor der Karte, also ohne `wurzel`, lebte so weiter, solange der `ETag` gleich bleibt.
+- Die Lücke gab es schon vor dieser Karte: Nach einer Änderung des Registers bestätigte ein 304 auch den Inhalt aus dem alten Repository. ADR-0032 Punkt 2 verlangt aber, dass ein geändertes Register sofort gilt.
+
+### N2.1 Optionen
+
+| Option | Stärke | Schwäche |
+|---|---|---|
+| **S1 — der Startordner in den `ETag`, als Pfad genau so, wie `wurzel_bis` ihn an Git gibt (Board-Ordner verbunden mit `Anwendung::startordner`); 304 bleibt ohne Git** (gewählt) | kein Prozess, keine Frist und kein Platz der Lesegrenze für ein 304 (ADR-0032 Punkt 9, N4.1). Jede Änderung des Registers und jeder Umzug des Board-Ordners ergeben einen anderen `ETag` | Bleibt der Startordner gleich und ändert sich die Wurzel trotzdem, bestätigt ein 304 die alte Wurzel. Das passiert, wenn ein Symlink umgehängt, ein `.git` im Unterordner angelegt oder entfernt oder das Repository an derselben Stelle ersetzt wird. Ändert sich der Startordner und bleibt die Wurzel gleich, kommt ein unnötiges 200 |
+| S1′ — wie S1, aber der Text des Registers roh | wie S1 | Ein relativer Eintrag bleibt gleich, wenn der Board-Ordner umzieht, die Wurzel aber nicht. Dann käme wieder ein 304 mit alter Wurzel |
+| S2 — `wurzel_bis` vor dem `ETag` (wie Gesamt-Diff und Nachfolger, ADR-0038 Punkt 7) | genau: Der `ETag` hängt an der Wurzel selbst | Ein 304 kostet einen Prozess, Frist und einen Platz der Lesegrenze. Bei belegter Lesegrenze käme 503 statt 304. Das bricht ADR-0032 N4.1 („304 und alle Prüfungen ohne Git kosten keine Frist“) und die Leseregel am Dienst („alles, was ohne Git geht, vor dem ersten Git-Aufruf“, `diff.rs:289–292`) |
+| S3 — kein `wurzel` im Ein-Commit-Diff; die Seite nimmt die Wurzel aus einer anderen Antwort | `ETag` unberührt | Widerspricht Punkt 6 („beide Diff-Formen“). Dazu käme eine zweite Anfrage oder ein `rev-parse` in einer Route, die heute ohne Git ist |
+
+### N2.2 Entscheidung
+
+1. **Ein Commit**: Der `ETag` nimmt den Startordner auf, als den Pfad, den `wurzel_bis` an Git gibt (`board_ordner.join(startordner)`, `src/git/arbeitsrepo.rs:234`). Beide Stellen sollen ihn aus **einer** Funktion holen, damit `ETag` und Git nie auseinanderlaufen. Fehlt der Startordner, steht im `ETag` ein fester Platzhalter (wie `\u{1}` für fehlendes `datei`). Der Teil gilt für `json` **und** `format=patch`, denn zeigt das Register auf ein anderes Repository, muss die Antwort aus diesem kommen (etwa `fehlt` statt 304). Das 304 bleibt ohne Git-Prozess.
+2. **Gesamt-Diff**: wie Punkt 6. `wurzel` ist das Ergebnis von `rev-parse` und geht in den `ETag` ein. Sie liegt dort schon vor dem `ETag` vor. Ein 304 kostet weiter 2 Prozesse (ADR-0032 N6.10).
+3. **Kein eigener Versionsteil, `GRENZEN_VERSION` bleibt 1.** Ein neuer Teil im `ETag` ändert schon jeden `ETag` beider Formen. Ein Tag aus der Zeit vor der Karte passt also nie mehr, und der Browser bekommt 200 mit `wurzel`. Ein zusätzlicher Wechsel der Version wäre ein gleichwertiger Mutant: Kein Test kann ihn vom richtigen Stand unterscheiden. `GRENZEN_VERSION` zu erhöhen hieße außerdem, alle `ETag`s des Nachfolgers (`src/dienst/nachfolger.rs:397`) grundlos zu ändern, obwohl sich keine Grenze geändert hat. Eine Konstante für die Form der Antwort lege ich erst an, wenn ein Feld dazukommt, ohne dass sich eine Eingabe des `ETag`s ändert.
+4. **Durchsetzung**: (a) Ein Literal-Test wie `etag_nicht_wie_vor_der_einteilung_n8` (`src/dienst/gesamt_diff.rs:888`) je Form: Der `ETag`, den die Formel vor der Karte zur selben Anfrage gab, ist ungleich dem neuen. (b) Register auf eine Kopie des Repositorys umgestellt: Mit dem alten Tag kommt 200 mit neuer `wurzel`. (c) Register unverändert: 304, im Ein-Commit-Diff mit unverändertem `arbeitsrepo::aufrufe()`. (d) Mutant „Startordner nicht im Ein-Commit-`ETag`“ wird von (b) rot. Das sind R00236 AK 2 und ein zusätzlicher Mutant.
+
+### N2.3 Wirkung auf ADR-0032 und ADR-0033
+
+- **ADR-0032 Punkt 2** („je Anfrage neu ermittelt, damit ein geändertes Register sofort gilt“): N2 schließt die Lücke für 304 in „Ein Commit“ bis auf den Inkauf-Fall aus S1. Es ist keine Ablösung.
+- **ADR-0032 Punkt 9, N4.1 und die Leseregel am Dienst**: unverändert. Das 304 von „Ein Commit“ bleibt ohne Git, ohne Frist und ohne Lesegrenze. Der Startordner ist Register, also „ohne Git“.
+- **ADR-0032 N4.6** (`ETag` hängt an den Attribut-Dateien): unverändert. **N6.10 und N7.5** (Gesamt-`ETag`): Sie bekommen `wurzel` als weiteren Teil, wie Punkt 6 es schon sagt. Die Zahl der Prozesse eines 304 bleibt 2.
+- **ADR-0033**: keine Änderung. `diffHolen` verlässt sich auf das bedingte Lesen des Browsers (N1, „Belegt“). Genau deshalb muss der `ETag` jede Änderung der Antwort tragen. Das Zeichenbudget (Punkt 5) und die Reihe der Anfragen (N1.2) bleiben.
+- **ADR-0038 Punkt 7** (Nachfolger): bleibt. Dort steht die Wurzel schon im `ETag`.
+
+### N2.4 Wortlaute an Punkt 3
+
+Die Hinweise lauten nach N1.2 und po-entscheidungen Z. 537 „bestehender Test geändert“ (bei `M` und `R` mit `minus > 0`) und „Test gelöscht“ (bei `D`). So steht es gebaut in `testHinweis` (`web/review-uebersicht.js:56–60`). Punkt 3 trägt dazu einen Vermerk und behält seinen alten Text.
+
+### N2 Konsequenzen
+
+- Positiv: Ein 304 bestätigt nach einer Änderung des Registers weder eine alte Wurzel noch Inhalt aus dem alten Repository. Das 304 bleibt in „Ein Commit“ ohne Git.
+- Inkauf: Der Fall aus S1 (Startordner gleich, Wurzel anders) bestätigt die alte Wurzel per 304. Das ist harmlos wie die bekannte Grenze in Punkt 6, denn die Datei öffnet dann eben nicht. Ein unnötiges 200 kommt, wenn sich nur der Startordner ändert. Nach dem Update kommt einmal je gespeicherte Antwort ein 200, auch für `format=patch`.
