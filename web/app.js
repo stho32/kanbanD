@@ -1801,7 +1801,7 @@ function vReviewAlle(r, b) {
   const ansage = `<p class="vh" id="rv-ansage" aria-live="polite" aria-atomic="true">${esc((alle && alle.ansage) || '')}</p>`;
   if (b.art === 'alle_ohne_verweise') return meldungHtml({ rolle: 'status', kopf: 'Keine Änderungen zu zeigen.', text: 'An dieser Aufgabe sind keine Commit-Verweise hinterlegt.', knoepfe: knopf('Zurück zur Liste der Commits', 'review-liste') });
   let inhalt;
-  if (b.art === 'alle_laedt') inhalt = '<p class="rv-laedt" role="status" aria-busy="true">Liest die Änderungen der Aufgabe …</p>';
+  if (b.art === 'alle_laedt') inhalt = '<p class="rv-laedt" id="rv-laedt" role="status" aria-busy="true">Liest die Änderungen der Aufgabe …</p>';
   else if (b.art === 'alle_fehler') inhalt = diffFehlerHtml(alle.erste.fehler, null, esc);
   else if (b.art === 'alle_liste_fehler') inhalt = reviewListeFehltHtml(r);
   else if (inselGehalten) inhalt = `<div class="rv-alle" id="rv-insel" data-insel="${esc(reviewInselSchluessel())}"></div>`;
@@ -1842,7 +1842,7 @@ function vReview() {
   const leiste = `<div class="rv-leiste">${reviewUmschalterCommit(r)}</div>`;
   if (b.art === 'liste_fehler') return seite(leiste + meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(listeFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe }));
   if (b.art === 'diff_fehler') return seite(leiste + diffFehlerHtml(r.diff.fehler, r.diff.verweis, esc));
-  return seite(leiste + `<p class="rv-laedt" role="status" aria-busy="true">Liest den Diff von ${esc(kurzVerweis(r.commit))} …</p>`);
+  return seite(leiste + `<p class="rv-laedt" id="rv-laedt" role="status" aria-busy="true">Liest den Diff von ${esc(kurzVerweis(r.commit))} …</p>`);
 }
 
 /** Der Umschalter in „Ein Commit“ (R00210 FA 2): „Ein Commit“ ist gewählt und führt auf die gezeigte Adresse. */
@@ -2588,6 +2588,7 @@ function render() {
   const laufKnotenVorher = S.ui.view === 'lauf' ? LAUF_KNOTEN.map(id => document.getElementById(id)).filter(Boolean) : [];
   const reviewPosVorher = document.getElementById('rv-pos');
   const reviewAnsageVorher = document.getElementById('rv-ansage');
+  const reviewLaedtVorher = document.getElementById('rv-laedt');
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -2613,6 +2614,8 @@ function render() {
     laeufeKnotenBehalten(schalterStatusVorher);
     ansageBehalten(reviewPosVorher, 'rv-pos');
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
+    // der Ladesatz der Seite ist ein Start-Ereignis: ein Neuzeichnen während des Ladens sagt ihn nicht ein zweites Mal an (R00230 S2)
+    ansageBehalten(reviewLaedtVorher, 'rv-laedt');
   } finally {
     inselGehalten = null;
     laufInselGehalten = null;
