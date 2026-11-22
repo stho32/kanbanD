@@ -467,7 +467,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('.rv-meld h2')).toHaveText(`Zu ${kurz(rep.v2)} gibt es keinen Diff.`);
   });
 
-  test('AK 4/4a: #11 — Abschnitt wb mit Zeitgrenze rot, mit Antwortbudget amber, mit Netzabbruch „keine Verbindung“; kd und xx lesbar; „Erneut versuchen“ liest einmal, Fokus auf „Anwendung wb“', async ({ page }) => {
+  test('AK 4/4a: #11 — Abschnitt wb mit Zeitgrenze rot, mit Antwortbudget amber, mit Netzabbruch „keine Verbindung“; kd und xx lesbar; „Erneut versuchen“ liest einmal, Fokus auf „Anwendung wb“; Meldung ohne Live-Rolle', async ({ page }) => {
     for (const [fall, wert, satz, klasse] of [
       ['Zeitgrenze', { status: 503, body: { fehler: 'Git antwortete nicht' } }, 'Die Änderungen der Anwendung wb ließen sich nicht lesen: Git antwortete nicht (503).', 'fehl'],
       ['Antwortbudget', { status: 503, body: { fehler: 'Antwortbudget von 64 MB belegt' } }, 'Server ausgelastet (Antwortbudget). Die Änderungen der Anwendung wb wurden nicht gelesen. Es wird nicht von selbst wiederholt.', 'warn'],
@@ -482,7 +482,8 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
       h.frei(0, wert);
       const meldung = page.locator(`#rv-a1 .rv-abs-f.${klasse}`);
       await expect(meldung, fall).toHaveText(new RegExp(`^${satz.replace(/[.()]/g, '\\$&')}Erneut versuchen$`));
-      await expect(meldung).toHaveAttribute('role', 'alert');
+      // umgestellt mit R00230 AK 8: keine Live-Rolle an der Meldung, angesagt wird einmal in #rv-ansage (ADR-0018 N4)
+      expect(await meldung.evaluate(e => [e.getAttribute('role'), e.getAttribute('aria-live')]), fall).toEqual([null, null]);
       await expect(page.locator('#rv-a2 h2')).toHaveText(/^Anwendung xx/);
       await expect(page.locator('#rv-a2 .rv-cl')).toBeVisible();
       await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();

@@ -134,4 +134,8 @@ function gesamtVorbereiten(rep, zusatz = {}) {
   };
 }
 
-module.exports = { gesamtRepositorien, gesamtVorbereiten, UNLESBAR };
+/** Ein Eintrag von `ansagenZaehlen` ist ein Ladesatz (R00230 „Zählfenster“, PO Z. 515): der Start-Satz der Seite („Liest …“), eines
+    Abschnitts oder einer Datei („Lädt die Änderungen …“, „Wartet, bis …“). Jeder andere Eintrag ist eine Ergebnis- bzw. Fehleransage. */
+const istLadesatz = eintrag => /^(Liest die Änderungen der Aufgabe|Liest den Diff von|Lädt die Änderungen|Wartet, bis)/.test(eintrag.text);
+
+module.exports = { gesamtRepositorien, gesamtVorbereiten, UNLESBAR, istLadesatz };

@@ -5,9 +5,9 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, ansagenZaehlen } = require('./hilfen');
 const { breiteMessen } = require('./ziele-hilfen');
-const { gesamtRepositorien, gesamtVorbereiten } = require('./gesamt-hilfen');
+const { gesamtRepositorien, gesamtVorbereiten, istLadesatz } = require('./gesamt-hilfen');
 const { basisAnlegen, langerOrdner } = require('./commits-hilfen');
 
 const kurz = (h, k) => (k ? `${k}:` : '') + h.slice(0, 7);
@@ -132,6 +132,9 @@ function ansagenAufzeichnen(page) {
   });
 }
 
+/** Ergebnis- bzw. Fehleransagen seit dem Laden der Seite: alle Einträge von `ansagenZaehlen` außer den Ladesätzen (R00230). */
+const ergebnisansagen = eintraege => eintraege.filter(e => !istLadesatz(e));
+
 /** Die Ansagen, je Live-Region einmal. */
 const ansagen = page => page.evaluate(() => [...new Map(window.ANSAGEN.map(a => [a.id + '|' + a.klasse, a])).values()]);
 
@@ -147,9 +150,10 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
 
   /* ── Alle Änderungen ── */
 
-  test('AK 1: #11 — Abschnitt wb sagt „Das Repository der Anwendung wb ist nicht erreichbar.“ mit dem grund darunter, ordner-offen im Ton fehl, Live-Rolle wie bei 503; kd und xx geladen', async ({ page }) => {
+  test('AK 1: #11 — Abschnitt wb sagt „Das Repository der Anwendung wb ist nicht erreichbar.“ mit dem grund darunter, ordner-offen im Ton fehl, wie bei 503 ohne Live-Rolle und genau eine Ergebnisansage in #rv-ansage; kd und xx geladen', async ({ page }) => {
     const grund = await erwarteterGrund(page, k, rep);
     expect(grund).toMatch(/^Ordner fehlt: /);
+    const zaehler = await ansagenZaehlen(page);
     await page.goto(reviewAdresse(k, 11));
     const wb = abschnitt(page, 'Anwendung wb');
     const meldung = wb.locator('.rv-abs-f');
@@ -162,14 +166,21 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
     for (const alt of ['ließen sich nicht lesen', '(404)', 'kein Diff zu diesem Verweis', 'der Zustand sagt warum']) expect(text).not.toContain(alt);
     await expect(abschnitt(page, 'Anwendung kd').locator('.rv-cl')).toBeVisible();
     await expect(abschnitt(page, 'Anwendung xx').locator('.rv-cl')).toBeVisible();
+    // umgestellt mit R00230 AK 8: bei 404 wie bei 503 keine Live-Rolle an der Meldung und genau eine Ergebnisansage, in #rv-ansage
     const attribute = l => l.evaluate(e => [e.getAttribute('role'), e.getAttribute('aria-live')]);
-    const bei404 = await attribute(meldung);
+    await expect(page.locator('#rv-ansage')).toContainText('ohne Anwendung wb: ließ sich nicht lesen');
+    const bei404 = { attribute: await attribute(meldung), ergebnisse: ergebnisansagen(await zaehler.eintraege()) };
     await page.goto('about:blank');
     await fest(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'wb', 503, { fehler: 'Git antwortete nicht' });
     await page.goto(reviewAdresse(k, 11));
     const bei503 = abschnitt(page, 'Anwendung wb').locator('.rv-abs-f');
     await expect(bei503).toContainText('Git antwortete nicht (503)');
-    expect(bei404).toEqual(await attribute(bei503));
+    await expect(page.locator('#rv-ansage')).toContainText('ohne Anwendung wb: ließ sich nicht lesen');
+    for (const [fall, je] of [['404', bei404], ['503', { attribute: await attribute(bei503), ergebnisse: ergebnisansagen(await zaehler.eintraege()) }]]) {
+      expect(je.attribute, fall).toEqual([null, null]);
+      expect(je.ergebnisse.map(e => e.ort), fall).toEqual(['#rv-ansage']);
+      expect(je.ergebnisse[0].text, fall).toContain('ohne Anwendung wb: ließ sich nicht lesen');
+    }
   });
 
   test('AK 2: #20 — erste Anwendung fehlt: drei Abschnitte in der Reihenfolge der Liste, wb mit Satz und grund, nie die Leer-Meldung', async ({ page }) => {

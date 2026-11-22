@@ -86,20 +86,38 @@ test('zu_gross_zum_anzeigen an der Folge-Datei: nur Zahlen, Schrittköpfe bleibe
   assert.doesNotMatch(html, /<button[^>]*data-act="review-nachladen"/);
 });
 
-test('Abschnitt lädt / wartet: Zustandswort und Satz sichtbar; Fehler: Antwortbudget amber, Zeitgrenze und Netz rot, alle mit role=alert', () => {
+test('Abschnitt lädt / wartet: Zustandswort und Satz sichtbar; Fehler: Antwortbudget amber, Zeitgrenze und Netz rot, alle ohne Live-Rolle (R00230)', () => {
   const laedt = g.abschnittHtml({ status: 'laedt', kuerzel: 'wb' }, 1, ctx), wartet = g.abschnittHtml({ status: 'wartet', kuerzel: 'xx', wartetAuf: 'wb' }, 2, ctx);
   assert.match(ohneTags(laedt), /Anwendung wb lädt …Lädt die Änderungen der Anwendung wb …/);
   assert.match(ohneTags(wartet), /Anwendung xx wartetWartet, bis die Anwendung wb geladen ist …/);
   assert.doesNotMatch(laedt + wartet, /class="vh"/, 'Zustandswörter sind sichtbarer Text, nie .vh');
   const fehler = f => g.abschnittHtml({ status: 'fehler', kuerzel: 'wb', fehler: f }, 1, ctx);
   const budget = fehler({ art: 'antwortbudget', status: 503, fehler: 'Antwortbudget erschöpft' });
-  assert.match(budget, /class="df-hin warn rv-abs-f" role="alert"/);
+  // umgestellt mit R00230 AK 8: die Meldung trägt keine Live-Rolle mehr, angesagt wird nur in #rv-ansage (ADR-0018 N4)
+  assert.match(budget, /class="df-hin warn rv-abs-f">/);
   assert.match(ohneTags(budget), /Server ausgelastet \(Antwortbudget\)\. Die Änderungen der Anwendung wb wurden nicht gelesen\. Es wird nicht von selbst wiederholt\./);
   const zeit = fehler({ art: 'zeitgrenze', status: 503, fehler: 'Zeitgrenze überschritten' });
-  assert.match(zeit, /class="df-hin fehl rv-abs-f" role="alert"/);
+  assert.match(zeit, /class="df-hin fehl rv-abs-f">/);
   assert.match(ohneTags(zeit), /Die Änderungen der Anwendung wb ließen sich nicht lesen: Zeitgrenze überschritten \(503\)\./);
   assert.match(ohneTags(fehler({ art: 'anderer', status: 0, fehler: 'x' })), /ließen sich nicht lesen: keine Verbindung zum Programm\.Erneut/);
   assert.match(budget, /data-act="review-abschnitt-erneut" data-arg="1"/);
+});
+
+test('R00230 AK 2: jede Fehlerform eines Abschnitts (Antwortbudget, 404 repository_fehlt, übrige) ohne role und aria-live', () => {
+  const formen = {
+    antwortbudget: { art: 'antwortbudget', status: 503, fehler: 'Antwortbudget erschöpft' },
+    repositoryFehlt: { art: 'kein_diff', status: 404, fehler: 'x', daten: { zustand: 'repository_fehlt', grund: 'Ordner fehlt: /x' } },
+    zeitgrenze: { art: 'zeitgrenze', status: 503, fehler: 'Git antwortete nicht' },
+    anderer: { art: 'anderer', status: 500, fehler: 'kaputt' },
+    ohneVerbindung: { art: 'anderer', status: 0, fehler: 'x' },
+  };
+  for (const [name, f] of Object.entries(formen)) {
+    const html = g.abschnittHtml({ status: 'fehler', kuerzel: 'wb', fehler: f }, 1, ctx);
+    const meldung = /<div class="[^"]*rv-abs-f"[^>]*>/.exec(html);
+    assert.ok(meldung, `${name}: .rv-abs-f gezeichnet`);
+    assert.doesNotMatch(meldung[0], / role=| aria-live=/, name);
+    assert.doesNotMatch(html, / role="(alert|status)"| aria-live=/, `${name}: auch sonst keine Live-Region im Abschnitt`);
+  }
 });
 
 test('Umschalter: zwei Verweise, der gezeigte mit aria-current; ohne Ziel „Ein Commit“ ohne href, ohne role, ohne tabindex', () => {
@@ -177,14 +195,16 @@ test('AK 14: fremder Text an den Rückfall-Senken — Grund, Status von Datei un
 
 /* ── R00224 B1170: Abschnitt bei 404 repository_fehlt — Satz und Hinweiszeile untereinander in einem Block ── */
 
-test('R00224: Abschnittsfehler 404 repository_fehlt — Satz, maskierte Hinweiszeile in einem Block, ordner-offen aus commits.js, Rolle wie die übrigen, ohne (404)', () => {
+test('R00224: Abschnittsfehler 404 repository_fehlt — Satz, maskierte Hinweiszeile in einem Block, ordner-offen aus commits.js, wie die übrigen ohne Live-Rolle, ohne (404)', () => {
   const { zustandsSymbol } = require('../../web/commits.js');
   const fehler = (f, kuerzel = 'wb') => g.abschnittHtml({ status: 'fehler', kuerzel, fehler: f }, 1, ctx);
   const html = fehler({ art: 'kein_diff', status: 404, fehler: 'Repository nicht erreichbar', daten: { zustand: 'repository_fehlt', grund: 'Ordner fehlt: /x/<img src=x>‮gpj.exe' } });
   const zeit = fehler({ art: 'zeitgrenze', status: 503, fehler: 'Git antwortete nicht' });
-  const rolle = h => /class="df-hin[^"]*rv-abs-f" (role="[^"]*")/.exec(h)[1];
+  // umgestellt mit R00230 AK 8: „dieselbe Live-Rolle wie die übrigen“ heißt jetzt keine (ADR-0018 N4)
+  const rolle = h => /class="df-hin[^"]*rv-abs-f"([^>]*)>/.exec(h)[1];
   assert.strictEqual(rolle(html), rolle(zeit));
-  assert.ok(html.includes(`<div class="df-hin fehl rv-abs-f" ${rolle(zeit)}>${zustandsSymbol('ordner-offen')}<div class="df-zeilen"><p class="rv-satz">Das Repository der Anwendung wb ist nicht erreichbar.</p><p class="rv-hin">Ordner fehlt: /x/&lt;img src=x&gt;gpj.exe</p></div>`), html);
+  assert.strictEqual(rolle(zeit), '');
+  assert.ok(html.includes(`<div class="df-hin fehl rv-abs-f">${zustandsSymbol('ordner-offen')}<div class="df-zeilen"><p class="rv-satz">Das Repository der Anwendung wb ist nicht erreichbar.</p><p class="rv-hin">Ordner fehlt: /x/&lt;img src=x&gt;gpj.exe</p></div>`), html);
   assert.match(html, /data-act="review-abschnitt-erneut" data-arg="1"/);
   assert.doesNotMatch(ohneTags(html), /\(404\)|ließen sich nicht lesen/);
   const ohneGrund = fehler({ art: 'kein_diff', status: 404, fehler: 'x', daten: { zustand: 'repository_fehlt' } }, '');

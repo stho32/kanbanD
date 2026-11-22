@@ -351,19 +351,19 @@
 
   /** Fehler eines Abschnitts (R00210 FA 7, UX-Vorprüfung M2): Antwortbudget amber mit Server, Zeitgrenze und andere rot mit Uhr
       bzw. Achtung; Netzfehler ohne Status; 404 `repository_fehlt` mit Satz und Hinweiszeile (R00224 FA 1); immer „Erneut versuchen“,
-      nie von selbst wiederholt. */
+      nie von selbst wiederholt. Ohne Live-Rolle: angesagt wird das Scheitern einmal in `#rv-ansage` (ADR-0018 N4, R00230). */
   function abschnittFehlerHtml(f, a, kuerzel, esc) {
     const erneut = diff.knopf('Erneut versuchen', 'review-abschnitt-erneut', a);
     const k = esc(diff.anwendungName(kuerzel));
-    if (f.art === 'antwortbudget') return `<div class="df-hin warn rv-abs-f" role="alert">${diff.symbol('server')}<p><b>Server ausgelastet (Antwortbudget).</b> Die Änderungen der ${k} wurden nicht gelesen. Es wird nicht von selbst wiederholt.</p>${erneut}</div>`;
+    if (f.art === 'antwortbudget') return `<div class="df-hin warn rv-abs-f">${diff.symbol('server')}<p><b>Server ausgelastet (Antwortbudget).</b> Die Änderungen der ${k} wurden nicht gelesen. Es wird nicht von selbst wiederholt.</p>${erneut}</div>`;
     // ein fehlendes Repository nennt den Zustand in Worten und den grund darunter (R00224 FA 1, PO Z. 506)
     const satz = f.status === 404 && f.daten && f.daten.zustand === 'repository_fehlt' ? zustandSatz(f.daten.zustand, kuerzel, f.daten.grund) : null;
-    if (satz) return `<div class="df-hin ${satz.ton} rv-abs-f" role="alert">${zustandsSymbol(satz.symbol)}<div class="df-zeilen">${diff.zustandZeilenHtml(satz, esc)}</div>${erneut}</div>`;
+    if (satz) return `<div class="df-hin ${satz.ton} rv-abs-f">${zustandsSymbol(satz.symbol)}<div class="df-zeilen">${diff.zustandZeilenHtml(satz, esc)}</div>${erneut}</div>`;
     let grund = `${esc(f.fehler || 'unbekannter Fehler')} (${f.status})`;
     if (f.status === 0) grund = 'keine Verbindung zum Programm';
     let zeichen = 'achtung';
     if (f.art === 'zeitgrenze') zeichen = 'uhr';
-    return `<div class="df-hin fehl rv-abs-f" role="alert">${diff.symbol(zeichen)}<p>Die Änderungen der ${k} ließen sich nicht lesen: ${grund}.</p>${erneut}</div>`;
+    return `<div class="df-hin fehl rv-abs-f">${diff.symbol(zeichen)}<p>Die Änderungen der ${k} ließen sich nicht lesen: ${grund}.</p>${erneut}</div>`;
   }
 
   /** Seitenweite ausgelassene Verweise (`unlesbar`, `anwendung_unbekannt`), einmal über den Abschnitten. */
