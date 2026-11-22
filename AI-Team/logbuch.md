@@ -1977,3 +1977,13 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Gut:** Die korrekt lesende Probe deckte ein echtes Querscrollen der Prognose-Tabelle auf, das der alte Test verdeckt hatte. Der entwickler hat AK 13 rot committet, statt ihn abzuschwächen. Der PO hat den kleinen Fix in derselben Karte zugelassen (AK 14).
 - **Lehre:** Ein Test, der Zustand herstellt und erst später misst, kann über ein Neuzeichnen hinweg gar nichts messen. Herstellen und Messen gehören in einen Zug, dazu eine Positivprobe.
 | 2026-11-22 | #246 | Erledigt | director | Retrospektive | – | 1 Lehre (Herstellen und Messen im selben Zug, Positivprobe) |
+| 2026-11-22 | #263 | Architektur | architekt | bestanden | 6 min | ADR-0041 N3 · claude · opus · Lauf 263-architekt-1 · 2,37 $ · Karte gesamt 2,37 $ |
+| 2026-11-22 | #263 | Detailplanung | product-owner | bestanden | 2 min | Z. 572–576 · claude · opus · Lauf 263-product-owner-1 · 1,08 $ · Karte gesamt 3,45 $ |
+| 2026-11-22 | #263 | Detailplanung | gestalter | bestanden | 12 min | D0009 #laufansicht Tokens, 456ca322 · claude · sonnet · Lauf 263-gestalter-1 · 4,24 $ · Karte gesamt 7,69 $ |
+| 2026-11-22 | #263 | Detailplanung | product-owner | bestanden | 2 min | Artboard frei mit Änderung, Z. 577–580 · claude · opus · Lauf 263-product-owner-2 · 0,78 $ · Karte gesamt 8,47 $ |
+| 2026-11-22 | #263 | Detailplanung | architekt | bestanden | 1 min | ADR-0041 N3.1 · claude · opus · Lauf 263-architekt-2 · 0,25 $ · Karte gesamt 8,72 $ |
+
+**Retrospektive #262** (Paaren über die Kennung des Aufrufs, R00237, ADR-0041 N2; 2026-11-22; Gate auf main ganz grün, ausgeliefert. Karte gesamt rund 9,4 $.)
+- **Gut:** Gefunden hat den Fehler der Betreiber, an einem einzigen Beispiel. Der architekt hat ihn in 400 Protokollen gezählt: 27 % der Läufe waren betroffen. Die Literale vor der Karte, der Fuzz mit 40.000 Läufen im Code-Review und der Vergleich am Altbestand (57 Transkripte) im Legacy-Review belegen, dass der Rückfall ohne Kennung unverändert bleibt.
+- **Lehre:** Ein Format, das Antworten nur über die Reihenfolge zuordnet, braucht von Anfang an eine Kennung, sobald der Erzeuger parallel arbeiten kann.
+| 2026-11-22 | #262 | Erledigt | director | Retrospektive | – | 1 Lehre (Kennung statt Reihenfolge bei parallelem Erzeuger) |
