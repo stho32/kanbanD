@@ -167,24 +167,36 @@ test.describe('R00228 Repository-Feld und erster Start', () => {
   }
 
   for (const farbe of ['hell', 'dunkel']) {
-    test(`AK 3 (${farbe}): erster Start — bei 320, 375 und 768 px scrollt die Seite nicht quer, die Vorschau steht unter der Maske; 900 px untereinander, 901 und 1280 px nebeneinander`, async ({ page }) => {
+    test(`AK 3 (${farbe}): erster Start — bei 320, 375 und 768 px scrollt die Seite nicht quer, die Vorschau steht unter der Maske`, async ({ page }) => {
       await mutanteEinsetzen(page);
       k = await kanbanStarten();
       await page.goto(k.adresse);
       await thema(page, farbe === 'hell' ? 'light' : 'dark');
       await page.locator('.first-r').waitFor({ state: 'visible' });
       await expect(page.locator('#vorschau-einstellungen')).toBeVisible();
-      for (const breite of [320, 375, 768, 900]) {
+      for (const breite of [320, 375, 768]) {
         await breiteSetzen(page, breite);
         const m = await ersterStart(page);
         expect(m.quer, `${breite} px: scrollWidth - innerWidth`).toBeLessThanOrEqual(0);
         expect(m.darunter, `${breite} px: Vorschau unter der Maske ${JSON.stringify([m.l, m.r])}`).toBe(true);
       }
-      for (const breite of [901, 1280]) {
-        await breiteSetzen(page, breite);
-        const m = await ersterStart(page);
-        expect(m.nebeneinander, `${breite} px: nebeneinander ${JSON.stringify([m.l, m.r])}`).toBe(true);
-        expect(m.darunter, `${breite} px: nicht untereinander`).toBe(false);
+    });
+  }
+
+  // US-4: die Schwelle der Hausform liegt bei 900 px (wie .einrichten und .setup), je Breite ein eigener Test
+  for (const [breite, untereinander] of [[900, true], [901, false], [1280, false]]) {
+    test(`AK 3 Schwelle: erster Start bei ${breite} px — Vorschau ${untereinander ? 'unter der Maske' : 'neben der Maske'}`, async ({ page }) => {
+      await mutanteEinsetzen(page);
+      k = await kanbanStarten();
+      await page.goto(k.adresse);
+      await page.locator('.first-r').waitFor({ state: 'visible' });
+      await breiteSetzen(page, breite);
+      const m = await ersterStart(page);
+      const lage = JSON.stringify([m.l, m.r]);
+      if (untereinander) expect(m.darunter, `${breite} px: Oberkante von .first-r >= Unterkante von .first-l ${lage}`).toBe(true);
+      else {
+        expect(m.nebeneinander, `${breite} px: Oberkanten gleich, .first-r rechts von .first-l ${lage}`).toBe(true);
+        expect(m.darunter, `${breite} px: nicht untereinander ${lage}`).toBe(false);
       }
     });
   }
