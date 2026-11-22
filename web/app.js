@@ -1447,13 +1447,18 @@ function reviewKlappenMerken(r) {
   if (r.diff && r.diff.status === 'da') r.klappenJe[r.diff.antwort.commits[0].hash] = r.staende.map(s => s.offen);
 }
 
+/** Woher die Knöpfe einer Datei in „Ein Commit“ ihre Ziele nehmen (R00236): Aufgabe, Verweis des Commits, Wurzel der Antwort. */
+function reviewQuelle(r) {
+  return { nr: r.nr, commit: r.diff.antwort.commits[0].verweis, wurzel: r.diff.antwort.wurzel };
+}
+
 /** Zeichnet nur den Abschnitt einer Datei in der Insel neu (Aufklappen, Einklappen, Nachladen). Stand der Fokus darin, steht er
     danach auf demselben Element, fehlt es, auf dem Kopf der Datei — nie auf body (UX-Review #209 M1, WCAG 2.4.3). */
 function reviewDateiNeu(r, i) {
   const alt = document.getElementById('rv-d' + i);
   if (alt) {
     const fokus = alt.contains(document.activeElement) ? document.activeElement.id : null;
-    alt.outerHTML = dateiHtml(r.dateien[i], i, r.staende[i], r.hinweise, esc);
+    alt.outerHTML = dateiHtml(r.dateien[i], i, r.staende[i], r.hinweise, esc, { id: i, arg: i, quelle: reviewQuelle(r) });
     if (fokus !== null) {
       // über den einen Fokusweg (fokusVersuchen), ohne zu rollen: der Fokus bleibt, wo er war
       const ziel = fokus && document.getElementById(fokus) ? '#' + CSS.escape(fokus) : '#rv-dk' + i;
@@ -1495,7 +1500,7 @@ function reviewKnotenNeu(id, html, kopf) {
 function reviewGruppeNeu(r, art) {
   const g = dateiGruppen(r.dateien).find(x => x.art === art);
   if (!g) return;
-  reviewKnotenNeu(`rv-g-${art}`, commitGruppeHtml(g, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen[art]), `#rv-gk-${art}`);
+  reviewKnotenNeu(`rv-g-${art}`, commitGruppeHtml(g, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen[art], reviewQuelle(r)), `#rv-gk-${art}`);
   reviewKlappenMerken(r);
 }
 
@@ -1588,6 +1593,98 @@ function reviewOrt(r, arg) {
   const ab = r.alle.abschnitte[a];
   if (!ab || ab.status !== 'da' || !ab.staende[i]) return null;
   return { a, i, st: ab.staende[i] };
+}
+
+/* ── Pfad kopieren (R00236 FA 8, 9): Bestätigung in der Statusregion am Knopf, ohne Zwischenablage ein markiertes Feld ── */
+
+/** Datei, Stand, Kennung und Wurzel hinter `arg` eines Knopfs „Pfad“ — in „Ein Commit“ der Index, in „Alle Änderungen“ „<a>:<i>“. */
+function reviewPfadOrt(r, arg) {
+  const ort = reviewOrt(r, arg);
+  if (ort) {
+    const antwort = r.alle.abschnitte[ort.a].antwort;
+    return { d: antwort.dateien[ort.i], st: ort.st, id: `${ort.a}-${ort.i}`, wurzel: antwort.wurzel };
+  }
+  const i = +arg;
+  if (!r || !r.staende || !r.staende[i] || !r.diff || r.diff.status !== 'da') return null;
+  return { d: r.dateien[i], st: r.staende[i], id: String(i), wurzel: r.diff.antwort.wurzel };
+}
+
+/** Die Auflage „Pfad kopiert“ lebt 2–10 s (AK 7); die Hinweise der Seite stehen 8 s (PO Z. 541). */
+const PFAD_KOPIERT_DAUER = 5000;
+/** Die eine sichtbare Auflage `{st, id, uhr}` und das eine Feld `{st, id}` der Seite. */
+let pfadKopiert = null;
+let pfadFeld = null;
+
+/** Kopiert `<wurzel>/<pfad>` roh; gelingt es nicht (kein sicherer Kontext, Schreiben verweigert), steht der Pfad markiert im Feld —
+    nie eine stille Fehlanzeige. Ein Druck auf „Pfad“ nimmt das Feld jeder Datei weg. */
+async function pfadKopieren(ort) {
+  const text = kopierPfad(ort.wurzel, ort.d);
+  pfadFeldWeg();
+  if (await linkInDieZwischenablage(text)) pfadKopiertZeigen(ort);
+  else pfadFeldZeigen(ort, text);
+}
+
+/** Setzt nur den Text der Statusregion, die schon leer im Kopf steht: so wird sie angesagt, und nichts daneben verschiebt sich. */
+function pfadKopiertZeigen(ort) {
+  pfadKopiertWeg();
+  ort.st.pfadOk = true;
+  pfadKopiert = { st: ort.st, id: ort.id, uhr: setTimeout(pfadKopiertWeg, PFAD_KOPIERT_DAUER) };
+  const region = document.getElementById('rv-ok' + ort.id);
+  if (region) region.textContent = 'Pfad kopiert';
+}
+
+function pfadKopiertWeg() {
+  if (!pfadKopiert) return;
+  clearTimeout(pfadKopiert.uhr);
+  pfadKopiert.st.pfadOk = false;
+  const region = document.getElementById('rv-ok' + pfadKopiert.id);
+  if (region) region.textContent = '';
+  pfadKopiert = null;
+}
+
+/** Das Feld steht unter dem Kopf der Datei, hat den Fokus, und der Pfad ist ganz markiert (FA 9). Es lebt im Stand der Datei: ein
+    Neuzeichnen zeichnet es wieder. */
+function pfadFeldZeigen(ort, text) {
+  ort.st.pfadFeld = text;
+  pfadFeld = { st: ort.st, id: ort.id };
+  const abschnitt = document.getElementById('rv-d' + ort.id);
+  if (!abschnitt) return;
+  abschnitt.querySelector(':scope > .ru-k').insertAdjacentHTML('afterend', pfadFeldHtml(ort.id, text, esc));
+  pfadFeldMarkieren();
+}
+
+function pfadFeldMarkieren() {
+  const feld = document.getElementById('rv-pfin' + pfadFeld.id);
+  if (!feld) return;
+  feld.focus();
+  feld.select();
+}
+
+function pfadFeldWeg() {
+  if (!pfadFeld) return;
+  pfadFeld.st.pfadFeld = null;
+  const feld = document.getElementById('rv-pf' + pfadFeld.id);
+  if (feld) feld.remove();
+  pfadFeld = null;
+}
+
+/** Esc im Feld nimmt es weg; der Fokus geht an „Pfad“ derselben Datei (PO Z. 559). */
+function pfadFeldSchliessen() {
+  const id = pfadFeld.id;
+  pfadFeldWeg();
+  const knopf = document.getElementById('rv-pk' + id);
+  if (knopf) knopf.focus();
+}
+
+/** Folgt einem Link nach VS Code wie ein Klick auf einen Verweis: kurz im Code-Bereich eingehängt, damit derselbe Weg gilt wie für
+    den Knopf „VS Code“ (der Klick-Handler lässt `vscode:`-Verweise dem Browser). */
+function vscodeFolgen(link, ort) {
+  const verweis = document.createElement('a');
+  verweis.href = link;
+  verweis.hidden = true;
+  ort.append(verweis);
+  verweis.click();
+  verweis.remove();
 }
 
 /** Bricht die laufende Anfrage des Gesamtbilds ab und leert die Reihe (N1.2): Umschalten, Adresswechsel, Verlassen. */
@@ -1778,7 +1875,7 @@ function reviewGesamtKontext(r) {
     const e = r.liste && r.liste.status === 'da' && r.liste.eintraege.find(x => x.verweis === verweis);
     return (e && e.titel) || null;
   };
-  return { esc, adresse: verweis => reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: verweis }), titelVon };
+  return { esc, nr: r.nr, adresse: verweis => reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: verweis }), titelVon };
 }
 
 /** Hängt einen Abschnitt in die stehende Insel (N1.3): nur sein Knoten wird ersetzt. Stand der Fokus darin, steht er danach auf
@@ -1944,7 +2041,7 @@ function reviewDiffHtml(r, b) {
   }
   const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc) + liste;
   const schluessel = reviewInselSchluessel();
-  const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen);
+  const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen, reviewQuelle(r));
   return `<div class="rv-leiste">${reviewUmschalterCommit(r)}${navigation}${summe}${aufklapper}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
 }
 
@@ -3718,6 +3815,11 @@ async function aktion(a, arg, wert) {
         u.fokus = '#rv-alle';
         break;
       }
+      case 'review-pfad': {
+        const ort = reviewPfadOrt(u.review, arg);
+        if (ort) await pfadKopieren(ort);
+        return;
+      }
       case 'review-nachladen': {
         const r = u.review, ort = reviewOrt(r, arg);
         if (ort) {
@@ -4597,6 +4699,12 @@ document.addEventListener('mousedown', e => {
 document.addEventListener('mousedown', e => {
   if (e.target.closest && e.target.closest('[data-act="eingabe-verwerfen"]')) e.preventDefault();
 });
+// „Pfad kopiert“ geht beim nächsten Klick, wo er auch hinfällt, und sofort, wenn der Fokus „Pfad“ verlässt (R00236 FA 8); ein
+// Knopf, den ein Neuzeichnen aus dem Dokument nimmt, hat ihn nicht verlassen (Chrome meldet dann `focusout`, Firefox nicht)
+document.addEventListener('click', () => pfadKopiertWeg(), true);
+document.addEventListener('focusout', e => {
+  if (pfadKopiert && e.target.id === 'rv-pk' + pfadKopiert.id && e.target.isConnected) pfadKopiertWeg();
+});
 document.addEventListener('click', e => {
   if (S.ui.menue) {
     const z = e.target.closest('.km-e[data-mp]');
@@ -4608,6 +4716,9 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('a[href^="vscode:"]')) return;
+  // eine Nummer der neuen Seite springt nach VS Code an ihre Zeile; der Codetext daneben nie (R00236 FA 7)
+  const sprungNummer = e.target.closest('td.ru-nk');
+  if (sprungNummer) { vscodeFolgen(`${sprungNummer.closest('.df-sc').dataset.vsc}:${sprungNummer.textContent}`, sprungNummer); return; }
   // Ein Link im Text einer Teilaufgabe folgt dem Link: der Klick bearbeitet die Zeile nicht (R00177 AK 3)
   if (e.target.closest('.teil-text a')) return;
   if (e.target.closest('.menue a[href^="#"]')) { S.ui.pop = null; return; }
@@ -4810,6 +4921,7 @@ document.addEventListener('keydown', e => {
   if (ueberallTaste(e, t)) return;
   if (!S.ui.offen && !S.ui.pop && menueTasteAufZiel(e, t)) return;
   if (brettTaste(e, t)) return;
+  if (e.key === 'Escape' && pfadFeld && t.classList && t.classList.contains('ru-pfin')) { e.preventDefault(); pfadFeldSchliessen(); return; }
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !S.ui.offen && $('#flt')) {
     e.preventDefault();
     $('#flt').focus();

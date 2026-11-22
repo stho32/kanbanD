@@ -346,7 +346,7 @@ test.describe('R00236 Pfad, VS Code und Patch je Datei', () => {
       expect(fehler).toEqual([]);
     });
 
-    test('AK 8: nach dem Blättern zu „Alle Änderungen“ steht kein Feld mehr', async ({ page }) => {
+    test('AK 8: nach dem Blättern zu „Alle Änderungen“ und zurück steht kein Feld mehr', async ({ page }) => {
       const s = seite(page);
       await commitOeffnen(page, k, 1, h.kPfad);
       await s.pfad('src/a.rs').click();
@@ -354,8 +354,8 @@ test.describe('R00236 Pfad, VS Code und Patch je Datei', () => {
       await page.locator('#rv-u-alle').click();
       await page.locator('#rv-insel .rv-abs .rv-gk').first().waitFor();
       await expect(s.alleFelder()).toHaveCount(0);
-      await page.goBack();
-      await page.locator('#rv-insel .rv-gk').first().waitFor();
+      await page.locator('#rv-u-commit').click();
+      await page.locator('#rv-insel > .rv-gr .rv-gk').first().waitFor();
       await expect(s.alleFelder()).toHaveCount(0);
     });
   });

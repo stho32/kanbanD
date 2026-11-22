@@ -281,12 +281,12 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
-    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge
-    for (let i = 0; i < 15; i++) {
+    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch
+    for (let i = 0; i < 18; i++) {
       folge.push(await page.evaluate(() => { const e = document.activeElement; return e.closest('#review, #kopf') ? (e.id || e.className) : 'aus'; }));
       await page.keyboard.press('Tab');
     }
-    expect(folge).toEqual(['rv-rueckweg', 'rv-u-alle', 'rv-u-commit', 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'df-sc', 'aus']);
+    expect(folge).toEqual(['rv-rueckweg', 'rv-u-alle', 'rv-u-commit', 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'rv-pk0-0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'df-sc', 'aus']);
   });
 
   /* ── AK 1 Adresse, Umschalter, Titel, Ansage ── */
@@ -641,7 +641,8 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await page.locator('#rv-d0-0').getByRole('button', { name: 'Änderungen anzeigen' }).click();
     await expect(page.locator('#rv-d0-0 .df-hin').first()).toHaveText('Zu groß zum Anzeigen. Es stehen nur die Zahlen: +2 −2. Jeder Schritt lässt sich über seinen Kopf einzeln ansehen.');
     await expect(page.locator('#rv-d0-0 a.fs-l')).toHaveCount(2);
-    await expect(page.locator('#rv-d0-0 button.btn')).toHaveCount(0);
+    // R00236: „Pfad“ im Kopf ist ein Knopf; im Inhalt steht keiner
+    await expect(page.locator('#rv-d0-0 .df-inhalt button.btn')).toHaveCount(0);
   });
 
   test('AK 7a: Nachladen mit 503 an Netto- und Folge-Datei — Fehler an der Datei, Fokus auf dem Kopf, wartende Anwendung startet, „Erneut versuchen“ liest einmal', async ({ page }) => {

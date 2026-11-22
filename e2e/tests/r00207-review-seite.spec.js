@@ -863,12 +863,12 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
     await expect(page.locator('#rv-rueckweg')).toBeFocused();
     const reihe = [];
-    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk-code) in der Tab-Folge
-    for (let i = 0; i < 9; i++) {
+    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch
+    for (let i = 0; i < 12; i++) {
       await page.keyboard.press('Tab');
       reihe.push(await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); return { id: e.id || e.className, ring: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0 }; }));
     }
-    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-u-commit', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-gk-code', 'rv-dk0', 'df-sc']);
+    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-u-commit', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-gk-code', 'rv-dk0', 'rv-pk0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'df-sc']);
     for (const r of reihe) expect(r.ring, `Fokusring an ${r.id}`).toBe(true);
     await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
     await expect(page.locator(POS)).toHaveAttribute('aria-live', 'polite');

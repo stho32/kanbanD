@@ -4,6 +4,7 @@
   'use strict';
   const { ZUSTANDSWOERTER, anwendungName, zustandSatz, zustandsSymbol, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
   const { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, grosseNeueDatei, testHinweis, groessteSumme, balkenTeile } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
+  const { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, patchAdresse, patchName } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
 
   /** Zustände der Liste, zu denen es einen Diff gibt (ADR-0033 Punkt 2). */
   const MIT_DIFF = ['auf_zweig', 'verwaist'];
@@ -206,6 +207,9 @@
     uhr: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     sanduhr: '<path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/>',
     achtung: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
+    kopieren: '<path d="M9 9h11v11H9z"/><path d="M5 15H4V4h11v1"/>',
+    extern: '<path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M19 14v6H4V5h6"/>',
+    laden: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
   };
   const symbol = (name, klasse = '') => `<svg class="i${klasse}" viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[name]}</svg>`;
 
@@ -281,11 +285,20 @@
     return lesen + (stuecke ? farbigHtml(z.text, stuecke, esc) : sichtbarHtml(z.text, esc));
   }
 
-  function zeileHtml(z, esc) {
+  /** `springt`: die Nummern der neuen Seite öffnen VS Code an ihrer Zeile (R00236 FA 7); die Nummern der alten Seite nie. */
+  function zeileHtml(z, esc, springt = false) {
     if (z.art === 'kopf') return `<tr class="hk"><td colspan="4">${sichtbarHtml(z.text, esc)}</td></tr>`;
     if (z.art === 'hinweis') return `<tr class="nn"><td class="n" aria-hidden="true"></td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true"></td><td class="c">${esc(z.text)}</td></tr>`;
     const klasse = z.art === 'plus' ? 'add' : z.art === 'minus' ? 'del' : 'ctx';
-    return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td><td class="n" aria-hidden="true">${z.neu ?? ''}</td><td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c">${zelleHtml(z, esc)}</td></tr>`;
+    return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td>${nummerNeuHtml(z.neu, springt)}<td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c">${zelleHtml(z, esc)}</td></tr>`;
+  }
+
+  /** Die Nummer der neuen Seite; springt sie, trägt sie den Tooltip des Sprungs, bleibt aber `aria-hidden` (über die Tastatur führt
+      der Knopf „VS Code“, ADR-0042 Punkt 6). */
+  function nummerNeuHtml(neu, springt) {
+    if (neu === null) return '<td class="n" aria-hidden="true"></td>';
+    if (!springt) return `<td class="n" aria-hidden="true">${neu}</td>`;
+    return `<td class="n ru-nk" aria-hidden="true" title="${vscodeTitel(neu)}">${neu}</td>`;
   }
 
   /** Geschätzte Breite eines Blocks in px: Chromium misst die Breite eines Elements mit `content-visibility: auto` für die
@@ -297,12 +310,16 @@
   }
 
   /** Der Code-Bereich einer offenen Datei: Blöcke zu 500 Zeilen mit `content-visibility: auto` (ADR-0033 Punkt 5), je Block
-      eine Tabelle mit dem Namen der Datei; der Bereich ist per Tab erreichbar und scrollt quer. */
-  function codeHtml(patch, pfad, esc) {
+      eine Tabelle mit dem Namen der Datei; der Bereich ist per Tab erreichbar und scrollt quer. `sprung` ist der Link nach VS Code
+      ohne Zeile (`data-vsc`), an den ein Klick auf eine Nummer der neuen Seite ihre Zeile hängt; ohne ihn springt keine Nummer. */
+  function codeHtml(patch, pfad, esc, sprung = null) {
     const name = `Änderungen in ${esc(sichtbarText(pfad))}`;
     const zeilen = patchZeilen(patch);
-    const teile = bloecke(zeilen).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc)).join('')}</table></div>`);
-    return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;
+    const springt = Boolean(sprung);
+    const teile = bloecke(zeilen).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc, springt)).join('')}</table></div>`);
+    let ziel = '';
+    if (springt) ziel = ` data-vsc="${esc(sprung)}"`;
+    return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${ziel}${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;
   }
 
   /* ── Aufträge der Syntaxfarben (R00217 FA 5–7, ADR-0040 Punkt 5): `codeHtml` zeichnet ungefärbt und legt je färbbarer Datei einen
@@ -368,21 +385,70 @@
   /** Eine Datei als Abschnitt: Kopf als Knopf mit `aria-expanded` in einer Überschrift der Stufe `ebene`, darunter Merkmale, Hinweis
       und — offen — der Code; zu der Satz, warum sie zu ist (R00235 FA 6). `kennung` trägt in „Alle Änderungen“ den Abschnitt mit
       (`id` „<a>-<i>“, `arg` „<a>:<i>“; ADR-0033 N1.3). */
-  function dateiHtml(d, i, stand, hinweise, esc, kennung = { id: i, arg: i }, ebene = 3) {
-    const { id, arg } = kennung;
+  function dateiHtml(d, i, stand, hinweise, esc, kennung = { id: i, arg: i, quelle: null }, ebene = 3) {
+    const { id, arg, quelle } = kennung;
     const zustand = dateiZustand(d, hinweise);
     const pfad = d.neu ?? d.alt;
     const [wort, klasse] = STATUSWORT[d.status] || [d.status, 'st-mod'];
     const ren = d.status === 'R' ? `<span class="ren">umbenannt ← ${pfadHtml(d.alt, esc)}${d.aehnlichkeit != null ? ` · ${d.aehnlichkeit} %` : ''}</span>` : '';
     const anzeigen = zustand === 'patch' && !stand.offen ? '<span class="mk">anzeigen</span>' : '';
-    const kopf = `<h${ebene} class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${esc(wort)}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}${testHinweisHtml(d)}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h${ebene}>`;
+    const knopf = `<h${ebene} class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${esc(wort)}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}${testHinweisHtml(d)}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h${ebene}>`;
+    const kopf = kopfMitAktionenHtml(knopf, d, kennung, stand, hinweise, esc);
     const saetze = merkmalSaetze(d, zustand).map(t => `<p class="df-mm">${esc(t)}</p>`).join('');
-    const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc) : '';
+    const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc, sprungBasis(quelle, d)) : '';
     const inhalt = stand.offen ? saetze + hinweisHtml(d, arg, zustand, stand, esc) + code : '';
     const beschaeftigt = stand.laden === 'laeuft' ? ' aria-busy="true"' : '';
     let warumZu = '';
     if (!stand.offen && zustand === 'patch') warumZu = warumZuHtml(d, id, arg, stand);
     return `<section class="df" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${kopf}${warumZu}<div class="df-inhalt" id="rv-dc${id}"${stand.offen ? '' : ' hidden'}>${inhalt}</div></section>`;
+  }
+
+  /* ── Pfad, VS Code und Patch im Kopf jeder Datei (R00236, ADR-0042 Punkte 6 und 7; Artboard D0009 Bild 6) ── */
+
+  /** Der Kopf einer Datei: Klappknopf in der Überschrift, daneben Pfad, VS Code und Patch — in dieser Reihenfolge, auch die Tab-Folge;
+      darunter das Feld mit dem Pfad, wenn die Zwischenablage fehlte (FA 9). `kennung.quelle`: `{nr, commit | anwendung, wurzel}`;
+      ohne Quelle (Zeichnen ohne Antwort, Unit-Tests der Übersicht) nur der Klappknopf. */
+  function kopfMitAktionenHtml(knopf, d, kennung, stand, hinweise, esc) {
+    if (!kennung.quelle) return knopf;
+    let breit = '';
+    if (dateiPfad(d).length > PFAD_NEBEN_KNOEPFEN) breit = ' ru-lang';
+    return `<div class="ru-k${breit}">${knopf}${aktionenHtml(d, kennung, stand, hinweise, esc)}</div>${pfadFeldHtml(kennung.id, stand.pfadFeld, esc)}`;
+  }
+
+  /** Längere Pfade nehmen die ganze Breite, die Knöpfe stehen darunter: neben ihnen würde ein Kopf mit Tausenden Zeichen so hoch, dass
+      er nicht mehr in den Bildschirm passt (R00207 AK 9, Pfad über 4.096 Byte). */
+  const PFAD_NEBEN_KNOEPFEN = 300;
+
+  /** „Pfad“ mit seiner Statusregion, die leer schon im Kopf steht (FA 8); „VS Code“ nur, wo der Link nicht täuschen kann (FA 6);
+      „Patch“ nicht bei `zu_gross_zum_anzeigen` (FA 10). */
+  function aktionenHtml(d, kennung, stand, hinweise, esc) {
+    const { id, arg, quelle } = kennung;
+    const pfad = dateiPfad(d);
+    let bestaetigt = '';
+    if (stand.pfadOk) bestaetigt = 'Pfad kopiert';
+    const teile = [
+      `<button type="button" class="btn ru-k1 ru-pfad" id="rv-pk${id}" data-act="review-pfad" data-arg="${arg}" title="Vollständigen Pfad kopieren">${symbol('kopieren')}Pfad</button>`,
+      `<span class="ru-ok" id="rv-ok${id}" role="status">${bestaetigt}</span>`,
+    ];
+    if (linkErlaubt(quelle.wurzel, d)) {
+      const zeile = sprungZeile(d, hinweise);
+      teile.push(`<a class="btn ru-k1 ru-vsc" href="${esc(vscodeLink(quelle.wurzel, pfad, zeile))}" title="${vscodeTitel(zeile)}">${symbol('extern')}VS Code</a>`);
+    }
+    const zuGross = hinweise.some(h => h.art === 'zu_gross_zum_anzeigen' && h.datei === pfad);
+    if (!zuGross) teile.push(`<a class="btn ru-k1 ru-patch" href="${esc(patchAdresse(quelle.nr, quelle, pfad))}" download="${esc(patchName(pfad))}" title="Patch dieser Datei herunterladen">${symbol('laden')}Patch</a>`);
+    return `<div class="ru-akt">${teile.join('')}</div>`;
+  }
+
+  /** Das schreibgeschützte Feld mit dem Pfad (FA 9); '' ohne Pfad. */
+  function pfadFeldHtml(id, pfad, esc) {
+    if (typeof pfad !== 'string') return '';
+    return `<div class="ru-pf" id="rv-pf${id}"><input class="ru-pfin" id="rv-pfin${id}" readonly aria-label="Vollständiger Pfad" value="${esc(pfad)}"><span class="ru-pft" role="status">Pfad markiert — mit Strg + C kopieren</span></div>`;
+  }
+
+  /** Der Link nach VS Code ohne Zeile, an den die Nummern der neuen Seite ihre Zeile hängen; null, wo es keinen Link gibt. */
+  function sprungBasis(quelle, d) {
+    if (!quelle || !linkErlaubt(quelle.wurzel, d)) return null;
+    return vscodeLink(quelle.wurzel, dateiPfad(d), null);
   }
 
   /** Hinweis an einem Test (ADR-0042 Punkt 3) als Marke; '' ohne Hinweis. */
@@ -404,14 +470,14 @@
 
   /** Die Dateien der Seite: die Insel (ADR-0033 Punkt 4), die beim Neuzeichnen derselbe Knoten bleibt; darin die Gruppen Code, Tests,
       Doku und Planung (R00235 FA 2), offen nach `gruppenOffen` je Art. */
-  function inselHtml(schluessel, dateien, staende, hinweise, esc, gruppenOffen) {
-    const gruppen = dateiGruppen(dateien).map(g => commitGruppeHtml(g, dateien, staende, hinweise, esc, gruppenOffen[g.art]));
+  function inselHtml(schluessel, dateien, staende, hinweise, esc, gruppenOffen, quelle) {
+    const gruppen = dateiGruppen(dateien).map(g => commitGruppeHtml(g, dateien, staende, hinweise, esc, gruppenOffen[g.art], quelle));
     return `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}">${gruppen.join('')}</div>`;
   }
 
   /** Eine Gruppe in „Ein Commit“: Kopf `h2`, Dateien `h3` (PO Z. 552 (a)). */
-  function commitGruppeHtml(g, dateien, staende, hinweise, esc, offen) {
-    const inhalt = g.indizes.map(i => dateiHtml(dateien[i], i, staende[i], hinweise, esc)).join('');
+  function commitGruppeHtml(g, dateien, staende, hinweise, esc, offen, quelle) {
+    const inhalt = g.indizes.map(i => dateiHtml(dateien[i], i, staende[i], hinweise, esc, { id: i, arg: i, quelle })).join('');
     return gruppeHtml(g, inhalt, offen, { id: `-${g.art}`, arg: g.art }, 2);
   }
 
@@ -555,6 +621,7 @@
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
+  Object.assign(ziel, { kopfMitAktionenHtml, pfadFeldHtml, sprungBasis });
   Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });

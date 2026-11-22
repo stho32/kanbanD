@@ -1531,6 +1531,22 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .df-k .ren{font:12px/1.35 var(--kd-mono);color:var(--kd-muted);overflow-wrap:anywhere;min-width:0}
 .df-k .z{font:12px var(--kd-mono);white-space:nowrap;margin-left:auto}
 .df-k .mk{font-size:11px;color:var(--kd-muted);border:1px solid var(--kd-line-strong);padding:0 5px;background:var(--kd-surface);white-space:nowrap}
+/* Kopf einer Datei mit Pfad, VS Code und Patch (R00236, D0009 Bild 6): Klappknopf links, Knöpfe rechts, schmal darunter */
+.ru-k{display:flex;flex-wrap:wrap;align-items:stretch;background:var(--kd-sunken)}
+.ru-k>.df-h{flex:1 1 320px;min-width:0}
+.ru-k.ru-lang>.df-h{flex-basis:100%}
+.ru-k .df-k{block-size:100%}
+.ru-akt{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:4px var(--kd-s2);padding:3px var(--kd-s3);min-width:0}
+.ru-k1{height:max(24px,var(--kd-ziel));padding:0 var(--kd-s3);font-size:12px;text-decoration:none}
+.ru-k1 svg.i{width:12px;height:12px;flex:none}
+.ru-ok{position:absolute;z-index:4;top:calc(100% - 2px);left:var(--kd-s3);display:inline-flex;align-items:center;padding:2px 6px;border:1px solid var(--kd-status-ok-ink);background:var(--kd-surface);font-size:12px;font-weight:500;color:var(--kd-status-ok-ink);white-space:nowrap;pointer-events:none}
+.ru-ok:empty{padding:0;border:0}
+.ru-pf{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:6px var(--kd-s3);background:var(--kd-surface);border-bottom:1px solid var(--kd-line)}
+.ru-pfin{flex:1 1 240px;min-width:0;min-block-size:max(26px,var(--kd-ziel));padding:0 6px;border:1px solid var(--kd-muted);background:var(--kd-bg);color:var(--kd-text);font:12px var(--kd-mono)}
+.ru-pfin:focus{outline:2px solid var(--kd-accent);outline-offset:1px}
+.ru-pft{font-size:12.5px;font-weight:500;overflow-wrap:anywhere;min-width:0}
+.dz .n.ru-nk{cursor:pointer}
+.dz .n.ru-nk:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
 .st{display:inline-flex;align-items:center;min-block-size:18px;padding:0 5px;border:1px solid var(--zl);background:var(--zb);color:var(--zi);font-size:11px;font-weight:600;white-space:nowrap}
 .st-neu{--zl:var(--kd-status-ok);--zb:var(--kd-status-ok-bg);--zi:var(--kd-status-ok-ink)}
 .st-weg{--zl:var(--kd-status-error);--zb:var(--kd-status-error-bg);--zi:var(--kd-status-error-ink)}
