@@ -220,15 +220,19 @@
     return 'warten';
   }
 
-  /** Gelesene Zeilen `[{nr, eintrag}]` und `grenze` → Dauer in ms je Art, Gesamtdauer und die Denk- und Wartelücken ab
-      `DENKZEILE_AB_MS` (`luecken: [{vorNr, art, dauer}]`). Jede Lücke gehört dem späteren Eintrag mit Zeit, negativ zählt 0;
+  /** Gelesene Zeilen `[{nr, eintrag}]` und `grenze` → Dauer in ms je Art und gesamt, die Denk- und Wartelücken ab
+      `DENKZEILE_AB_MS` (`luecken: [{vorNr, art, dauer}]`) und die Schritte (`schritte`, je Aufruf samt Ergebnis oder je Ergebnis
+      ohne Aufruf, an der Stelle seiner ersten Zeile). Jede Lücke gehört dem späteren Eintrag mit Zeit, negativ zählt 0;
       `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. */
   function laufAuswerten(zeilen, grenze) {
     const summe = { werkzeug: 0, denken: 0, warten: 0 };
-    const luecken = [];
+    const luecken = [], schritte = [], offen = [];
     let vorher = null, mitZeit = 0;
     for (const { nr, eintrag } of zeilen) {
-      const ms = eintrag ? zeitMs(eintrag.zeit) : null;
+      if (!eintrag) continue;
+      const ms = zeitMs(eintrag.zeit);
+      if (eintrag.art === 'werkzeugaufruf') schritte.push(aufrufOeffnen(nr, eintrag, ms, offen));
+      if (eintrag.art === 'werkzeugergebnis') ergebnisZuordnen(nr, eintrag, ms, offen, schritte);
       if (ms === null) continue;
       mitZeit++;
       if (vorher !== null) {
@@ -239,8 +243,64 @@
       vorher = ms;
     }
     const gesamt = summe.werkzeug + summe.denken + summe.warten;
-    return { gesamt, ...summe, bekannt: mitZeit >= 2, grenze, luecken };
+    return { gesamt, ...summe, bekannt: mitZeit >= 2, grenze, luecken, schritte: schritte.map(ohneBeginn) };
   }
+
+  /** Ein Aufruf kommt in die Warteschlange; wartet dort schon einer, laufen alle offenen parallel (N1 Punkt 3). */
+  function aufrufOeffnen(nr, eintrag, ms, offen) {
+    const schritt = { nr, ergebnisNr: null, aufruf: true, name: eintrag.name, ...kurzbefehl(eintrag.text), dauer: null, parallel: offen.length > 0, fehler: false, beginn: ms };
+    offen.forEach(o => { o.parallel = true; });
+    offen.push(schritt);
+    return schritt;
+  }
+
+  /** Ein Ergebnis gehört zum ältesten offenen Aufruf; ohne offenen Aufruf ist es ein eigener Schritt ohne Dauer. */
+  function ergebnisZuordnen(nr, eintrag, ms, offen, schritte) {
+    const fehler = fehlerErkennen(eintrag.text);
+    const schritt = offen.shift();
+    if (!schritt) {
+      schritte.push({ nr, ergebnisNr: nr, aufruf: false, name: eintrag.name, befehl: null, absicht: null, dauer: null, parallel: false, fehler, beginn: null });
+      return;
+    }
+    schritt.ergebnisNr = nr;
+    schritt.fehler = fehler;
+    if (ms !== null && schritt.beginn !== null) schritt.dauer = Math.max(0, ms - schritt.beginn);
+  }
+
+  const ohneBeginn = ({ beginn, ...schritt }) => schritt;
+
+  /** Ein Ergebnis ist ein Fehler, wenn seine erste Zeile `Exit code <n>` mit n ≠ 0 lautet oder der Text mit `<tool_use_error>`
+      beginnt (N1 Punkt 4) — nie eine Suche nach „error“. */
+  function fehlerErkennen(text) {
+    if (text.startsWith('<tool_use_error>')) return true;
+    const exit = /^Exit code (-?\d+)\s*$/.exec(text.split('\n', 1)[0]);
+    return exit !== null && Number(exit[1]) !== 0;
+  }
+
+  /** Bevorzugte Schlüssel des Befehls im JSON eines Aufrufs (N1 Punkt 3), in dieser Reihenfolge. */
+  const BEFEHL_SCHLUESSEL = ['command', 'file_path', 'pattern', 'url', 'query', 'prompt', 'message'];
+
+  /** Text eines Aufrufs → `{befehl, absicht}`, je erste Zeile, gekürzt auf 200 Zeichen. Ein JSON-Objekt liefert den Befehl aus dem
+      ersten bevorzugten Schlüssel mit Text, sonst aus dem ersten Textwert außer `description`; `description` ist die Absicht. */
+  function kurzbefehl(text) {
+    const objekt = jsonObjekt(text);
+    if (objekt === null) return { befehl: ersteZeileGekuerzt(text), absicht: null };
+    const texte = Object.entries(objekt).filter(([k, w]) => k !== 'description' && typeof w === 'string');
+    const bevorzugt = BEFEHL_SCHLUESSEL.map(k => texte.find(([s]) => s === k)).find(Boolean) || texte[0];
+    const absicht = typeof objekt.description === 'string' ? ersteZeileGekuerzt(objekt.description) : null;
+    return { befehl: bevorzugt ? ersteZeileGekuerzt(bevorzugt[1]) : null, absicht };
+  }
+
+  function jsonObjekt(text) {
+    try {
+      const o = JSON.parse(text);
+      return typeof o === 'object' && o !== null && !Array.isArray(o) ? o : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  const ersteZeileGekuerzt = text => gekuerzt(text.split('\n', 1)[0]);
 
   /** Dauerform (FA 2), abgerundet auf ganze Sekunden: „< 1 s“, „<n> s“, „<m> min <s> s“, ab 1 h „<h> h <m> min“. */
   function dauerText(ms) {
@@ -306,5 +366,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { laufAuswerten, dauerText, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

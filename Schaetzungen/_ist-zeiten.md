@@ -1080,3 +1080,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #244 R00233 | B1203 Transkripte-Test mit drei Fällen (Haken, fremde Sperre, Haken setzt `aufgaben/` auf 0555): Fall Sperre war nach B1201 rot, jetzt 13/13 grün; Kommentar an der Rücknahme ohne `index.lock` | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-22 | Karte #244 R00233 | B1204 Mutanten m1–m6 und eigener m7 (`HEAD:` ohne `./`) in eigener Kopie getötet, AK-6-Grep leer, Gate (cargo 1232, node 1528 + 1 übersprungen, playwright 2416 + 8 übersprungen, kein Wackler), R00233 Erledigt | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-22 | Karte #251 R00234 | B1206 Lücken, Arten und Dauerform rein: laufAuswerten (Dauer je Art, Denk-/Wartelücken), dauerText, T1 als geteilte Vorrichtung, grün | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-22 | Karte #251 R00234 | B1207 Paaren über die Warteschlange, kurzbefehl mit Absicht, fehlerErkennen am Textanfang, grün | Standard | 1-2h | 0,3h | 0,3h | autonom |

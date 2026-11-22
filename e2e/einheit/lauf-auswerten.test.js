@@ -59,3 +59,51 @@ test('AK 7: Denk- und Wartezeilen ab genau 5.000 ms — T1 vor Nr 3, 7, 13, 15',
   const werkzeug = laufAuswerten([e(1, 'werkzeugaufruf', 'agent', um(0)), e(2, 'werkzeugergebnis', 'werkzeug', um(30))], false);
   assert.deepStrictEqual(werkzeug.luecken, [], 'Werkzeuglücken werden keine Denkzeile');
 });
+
+/* ── B1207: Paaren über die Warteschlange, Kurzbefehl und Absicht, Fehler am Textanfang ── */
+const { kurzbefehl, fehlerErkennen } = lauf;
+const kurz = s => ({ nr: s.nr, ergebnisNr: s.ergebnisNr, name: s.name, dauer: s.dauer, parallel: s.parallel, fehler: s.fehler });
+
+test('AK 5: T1 paart nach der Warteschlange — 3↔4, 5↔6, 7↔9, 8↔10, 11↔12, 15 allein; Dauer Ergebnis minus Aufruf', () => {
+  const a = laufAuswerten(T1_ZEILEN, false);
+  assert.deepStrictEqual(a.schritte.map(kurz), [
+    { nr: 3, ergebnisNr: 4, name: 'Bash', dauer: 4000, parallel: false, fehler: false },
+    { nr: 5, ergebnisNr: 6, name: 'Bash', dauer: 1000, parallel: false, fehler: true },
+    { nr: 7, ergebnisNr: 9, name: 'Read', dauer: 2500, parallel: true, fehler: false },
+    { nr: 8, ergebnisNr: 10, name: 'Read', dauer: 3000, parallel: true, fehler: true },
+    { nr: 11, ergebnisNr: 12, name: 'Bash', dauer: null, parallel: false, fehler: false },
+    { nr: 15, ergebnisNr: null, name: 'SubagentHandback', dauer: null, parallel: false, fehler: false },
+  ]);
+  assert.deepStrictEqual([a.schritte[0].befehl, a.schritte[0].absicht, a.schritte[1].absicht], ['ls Anforderungen | tail -2', 'Nächste freie Nummer', null]);
+});
+
+test('FA 6: ein Ergebnis ohne offenen Aufruf steht allein; ein Aufruf ohne Ergebnis auch', () => {
+  const a = laufAuswerten([e(1, 'werkzeugergebnis', 'werkzeug', um(0), 'Exit code 2'), e(2, 'werkzeugaufruf', 'agent', um(1), 'ls', 'Bash')], false);
+  assert.deepStrictEqual(a.schritte.map(kurz), [
+    { nr: 1, ergebnisNr: 1, name: null, dauer: null, parallel: false, fehler: true },
+    { nr: 2, ergebnisNr: null, name: 'Bash', dauer: null, parallel: false, fehler: false },
+  ]);
+  assert.strictEqual(a.schritte[0].aufruf, false);
+  assert.strictEqual(a.schritte[1].aufruf, true);
+});
+
+test('AK 5: kurzbefehl — JSON mit command, Text ohne JSON, JSON ohne bekannten Schlüssel, Vorrang der Schlüssel, 200 Zeichen', () => {
+  assert.deepStrictEqual(kurzbefehl('{"command":"git log -1\\nzweite","description":"Stand"}'), { befehl: 'git log -1', absicht: 'Stand' });
+  assert.deepStrictEqual(kurzbefehl('Anforderungen/R00219.md\nzweite'), { befehl: 'Anforderungen/R00219.md', absicht: null });
+  assert.deepStrictEqual(kurzbefehl('{"zahl":3,"ziel":"erste Zeile\\nzweite","description":"Absicht"}'), { befehl: 'erste Zeile', absicht: 'Absicht' });
+  assert.deepStrictEqual(kurzbefehl('{"old_string":"a","file_path":"web/app.js"}'), { befehl: 'web/app.js', absicht: null });
+  assert.deepStrictEqual(kurzbefehl('{"description":"nur Absicht"}'), { befehl: null, absicht: 'nur Absicht' });
+  assert.deepStrictEqual(kurzbefehl('[1,2]'), { befehl: '[1,2]', absicht: null });
+  assert.strictEqual(kurzbefehl(JSON.stringify({ command: 'x'.repeat(250) })).befehl, 'x'.repeat(200) + '…');
+  assert.strictEqual(kurzbefehl(JSON.stringify({ command: 'x', description: 'y'.repeat(250) })).absicht, 'y'.repeat(200) + '…');
+});
+
+test('AK 6: fehlerErkennen nur am Anfang — Exit code 0 nein, Exit code 2 ja, error mitten im Text nein, <tool_use_error> am Anfang ja', () => {
+  assert.strictEqual(fehlerErkennen('Exit code 0'), false);
+  assert.strictEqual(fehlerErkennen('Exit code 2\nstderr'), true);
+  assert.strictEqual(fehlerErkennen('kein error gefunden'), false);
+  assert.strictEqual(fehlerErkennen('<tool_use_error>File does not exist.</tool_use_error>'), true);
+  assert.strictEqual(fehlerErkennen('Ausgabe\nExit code 1'), false, 'nur die erste Zeile');
+  assert.strictEqual(fehlerErkennen(' <tool_use_error>x'), false, 'nur am Textanfang');
+  assert.strictEqual(fehlerErkennen('Exit code 12'), true);
+});
