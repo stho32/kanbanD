@@ -6,7 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
-const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastVerstoesse, kontrastFarben, kontrastAm, reiter } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, ansagenZaehlen, breiteSetzen, thema, kontrastVerstoesse, kontrastFarben, kontrastAm, reiter } = require('./hilfen');
 const { perTabErreicht } = require('./ziele-hilfen');
 const lv = require('./laufansicht-hilfen');
 const { T1 } = require('./laufansicht-t1');
@@ -97,16 +97,19 @@ function auswertungenZaehlen() {
   });
 }
 
-/** Je Änderung in einer Live-Region (`role=status|alert`, `aria-live`) ein Eintrag mit dem Text der Region danach. */
+/** Je Stapel von Änderungen (ein Zeichnen) und Live-Region (`role=status|alert`, `aria-live`) ein Eintrag mit dem Text der Region danach.
+    Leeren zählt nicht als Ansage (PO Z. 616): Ist der Text danach leer, gibt es keinen Eintrag. */
 function liveBeobachten() {
   window.kdLive = [];
   const LIVE = '[role=status],[role=alert],[aria-live]';
   new MutationObserver(eintraege => {
+    const regionen = new Set();
     for (const e of eintraege) {
       const ort = e.target.nodeType === 3 ? e.target.parentElement : e.target;
       const region = ort && ort.closest && ort.closest(LIVE);
-      if (region) window.kdLive.push(region.textContent);
+      if (region) regionen.add(region);
     }
+    for (const region of regionen) if (region.textContent) window.kdLive.push(region.textContent);
   }).observe(document, { subtree: true, childList: true, characterData: true });
 }
 const liveSeit = async page => {
@@ -273,6 +276,32 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     await expect(page.locator(`${INSEL} > li.lv-ende`)).toBeVisible();
     await expect(page.locator(KEINE_FEHLER)).toHaveCount(0);
     expect(anfragen.filter(u => new URL(u).pathname.startsWith('/api/'))).toEqual([]);
+  });
+
+  test('AK 4 · US-4 (Nacharbeit A3, PO Z. 616): jeder Wechsel sagt an, auch bei gleichem Satz; ein Klick auf ein gesperrtes Kästchen sagt nichts', async ({ page }) => {
+    const zaehler = await ansagenZaehlen(page);
+    await s.oeffnen(T.T4);
+    await s.gelesen();
+    const satz = '2 von 2 Einträgen sichtbar.';
+    // T4 trägt keinen Systemhinweis: der Satz bleibt bei jedem Klick gleich, der Statusbereich wird vor jeder Ansage geleert
+    await zaehler.beginnen();
+    for (let i = 0; i < 3; i++) {
+      await s.kaestchen('Systemhinweise').click();
+      await expect(page.locator(STATUS)).toHaveText(satz);
+      await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    }
+    expect((await zaehler.eintraege()).map(e => e.text), 'dreimal Systemhinweise bei gleichem Satz').toEqual([satz, satz, satz]);
+    await s.oeffnen(T.T1);
+    await s.gelesen();
+    await zaehler.beginnen();
+    await s.kaestchen('Werkzeuge').click();
+    await s.kaestchen('Werkzeuge').click();
+    expect((await zaehler.eintraege()).length, 'Werkzeuge hin und zurück').toBe(2);
+    await s.kaestchen('nur Fehler').click();
+    await expect(page.locator(STATUS)).toHaveText('2 von 14 Einträgen sichtbar.');
+    await zaehler.beginnen();
+    await s.kaestchen('Systemhinweise').click({ force: true });
+    expect(await zaehler.eintraege(), 'gesperrtes Kästchen sagt nichts').toEqual([]);
   });
 
   test('AK 5 · US-3: T1 „nur Fehler“ — zwei Fehlerzeilen unter dem Bericht, Arten gesperrt mit ihrem Stand; T4 „Keine Fehler erkannt …“', async ({ page }) => {

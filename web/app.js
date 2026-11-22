@@ -3740,6 +3740,10 @@ async function aktion(a, arg, wert) {
         if (!v || !v.ergebnis || v.ergebnis.art !== 'eintraege') return;
         v.filter = { ...v.filter, [arg]: !v.filter[arg] };
         v.ansage = laufFilterAnsage(v.ergebnis.auswertung.zeilenArten, v.filter);
+        // jeder Wechsel sagt an, auch bei gleichem Satz: der Statusbereich wird vor der Ansage geleert (PO Z. 616, Vorbild fensterMelden R00189);
+        // das Leeren ist keine Ansage, eine Zeitschwelle gibt es nicht
+        const status = document.getElementById('lv-status');
+        if (status) status.textContent = '';
         u.fokus = '#lv-f-' + arg;
         render();
         return;
