@@ -71,16 +71,37 @@
     return wert;
   }
 
+  const TOKEN_SCHLUESSEL = ['ein', 'aus', 'cache_lesen', 'cache_schreiben'];
+
+  /** `tokens` eines Eintrags von `agent` (ADR-0041 N3 Punkt 1): je Schlüssel eine ganze Zahl ≥ 0, ein fehlender oder falscher
+      Wert zählt 0, unbekannte Schlüssel fallen weg; bleibt kein gültiger Wert, fehlt das Feld (null) — der Eintrag bleibt lesbar. */
+  function tokensLesen(o) {
+    if (o.wer !== 'agent') return null;
+    const roh = o.tokens;
+    const objekt = typeof roh === 'object' && roh !== null && !Array.isArray(roh);
+    if (!objekt) return null;
+    const tokens = { ein: 0, aus: 0, cache_lesen: 0, cache_schreiben: 0 };
+    let gueltige = 0;
+    for (const schluessel of TOKEN_SCHLUESSEL) {
+      const wert = Object.prototype.hasOwnProperty.call(roh, schluessel) ? roh[schluessel] : undefined;
+      if (!Number.isSafeInteger(wert) || wert < 0) continue;
+      tokens[schluessel] = wert;
+      gueltige++;
+    }
+    if (gueltige === 0) return null;
+    return tokens;
+  }
+
   /** Ein Eintrag nach dem Format (PO Z. 371) oder null: `art` und `wer` aus den festen Mengen, `text` als Text; `zeit` und `name`
-      sind, wenn vorhanden, Text; `id` (nur am Aufruf) und `zu` (nur am Ergebnis) sind Kennungen oder null. Unbekannte Schlüssel
-      fallen weg. */
+      sind, wenn vorhanden, Text; `id` (nur am Aufruf) und `zu` (nur am Ergebnis) sind Kennungen oder null; `tokens` nur an
+      Einträgen von `agent`, sonst null. Unbekannte Schlüssel fallen weg. */
   function eintragPruefen(o) {
     const objekt = typeof o === 'object' && o !== null && !Array.isArray(o);
     if (!objekt || !ARTEN.includes(o.art) || !WER.includes(o.wer) || typeof o.text !== 'string') return null;
     if (!textOderFehlt(o, 'zeit') || !textOderFehlt(o, 'name')) return null;
     return {
       art: o.art, wer: o.wer, text: o.text, zeit: 'zeit' in o ? o.zeit : null, name: 'name' in o ? o.name : null,
-      id: kennungLesen(o, 'werkzeugaufruf', 'id'), zu: kennungLesen(o, 'werkzeugergebnis', 'zu'),
+      id: kennungLesen(o, 'werkzeugaufruf', 'id'), zu: kennungLesen(o, 'werkzeugergebnis', 'zu'), tokens: tokensLesen(o),
     };
   }
 

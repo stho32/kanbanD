@@ -108,8 +108,8 @@ test('AK 7: eine Zeile mit falsch geformtem id ist lesbar — keine Meldung „n
 });
 
 test('B1233: eintragPruefen liefert id nur an einem Aufruf und zu nur an einem Ergebnis, sonst null; tokens fällt weg', () => {
-  assert.deepStrictEqual(eintragPruefen({ art: 'werkzeugaufruf', wer: 'agent', text: 'x', id: 'toolu_A', tokens: 12 }), { art: 'werkzeugaufruf', wer: 'agent', text: 'x', zeit: null, name: null, id: 'toolu_A', zu: null });
-  assert.deepStrictEqual(eintragPruefen({ art: 'werkzeugergebnis', wer: 'werkzeug', text: 'x', zu: 'toolu_A' }), { art: 'werkzeugergebnis', wer: 'werkzeug', text: 'x', zeit: null, name: null, id: null, zu: 'toolu_A' });
+  assert.deepStrictEqual(eintragPruefen({ art: 'werkzeugaufruf', wer: 'agent', text: 'x', id: 'toolu_A', tokens: 12 }), { art: 'werkzeugaufruf', wer: 'agent', text: 'x', zeit: null, name: null, id: 'toolu_A', zu: null, tokens: null });
+  assert.deepStrictEqual(eintragPruefen({ art: 'werkzeugergebnis', wer: 'werkzeug', text: 'x', zu: 'toolu_A' }), { art: 'werkzeugergebnis', wer: 'werkzeug', text: 'x', zeit: null, name: null, id: null, zu: 'toolu_A', tokens: null });
 });
 
 test('AK 8: die Paarung hat auf den offenen Aufrufen kein shift, splice, indexOf, findIndex, filter, forEach und kein Objekt als Kennungsspeicher', () => {
