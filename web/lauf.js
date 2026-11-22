@@ -201,6 +201,56 @@
     return `${zwei(d.getHours())}:${zwei(d.getMinutes())}:${zwei(d.getSeconds())}`;
   }
 
+  /* ── Auswertung (R00234, ADR-0041 N1 Punkte 1, 3, 4, 5): einmal je erfolgreichem Lesen, ein Durchlauf über die Zeilen ── */
+
+  /** Ab dieser Lücke steht Denken oder Warten als eigene Zeile vor dem Eintrag (PO Z. 518); nie in der Oberfläche. */
+  const DENKZEILE_AB_MS = 5000;
+
+  /** `zeit` nach ISO 8601 mit Versatz oder `Z` → Millisekunden; jede andere Form ergibt null. */
+  function zeitMs(zeit) {
+    if (zeit === null || !ISO_MIT_VERSATZ.test(zeit)) return null;
+    const ms = new Date(zeit).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+
+  /** Wem die Lücke vor einem Eintrag gehört (FA 1): ein Ergebnis ist Werkzeug, sonst entscheidet `wer` (offene Frage 1). */
+  function lueckenArt(eintrag) {
+    if (eintrag.art === 'werkzeugergebnis' || eintrag.wer === 'werkzeug') return 'werkzeug';
+    if (eintrag.wer === 'agent') return 'denken';
+    return 'warten';
+  }
+
+  /** Gelesene Zeilen `[{nr, eintrag}]` und `grenze` → Dauer in ms je Art, Gesamtdauer und die Denk- und Wartelücken ab
+      `DENKZEILE_AB_MS` (`luecken: [{vorNr, art, dauer}]`). Jede Lücke gehört dem späteren Eintrag mit Zeit, negativ zählt 0;
+      `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. */
+  function laufAuswerten(zeilen, grenze) {
+    const summe = { werkzeug: 0, denken: 0, warten: 0 };
+    const luecken = [];
+    let vorher = null, mitZeit = 0;
+    for (const { nr, eintrag } of zeilen) {
+      const ms = eintrag ? zeitMs(eintrag.zeit) : null;
+      if (ms === null) continue;
+      mitZeit++;
+      if (vorher !== null) {
+        const dauer = Math.max(0, ms - vorher), art = lueckenArt(eintrag);
+        summe[art] += dauer;
+        if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS) luecken.push({ vorNr: nr, art, dauer });
+      }
+      vorher = ms;
+    }
+    const gesamt = summe.werkzeug + summe.denken + summe.warten;
+    return { gesamt, ...summe, bekannt: mitZeit >= 2, grenze, luecken };
+  }
+
+  /** Dauerform (FA 2), abgerundet auf ganze Sekunden: „< 1 s“, „<n> s“, „<m> min <s> s“, ab 1 h „<h> h <m> min“. */
+  function dauerText(ms) {
+    const s = Math.floor(ms / 1000);
+    if (s < 1) return '< 1 s';
+    if (s < 60) return `${s} s`;
+    if (s < 3600) return `${Math.floor(s / 60)} min ${s % 60} s`;
+    return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
+  }
+
   /* ── Zustände der Seite (FA 7, FA 8, FA 11; Bilder 2, 4, 5): Meldungen, Ansage und Rumpf ── */
 
   const LIEST = 'Liest das Transkript …';
@@ -256,5 +306,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { laufAuswerten, dauerText, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);
