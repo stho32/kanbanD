@@ -314,3 +314,18 @@ test('Budget: der Satz zählt genau die Zeichen als Marke, die zeichenBuchen (la
   }
   assert.deepStrictEqual(abweichend, []);
 });
+
+test('web/lauf-satz.js überschreibt im Browser keinen Namen eines anderen Moduls und keinen globalen aus ansicht.js und app.js (Lehre #217)', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const ordner = path.join(__dirname, '../../web');
+  const namen = datei => {
+    const text = fs.readFileSync(path.join(ordner, datei), 'utf8');
+    return [...text.matchAll(/Object\.assign\(ziel, \{([^}]*)\}\);/g)].flatMap(m => m[1].split(',').map(n => n.trim().split(':')[0].trim()).filter(Boolean));
+  };
+  const eigene = namen('lauf-satz.js');
+  assert.ok(eigene.includes('aufrufSatz') && eigene.includes('ergebnisSatz'));
+  for (const datei of fs.readdirSync(ordner).filter(d => d.endsWith('.js') && d !== 'lauf-satz.js')) assert.deepStrictEqual(namen(datei).filter(n => eigene.includes(n)), [], datei);
+  const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
+  for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
+  assert.match(fs.readFileSync(path.join(ordner, 'index.html'), 'utf8'), /<script src="\/web\/lauf-satz\.js"><\/script>\n<script src="\/web\/lauf\.js"><\/script>/, 'vor lauf.js geladen');
+});

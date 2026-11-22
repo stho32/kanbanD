@@ -266,6 +266,194 @@
     return kuerzungHtml(zeilen, 'aenderung', teile => `<div class="lv-dif">${teile.join('')}</div>`);
   }
 
+  /* ── Ergebnis (N4 Punkt 3, FA 1, 5–10) ── */
+
+  const LEER = '<p class="lv-gedaempft">Leeres Ergebnis.</p>';
+  const NUR_HINWEIS = '<p class="lv-nurh">Nur Systemhinweis, ausgeblendet (Filter „Systemhinweise“).</p>';
+
+  /** Text eines Ergebnisses → `{html, kurz, fehlerText, hinweise}`: `kurz` ist die Kurzform der Zusammenfassung (`gekuerzt`,
+      `systemhinweis` oder null), `fehlerText` der Text, an dessen Anfang `fehlerErkennen` prüft, `hinweise` die Zahl der eingebetteten.
+      Eine von Claude Code gekürzte Ausgabe trägt die Marke, darunter die Vorschau, gesetzt wie ein Ergebnis. */
+  function ergebnisSatz(text, zeile) {
+    const gekuerzt = gekuerztErkennen(text);
+    if (gekuerzt === null) return { ...ergebnisKoerper(text, zeile), fehlerText: text };
+    let inhalt = text;
+    if (gekuerzt.form) inhalt = gekuerzt.vorschau;
+    const koerper = ergebnisKoerper(inhalt, zeile);
+    return { html: markeHtml(gekuerzt, zeile) + koerper.html, kurz: 'gekuerzt', fehlerText: inhalt, hinweise: koerper.hinweise };
+  }
+
+  /** Der Inhalt unter „Ergebnis“: leer, ein JSON-Objekt oder Text mit Testzeile und eingebetteten Hinweisen, gekürzt; nie Markdown. */
+  function ergebnisKoerper(text, zeile) {
+    if (!text.trim()) return { html: LEER, kurz: null, hinweise: 0 };
+    const json = jsonErgebnis(text);
+    if (json !== null) return { html: jsonBlock(json, zeile, 'ergebnis'), kurz: null, hinweise: 0 };
+    const teile = systemhinweiseTrennen(text);
+    const hinweise = teile.filter(t => t.art === 'hinweis').length;
+    const nurHinweise = hinweise > 0 && teile.every(t => t.art === 'hinweis' || !t.text.trim());
+    let kurz = null, nachsatz = '';
+    if (nurHinweise) {
+      kurz = 'systemhinweis';
+      nachsatz = NUR_HINWEIS;
+    }
+    return { html: testzeileHtml(testzeileFinden(text), zeile) + teileHtml(teile, zeile) + nachsatz, kurz, hinweise };
+  }
+
+  /** Ein Ergebnis, das ganz ein JSON-Objekt ist, innerhalb der Grenzen und des Budgets der Marken; sonst null. */
+  function jsonErgebnis(text) {
+    if (!text.trimStart().startsWith('{') || !satzErlaubt(text)) return null;
+    const gelesen = jsonLesen(text);
+    if (gelesen === null || !istObjekt(gelesen.wert)) return null;
+    const zaehler = markenZaehler(t => t);
+    jsonZeilen(gelesen.wert, zaehler.zeile);
+    if (zaehler.gezeigt() > markenIn(text)) return null;
+    return gelesen.wert;
+  }
+
+  /** Text- und Hinweisteile als Posten der Kürzung: je Textzeile einer, je Hinweis einer mit dem Gewicht seiner Zeilen. Offen bleibt,
+      was vor der 21. Zeile beginnt; der Rest steht hinter „weitere <n> Zeilen“, n in Zeilen des Texts. */
+  function teileHtml(teile, zeile) {
+    const posten = teile.flatMap(t => {
+      if (t.art === 'hinweis') return [{ hinweis: true, html: hinweisHtml(t.text, zeile), zeilen: textZeilen(t.text).length }];
+      if (!t.text) return [];
+      return textZeilen(t.text).map(z => ({ hinweis: false, html: zeile(z), zeilen: 1 }));
+    });
+    let gezeigt = 0, schnitt = 0;
+    while (schnitt < posten.length && gezeigt < OFFENE_ZEILEN) {
+      gezeigt += posten[schnitt].zeilen;
+      schnitt++;
+    }
+    const offen = postenHtml(posten.slice(0, schnitt));
+    if (schnitt === posten.length) return offen;
+    const rest = posten.slice(schnitt);
+    return offen + mehrHtml(rest.reduce((summe, p) => summe + p.zeilen, 0), 'ergebnis', postenHtml(rest));
+  }
+
+  /** Folgen von Textzeilen je in ein `pre`, Hinweise dazwischen als eigene Blöcke. */
+  function postenHtml(posten) {
+    let html = '', zeilen = [];
+    for (const p of posten) {
+      if (!p.hinweis) {
+        zeilen.push(p.html);
+        continue;
+      }
+      if (zeilen.length) html += `<pre>${zeilen.join('\n')}</pre>`;
+      zeilen = [];
+      html += p.html;
+    }
+    if (zeilen.length) html += `<pre>${zeilen.join('\n')}</pre>`;
+    return html;
+  }
+
+  const PFEIL = `<span class="pf">${PFEIL_KLEIN}</span>`;
+  const ERSTE_ZEILE_ZEICHEN = 200;
+
+  /** Eingebetteter Systemhinweis (PO Z. 600, 603), eingeklappt wie die Systemhinweis-Zeile: Wort und erste Zeile des Blocks;
+      aufgeklappt der Block in Festbreite. Der Filter „Systemhinweise“ blendet ihn über die Klasse `lv-ein` aus. */
+  function hinweisHtml(text, zeile) {
+    const zeilen = textZeilen(text);
+    const z1 = Array.from(zeilen[0]).slice(0, ERSTE_ZEILE_ZEICHEN).join('');
+    return `<details class="lv-e sys lv-ein"><summary>${PFEIL}<span class="nm">Systemhinweis</span><span class="z1">${zeile(z1)}</span></summary><pre>${zeilen.map(zeile).join('\n')}</pre></details>`;
+  }
+
+  /* ── Systemhinweise im Text (N4 Nachtrag 261-architekt-2 Punkt 1, PO Z. 603) ── */
+
+  const HINWEIS_AUF = '<system-reminder>';
+  const HINWEIS_ZU = '</system-reminder>';
+
+  /** Text → Teile `{art: 'text'|'hinweis', text}`: ein Hinweis ist ein vollständiger Block, der am Zeilenanfang mit `<system-reminder>`
+      beginnt und mit `</system-reminder>` schließt; der Umbruch davor und danach gehört zur Grenze. Alles andere bleibt Text. */
+  function systemhinweiseTrennen(text) {
+    const teile = [];
+    let ab = 0, suche = 0;
+    for (let auf = text.indexOf(HINWEIS_AUF, suche); auf >= 0; auf = text.indexOf(HINWEIS_AUF, suche)) {
+      suche = auf + 1;
+      if (auf > 0 && text[auf - 1] !== '\n') continue;
+      const zu = text.indexOf(HINWEIS_ZU, auf);
+      if (zu < 0) break;
+      if (auf > ab) teile.push({ art: 'text', text: text.slice(ab, auf - 1) });
+      ab = zu + HINWEIS_ZU.length;
+      teile.push({ art: 'hinweis', text: text.slice(auf, ab) });
+      if (text[ab] === '\n') ab++;
+      suche = ab;
+    }
+    if (ab < text.length || !teile.length) teile.push({ art: 'text', text: text.slice(ab) });
+    return teile;
+  }
+
+  /* ── Testzeile (N4 Punkt 3, FA 7, PO Z. 598, 613) ── */
+
+  const TESTZEILE = [
+    { muster: /^test result: (?:ok|FAILED)\. \d+ passed; (\d+) failed/, fehlschlaege: m => Number(m[1]) },
+    { muster: /^# fail (\d+)$/, fehlschlaege: m => Number(m[1]) },
+    { muster: /^# pass \d+$/, fehlschlaege: () => 0 },
+    { muster: /^\d+ (?:passed|failed)\b/, fehlschlaege: m => fehlschlaegeIn(m.input) },
+  ];
+
+  function fehlschlaegeIn(zeile) {
+    const m = /(\d+) failed/.exec(zeile);
+    if (m === null) return 0;
+    return Number(m[1]);
+  }
+
+  /** Die letzte Zeile in einer der Testformen unter den letzten 20 Zeilen → `{zeile, fehler}`, sonst null. */
+  function testzeileFinden(text) {
+    const zeilen = textZeilen(text).slice(-OFFENE_ZEILEN);
+    for (let i = zeilen.length - 1; i >= 0; i--) {
+      const kern = zeilen[i].trim();
+      for (const form of TESTZEILE) {
+        const m = form.muster.exec(kern);
+        if (m !== null) return { zeile: zeilen[i], fehler: form.fehlschlaege(m) > 0 };
+      }
+    }
+    return null;
+  }
+
+  const HAKEN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+  const KREUZ = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+  /** Die Testzeile über dem Ergebnis: Ton, Symbol (Schmuck) und unsichtbar das Urteil vor ihrem Text (PO Z. 613). */
+  function testzeileHtml(testzeile, zeile) {
+    if (testzeile === null) return '';
+    if (testzeile.fehler) return `<p class="lv-tz fehl">${KREUZ}<span class="vh">Tests fehlgeschlagen: </span><span>${zeile(testzeile.zeile)}</span></p>`;
+    return `<p class="lv-tz ok">${HAKEN}<span class="vh">Tests bestanden: </span><span>${zeile(testzeile.zeile)}</span></p>`;
+  }
+
+  /* ── Von Claude Code gekürzt (N4 Punkt 3, FA 8, PO Z. 594, 604) ── */
+
+  const PERSISTED = /^\s*<persisted-output>\nOutput too large \(([^)\n]+)\)\. Full output saved to: ([^\n]+)\n\nPreview \([^)\n]*\):\n([\s\S]*?)\n?<\/persisted-output>\s*$/;
+
+  /** null ohne `<persisted-output>` am Anfang (nach Leerraum); `{form: false}`, wenn das Innere nicht zur Form passt; sonst Größe
+      (deutsch), Pfad und Vorschau. */
+  function gekuerztErkennen(text) {
+    if (!text.trimStart().startsWith('<persisted-output>')) return null;
+    const m = PERSISTED.exec(text);
+    if (m === null) return { form: false };
+    const groesse = groesseDeutsch(m[1]);
+    if (groesse === null) return { form: false };
+    return { form: true, groesse, pfad: m[2], vorschau: m[3] };
+  }
+
+  /** „69.9KB“ → „69,9 KB“, „1.2MB“ → „1,2 MB“, „512B“ → „512 B“; eine andere Form ergibt null. */
+  function groesseDeutsch(groesse) {
+    const m = /^(\d+)(?:\.(\d+))?\s?([KMGT]?B)$/.exec(groesse);
+    if (m === null) return null;
+    let zahl = m[1];
+    if (m[2] !== undefined) zahl += `,${m[2]}`;
+    return `${zahl} ${m[3]}`;
+  }
+
+  const SCHERE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>';
+
+  /** Die Marke über der Vorschau (PO Z. 594); der Pfad steht an genau einer Stelle, als Text (C2 setzt dort den Link). */
+  function markeHtml(gekuerzt, zeile) {
+    if (!gekuerzt.form) return `<p class="lv-cc">${SCHERE}<span>Von Claude Code gekürzt: Der Agent sah nur diese Vorschau.</span></p>`;
+    return `<p class="lv-cc">${SCHERE}<span>Von Claude Code gekürzt (${zeile(gekuerzt.groesse)}): Der Agent sah nur diese Vorschau. Vollständig: <span class="mono lv-ccpfad">${zeile(gekuerzt.pfad)}</span></span></p>`;
+  }
+
+  /** Kurzform der Zusammenfassung (PO Z. 604): „Von Claude Code gekürzt“ mit Symbol, ohne Größe. */
+  const GEKUERZT_KURZ = `<span class="lv-cck">${SCHERE}Von Claude Code gekürzt</span>`;
+
   /* ── Budget der Marken: ein Satz zeigt nie mehr markierbare Zeichen, als `zeichenBuchen` (lauf.js) im Text gebucht hat ── */
 
   /** Was `zeichenBuchen` als Marke zählt (MARKIERBAR in lauf.js); ein Node-Test hält beide gleich. */
@@ -286,5 +474,5 @@
     };
   }
 
-  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, MARKIERBAR_SATZ: MARKIERBAR });
+  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
 })(typeof module !== 'undefined' ? module.exports : window);

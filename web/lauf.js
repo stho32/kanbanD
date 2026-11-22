@@ -5,6 +5,7 @@
   const { markdownHtml } = typeof module !== 'undefined' ? require('./markdown.js') : window;
   const { sichtbarHtml, sichtbarText } = typeof module !== 'undefined' ? require('./diff.js') : window;
   const { geld, inCent } = typeof module !== 'undefined' ? require('./kosten.js') : window;
+  const satz = typeof module !== 'undefined' ? require('./lauf-satz.js') : window;
 
   /** Grenze des Lesens (ADR-0041 Punkt 4): 16 MiB entpackt, gezählt vor dem Dekodieren, und 20.000 Zeilen — 10-mal der größte
       echte Lauf. Die Zahlen stehen nie in der Oberfläche (PO Z. 468). */
@@ -786,8 +787,14 @@
   }
 
   /** Ein Ergebnis ist ein Fehler, wenn seine erste Zeile `Exit code <n>` mit n ≠ 0 lautet oder der Text mit `<tool_use_error>`
-      beginnt (N1 Punkt 4) — nie eine Suche nach „error“. */
+      beginnt (N1 Punkt 4) — nie eine Suche nach „error“. Bei einer von Claude Code gekürzten Ausgabe gilt die Vorschau (N4 Punkt 3). */
   function fehlerErkennen(text) {
+    const gekuerzt = satz.gekuerztErkennen(text);
+    if (gekuerzt !== null && gekuerzt.form) return fehlerAmAnfang(gekuerzt.vorschau);
+    return fehlerAmAnfang(text);
+  }
+
+  function fehlerAmAnfang(text) {
     if (text.startsWith('<tool_use_error>')) return true;
     const exit = /^Exit code (-?\d+)\s*$/.exec(text.split('\n', 1)[0]);
     return exit !== null && Number(exit[1]) !== 0;
