@@ -1908,3 +1908,33 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Härtung offen:** Die Bauart-Probe über toString ist eine Schwarzliste; eine Verhaltensprobe würde sie verlässlich machen. 47 weitere Lesungen über locator.evaluate in 23 Specs.
 - **Director:** Beim Rebase erzeugte die Union eine Doppelzeile in Gelerntes, weil der entwickler eine Zeile nachträglich geändert hatte. Nach der Union nach doppelten Zeilen derselben Karte suchen.
 | 2026-11-22 | #240 | Erledigt | director | Retrospektive | – | 1 Lehre (Union: nach Doppelzeilen derselben Karte suchen) |
+| 2026-11-22 | #252 | Detailplanung | planer | bestanden | 5 min | R00235 nachgeschärft, eddfe325 · claude · opus · Lauf 252-planer-2 · 1,83 $ · Karte gesamt 14,14 $ |
+| 2026-11-22 | #251 | Entwicklung | entwickler | bestanden | 1 h 12 min | Gate cargo 1149+ak03, node 1562, PW 2437/3 fremd · claude · opus · Lauf 251-entwickler-1 · 17,90 $ · Karte gesamt 24,63 $ |
+| 2026-11-22 | #251 | Auto-Reviews | architektur-reviewer | bestanden | 1 min | kein Muss · claude · sonnet · Lauf 251-architektur-reviewer-1 · 0,34 $ · Karte gesamt 24,97 $ |
+| 2026-11-22 | #251 | Auto-Reviews | ux-reviewer | bestanden | 5 min | kein Muss · claude · sonnet · Lauf 251-ux-reviewer-3 · 0,91 $ · Karte gesamt 25,88 $ |
+| 2026-11-22 | #251 | Auto-Reviews | code-reviewer | befund | 5 min | Muss: r00221 AK 6 Erwartung abgeschwächt · claude · sonnet · Lauf 251-code-reviewer-1 · 0,80 $ · Karte gesamt 26,68 $ |
+| 2026-11-22 | #251 | Nacharbeit | entwickler | bestanden | 28 min | Nacharbeit 1: neuer AK-6-Test, m10 rot, Gate grün · claude · sonnet · Lauf 251-entwickler-2 · 0,67 $ · Karte gesamt 27,35 $ |
+| 2026-11-22 | #252 | Entwicklung | entwickler | bestanden | 1 h 28 min | Gate cargo 1225, node 1555, PW 2448/0 · claude · opus · Lauf 252-entwickler-1 · 18,41 $ · Karte gesamt 32,55 $ |
+| 2026-11-22 | #251 | Auto-Reviews | code-reviewer | bestanden | 57 min | Nachprüfung: Muss 1 geschlossen · claude · sonnet · Lauf 251-code-reviewer-2 · 0,39 $ · Karte gesamt 27,74 $ |
+| 2026-11-22 | #252 | Auto-Reviews | code-reviewer | bestanden | 4 min | kein Muss · claude · sonnet · Lauf 252-code-reviewer-1 · 0,94 $ · Karte gesamt 33,49 $ |
+| 2026-11-22 | #252 | Auto-Reviews | architektur-reviewer | bestanden | 1 min | kein Muss, Drift ADR-0042/A00009 · claude · sonnet · Lauf 252-architektur-reviewer-1 · 0,30 $ · Karte gesamt 33,79 $ |
+| 2026-11-22 | #252 | Auto-Reviews | ux-reviewer | bestanden | 8 min | kein Muss, 2 Sollte · claude · sonnet · Lauf 252-ux-reviewer-2 · 1,89 $ · Karte gesamt 35,68 $ |
+| 2026-11-22 | #252 | Auto-Reviews | architekt | bestanden | 3 min | ADR-0042 N1, A00009 · claude · opus · Lauf 252-architekt-2 · 1,33 $ · Karte gesamt 37,01 $ |
+| 2026-11-22 | #251 | Entwicklertest | entwicklertester | befund | 8 min | Muss: Sprung landet beim ersten Mal außer Sicht · claude · sonnet · Lauf 251-entwicklertester-1 · 0,92 $ · Karte gesamt 28,66 $ |
+| 2026-11-22 | #252 | Entwicklertest | entwicklertester | bestanden | 3 min | 7 Szenarien, kein Befund · claude · sonnet · Lauf 252-entwicklertester-1 · 0,36 $ · Karte gesamt 37,37 $ |
+| 2026-11-22 | #244 | Entwicklung | entwickler | bestanden | 38 min | Gate cargo 1232, node 1528, PW 2416/0 · claude · opus · Lauf 244-entwickler-1 · 4,51 $ · Karte gesamt 7,71 $ |
+| 2026-11-22 | #252 | Entwicklertest | rechtschreib-reviewer | bestanden | 1 min | kein Muss · claude · sonnet · Lauf 252-rechtschreib-reviewer-1 · 0,46 $ · Karte gesamt 37,83 $ |
+| 2026-11-22 | #244 | Auto-Reviews | observability-reviewer | bestanden | 2 min | kein Muss, 2 Sollte · claude · sonnet · Lauf 244-observability-reviewer-1 · 0,37 $ · Karte gesamt 8,08 $ |
+| 2026-11-22 | #244 | Auto-Reviews | code-reviewer | bestanden | 3 min | kein Muss · claude · sonnet · Lauf 244-code-reviewer-1 · 0,52 $ · Karte gesamt 8,60 $ |
+
+**Retrospektive #252** (Review-Seite: Dateien nach Art gruppiert, Code zuerst, R00235, ADR-0042 mit N1, Scheibe S1; 2026-11-22; Gate auf bc0578f grün bis auf den bekannten Wackler ak03 (#246), allein 3/3 grün; ausgeliefert. Karte gesamt rund 38 $. Erstmals mit Transkripten und 9 Commit-Verweisen an der Karte.)
+- **Gut:** Entwurf des Betreibers, ADR, Zeichnung, PO und UX-Vorprüfung vor dem Bau. Danach liefen alle vier Reviews und der Entwicklertest ohne Muss, also ohne Nacharbeit. Rund 116 bestehende Ausgangslagen wurden vorab umgestellt (.txt → .dat), sodass das Gate grün blieb.
+- **Director:**
+  - Das Rechtschreib-Review (Label text) fehlte in den Auto-Reviews und wurde nach dem Zusammenführen nachgeholt (bestanden).
+  - Der Auftrag an die UX-Nachprüfung nannte denselben Ablagepfad wie die Vorprüfung; der Bericht wurde überschrieben.
+  - Die Wache wurde mit „0 rot“ geschlossen, bevor der Exit-Code von cargo gelesen war.
+- **Lehren:**
+  - Prüfende Rollen nach der Tabelle „Betritt die Karte die Spalte“ ableiten, nicht aus dem Gedächtnis.
+  - Jeder Bericht bekommt einen eigenen Dateinamen.
+  - Vor `wache gruen` CARGO_EXIT und PW_EXIT lesen.
+| 2026-11-22 | #252 | Erledigt | director | Retrospektive | – | 3 Lehren (Reviewer aus der Tabelle, Bericht je Lauf eigener Name, Exit-Codes vor gruen lesen) |
