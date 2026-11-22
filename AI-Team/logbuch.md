@@ -1990,3 +1990,17 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-22 | #263 | Detailplanung | planer | bestanden | 6 min | R00238, I0228 B1237–B1244 · claude · opus · Lauf 263-planer-1 · 2,46 $ · Karte gesamt 11,18 $ |
 | 2026-11-22 | #263 | Detailplanung | ux-reviewer | bestanden | 2 min | kein Muss, 6 Sollte · claude · sonnet · Lauf 263-ux-reviewer-1 · 0,48 $ · Karte gesamt 11,66 $ |
 | 2026-11-22 | #263 | Detailplanung | planer | bestanden | 1 min | R00238 nachgeschärft, 550ab6c8 · claude · sonnet · Lauf 263-planer-2 · 0,25 $ · Karte gesamt 11,91 $ |
+| 2026-11-22 | #255 | Entwicklung | entwickler | bestanden | 1 h 26 min | AK 1–10, m1–m12, Gate cargo 1239, node 1622, PW 2515/0 · claude · opus · Lauf 255-entwickler-1 · 15,64 $ · Karte gesamt 25,39 $ |
+| 2026-11-22 | #255 | Auto-Reviews | security-reviewer | bestanden | 2 min | kein Befund mit Angriffsweg · claude · sonnet · Lauf 255-security-reviewer-1 · 0,42 $ · Karte gesamt 25,81 $ |
+| 2026-11-22 | #255 | Auto-Reviews | code-reviewer | bestanden | 3 min | kein Muss · claude · sonnet · Lauf 255-code-reviewer-1 · 0,66 $ · Karte gesamt 26,47 $ |
+| 2026-11-22 | #255 | Auto-Reviews | rechtschreib-reviewer | bestanden | 1 min | keine Funde · claude · sonnet · Lauf 255-rechtschreib-reviewer-1 · 0,30 $ · Karte gesamt 26,77 $ |
+| 2026-11-22 | #255 | Auto-Reviews | legacy-reviewer | bestanden | 2 min | kein Muss · claude · sonnet · Lauf 255-legacy-reviewer-1 · 0,57 $ · Karte gesamt 27,34 $ |
+| 2026-11-22 | #255 | Auto-Reviews | ux-reviewer | bestanden | 8 min | kein Muss · claude · sonnet · Lauf 255-ux-reviewer-3 · 1,44 $ · Karte gesamt 28,78 $ |
+| 2026-11-22 | #255 | Entwicklertest | entwicklertester | bestanden | 5 min | US-1–7 · claude · sonnet · Lauf 255-entwicklertester-1 · 0,55 $ · Karte gesamt 29,33 $ |
+| 2026-11-22 | #253 | Detailplanung | planer | bestanden | 9 min | R00239, I0229 B1245–B1252 · claude · opus · Lauf 253-planer-1 · 3,56 $ · Karte gesamt 3,56 $ |
+| 2026-11-22 | #253 | Detailplanung | product-owner | bestanden | 2 min | Z. 581–586 · claude · opus · Lauf 253-product-owner-1 · 0,89 $ · Karte gesamt 4,45 $ |
+| 2026-11-22 | #253 | Detailplanung | ux-reviewer | befund | 5 min | 4 Muss, kriterium_fehlt · claude · sonnet · Lauf 253-ux-reviewer-1 · 0,93 $ · Karte gesamt 5,38 $ |
+| 2026-11-22 | #253 | Detailplanung | product-owner | bestanden | 2 min | Z. 587–590 · claude · opus · Lauf 253-product-owner-2 · 0,85 $ · Karte gesamt 6,23 $ |
+| 2026-11-22 | #253 | Detailplanung | planer | bestanden | 5 min | R00239 nachgeschärft, 765c099d · claude · opus · Lauf 253-planer-2 · 1,66 $ · Karte gesamt 7,89 $ |
+| 2026-11-22 | #253 | Detailplanung | ux-reviewer | bestanden | 1 min | Nachprüfung: M1–M4 erledigt · claude · sonnet · Lauf 253-ux-reviewer-2 · 0,32 $ · Karte gesamt 8,21 $ |
+| 2026-11-22 | #255 | Retro | director | – | – | Erledigt, 29,33 $. Gut: alle fünf Reviews ohne Muss und der Entwicklertest im ersten Anlauf. Hakte: beim Rebase auf main ein WBS-Konflikt mit den Dokumenten von #263; nach Kennung gelöst (main als Grundlage plus die eigenen Zeilen B1229/B1230), der Commit des entwicklers, der die Doppelzeilen entfernt, ging dabei leer auf. Lehre: Wiederholen sich WBS-Konflikte bei Dokumenten paralleler Karten, gehört `dokumente` vor den Bau der Nachbarkarte. Offen für die Abnahme: ob VS Code den Link wirklich öffnet. |
