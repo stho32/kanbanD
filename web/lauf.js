@@ -528,6 +528,59 @@
     return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
   }
 
+  /* ── Zahlform der Tokens (R00238 FA 2, FA 3; PO Z. 573, 574): immer abgerundet, gleich in Kopf, Zeile und Liste ── */
+
+  const TAUSEND = 1000, VOLL_UNTER = 10000, MILLION = 1000000;
+
+  /** Zahl → Teile der gekürzten Form: unter 10.000 die volle Zahl, dann ganze Tausend, ab 1.000.000 Millionen mit einer Stelle. */
+  function tokenTeile(n) {
+    if (n < VOLL_UNTER) return { art: 'voll', zahl: tausender(n) };
+    if (n < MILLION) return { art: 'tausend', zahl: String(Math.floor(n / TAUSEND)) };
+    const zehntel = Math.floor(n / (MILLION / 10));
+    const ganz = Math.floor(zehntel / 10), stelle = zehntel % 10;
+    let zahl = tausender(ganz);
+    if (stelle > 0) zahl += `,${stelle}`;
+    return { art: 'million', zahl, eine: ganz === 1 && stelle === 0 };
+  }
+
+  /** „8.412“, „35 Tsd.“, „4,3 Mio.“, „1 Mio.“. */
+  function tokenKurz(n) {
+    const t = tokenTeile(n);
+    if (t.art === 'tausend') return `${t.zahl} Tsd.`;
+    if (t.art === 'million') return `${t.zahl} Mio.`;
+    return t.zahl;
+  }
+
+  /** Lesefassung der Kurzform (UX S1): „35 Tausend“, „1 Million“, „1,2 Millionen“; volle Zahlen bleiben. */
+  function tokenLesetext(n) {
+    const t = tokenTeile(n);
+    if (t.art === 'tausend') return `${t.zahl} Tausend`;
+    if (t.art === 'million' && t.eine) return '1 Million';
+    if (t.art === 'million') return `${t.zahl} Millionen`;
+    return t.zahl;
+  }
+
+  const tokenVoll = tausender;
+
+  /** Gekürzte Zahl für Augen (`aria-hidden`) und ausgeschrieben für Bildschirmleser (`vh`); eine volle Zahl steht nur einmal. */
+  function tokenZahlHtml(n) {
+    const kurz = tokenKurz(n), lesetext = tokenLesetext(n);
+    if (kurz === lesetext) return kurz;
+    return `<span aria-hidden="true">${kurz}</span><span class="vh">${lesetext}</span>`;
+  }
+
+  const EIN_TOKEN = '1 neues Token';
+  /** „<Zahl> neue Tokens“, in der Einzahl „1 neues Token“ (Z. 574). */
+  function neueTokensText(n) {
+    if (n === 1) return EIN_TOKEN;
+    return `${tokenKurz(n)} neue Tokens`;
+  }
+
+  function neueTokensHtml(n) {
+    if (n === 1) return EIN_TOKEN;
+    return `${tokenZahlHtml(n)} neue Tokens`;
+  }
+
   /* ── Kopf mit Gesamtdauer und Kennzahlen (R00234 FA 3, FA 4; Zeichnung D0009 `#laufansicht`) ── */
 
   const LESETEXT = { liest: 'wird gelesen', ohne: 'nicht verfügbar' };
@@ -629,5 +682,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { tokenKurz, tokenLesetext, tokenVoll, tokenZahlHtml, neueTokensText, neueTokensHtml, laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

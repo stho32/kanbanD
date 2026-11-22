@@ -200,3 +200,33 @@ const ALTBESTAND_T1 = {
 test('R00238 AK 2: Altbestand — T1 ohne tokens ergibt dieselbe Auswertung wie vor #263', () => {
   assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false), ALTBESTAND_T1);
 });
+
+/* ── R00238 B1238: Zahlform der Tokens (PO Z. 573, 574; UX S1) ── */
+
+test('R00238 AK 1: tokenKurz rundet ab — volle Zahl unter 10.000, „<n> Tsd.“, „<x,y> Mio.“ ohne „,0“', () => {
+  const tabelle = [[0, '0'], [9999, '9.999'], [10000, '10 Tsd.'], [10999, '10 Tsd.'], [999999, '999 Tsd.'], [1000000, '1 Mio.'], [1099999, '1 Mio.'],
+    [1100000, '1,1 Mio.'], [4399999, '4,3 Mio.'], [55083706, '55 Mio.'], [1234567890, '1.234,5 Mio.']];
+  for (const [n, text] of tabelle) assert.strictEqual(lauf.tokenKurz(n), text, String(n));
+});
+
+test('R00238 AK 1: tokenLesetext schreibt die Kurzform aus — „10 Tausend“, „1 Million“, „1,1 Millionen“', () => {
+  const tabelle = [[9999, '9.999'], [10000, '10 Tausend'], [1000000, '1 Million'], [1099999, '1 Million'], [1100000, '1,1 Millionen'], [4399999, '4,3 Millionen'],
+    [2000000, '2 Millionen'], [1234567890, '1.234,5 Millionen']];
+  for (const [n, text] of tabelle) assert.strictEqual(lauf.tokenLesetext(n), text, String(n));
+});
+
+test('R00238 AK 1: neue Tokens in der Einzahl „1 neues Token“, sonst „<kurz> neue Tokens“; volle Form mit Tausenderpunkt', () => {
+  assert.strictEqual(lauf.neueTokensText(1), '1 neues Token');
+  assert.strictEqual(lauf.neueTokensText(0), '0 neue Tokens');
+  assert.strictEqual(lauf.neueTokensText(61502), '61 Tsd. neue Tokens');
+  assert.strictEqual(lauf.neueTokensText(451), '451 neue Tokens');
+  assert.strictEqual(lauf.tokenVoll(34800), '34.800');
+  assert.strictEqual(lauf.tokenVoll(0), '0');
+});
+
+test('R00238 FA 2: gekürzte Zahl sichtbar aria-hidden, ausgeschrieben in .vh; volle Zahl nur einmal', () => {
+  assert.strictEqual(lauf.tokenZahlHtml(35101), '<span aria-hidden="true">35 Tsd.</span><span class="vh">35 Tausend</span>');
+  assert.strictEqual(lauf.tokenZahlHtml(9999), '9.999');
+  assert.strictEqual(lauf.neueTokensHtml(1), '1 neues Token');
+  assert.strictEqual(lauf.neueTokensHtml(61502), '<span aria-hidden="true">61 Tsd.</span><span class="vh">61 Tausend</span> neue Tokens');
+});
