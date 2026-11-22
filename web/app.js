@@ -2191,6 +2191,41 @@ function laufZeileZeigen(id) {
   if (!zeile) return;
   const ohneBewegung = matchMedia('(prefers-reduced-motion: reduce)').matches;
   zeile.scrollIntoView({ block: 'start', behavior: ohneBewegung ? 'instant' : 'smooth' });
+  laufZeileNachfuehren(zeile);
+}
+
+/** Höchstens so viele Bilder (etwa 2 s) führt `laufZeileNachfuehren` die Zeile nach. */
+const NACHFUEHREN_BILDER = 120;
+/** Eingaben des Menschen, die das Nachführen beenden: er rollt selbst. */
+const NACHFUEHREN_ENDE = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+let laufNachfuehrung = 0;
+
+/** Die Einträge vor der Zeile tragen bis zu ihrem ersten Zeichnen nur die geschätzte Höhe (`content-visibility`, ADR-0041
+    Punkt 5); werden sie beim Rollen gemessen, rückt die Zeile aus dem Blick (Befund Entwicklertest #251). Darum: ruht die Lage
+    der Zeile zwei Bilder lang, ohne Animation erneut an sie rollen, bis sie auch danach ruht — höchstens `NACHFUEHREN_BILDER`
+    Bilder. Ein neuer Sprung oder eine Eingabe des Menschen beendet das Nachführen. Die Insel bleibt, wie sie ist. */
+function laufZeileNachfuehren(zeile) {
+  const lauf = ++laufNachfuehrung;
+  const beenden = () => { if (lauf === laufNachfuehrung) laufNachfuehrung++; };
+  NACHFUEHREN_ENDE.forEach(art => addEventListener(art, beenden, { capture: true, passive: true, once: true }));
+  const aufraeumen = () => NACHFUEHREN_ENDE.forEach(art => removeEventListener(art, beenden, { capture: true }));
+  let bilder = 0, ruhig = 0, lage = zeile.getBoundingClientRect().top;
+  const schritt = () => {
+    const vorbei = lauf !== laufNachfuehrung || ++bilder > NACHFUEHREN_BILDER || !zeile.isConnected;
+    if (vorbei) { aufraeumen(); return; }
+    const jetzt = zeile.getBoundingClientRect().top;
+    ruhig = Math.abs(jetzt - lage) < 1 ? ruhig + 1 : 0;
+    lage = jetzt;
+    if (ruhig >= 2) {
+      zeile.scrollIntoView({ block: 'start', behavior: 'instant' });
+      lage = zeile.getBoundingClientRect().top;
+      const steht = Math.abs(lage - jetzt) < 1;
+      if (steht) { aufraeumen(); return; }
+      ruhig = 0;
+    }
+    requestAnimationFrame(schritt);
+  };
+  requestAnimationFrame(schritt);
 }
 
 /** Zurück ins Aufgabenfenster mit der Ansicht „Läufe“ (FA 3): über „Ansehen“ geöffnet ein Schritt zurück, sonst ersetzt. */

@@ -380,6 +380,72 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     expect(stand.ende[0] + stand.ende[1]).toBeGreaterThan(0);
   });
 
+  /* ── AK 9 auf einem langen Lauf (Nacharbeit 2, Befund Entwicklertest US-3): 360 Bash-Zeilen mit Absicht, je etwa 82 px wie im
+     echten Lauf; die drei längsten Schritte liegen bei Eintrag 120, 240 und 350. Frische Seite je Sprung, geprüft nach 1 s und 3 s. */
+  const LANG = 'entwickler@2026-11-22T07:42+01:00';
+  const LANG_ZIELE = ['lv-s239', 'lv-s479', 'lv-s699'];
+  function langText() {
+    const lang = { 120: 40, 240: 30, 350: 20 };
+    let t = Date.parse('2026-11-22T07:42:00+01:00');
+    const zeit = () => new Date(t).toISOString().replace('Z', '+00:00');
+    const zeilen = [];
+    for (let k = 1; k <= 360; k++) {
+      const befehl = { command: `cd /home/entwickler/Projekte/.worktrees/kanband/karte-251 && export CARGO_TARGET_DIR=/home/entwickler/.cache/kanband/target-251; nice -n 10 cargo test --quiet -p kanband teil_${k} 2>&1 | tail -n 40`, description: `Teil ${k} der Suite gedrosselt fahren, nur die Zusammenfassung und die Fehler lesen, damit der Kontext knapp bleibt und der Lauf vergleichbar ist` };
+      zeilen.push(zeile({ zeit: zeit(), art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: JSON.stringify(befehl) }));
+      t += (lang[k] || 1) * 1000;
+      zeilen.push(zeile({ zeit: zeit(), art: 'werkzeugergebnis', wer: 'werkzeug', text: `test result: ok. ${k} passed` }));
+      t += 1000;
+    }
+    zeilen.push(zeile({ zeit: zeit(), art: 'nachricht', wer: 'agent', text: 'Ergebnis: bestanden' }));
+    return zeilen.join('');
+  }
+  /** Lage der Zielzeile gegen Seitenkopf und Fenster, dazu der Fokus. */
+  const imBlick = (page, ziel) => page.evaluate(id => {
+    const kopf = document.querySelector('#kopf header').getBoundingClientRect().bottom;
+    const z = document.getElementById(id).getBoundingClientRect();
+    return { fokus: document.activeElement.id, obenUnterKopf: z.top >= kopf, untenImFenster: z.bottom <= innerHeight, oben: Math.round(z.top), kopf: Math.round(kopf) };
+  }, ziel);
+  for (const [i, ziel] of LANG_ZIELE.entries()) {
+    for (const wie of ['Klick', 'Enter']) {
+      test(`AK 9 · US-3: langer Lauf — ${wie} auf Eintrag ${i + 1} von „Längste Schritte“ holt ${ziel} nach 1 s und 3 s unter den Seitenkopf, Fokus auf der Zeile; Scrollstart 0, 8000, 20000`, async ({ page }) => {
+        test.setTimeout(90000);
+        await lv.hochladen(k.adresse, 1, LANG, 'Entwicklung', lv.gz(langText()));
+        await breiteSetzen(page, 1280);
+        for (const start of [0, 8000, 20000]) {
+          await laufOeffnen(page, LANG);
+          await gelesen(page);
+          expect(await page.locator(TOP).evaluateAll(bs => bs.map(b => b.dataset.arg))).toEqual(LANG_ZIELE);
+          expect(await page.locator(EINTRAEGE).count(), 'mehr als 300 Einträge').toBeGreaterThan(300);
+          const hoehe = await page.locator(`${EINTRAEGE}:nth-child(2)`).evaluate(e => e.getBoundingClientRect().height);
+          expect(hoehe, 'Bash-Zeile mit Absicht wie im echten Lauf').toBeGreaterThanOrEqual(75);
+          await page.locator('#lauf').evaluate((s, v) => s.scrollTo(0, v), start);
+          const knopf = page.locator(TOP).nth(i);
+          if (wie === 'Klick') await knopf.click();
+          else { await knopf.focus(); await page.keyboard.press('Enter'); }
+          for (const [nach, warten] of [['1 s', 1000], ['3 s', 2000]]) {
+            await page.waitForTimeout(warten);
+            const lage = await imBlick(page, ziel);
+            expect(lage, `Scrollstart ${start}, nach ${nach}: ${JSON.stringify(lage)}`).toMatchObject({ fokus: ziel, obenUnterKopf: true, untenImFenster: true });
+          }
+        }
+      });
+    }
+  }
+
+  test('AK 9 · US-3: langer Lauf unter prefers-reduced-motion — Klick auf Eintrag 2 holt lv-s479 nach 1 s und 3 s unter den Seitenkopf, Fokus auf der Zeile', async ({ page }) => {
+    await lv.hochladen(k.adresse, 1, LANG, 'Entwicklung', lv.gz(langText()));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await breiteSetzen(page, 1280);
+    await laufOeffnen(page, LANG);
+    await gelesen(page);
+    await page.locator(TOP).nth(1).click();
+    for (const [nach, warten] of [['1 s', 1000], ['3 s', 2000]]) {
+      await page.waitForTimeout(warten);
+      const lage = await imBlick(page, 'lv-s479');
+      expect(lage, `nach ${nach}: ${JSON.stringify(lage)}`).toMatchObject({ fokus: 'lv-s479', obenUnterKopf: true, untenImFenster: true });
+    }
+  });
+
   test('AK 10 · US-6: T4 offen — ein Kosteneintrag zeigt „0,51 $“ ohne neues Lesen; Insel und Fokus bleiben, laufAuswerten lief einmal, keine Ansage', async ({ page }) => {
     await ablegen(k);
     let lesen = 0;
