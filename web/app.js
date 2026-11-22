@@ -2299,8 +2299,9 @@ let laufNachfuehrung = 0;
 
 /** Die Einträge vor der Zeile tragen bis zu ihrem ersten Zeichnen nur die geschätzte Höhe (`content-visibility`, ADR-0041
     Punkt 5); werden sie beim Rollen gemessen, rückt die Zeile aus dem Blick (Befund Entwicklertest #251). Darum: ruht die Lage
-    der Zeile zwei Bilder lang, ohne Animation erneut an sie rollen, bis sie auch danach ruht — höchstens `NACHFUEHREN_BILDER`
-    Bilder. Ein neuer Sprung oder eine Eingabe des Menschen beendet das Nachführen. Die Insel bleibt, wie sie ist. */
+    der Zeile zwei Bilder lang, ohne Animation erneut an sie rollen — über die ganze Frist von `NACHFUEHREN_BILDER` Bildern, denn
+    die Messung kann auch ein Bild nach einem ruhigen Stand noch kommen (R00238: höhere Zeilen, Sprung ohne Animation). Ein neuer
+    Sprung oder eine Eingabe des Menschen beendet das Nachführen. Die Insel bleibt, wie sie ist. */
 function laufZeileNachfuehren(zeile) {
   const lauf = ++laufNachfuehrung;
   const beenden = () => { if (lauf === laufNachfuehrung) laufNachfuehrung++; };
@@ -2316,8 +2317,6 @@ function laufZeileNachfuehren(zeile) {
     if (ruhig >= 2) {
       zeile.scrollIntoView({ block: 'start', behavior: 'instant' });
       lage = zeile.getBoundingClientRect().top;
-      const steht = Math.abs(lage - jetzt) < 1;
-      if (steht) { aufraeumen(); return; }
       ruhig = 0;
     }
     requestAnimationFrame(schritt);
