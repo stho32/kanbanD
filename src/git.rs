@@ -4,8 +4,12 @@ pub mod arbeitsrepo;
 
 use crate::fehler::Fehler;
 use crate::modell::Person;
+use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
+
+/// Pfad → Modus (`100644`, `100755`, `120000`, …) der Pfade, die HEAD kennt.
+type Modi = HashMap<String, String>;
 
 fn git(wurzel: &Path, autor: &Person) -> Command {
     let mut c = Command::new("git");
@@ -67,7 +71,7 @@ pub fn committen(wurzel: &Path, pfade: &[String], autor: &Person, nachricht: &st
 fn nach_gescheitertem_commit(
     wurzel: &Path,
     pfade: &[String],
-    bekannt: &Result<std::collections::HashSet<String>, String>,
+    bekannt: &Result<Modi, String>,
     autor: &Person,
     fehler: Fehler,
 ) -> Fehler {
@@ -101,10 +105,10 @@ fn committen_und_pruefen(wurzel: &Path, pfade: &[String], autor: &Person, nachri
     Ok(true)
 }
 
-/// Die Pfade, die HEAD kennt — nur für sie gibt es einen Stand, den eine Rücknahme wiederherstellen kann.
-/// `Err(grund)`, wenn HEAD nicht lesbar ist: ohne ersten Commit („HEAD fehlt“) oder wenn `ls-tree` scheitert.
-/// Dann ist unbekannt, was die Aktion angelegt hat, und der Aufrufer löscht nichts (ADR-0005 N2).
-fn in_head(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<std::collections::HashSet<String>, String> {
+/// Die Pfade, die HEAD kennt, mit ihrem Modus — nur für sie gibt es einen Stand, den eine Rücknahme
+/// wiederherstellen kann. `Err(grund)`, wenn HEAD nicht lesbar ist: ohne ersten Commit („HEAD fehlt“) oder wenn
+/// `ls-tree` scheitert. Dann ist unbekannt, was die Aktion angelegt hat, und der Aufrufer löscht nichts (ADR-0005 N2).
+fn in_head(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<Modi, String> {
     let mut pruefen = git(wurzel, autor);
     pruefen.args(["rev-parse", "--verify", "--quiet", "HEAD"]);
     match pruefen.output() {
@@ -113,12 +117,20 @@ fn in_head(wurzel: &Path, pfade: &[String], autor: &Person) -> Result<std::colle
         Err(e) => return Err(format!("HEAD nicht lesbar: {e}")),
     }
     let mut ls = git(wurzel, autor);
-    ls.args(["ls-tree", "-r", "--name-only", "-z", "HEAD", "--"]).args(pfade);
+    ls.args(["ls-tree", "-r", "-z", "HEAD", "--"]).args(pfade);
     match ls.output() {
-        Ok(a) if a.status.success() => Ok(a.stdout.split(|b| *b == 0).filter(|p| !p.is_empty()).map(|p| String::from_utf8_lossy(p).into_owned()).collect()),
+        Ok(a) if a.status.success() => Ok(a.stdout.split(|b| *b == 0).filter_map(modus_und_pfad).collect()),
         Ok(a) => Err(format!("HEAD nicht lesbar: {}", String::from_utf8_lossy(&a.stderr).trim())),
         Err(e) => Err(format!("HEAD nicht lesbar: {e}")),
     }
+}
+
+/// Eine Zeile von `ls-tree -z`: `<modus> <art> <objekt>\t<pfad>`.
+fn modus_und_pfad(zeile: &[u8]) -> Option<(String, String)> {
+    let zeile = String::from_utf8_lossy(zeile);
+    let (kopf, pfad) = zeile.split_once('\t')?;
+    let modus = kopf.split(' ').next()?;
+    Some((pfad.to_string(), modus.to_string()))
 }
 
 /// Die Pfade aus dem Index zurück auf HEAD; `Err(grund)`, wenn der Reset scheitert. Ohne HEAD scheitert er nicht —
@@ -133,26 +145,24 @@ fn index_zuruecksetzen(wurzel: &Path, pfade: &[String], autor: &Person) -> Resul
     }
 }
 
-/// Rücknahme (ADR-0005 N1): unsere Pfade aus dem Index zurück auf HEAD, geänderte und gelöschte aus HEAD
-/// wiederherstellen, was HEAD nicht kennt, hat die Aktion angelegt und verschwindet. Fremde Pfade bleiben
-/// unberührt. Wird nur mit lesbarem HEAD aufgerufen (`in_head` liefert die Menge); ist er nicht lesbar, löscht
-/// `committen` nichts.
+/// Rücknahme (ADR-0005 N1, N4): unsere Pfade aus dem Index zurück auf HEAD, geänderte und gelöschte aus dem
+/// Objekt von HEAD zurückschreiben, was HEAD nicht kennt, hat die Aktion angelegt und verschwindet. Fremde Pfade
+/// bleiben unberührt. Wird nur mit lesbarem HEAD aufgerufen (`in_head` liefert die Modi); ist er nicht lesbar,
+/// löscht `committen` nichts.
 ///
-/// Was sich nicht zurücknehmen ließ, kommt als `Err` zurück (ADR-0005 N2 Punkt 4) — der Aufrufer trägt es in
-/// die Meldung, statt „zurückgenommen“ zu behaupten. Ein Pfad, der schon fehlt, ist kein Fehlschlag.
-fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &std::collections::HashSet<String>, autor: &Person) -> Result<(), String> {
+/// Der Arbeitsbaum braucht dafür keinen Git-Befehl, der `.git/index.lock` nimmt (N4): hält jemand anderes die
+/// Sperre, gelingt das Zurückschreiben trotzdem. Jeder Pfad wird für sich behandelt; was sich nicht zurücknehmen
+/// ließ, kommt gesammelt als `Err` zurück (ADR-0005 N2 Punkt 4) — der Aufrufer trägt es in die Meldung, statt
+/// „zurückgenommen“ zu behaupten. Ein Pfad, der schon fehlt, ist kein Fehlschlag.
+fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &Modi, autor: &Person) -> Result<(), String> {
     let mut fehler = vec![];
     if let Err(grund) = index_zuruecksetzen(wurzel, pfade, autor) {
         fehler.push(format!("Index nicht zurückgesetzt: {grund}"));
     }
     for pfad in pfade {
-        if bekannt.contains(pfad) {
-            let mut her = git(wurzel, autor);
-            her.args(["checkout", "-q", "HEAD", "--"]).arg(pfad);
-            match her.output() {
-                Ok(a) if a.status.success() => {}
-                Ok(a) => fehler.push(format!("{pfad} ließ sich nicht wiederherstellen: {}", String::from_utf8_lossy(&a.stderr).trim())),
-                Err(e) => fehler.push(format!("{pfad} ließ sich nicht wiederherstellen: {e}")),
+        if let Some(modus) = bekannt.get(pfad) {
+            if let Err(grund) = aus_head_zurueckschreiben(wurzel, pfad, modus, autor) {
+                fehler.push(format!("{pfad} ließ sich nicht wiederherstellen: {grund}"));
             }
         } else {
             match std::fs::remove_file(wurzel.join(pfad)) {
@@ -167,6 +177,49 @@ fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &std::collections::Ha
     } else {
         Err(fehler.join("; "))
     }
+}
+
+/// Schreibt einen Pfad mit den Bytes aus HEAD zurück (`cat-file --filters`, also mit den Filtern und Zeilenenden
+/// des Arbeitsbaums), über eine Nachbardatei und Umbenennen wie [`crate::ablage::Ordner::schreib`]. Nur gewöhnliche
+/// Dateien (`100644`, `100755` mit Ausführbit); jede andere Art bleibt unberührt und ist ein Fehlschlag. Scheitert
+/// ein Schritt nach dem Anlegen der Nachbardatei, wird sie entfernt.
+fn aus_head_zurueckschreiben(wurzel: &Path, pfad: &str, modus: &str, autor: &Person) -> Result<(), String> {
+    let ausfuehrbar = match modus {
+        "100644" => false,
+        "100755" => true,
+        anders => return Err(format!("Art {anders}")),
+    };
+    let mut lesen = git(wurzel, autor);
+    lesen.args(["cat-file", "--filters"]).arg(format!("HEAD:./{pfad}"));
+    let inhalt = match lesen.output() {
+        Ok(a) if a.status.success() => a.stdout,
+        Ok(a) => return Err(String::from_utf8_lossy(&a.stderr).trim().to_string()),
+        Err(e) => return Err(e.to_string()),
+    };
+    let ziel = wurzel.join(pfad);
+    if let Some(eltern) = ziel.parent() {
+        std::fs::create_dir_all(eltern).map_err(|e| e.to_string())?;
+    }
+    let tmp = ziel.with_extension("kanbanD-tmp");
+    let geschrieben = std::fs::write(&tmp, &inhalt).and_then(|()| ausfuehrbar_setzen(&tmp, ausfuehrbar)).and_then(|()| std::fs::rename(&tmp, &ziel));
+    geschrieben.map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        e.to_string()
+    })
+}
+
+#[cfg(unix)]
+fn ausfuehrbar_setzen(datei: &Path, ausfuehrbar: bool) -> std::io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    if ausfuehrbar {
+        std::fs::set_permissions(datei, std::fs::Permissions::from_mode(0o755))?;
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn ausfuehrbar_setzen(_datei: &Path, _ausfuehrbar: bool) -> std::io::Result<()> {
+    Ok(())
 }
 
 /// Pfade, die Git kennt oder die es auf der Platte gibt — nur über diese spricht ein Commit.
