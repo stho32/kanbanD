@@ -95,25 +95,27 @@ const ANKER = { verlauf: '#bd-kennzahl', prognose: '#main .dtitel', fieber: '#ma
 const bericht = (page, k, slug, route) => oeffnen(page, k, slug, `berichte/${route}`, ANKER[route] || '#main .dtitel');
 const board = (page, k, slug) => oeffnen(page, k, slug, null);
 
-/** Klappt Tabellenansicht und jede weitere zugeklappte Box des Hauptbereichs auf und wartet, bis sie offen stehen. */
-async function allesAufklappen(page) {
-  const zu = page.locator('#main details:not([open]) > summary');
-  for (let i = await zu.count(); i > 0; i--) {
-    await zu.first().click();
-    await bereit(page);
-  }
-  await expect(page.locator('#main details:not([open])')).toHaveCount(0);
-}
-
-/** Sichtbarer Text des Hauptbereichs (bzw. des Aufgabenfensters) ohne den Bereich `#durchlaeufe`. */
+/** Sichtbarer Text des Hauptbereichs (bzw. des Aufgabenfensters) ohne den Bereich `#durchlaeufe`, jede Box aufgeklappt.
+ *  Die Seite hält aufgeklappte `<details>` beim Neuzeichnen nicht (ADR-0007): deshalb klappt die Kopie auf, im selben Aufruf
+ *  wie die Lesung (ADR-0026 N4 Regel 9). Dazu die Positivprobe: `boxen` in der Kopie und `gefuellt`, deren Inhalt außer
+ *  `<summary>` sichtbaren Text trägt — eine zugeklappte Box liest sich leer und darf „Wort fehlt“ nicht grün machen. */
 const sichttext = (page, sel = '#main') => page.locator(sel).first().evaluate(e => {
   const kopie = e.cloneNode(true);
   kopie.querySelectorAll('#durchlaeufe').forEach(d => d.remove());
+  const boxen = [...kopie.querySelectorAll('details')];
+  for (const box of boxen) box.open = true;
   document.body.append(kopie);
   const text = kopie.innerText;
+  const gefuellt = boxen.filter(box => [...box.children].some(c => c.tagName !== 'SUMMARY' && c.innerText.trim() !== '')).length;
   kopie.remove();
-  return text;
+  return { text, boxen: boxen.length, gefuellt };
 });
+
+/** Positivprobe (R00232 AK 10): mindestens eine Box, und jede ist mitgelesen. */
+function allesMitgelesen(wo, sicht) {
+  expect(sicht.boxen, `${wo}: Boxen in der Kopie`).toBeGreaterThanOrEqual(1);
+  expect(sicht.gefuellt, `${wo}: jede Box mit Inhalt gelesen`).toBe(sicht.boxen);
+}
 
 async function aufgabeDetails(page, k, nr) {
   await board(page, k, 'entwicklung');
@@ -173,18 +175,34 @@ async function querScrollen(page, { fensterOffen = false } = {}) {
     await breiteSetzen(page, breite);
     // bei offenem Aufgabenfenster meldet `kdTest.gezeichnet()` keinen gezeichneten Stand; dann genügt das Layout von breiteSetzen
     if (!fensterOffen) await bereit(page);
+    // aufklappen und messen in einem Aufruf: ein Neuzeichnen dazwischen klappte die Boxen wieder zu (ADR-0026 N4 Regel 9)
     const zuBreit = await page.evaluate(() => {
+      for (const box of document.querySelectorAll('#main details, #fenster details')) box.open = true;
       const behaelter = [document.documentElement, ...document.querySelectorAll('#main, #main *, #fenster, #fenster *')].filter(e => {
         const s = getComputedStyle(e);
         return e === document.documentElement || /(auto|scroll)/.test(s.overflowX);
       });
       // ausgenommen sind die Behälter, die eine breite Tabelle bzw. die Bahnen absichtlich in sich quer rollen (vor wie nach der Karte)
-      return behaelter.filter(e => e.scrollWidth > e.clientWidth + 1 && !e.closest('.bahnen') && !e.matches('.wl-scroll, .bericht-rahmen')).map(e => `${e.tagName}.${e.className}#${e.id}`);
+      const breit = behaelter.filter(e => e.scrollWidth > e.clientWidth + 1 && !e.closest('.bahnen') && !e.matches('.wl-scroll, .bericht-rahmen')).map(e => `${e.tagName}.${e.className}#${e.id}`);
+      // Positivprobe der Messung: jede Box stand beim Messen offen — eine zugeklappte Box macht „kein Querscrollen“ leer wahr
+      const zu = document.querySelectorAll('#main details:not([open]), #fenster details:not([open])').length;
+      return zu ? [...breit, `${zu} Box(en) beim Messen zu`] : breit;
     });
     if (zuBreit.length) treffer.push(`${breite}: ${zuBreit.join(', ')}`);
   }
   await breiteSetzen(page, 1280);
   return treffer;
+}
+
+const OHNE_WOERTER = ['durchlaufen', 'DURCHLAUFEN', 'Vorphase', 'bzw. ihre Phase', 'bzw. die letzte Phase'];
+
+/** AK 12/13 am gezeichneten Fever Chart: Sichttext mit Positivprobe, ohne die alten Wörter und ohne /phase/i, kein Querscrollen. */
+async function fieberLesen(page, wann) {
+  const sicht = await sichttext(page);
+  allesMitgelesen(`fieber ${wann}`, sicht);
+  for (const wort of OHNE_WOERTER) expect(sicht.text, `fieber ${wann}: ohne „${wort}“`).not.toContain(wort);
+  expect(sicht.text.match(/.{0,40}phase.{0,40}/gi), `fieber ${wann}: /phase/i im Sichttext`).toBeNull();
+  expect(await querScrollen(page), `fieber ${wann}: kein Querscrollen`).toEqual([]);
 }
 
 // ---- Testfälle ----------------------------------------------------------------------------------------------------------
@@ -207,16 +225,14 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
       const texte = [];
       for (const x of [k, zwilling]) {
         await bericht(page, x, 'entwicklung', route);
-        // das Fever Chart zeichnet nach dem Rechnen seines Caches neu und schließt dabei aufgeklappte Boxen: so lange aufklappen
-        // und lesen, bis alles offen ist und der Text zwischen zwei Lesungen gleich bleibt
+        // das Fever Chart zeichnet nach dem Rechnen seines Caches neu: lesen (die Kopie klappt auf), bis der Text zwischen zwei
+        // Lesungen gleich bleibt
         let vorher = null, text = null;
         await expect.poll(async () => {
-          const zu = page.locator('#main details:not([open]) > summary');
-          if (await zu.count()) { await zu.first().click(); return false; }
           vorher = text;
-          text = await sichttext(page);
+          text = (await sichttext(page)).text;
           return text === vorher;
-        }, { message: `${route}: alles offen, Text steht` }).toBe(true);
+        }, { message: `${route}: Text steht` }).toBe(true);
         texte.push(text);
       }
       expect(texte[0], `${route}: derselbe Text auf K und K'`).toBe(texte[1]);
@@ -264,9 +280,10 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
     await vorbereiten(page);
     for (const route of ['prognose', 'fieber']) {
       await bericht(page, k, 'entwicklung', route);
-      await allesAufklappen(page);
-      const text = await sichttext(page);
-      for (const wort of ['durchlaufen', 'DURCHLAUFEN', 'Vorphase', 'bzw. ihre Phase', 'bzw. die letzte Phase']) expect(text, `${route}: ohne „${wort}“`).not.toContain(wort);
+      const sicht = await sichttext(page);
+      allesMitgelesen(route, sicht);
+      const text = sicht.text;
+      for (const wort of OHNE_WOERTER) expect(text, `${route}: ohne „${wort}“`).not.toContain(wort);
       await expect(page.locator('#main [data-phase]')).toHaveCount(0);
       const koepfe = await page.locator('#main table thead tr').evaluateAll(z => z.map(tr => tr.lastElementChild.textContent.trim()).filter(t => t.startsWith('Nicht vor')));
       for (const kopf of koepfe) expect(kopf).toBe('Nicht vor (Spalte links)');
@@ -288,20 +305,21 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
     // je Ansicht sofort: am Stand vor der Karte hält das Nachtragen der Phasen-Spalten (Commit beim Lesen) die Seite später an
     const pruefen = (wo, text) => expect(text.match(/.{0,40}phase.{0,40}/gi), `${wo}: /phase/i im Sichttext`).toBeNull();
     await board(page, k, 'entwicklung');
-    pruefen('Board', await sichttext(page));
+    pruefen('Board', (await sichttext(page)).text);
     await aufgabeDetails(page, k, 3);
-    pruefen('Aufgabenfenster Details', await sichttext(page, '#fenster'));
+    pruefen('Aufgabenfenster Details', (await sichttext(page, '#fenster')).text);
     // bei offenem Fenster meldet `kdTest.gezeichnet()` keinen gezeichneten Stand: geschlossen und frisch geladen weiter
     await page.keyboard.press('Escape');
     await page.reload();
     await spaltenEinrichten(page, k, 'entwicklung');
-    pruefen('Spalten einrichten', await sichttext(page, 'body'));
+    pruefen('Spalten einrichten', (await sichttext(page, 'body')).text);
     await page.getByRole('button', { name: 'Verwerfen' }).click();
     await expect(page.locator('#setup-vorschau')).toHaveCount(0);
     for (const route of ['prognose', 'fieber']) {
       await bericht(page, k, 'entwicklung', route);
-      await allesAufklappen(page);
-      pruefen(route, await sichttext(page));
+      const sicht = await sichttext(page);
+      allesMitgelesen(route, sicht);
+      pruefen(route, sicht.text);
     }
   });
 
@@ -323,10 +341,44 @@ test.describe('R00223 Phasen werden gewöhnliche Spalten', () => {
     await page.reload();
     for (const [slug, route] of [['entwicklung', 'prognose'], ['breit', 'prognose'], ['entwicklung', 'fieber']]) {
       await bericht(page, k, slug, route);
-      await allesAufklappen(page);
       if (slug === 'breit') expect(await page.locator('#main section[data-spalte]').count(), 'breit: sechs Spaltenblöcke').toBe(6);
       funde.push(...(await querScrollen(page)).map(x => `${route} ${slug} ${x}`));
     }
     expect(funde).toEqual([]);
+  });
+
+  // R00232 AK 11 (ADR-0026 N4, Abnahme-Probe): das Fever Chart ersetzt #main nach dem Nachtrag seines Caches bzw. in jedem Frame
+  test('AK 12/13 Variante v1: Fever Chart mit 1,5 s verzögertem POST …/fieber/cache — Sichttext vollständig, kein Querscrollen, vor und nach dem Nachtrag', async ({ page }) => {
+    test.setTimeout(60000);
+    k = await kanbanStarten(ausgangslage(R));
+    await vorbereiten(page);
+    let gehalten = 0;
+    await page.route(u => u.pathname.endsWith('/fieber/cache'), async route => {
+      if (route.request().method() === 'POST') {
+        gehalten++;
+        await new Promise(weiter => setTimeout(weiter, 1500));
+      }
+      await route.continue();
+    });
+    const nachgetragen = page.waitForResponse(a => a.request().method() === 'POST' && a.url().endsWith('/fieber/cache'));
+    await bericht(page, k, 'entwicklung', 'fieber');
+    await fieberLesen(page, 'während der Nachtrag gehalten ist');
+    // nach dem Nachtrag lädt die Seite den Cache neu und ersetzt #main — die Boxen stehen dann wieder zu (ADR-0007)
+    const neuGeladen = page.waitForResponse(a => a.request().method() === 'GET' && a.url().endsWith('/fieber/cache'));
+    await (await nachgetragen).finished();
+    await (await neuGeladen).finished();
+    await bereit(page, ANKER.fieber);
+    await page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
+    await fieberLesen(page, 'nach dem Nachtrag');
+    expect(gehalten, 'der Nachtrag lief über den Halter').toBeGreaterThan(0);
+  });
+
+  test('AK 12/13 Variante v2: Fever Chart, das in jedem Frame neu zeichnet — Sichttext vollständig, kein Querscrollen', async ({ page }) => {
+    test.setTimeout(60000);
+    k = await kanbanStarten(ausgangslage(R));
+    await vorbereiten(page);
+    await bericht(page, k, 'entwicklung', 'fieber');
+    await page.evaluate(() => { const los = () => { render(); requestAnimationFrame(los); }; requestAnimationFrame(los); });
+    await fieberLesen(page, 'bei Neuzeichnen in jedem Frame');
   });
 });

@@ -36,26 +36,45 @@ function grundbestand(ordner) {
 }
 
 const trenner = page => page.locator('[data-col="Fertig"] .dtrenn');
-const texte = async page => (await trenner(page).allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+/** Die gezeichnete Reihe der Spalte „Fertig“: `T` für einen Trenner, sonst die Nummer der Karte. */
+const folge = page => page.locator('[data-col="Fertig"] .flaeche > *').evaluateAll(els => els.map(e => e.classList.contains('dtrenn') ? 'T' : e.dataset.id));
 
 test.describe('R00124', () => {
   let k;
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(grundbestand); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
-  test('US-1: „Fertig“ zeigt Heute / Gestern / Datum vor der jeweiligen Tagesgruppe, die Reihenfolge bleibt', async ({ page }) => {
-    await page.goto(k.adresse + '#/board/fabrik');
-    await liveBereit(page);
-    const daten = await texte(page);
-    expect(daten).toEqual(['— Heute —', '— Gestern —', `— ${tag(-2).split('-').reverse().join('.')} —`]);
+  /** US-1 am geöffneten Board: Trenner und Reihe der Spalte „Fertig“ per Zusicherung — `liveBereit` allein heißt nicht,
+   *  dass „Fertig“ gezeichnet ist; die Trenner entstehen erst mit `GET /api/berichte/bewegungen` (ADR-0026 N4, Regel 1/3). */
+  async function us1Pruefen(page) {
+    await expect(trenner(page)).toHaveText(['— Heute —', '— Gestern —', `— ${tag(-2).split('-').reverse().join('.')} —`]);
     // die Trenner stehen vor #4 (Heute), #3 (Gestern) und #1 (Datum), nicht vor #2 (same day)
-    const folge = await page.locator('[data-col="Fertig"] .flaeche > *').evaluateAll(els => els.map(e => e.classList.contains('dtrenn') ? 'T' : e.dataset.id));
-    expect(folge).toEqual(['T', '4', 'T', '3', '2', 'T', '1']);
+    await expect.poll(() => folge(page)).toEqual(['T', '4', 'T', '3', '2', 'T', '1']);
     // jede Karte liegt in einem role=listitem, der Trenner ist keinesfalls ein Bedienziel
     for (const t of await trenner(page).all()) {
       await expect(t).toHaveAttribute('role', 'listitem');
       await expect(t).not.toHaveAttribute('tabindex', /.*/);
     }
+  }
+
+  test('US-1: „Fertig“ zeigt Heute / Gestern / Datum vor der jeweiligen Tagesgruppe, die Reihenfolge bleibt', async ({ page }) => {
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    await us1Pruefen(page);
+  });
+
+  // R00232 AK 7 (ADR-0026 N4, Abnahme-Probe): die Bewegungen kommen 1,5 s nach der Live-Leitung — US-1 gilt trotzdem
+  test('US-1 mit 1,5 s verzögertem GET /api/berichte/bewegungen: Trenner und Reihe stehen, sobald „Fertig“ gezeichnet ist', async ({ page }) => {
+    let gehalten = 0;
+    await page.route(u => u.pathname === '/api/berichte/bewegungen', async route => {
+      gehalten++;
+      await new Promise(weiter => setTimeout(weiter, 1500));
+      await route.continue();
+    });
+    await page.goto(k.adresse + '#/board/fabrik');
+    await liveBereit(page);
+    await us1Pruefen(page);
+    expect(gehalten, 'die Bewegungen liefen über den Halter').toBeGreaterThan(0);
   });
 
   test('US-2: Standard nur in der Abschlussspalte an; „Eingang“ und „In Arbeit“ ohne Trenner', async ({ page }) => {
@@ -195,13 +214,11 @@ test.describe('R00124 Reihenfolge bei „Signale oben“ und Filter', () => {
   test.beforeEach(async ({ page }) => { k = await kanbanStarten(reihenfolgeBestand); await alsPerson(page, 'st'); });
   test.afterEach(() => k.stoppen());
 
-  const folge = page => page.locator('[data-col="Fertig"] .flaeche > *').evaluateAll(els => els.map(e => e.classList.contains('dtrenn') ? 'T' : e.dataset.id));
-
   test('AK Reihenfolge: „Signale oben“ rückt Karte und Trenner mit (gezeichnete Reihe, nicht sp.aufgaben)', async ({ page }) => {
     await page.goto(k.adresse + '#/board/fabrik');
     await liveBereit(page);
     // ohne „Signale oben“: die Trenner folgen der Datei-Reihenfolge 4·3·2·1
-    expect(await folge(page)).toEqual(['T', '4', 'T', '3', '2', 'T', '1']);
+    await expect.poll(() => folge(page)).toEqual(['T', '4', 'T', '3', '2', 'T', '1']);
     await ausMehr(page, 'Signale oben');
     // #3 (gestern) rückt nach oben: seine Tagesgruppe wandert mit, die Trenner folgen der gezeichneten Reihe
     await expect.poll(() => folge(page)).toEqual(['T', '3', 'T', '4', 'T', '2', 'T', '1']);
