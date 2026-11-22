@@ -340,7 +340,7 @@ Ergänzt nach den Reviews an #251 (architektur-reviewer, rechtschreib-reviewer).
    - Die Auswertung liefert die Summe aus dem Transkript als `tokens: {summe, neu, ein, aus, cache_lesen, cache_schreiben}`, ohne `tokens` im Transkript `null`. Ob der Kopf daraus eine Aufteilung zeigt (etwa „davon neu …“), entscheidet die Gestaltung.
 3. **Zuordnung je Schritt (Technikfrage 2)**: Variante Z1.
    - Eine **Antwort** beginnt an einem Eintrag von `agent` mit `tokens` und umfasst die unmittelbar folgenden Einträge von `agent` ohne `tokens`. Sie endet am nächsten Eintrag eines anderen `wer` oder am nächsten Eintrag mit `tokens`. Ein Ergebnis hat `wer=werkzeug` und beendet die Antwort damit immer.
-   - Die Tokens stehen an der **Zeile des Eintrags, der sie trägt**: an einer Nachricht von `agent` oder an einer Schrittzeile, deren Aufruf sie trägt. Weitere Zeilen derselben Antwort zeigen „–“ mit dem Lesetext, dass sie in der Antwort darüber gezählt sind. Einträge von `agent` ohne Antwort mit `tokens` zeigen „–“ mit dem Lesetext „keine Angabe“. Das gilt auch für jeden Eintrag eines Transkripts ganz ohne `tokens` (Wunsch 4 der Karte).
+   - Die Tokens stehen an der **Zeile des Eintrags, der sie trägt**: an einer Nachricht von `agent` oder an einer Schrittzeile, deren Aufruf sie trägt. Weitere Zeilen derselben Antwort zeigen „–“ mit dem Lesetext, dass sie in der Antwort darüber gezählt sind. Einträge von `agent` ohne Antwort mit `tokens` zeigen „–“ mit dem Lesetext „keine Angabe“ (angeglichen 2026-11-22, siehe Nachtrag am Ende von N3: entschieden ist „Tokens unbekannt“, PO Z. 576). Das gilt auch für jeden Eintrag eines Transkripts ganz ohne `tokens` (Wunsch 4 der Karte).
    - Nachrichten von `mensch`, allein stehende Ergebnisse sowie Denk- und Wartezeilen tragen keine Token-Angabe. Die Denkzeile vor einer Antwort und ihre Tokens bleiben getrennt, denn die Lücke gehört nach N1 Punkt 1 dem späteren Eintrag und hängt an keiner Antwort.
    - Die Zeile zeigt die **neuen Tokens** (Punkt 4), unauffällig wie die Dauer. Aufgeklappt stehen die vier Werte einzeln. Die Summe aller vier gehört nicht in die Zeile, denn sie wächst mit dem Kontext und liest sich wie ein Zähler.
    - Die Auswertung liefert je Antwort `{nr, tokens, neu, nachNr}`. `nr` ist die Nummer der Zeile, an der die Tokens stehen. `nachNr` ist die Zeile des Schritts, dessen Ergebnis unmittelbar vor der Antwort stand, sonst `null`.
@@ -374,6 +374,10 @@ Ergänzt nach den Reviews an #251 (architektur-reviewer, rechtschreib-reviewer).
 - Messprobe als Beobachtung im Bericht, nicht im Gate: 20.000 Zeilen mit `tokens` an jedem Eintrag von `agent` bleiben unter 300 ms (Q5 aus N1 Punkt 7).
 - Review-Punkt `architektur-reviewer`: Gerechnet wird nur in `web/lauf.js` und einmal je Lesen. Kein Preis, kein Modell, kein Betrag aus Tokens (PO Z. 569). Keine Liste wird nach allen Antworten sortiert.
 - Review-Punkt `code-reviewer`: Die Werte aus `tokens` gehen nur als Zahl ins HTML.
+
+### Nachtrag 2026-11-22 (Lauf 263-architekt-3): Lesetext angeglichen
+
+Der PO hat den Lesetext in `AI-Team/po-entscheidungen.md` Z. 576 entschieden: Einträge von `agent` ohne Angabe und ein Kopf ohne beide Quellen zeigen „–“ mit dem Lesetext **„Tokens unbekannt“**, nicht „keine Angabe“. Punkt 3 oben bleibt als ursprünglicher Wortlaut stehen, maßgeblich ist Z. 576. Gebaut ist es so (`TOKENS_UNBEKANNT`, `web/lauf.js:238`).
 
 ### Folgeaufgaben
 
