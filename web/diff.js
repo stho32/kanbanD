@@ -365,35 +365,97 @@
     return ` (${status})`;
   }
 
-  /** Eine Datei als Abschnitt: Kopf als Knopf mit `aria-expanded`, darunter Merkmale, Hinweis und — offen — der Code. `kennung`
-      trägt in „Alle Änderungen“ den Abschnitt mit (`id` „<a>-<i>“, `arg` „<a>:<i>“; ADR-0033 N1.3). */
-  function dateiHtml(d, i, stand, hinweise, esc, kennung = { id: i, arg: i }) {
+  /** Eine Datei als Abschnitt: Kopf als Knopf mit `aria-expanded` in einer Überschrift der Stufe `ebene`, darunter Merkmale, Hinweis
+      und — offen — der Code; zu der Satz, warum sie zu ist (R00235 FA 6). `kennung` trägt in „Alle Änderungen“ den Abschnitt mit
+      (`id` „<a>-<i>“, `arg` „<a>:<i>“; ADR-0033 N1.3). */
+  function dateiHtml(d, i, stand, hinweise, esc, kennung = { id: i, arg: i }, ebene = 3) {
     const { id, arg } = kennung;
     const zustand = dateiZustand(d, hinweise);
     const pfad = d.neu ?? d.alt;
     const [wort, klasse] = STATUSWORT[d.status] || [d.status, 'st-mod'];
     const ren = d.status === 'R' ? `<span class="ren">umbenannt ← ${pfadHtml(d.alt, esc)}${d.aehnlichkeit != null ? ` · ${d.aehnlichkeit} %` : ''}</span>` : '';
     const anzeigen = zustand === 'patch' && !stand.offen ? '<span class="mk">anzeigen</span>' : '';
-    const kopf = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${esc(wort)}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h3>`;
+    const kopf = `<h${ebene} class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${esc(wort)}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}${testHinweisHtml(d)}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h${ebene}>`;
     const saetze = merkmalSaetze(d, zustand).map(t => `<p class="df-mm">${esc(t)}</p>`).join('');
     const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc) : '';
     const inhalt = stand.offen ? saetze + hinweisHtml(d, arg, zustand, stand, esc) + code : '';
     const beschaeftigt = stand.laden === 'laeuft' ? ' aria-busy="true"' : '';
-    return `<section class="df" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${kopf}<div class="df-inhalt" id="rv-dc${id}"${stand.offen ? '' : ' hidden'}>${inhalt}</div></section>`;
+    let warumZu = '';
+    if (!stand.offen && zustand === 'patch') warumZu = warumZuHtml(d, id, arg, stand);
+    return `<section class="df" id="rv-d${id}" aria-labelledby="rv-dk${id}"${beschaeftigt}>${kopf}${warumZu}<div class="df-inhalt" id="rv-dc${id}"${stand.offen ? '' : ' hidden'}>${inhalt}</div></section>`;
   }
 
-  /** Die Dateien der Seite: die Insel (ADR-0033 Punkt 4), die beim Neuzeichnen derselbe Knoten bleibt. */
-  function inselHtml(schluessel, dateien, staende, hinweise, esc) {
-    return `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}">${dateien.map((d, i) => dateiHtml(d, i, staende[i], hinweise, esc)).join('')}</div>`;
+  /** Hinweis an einem Test (ADR-0042 Punkt 3) als Marke; '' ohne Hinweis. */
+  function testHinweisHtml(d) {
+    const hinweis = testHinweis(d);
+    if (!hinweis) return '';
+    return `<span class="rv-th">${hinweis}</span>`;
   }
 
-  /** Dateiliste: je Datei Statuswort, Pfad, Zahlen; ein Eintrag springt zur Datei und klappt sie auf. */
+  /** Satz einer zugeklappten Datei mit `patch`, je Grund einer (PO Z. 551): große neue Datei (FA 6) oder Zeichenbudget; der Knopf
+      klappt auf wie der Kopf (PO Z. 553 (a)) und nennt über `aria-describedby` die Datei. Selbst zugeklappt: kein Satz. */
+  function warumZuHtml(d, id, arg, stand) {
+    let satz = '';
+    if (grosseNeueDatei(d)) satz = `Neue Datei mit ${tausender(d.plus)} Zeilen, beginnt eingeklappt.`;
+    else if (stand.budgetZu) satz = `Der Patch ist groß (${tausender(d.plus + d.minus)} Zeilen) und wird erst auf Wunsch geladen.`;
+    if (!satz) return '';
+    return `<div class="df-hin df-zu"><p>${satz}</p><button type="button" class="btn" data-act="review-klappe" data-arg="${arg}" aria-describedby="rv-dk${id}">Änderungen anzeigen</button></div>`;
+  }
+
+  /** Die Dateien der Seite: die Insel (ADR-0033 Punkt 4), die beim Neuzeichnen derselbe Knoten bleibt; darin die Gruppen Code, Tests,
+      Doku und Planung (R00235 FA 2), offen nach `gruppenOffen` je Art. */
+  function inselHtml(schluessel, dateien, staende, hinweise, esc, gruppenOffen) {
+    const gruppen = dateiGruppen(dateien).map(g => commitGruppeHtml(g, dateien, staende, hinweise, esc, gruppenOffen[g.art]));
+    return `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}">${gruppen.join('')}</div>`;
+  }
+
+  /** Eine Gruppe in „Ein Commit“: Kopf `h2`, Dateien `h3` (PO Z. 552 (a)). */
+  function commitGruppeHtml(g, dateien, staende, hinweise, esc, offen) {
+    const inhalt = g.indizes.map(i => dateiHtml(dateien[i], i, staende[i], hinweise, esc)).join('');
+    return gruppeHtml(g, inhalt, offen, { id: `-${g.art}`, arg: g.art }, 2);
+  }
+
+  /** Zahlen einer Gruppe: „<n> Dateien · +<a> −<b>“ mit Einzahl und Tausenderpunkt (FA 3). */
+  const gruppenZahlenHtml = g => `${dateienWort(g.n)} · ${zahlenHtml(g)}`;
+
+  /** Eine Gruppe als Abschnitt: Überschrift der Stufe `ebene` mit einem Knopf, der die Gruppe auf- und zuklappt (FA 3). */
+  function gruppeHtml(g, inhalt, offen, kennung, ebene) {
+    const { id, arg } = kennung;
+    let verborgen = ' hidden';
+    if (offen) verborgen = '';
+    const kopf = `<h${ebene} class="rv-gh"><button type="button" class="rv-gk" id="rv-gk${id}" data-act="review-gruppe" data-arg="${arg}" aria-expanded="${offen}" aria-controls="rv-gc${id}">${symbol('pfeil', ' rv-gpf')}<span class="rv-gn">${g.name}</span> <span class="z">${gruppenZahlenHtml(g)}</span></button></h${ebene}>`;
+    return `<section class="rv-gr" id="rv-g${id}" aria-labelledby="rv-gk${id}">${kopf}<div class="rv-gc" id="rv-gc${id}"${verborgen}>${inhalt}</div></section>`;
+  }
+
+  /** Dateiliste „Ein Commit“: gruppiert wie der Hauptteil; ein Eintrag springt zur Datei und klappt Gruppe und Datei auf. */
   function dateilisteHtml(dateien, esc) {
-    const eintraege = dateien.map((d, i) => {
-      const [wort] = STATUSWORT[d.status] || [d.status];
-      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${i}"><span class="p">${pfadHtml(d.neu ?? d.alt, esc)}</span><span class="z">${zahlenHtml(d)}</span><span class="s">${esc(wort)}</span></button></li>`;
-    }).join('');
-    return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3><ul class="dn" aria-label="Dateien">${eintraege}</ul>`;
+    return gruppierteListeHtml(dateien, (d, i) => ({ arg: i, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0] }), esc);
+  }
+
+  /** Die Dateiliste in Gruppen (R00235 FA 2, 9): je Gruppe ein Kopf mit Zahlen und eine Liste; `eintrag(d, i)` liefert `arg`, `pfad`
+      und `wort` der Zeile. */
+  function gruppierteListeHtml(dateien, eintrag, esc) {
+    const gruppen = dateiGruppen(dateien).map(g => {
+      const groesste = groessteSumme(dateien, g.indizes);
+      const zeilen = g.indizes.map(i => listenzeileHtml(dateien[i], eintrag(dateien[i], i), groesste, esc)).join('');
+      return `<h4 class="rv-gl"><span class="rv-gn">${g.name}</span> <span class="z">${gruppenZahlenHtml(g)}</span></h4><ul class="dn" aria-label="${g.name}">${zeilen}</ul>`;
+    });
+    return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3>${gruppen.join('')}`;
+  }
+
+  /** Eine Zeile der Dateiliste: Pfad, Größenbalken, Zahlen, darunter Statuswort und Test-Hinweis. */
+  function listenzeileHtml(d, { arg, pfad, wort }, groesste, esc) {
+    return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${arg}"><span class="p">${pfadHtml(pfad, esc)}</span>${balkenHtml(d, groesste)}<span class="z">${zahlenHtml(d)}</span><span class="s">${esc(wort)}${testHinweisHtml(d)}</span></button></li>`;
+  }
+
+  /** Größenbalken (ADR-0042 Punkt 9): je Zahl über 0 ein Teil mit seinem Anteil an der größten Summe der Gruppe; Länge im CSS. */
+  function balkenHtml(d, groesste) {
+    const anteile = balkenTeile(d, groesste);
+    const teil = (klasse, anteil) => {
+      if (anteil <= 0) return '';
+      return `<i class="${klasse}" style="--anteil:${anteil}"></i>`;
+    };
+    return `<span class="rv-gb" aria-hidden="true">${teil('rv-gb-p', anteile.plus)}${teil('rv-gb-m', anteile.minus)}</span>`;
   }
 
   const BAND_VERWAIST = 'Dieser Commit ist verwaist: Kein Zweig führt zu ihm. Sein Diff bleibt lesbar. Nach einem Rebase mit ersetzen nachziehen; im Gesamtbild der Aufgabe zählt er nicht mit.';
@@ -493,7 +555,7 @@
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
-  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });
 

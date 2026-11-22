@@ -1066,3 +1066,5 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #252 R00235 | B1214 Art, Gruppen, Test-Hinweis, große neue Datei, Balken rein in web/review-uebersicht.js: 11 Einheitentests rot (Stub), dann grün | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #252 R00235 | B1215 Teil 1: Ausgangslagen der Review-Tests von .txt auf .dat (Art code ohne Farbe), README.md der Nachlade-Probe r00210 AK 7 auf README.dat; 10 Specs 333 grün und Einheiten 1539 grün am alten Stand | Standard | 1h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #252 R00235 | B1216 Aufklappplan in gruppierter Folge: Doku und A > 500 zählen nicht und unterbrechen nicht, budgetZu je Index; 8 Einheitentests rot, dann grün | Standard | 1-2h | 0,5h | 0,5h | autonom |
+| 2026-11-22 | Karte #252 R00235 | B1217 Teil 1: Zeichnen rein (Gruppen h2/h3, gruppierte Liste mit Balken und Marke, Satz der zugeklappten Datei); 7 Einheitentests rot, dann grün | Standard | 1-2h | 0,8h | 0,8h | autonom |
+| 2026-11-22 | Karte #252 R00235 | B1218 Teil 1: Gruppen je Abschnitt rein (gesamt.js, h3/h4/h5), Einheitenprobe AK 8 rot, dann grün | Standard | 1-2h | 0,4h | 0,4h | autonom |

@@ -76,13 +76,14 @@
     return Math.max(0, ...indizes.map(i => dateien[i].plus + dateien[i].minus));
   }
 
-  /** Längen der Teile `+` und `−` in px: Zahl durch die größte Summe der Gruppe mal `laenge`; jede Zahl über 0 mindestens 1 px. */
-  function balkenTeile(d, groesste, laenge) {
-    const teil = zahl => {
+  /** Anteile der Teile `+` und `−` an der vollen Länge des Balkens: Zahl durch die größte Summe der Gruppe; die volle Länge und die
+      Mindestlänge von 1 px je Zahl über 0 legt das CSS fest (`--rv-balken`). */
+  function balkenTeile(d, groesste) {
+    const anteil = zahl => {
       if (zahl <= 0) return 0;
-      return Math.max(1, (zahl / groesste) * laenge);
+      return zahl / groesste;
     };
-    return { plus: teil(d.plus), minus: teil(d.minus) };
+    return { plus: anteil(d.plus), minus: anteil(d.minus) };
   }
 
   Object.assign(ziel, { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, testHinweis, grosseNeueDatei, groessteSumme, balkenTeile });

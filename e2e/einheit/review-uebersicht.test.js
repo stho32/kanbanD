@@ -91,13 +91,13 @@ test('grosseNeueDatei: nur `A` mit mehr als 500 hinzugefügten Zeilen (Grenze 50
   assert.strictEqual(u.grosseNeueDatei({ pfad: 'a.rs', plus: 900, minus: 0, schritte: [] }), false, 'Folge-Datei hat keinen Netto-Zustand');
 });
 
-test('groessteSumme: größte Summe plus + minus der Indizes einer Gruppe; balkenTeile relativ dazu, je Zahl über 0 mindestens 1 px (AK 7)', () => {
+test('groessteSumme: größte Summe plus + minus der Indizes einer Gruppe; balkenTeile als Anteil daran (AK 7, Skala je Gruppe)', () => {
   const [code, tests, doku] = u.dateiGruppen(K_ART);
   assert.deepStrictEqual([code, tests, doku].map(g => u.groessteSumme(K_ART, g.indizes)), [5, 150, 1]);
-  assert.deepStrictEqual(u.balkenTeile(K_ART[7], 5, 44), { plus: 17.6, minus: 26.4 });
-  assert.deepStrictEqual(u.balkenTeile(K_ART[6], 150, 44), { plus: 44, minus: 0 });
-  assert.strictEqual(Math.round(u.balkenTeile(K_ART[4], 150, 44).plus * 10) / 10, 41.9);
-  assert.deepStrictEqual(u.balkenTeile(K_ART[3], 150, 44), { plus: 1, minus: 1 }, '0,59 und 0,29 px werden je 1 px');
-  assert.deepStrictEqual(u.balkenTeile(K_ART[0], 1, 44), { plus: 44, minus: 0 });
-  assert.deepStrictEqual(u.balkenTeile(datei('a.bin', { plus: 0, minus: 0 }), 0, 44), { plus: 0, minus: 0 }, 'ohne Zeilen kein Teil, keine Division durch 0');
+  assert.deepStrictEqual(u.balkenTeile(K_ART[7], 5), { plus: 0.4, minus: 0.6 });
+  assert.deepStrictEqual(u.balkenTeile(K_ART[6], 150), { plus: 1, minus: 0 });
+  assert.strictEqual(Math.round(u.balkenTeile(K_ART[4], 150).plus * 44 * 10) / 10, 41.9);
+  assert.deepStrictEqual(u.balkenTeile(K_ART[3], 150), { plus: 2 / 150, minus: 1 / 150 });
+  assert.deepStrictEqual(u.balkenTeile(K_ART[0], 1), { plus: 1, minus: 0 });
+  assert.deepStrictEqual(u.balkenTeile({ plus: 0, minus: 0 }, 0), { plus: 0, minus: 0 }, 'ohne Zeilen kein Teil, keine Division durch 0');
 });

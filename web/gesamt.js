@@ -4,6 +4,7 @@
   'use strict';
   const diff = typeof module !== 'undefined' ? require('./diff.js') : window;
   const { kurzVerweis, tausender, zuordnen, STATUSWORT } = diff;
+  const { dateiGruppen } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
   const { zustandsmarke, zustandSatz, zustandsSymbol } = typeof module !== 'undefined' ? require('./commits.js') : window;
 
   /* ── Folge-Dateien (N1.4): eine Datei als Reihe der Schritte der Aufgabe, ohne Netto-Zustand ── */
@@ -237,14 +238,12 @@
     return `<h3 class="rv-ue">COMMITS <span class="mono">${ein.length + aus.length}</span></h3><ul class="rv-cl" aria-label="Commits der Aufgabe">${ein.join('')}${aus.join('')}</ul>`;
   }
 
-  /** Dateiliste des Abschnitts: Folge-Dateien mit „Folge · n Commits“ statt Statuswort. */
+  /** Dateiliste des Abschnitts, gruppiert wie der Hauptteil (R00235 FA 10): Folge-Dateien mit „Folge · n Commits“ statt Statuswort. */
   function dateilisteHtml(a, dateien, esc) {
-    const eintraege = dateien.map((d, i) => {
-      let pfad = d.neu ?? d.alt, wort = (STATUSWORT[d.status] || [d.status])[0];
-      if (istFolge(d)) { pfad = d.pfad; wort = folgeWort(d.schritte.length); }
-      return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${a}:${i}"><span class="p">${diff.pfadHtml(pfad, esc)}</span><span class="z">${diff.zahlenHtml(d)}</span><span class="s">${esc(wort)}</span></button></li>`;
-    }).join('');
-    return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3><ul class="dn" aria-label="Dateien">${eintraege}</ul>`;
+    return diff.gruppierteListeHtml(dateien, (d, i) => {
+      if (istFolge(d)) return { arg: `${a}:${i}`, pfad: d.pfad, wort: folgeWort(d.schritte.length) };
+      return { arg: `${a}:${i}`, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0] };
+    }, esc);
   }
 
   /** Eine Folge-Datei (N1.4): Kopf mit Pfad, „Folge · n Commits“ und Summe, ohne Statuswort; offen der Satz zur Folge, dann je
@@ -256,7 +255,7 @@
     let klappWort = 'zugeklappt';
     if (stand.offen) klappWort = 'aufgeklappt';
     const name = `${diff.sichtbarText(d.pfad)}, ${kopf.wort}, +${tausender(d.plus)} −${tausender(d.minus)}, ${klappWort}`;
-    const knopfHtml = `<h3 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}" aria-label="${esc(name)}">${diff.symbol('pfeil', ' df-pf')}<span class="p">${diff.pfadHtml(d.pfad, esc)}</span><span class="st st-folge">${kopf.wort}</span><span class="z">${diff.zahlenHtml(d)}</span></button></h3>`;
+    const knopfHtml = `<h4 class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}" aria-label="${esc(name)}">${diff.symbol('pfeil', ' df-pf')}<span class="p">${diff.pfadHtml(d.pfad, esc)}</span><span class="st st-folge">${kopf.wort}</span><span class="z">${diff.zahlenHtml(d)}</span></button></h4>`;
     let inhalt = '';
     if (stand.offen) inhalt = `<p class="df-folge" role="note">${folgeSatz}</p>${folgeRumpfHtml(d, a, i, stand, ctx, hinweise, commits)}`;
     let beschaeftigt = '';
@@ -310,13 +309,21 @@
       if (zustand === 'patch') code = diff.codeHtml(s.patch, d.pfad, esc);
       rumpf = saetze + schrittHinweisHtml(s, arg, zustand, esc) + code;
     }
-    return `<div class="fs" id="rv-d${id}"><h4 class="fs-k">${kopf}</h4>${rumpf}</div>`;
+    return `<div class="fs" id="rv-d${id}"><h5 class="fs-k">${kopf}</h5>${rumpf}</div>`;
   }
 
-  /** Eine Datei des Abschnitts: Folge-Datei hier, Netto-Datei wie in B2 mit Kennung des Abschnitts. */
+  /** Eine Datei des Abschnitts: Folge-Datei hier, Netto-Datei wie in B2 mit Kennung des Abschnitts; Kopf `h4` unter der Gruppe. */
   function gesamtDateiHtml(d, a, i, stand, ctx, sicht) {
     if (istFolge(d)) return folgeDateiHtml(d, a, i, stand, ctx, sicht.folgeSatz, sicht.hinweise, sicht.commits);
-    return diff.dateiHtml(d, i, stand, sicht.hinweise, ctx.esc, { id: `${a}-${i}`, arg: `${a}:${i}` });
+    return diff.dateiHtml(d, i, stand, sicht.hinweise, ctx.esc, { id: `${a}-${i}`, arg: `${a}:${i}` }, 4);
+  }
+
+  /** Eine Gruppe `art` des geladenen Abschnitts `a` (R00235 FA 10): Kopf `h3` unter der Anwendung, offen nach `ab.gruppen`. */
+  function abschnittGruppeHtml(ab, a, art, ctx) {
+    const sicht = abschnittSicht(ab.antwort);
+    const g = dateiGruppen(ab.antwort.dateien).find(x => x.art === art);
+    const inhalt = g.indizes.map(i => gesamtDateiHtml(ab.antwort.dateien[i], a, i, ab.staende[i], ctx, sicht)).join('');
+    return diff.gruppeHtml(g, inhalt, ab.gruppen[art], { id: `${a}-${art}`, arg: `${a}:${art}` }, 3);
   }
 
   const abschnittSicht = antwort => ({ ...abschnittHinweise(antwort.hinweise), hinweise: antwort.hinweise, commits: antwort.commits });
@@ -342,10 +349,10 @@
     if (sicht.ausgelassen.length) ausgelassen = `<ul class="rv-aus" aria-label="Ausgelassene Verweise">${sicht.ausgelassen.map(e => ausgelassenHtml(e, esc)).join('')}</ul>`;
     let ganz = '';
     if (sicht.ganz) ganz = `<p class="rv-ganz" role="note">${esc(sicht.ganz)}</p>`;
-    const dateien = antwort.dateien.map((d, i) => gesamtDateiHtml(d, a, i, ab.staende[i], ctx, sicht)).join('');
+    const dateien = dateiGruppen(antwort.dateien).map(g => abschnittGruppeHtml(ab, a, g.art, ctx)).join('');
     let liste = '';
     if (antwort.dateien.length) liste = dateilisteHtml(a, antwort.dateien, esc);
-    const rail = `<div class="rv-abs-rail">${commitlisteHtml(antwort, ctx)}${liste}</div>`;
+    const rail = `<div class="rv-abs-rail" id="rv-a${a}-rail">${commitlisteHtml(antwort, ctx)}${liste}</div>`;
     return huelle(abschnittKopfHtml(a, antwort.anwendung, zahlen, esc) + leer + hinweislisteHtml(sicht.saetze, ctx) + ausgelassen + `<div class="rv-abs-rumpf">${rail}<div class="rv-abs-haupt">${ganz}${dateien}</div></div>`);
   }
 
@@ -388,5 +395,5 @@
     return `${diff.dateienWort(s.dateien)} · <span class="pl">+${tausender(s.plus)}</span> <span class="mi">−${tausender(s.minus)}</span>${noch}`;
   }
 
-  Object.assign(ziel, { umschalterHtml, abschnittHtml, abschnittDateiHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
+  Object.assign(ziel, { umschalterHtml, abschnittHtml, abschnittDateiHtml, abschnittGruppeHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
 })(typeof module !== 'undefined' ? module.exports : window);

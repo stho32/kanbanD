@@ -16,7 +16,7 @@ const folgeA = { pfad: 'a.dat', plus: 2, minus: 2, binaer: false, schritte: [sch
 const nettoK = { neu: 'k.dat', alt: null, status: 'A', plus: 3, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1,3 @@\n+1\n+2\n+3\n' };
 const antwort2 = { anwendung: 'kd', commits: [commit('a', 'K1'), commit('b', BOESE)], dateien: [folgeA, nettoK], hinweise: [{ art: 'fremd_dazwischen', commits: 1, dateien: 1 }] };
 const offen = n => Array.from({ length: n }, () => ({ offen: true, laden: null, fehler: null }));
-const da = (antwort, kuerzel = antwort.anwendung) => ({ status: 'da', kuerzel, antwort, staende: offen(antwort.dateien.length) });
+const da = (antwort, kuerzel = antwort.anwendung) => ({ status: 'da', kuerzel, antwort, staende: offen(antwort.dateien.length), gruppen: { code: true, test: true, doku: false } });
 const ohneTags = html => html.replace(/<[^>]*>/g, '');
 const ids = html => [...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]);
 
