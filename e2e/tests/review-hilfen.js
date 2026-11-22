@@ -241,4 +241,95 @@ function uebersichtVorbereiten(h) {
   };
 }
 
-module.exports = { reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, BOESE, ZWEIG_60 };
+/* ── Ausgangslage von R00236 (Pfad, VS Code, Patch je Datei): W = „<tmp>/R x“, im Register als Unterordner W/plan; V für `wb` ── */
+
+/** Ein Commit in `r` mit festem Datum je Aufruf; `aenderungen` wie `aenderungsCommit` (Pfad → Inhalt, null löscht, [neu, Inhalt] benennt um). */
+function pfadCommit(r, titel, datum, aenderungen, nachAdd = null) {
+  for (const [pfad, inhalt] of Object.entries(aenderungen)) {
+    const ort = path.join(r, pfad);
+    if (inhalt === null) { fs.rmSync(ort); continue; }
+    if (Array.isArray(inhalt)) { fs.renameSync(ort, path.join(r, inhalt[0])); continue; }
+    fs.mkdirSync(path.dirname(ort), { recursive: true });
+    fs.writeFileSync(ort, inhalt);
+  }
+  gitAls(r, ADA, datum, 'add', '-A');
+  if (nachAdd) nachAdd();
+  // der lange Pfad steht nur im Index: Git warnt beim Prüfen des Arbeitsbaums, das ist hier gewollt
+  execFileSync('git', ['-C', r, '-c', `user.name=${ADA}`, '-c', 'user.email=ada@example.org', 'commit', '-q', '-m', titel], { env: { ...process.env, GIT_AUTHOR_DATE: datum, GIT_COMMITTER_DATE: datum }, stdio: ['ignore', 'ignore', 'ignore'] });
+  return gitAls(r, ADA, datum, 'rev-parse', 'HEAD');
+}
+
+const nummeriert = (n, kopf) => Array.from({ length: n }, (_, i) => `${kopf} ${i + 1}\n`).join('');
+const zeileErsetzt = (text, nummer, neu) => text.split('\n').map((z, i) => (i === nummer - 1 ? neu : z)).join('\n');
+
+/** `kd` (W): B0, Aufgabe #4 (K4a, fremder Commit F, K4b), dann K-Pfad, K-Gross und zuletzt K-Lang (der lange Pfad nur im Index);
+    `wb` (V): V0 und B4. */
+function pfadBauen(basis) {
+  const w = path.join(basis, 'R x'), v = path.join(basis, 'V');
+  fs.mkdirSync(path.join(w, 'plan'), { recursive: true });
+  fs.writeFileSync(path.join(w, 'plan/wbs.md'), '# Plan\n');
+  fs.mkdirSync(v, { recursive: true });
+  for (const ort of [w, v]) gitAls(ort, ADA, '2026-07-01T08:00:00+00:00', 'init', '-q', '-b', 'main');
+  const h = { w, v };
+  const a = nummeriert(20, 'a'), nurWeg = nummeriert(23, 'w'), f = nummeriert(40, 'f'), g = nummeriert(10, 'g');
+  h.b0 = pfadCommit(w, 'B0 Vorgänger', '2026-07-01T09:00:00+00:00', {
+    'src/a.rs': a, 'src/nur-weg.rs': nurWeg, 'alt.rs': nummeriert(5, 'umbenannt'), 'weg.rs': nummeriert(3, 'weg'), 'src/gross.rs': 'alt\n',
+    'src/f.rs': f, 'src/g.rs': g,
+  });
+  h.k4a = pfadCommit(w, 'K4a', '2026-07-01T10:00:00+00:00', { 'src/f.rs': zeileErsetzt(f, 2, 'f 2 karte'), 'src/g.rs': zeileErsetzt(g, 2, 'g 2 karte') });
+  const fFremd = zeileErsetzt(zeileErsetzt(f, 2, 'f 2 karte'), 10, 'f 10 fremd');
+  h.fremd = pfadCommit(w, 'fremd', '2026-07-01T11:00:00+00:00', { 'src/f.rs': fFremd, 'src/g.rs': zeileErsetzt(zeileErsetzt(g, 2, 'g 2 karte'), 5, 'g 5 fremd') });
+  h.k4b = pfadCommit(w, 'K4b', '2026-07-01T12:00:00+00:00', { 'src/f.rs': zeileErsetzt(fFremd, 31, 'f 31 karte'), 'src/g.rs': null });
+  h.kPfad = pfadCommit(w, 'K-Pfad', '2026-07-02T09:00:00+00:00', {
+    'src/a.rs': zeileErsetzt(a, 13, 'a 13 neu'),
+    'src/nur-weg.rs': nummeriert(22, 'w'),
+    'a/b?c#d%e:12.rs': 'eins\nzwei\n',
+    'alt.rs': ['neu.rs'],
+    'bild.png': Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 0, 255, 0]),
+    'weg.rs': null,
+    'bidi-‮datei.dat': 'b\n',
+    'ä.rs': 'ä\n',
+  });
+  h.kGross = pfadCommit(w, 'K-Gross', '2026-07-02T10:00:00+00:00', { 'src/gross.rs': nummeriert(3001, 'gross') });
+  h.lang = Array.from({ length: 21 }, (_, i) => `l${i}`.padEnd(200, 'l')).join('/') + '/x.rs';
+  h.kLang = pfadCommit(w, 'K-Lang', '2026-07-02T11:00:00+00:00', {}, () => {
+    const blob = execFileSync('git', ['-C', w, 'hash-object', '-w', '--stdin'], { input: 'lang\n', encoding: 'utf8' }).trim();
+    gitAls(w, ADA, '2026-07-02T11:00:00+00:00', 'update-index', '--add', '--cacheinfo', `100644,${blob},${h.lang}`);
+  });
+  pfadCommit(v, 'V0', '2026-07-01T09:00:00+00:00', { 'b.js': nummeriert(10, 'b') });
+  h.b4 = pfadCommit(v, 'B4', '2026-07-01T13:00:00+00:00', { 'b.js': zeileErsetzt(nummeriert(10, 'b'), 5, 'b 5 neu') });
+  return h;
+}
+
+let pfade = null;
+/** Ein Satz Repositories je Prozess, am Prozessende entfernt (kanbanD liest sie nur). */
+function pfadRepository() {
+  if (!pfade) {
+    const basis = basisAnlegen();
+    pfade = pfadBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return pfade;
+}
+
+/** Aufgaben: #1 K-Pfad, K-Gross, K-Lang; #4 K4a, K4b in `kd` und B4 in `wb`. Register `kd` → W/plan, `wb` → V. */
+function pfadVorbereiten(h) {
+  const aufgaben = { 1: [`kd:${h.kPfad}`, `kd:${h.kGross}`, `kd:${h.kLang}`], 4: [`kd:${h.k4a}`, `kd:${h.k4b}`, `wb:${h.b4}`] };
+  const register = EINSTELLUNGEN_KOPF
+    + `    kd: {name: KD, repository: ${JSON.stringify(path.join(h.w, 'plan'))}}\n`
+    + `    wb: {name: WB, repository: ${JSON.stringify(h.v)}}\n---\n`;
+  const dateien = { 'kanbanD.md': register };
+  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/000${nr}-aufgabe-${nr}.md`] = aufgabeDatei(nr, `Aufgabe ${nr}`, verweise);
+  dateien['boards/entwicklung.md'] = `# Entwicklung\n\n## Zu erledigen\n\n${Object.keys(aufgaben).map(n => `- #${n}`).join('\n')}\n\n## In Arbeit\n\n## Erledigt\n`;
+  return ordner => {
+    for (const [rel, inhalt] of Object.entries(dateien)) {
+      fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
+      fs.writeFileSync(path.join(ordner, rel), inhalt);
+    }
+    execFileSync('git', ['-C', ordner, 'init', '-q']);
+    execFileSync('git', ['-C', ordner, 'add', '-A']);
+    execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-m', 'eingerichtet']);
+  };
+}
+
+module.exports = { reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, BOESE, ZWEIG_60 };

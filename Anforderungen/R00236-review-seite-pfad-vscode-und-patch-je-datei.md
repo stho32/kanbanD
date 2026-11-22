@@ -87,6 +87,7 @@ Heute (Stand `263b4c81`) gibt es weder `wurzel` noch die Knöpfe. AK 1–9 sind 
   - Ein Klick auf eine Nummer der alten Seite (die entfernte Zeile 13 alt) öffnet nichts. Ein Klick in den Codetext der Zeile 13 öffnet ebenfalls nichts (`location.href` unverändert).
   - In einem Kontext mit Touch (`hasTouch`, `pointer: coarse`) öffnet ein Tippen auf die Nummer 13 denselben Link wie der Klick (PO Z. 561).
   - Alle Nummern bleiben `aria-hidden="true"`. Die Zahl der `a[href^="vscode:"]` im Diffbereich ist gleich der Zahl der Dateien mit Knopf „VS Code“, also eins je Datei, nicht je Zeile.
+  - Eine Auswahl über mehrere Zeilen im Codetext legt mit Strg + C den Code ohne Zeilennummern in die Zwischenablage (UX-Nachprüfung #255, Härtung 2).
 
   Heute rot.
 
