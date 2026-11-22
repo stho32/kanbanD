@@ -164,3 +164,59 @@ test('web/laeufe.js überschreibt im Browser keinen Namen, den ein anderes Modul
   const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
   for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
 });
+
+/* ── R00239 B1249, B1250: Folge der Läufe, „Lauf k von n“, Blättern und seine Ansage (FA 10–12; AK 7, AK 8 Node) ── */
+
+const { laeufeFolge, laeufeBlaetternHtml, laufBlaetternAnsage } = require('../../web/laeufe.js');
+const R = {
+  T1: 'planer@2026-11-21T23:30+01:00', T3: 'entwickler@2026-11-21T08:00+01:00', T4: 'architekt@2026-11-21T23:40+01:00',
+  T5: 'code-reviewer@2026-11-21T22:00+01:00', T10: 'tester@2026-11-22T10:00+01:00', T11: 'entwickler@2026-11-22T10:30+01:00',
+};
+const AN_EINS = [transkript(R.T1, 'Detailplanung'), transkript(R.T3, 'Entwicklung'), transkript(R.T4, 'Entwicklung'), transkript(R.T5, 'Reviews', { zustand: 'fehlt' }),
+  transkript(R.T10, 'Reviews'), transkript(R.T11, 'Entwicklung')];
+
+test('R00239 FA 10: Folge an #1 aufsteigend T3 · T5 · T1 · T4 · T10 · T11 — T1 ist Lauf 3 von 6 mit T5 davor und T4 danach', () => {
+  const folge = laeufeFolge(AN_EINS, R.T1);
+  assert.deepStrictEqual({ k: folge.k, n: folge.n, vorige: folge.vorige.kennung, naechste: folge.naechste.kennung, rolle: folge.lauf.role },
+    { k: 3, n: 6, vorige: R.T5, naechste: R.T4, rolle: 'planer' });
+  assert.deepStrictEqual([laeufeFolge(AN_EINS, R.T3).k, laeufeFolge(AN_EINS, R.T3).vorige], [1, null]);
+  assert.deepStrictEqual([laeufeFolge(AN_EINS, R.T11).k, laeufeFolge(AN_EINS, R.T11).naechste], [6, null]);
+  assert.strictEqual(laeufeFolge(AN_EINS, R.T5).vorige.kennung, R.T3, 'ein Lauf im Zustand fehlt gehört zur Folge');
+});
+
+test('R00239 FA 10: Gleichstand behält die Reihenfolge von a.transkripte, ohne lesbaren Zeitpunkt ans Ende, ohne Kennung nicht dabei', () => {
+  const a = 'a@2026-11-21T10:00+01:00', b = 'b@2026-11-21T10:00+01:00', ohneZeit = 'c@gestern';
+  const folge = [transkript(b, 'X'), transkript(ohneZeit, 'X'), transkript(a, 'X'), UNLESBAR];
+  assert.deepStrictEqual([b, a, ohneZeit].map(kennung => laeufeFolge(folge, kennung).k), [1, 2, 3]);
+  assert.strictEqual(laeufeFolge(folge, b).n, 3);
+});
+
+test('R00239 FA 10: steht die gezeigte Kennung nicht in der Folge, gibt es kein Blättern', () => {
+  assert.strictEqual(laeufeFolge(AN_EINS, 'pruefer@2026-11-21T12:00+01:00'), null);
+  assert.strictEqual(laeufeFolge([], R.T1), null);
+  assert.strictEqual(laeufeBlaetternHtml(null, k => k), '');
+});
+
+const htmlEsc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+test('R00239 FA 11: Links auf die Nachbarn über die Adresse, „Lauf k von n“; am Rand Sperrform ohne href, fokussierbar, Pfeile verborgen', () => {
+  const adresse = kennung => `#/board/fabrik/aufgabe/1/lauf?kennung=${encodeURIComponent(kennung)}`;
+  const mitte = laeufeBlaetternHtml(laeufeFolge(AN_EINS, R.T1), adresse, htmlEsc);
+  assert.strictEqual(mitte, '<nav class="lv-blatt" aria-label="Läufe dieser Aufgabe">'
+    + `<a class="btn" id="lv-vor" href="${adresse(R.T5)}" data-act="lauf-blaettern" data-arg="${R.T5}"><span aria-hidden="true">‹ </span>Voriger Lauf</a>`
+    + '<span class="stelle">Lauf 3 von 6</span>'
+    + `<a class="btn" id="lv-nach" href="${adresse(R.T4)}" data-act="lauf-blaettern" data-arg="${R.T4}">Nächster Lauf<span aria-hidden="true"> ›</span></a></nav>`);
+  const eins = laeufeBlaetternHtml(laeufeFolge([transkript(R.T1, 'X')], R.T1), adresse, htmlEsc);
+  assert.match(eins, /<a class="btn" id="lv-vor" role="link" tabindex="0" aria-disabled="true"><span aria-hidden="true">‹ <\/span>Voriger Lauf<\/a><span class="stelle">Lauf 1 von 1<\/span><a class="btn" id="lv-nach" role="link" tabindex="0" aria-disabled="true">Nächster Lauf/);
+  assert.doesNotMatch(eins, /href|data-act/);
+});
+
+test('R00239 FA 12: Ansage nach dem Blättern — „Lauf k von n, Rolle. Satz“, am Rand „erster/letzter Lauf“, ohne Rolle samt Komma', () => {
+  const grenze = 'Grenze erreicht: Der Rest des Transkripts wird nicht angezeigt.';
+  assert.strictEqual(laufBlaetternAnsage(laeufeFolge(AN_EINS, R.T3), grenze), `Lauf 1 von 6, entwickler, erster Lauf. ${grenze}`);
+  assert.strictEqual(laufBlaetternAnsage(laeufeFolge(AN_EINS, R.T1), 'Ende des Transkripts'), 'Lauf 3 von 6, planer. Ende des Transkripts');
+  assert.strictEqual(laufBlaetternAnsage(laeufeFolge(AN_EINS, R.T11), 'Ende des Transkripts'), 'Lauf 6 von 6, entwickler, letzter Lauf. Ende des Transkripts');
+  const ohneRolle = [{ ...transkript(R.T1, 'X'), role: null }, transkript(R.T4, 'X')];
+  assert.strictEqual(laufBlaetternAnsage(laeufeFolge(ohneRolle, R.T1), 'Ende des Transkripts'), 'Lauf 1 von 2, erster Lauf. Ende des Transkripts');
+  const mitte = [transkript(R.T3, 'X'), { ...transkript(R.T1, 'X'), role: null }, transkript(R.T4, 'X')];
+  assert.strictEqual(laufBlaetternAnsage(laeufeFolge(mitte, R.T1), 'Das Transkript liegt nicht auf diesem Rechner.'), 'Lauf 2 von 3. Das Transkript liegt nicht auf diesem Rechner.');
+});

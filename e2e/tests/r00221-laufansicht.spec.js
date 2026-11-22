@@ -665,6 +665,11 @@ test.describe('R00221 Laufansicht', () => {
     await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await expect(page.locator(H1)).toBeFocused();
     expect(await page.evaluate(() => document.querySelector('#lv-h1').getAttribute('tabindex'))).toBe('-1');
+    // R00239 FA 11: zuerst das Blättern in der Leiste (L1 hat Nachbarn auf beiden Seiten)
+    for (const ziel of ['#lv-vor', '#lv-nach']) {
+      await page.keyboard.press('Tab');
+      await expect(page.locator(ziel)).toBeFocused();
+    }
     // R00234 FA 10: vor den Einträgen steht „Längste Schritte“ (L1 hat genau einen Schritt mit Dauer), danach der erste summary
     await page.keyboard.press('Tab');
     await expect(page.locator('#lauf .lv-top button')).toBeFocused();

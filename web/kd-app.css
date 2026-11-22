@@ -1745,6 +1745,13 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-leiste>span{min-width:0;overflow-wrap:anywhere}
 .lv-leiste .k{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted);margin-right:5px}
 .lv-leiste .lf-neben{display:inline;margin:0 0 0 6px}
+/* Blättern (R00239 FA 11; D0009 Notiz „Blättern (B)“): rechts in der Leiste, schmal in einer eigenen Zeile; am Rand die Sperrform
+   von Z. 216/484 — Schrift --kd-faint, Kontur --kd-line, ohne Hover, weiter fokussierbar */
+.lv-blatt{margin-left:auto;display:flex;align-items:center;gap:var(--kd-s3);flex-wrap:nowrap}
+.lv-blatt .btn{height:auto;min-block-size:max(28px,var(--kd-ziel));padding:0 var(--kd-s3);font-size:12.5px;text-decoration:none}
+.lv-blatt .btn:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
+.lv-blatt .stelle{font-size:12px;color:var(--kd-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lv-blatt .btn[aria-disabled="true"],.lv-blatt .btn[aria-disabled="true"]:hover{color:var(--kd-faint);border-color:var(--kd-line);background:var(--kd-surface);cursor:default}
 .lv-rumpf{padding:var(--kd-s4) var(--kd-s5) var(--kd-s6);display:flex;flex-direction:column;align-items:center;min-width:0}
 .lv-laedt{display:flex;align-items:center;gap:var(--kd-s3);margin:0;color:var(--kd-muted)}
 .lv-l{list-style:none;margin:0;padding:0;width:100%;max-width:880px;min-width:0;display:flex;flex-direction:column;gap:var(--kd-s3)}
@@ -1947,6 +1954,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 @media (max-width:640px){
   .lv-kz .rv-liest{display:none}
   .lv-leiste{padding:var(--kd-s3) var(--kd-s4);gap:2px var(--kd-s4)}
+  .lv-blatt{margin-left:0;flex:1 1 100%;justify-content:space-between}
   .lv-rumpf{padding:var(--kd-s3) var(--kd-s3) var(--kd-s5)}
   .lv-n{padding:var(--kd-s3)}
   .lv-s,.lv-f,.lv-d,.lv-e.sys{margin-left:12px}

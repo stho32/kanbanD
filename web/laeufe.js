@@ -52,19 +52,33 @@
     transkript: null, kosten: kostenteil(k),
   });
 
-  /** Zeitpunkt der Kennung `role@JJJJ-MM-TTTHH:MM±HH:MM` in ms; ohne Kennung `null`. */
+  const ZEITPUNKT_DER_KENNUNG = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/;
+  /** Zeitpunkt der Kennung `role@JJJJ-MM-TTTHH:MM±HH:MM` in ms; ohne Kennung oder ohne lesbaren Zeitpunkt `null`. */
   function kennungMs(kennung) {
     if (typeof kennung !== 'string') return null;
-    const ms = zeitMs(kennung.slice(kennung.lastIndexOf('@') + 1).replace('T', ' '));
+    const zeit = kennung.slice(kennung.lastIndexOf('@') + 1).replace('T', ' ');
+    if (!ZEITPUNKT_DER_KENNUNG.test(zeit)) return null;
+    const ms = zeitMs(zeit);
     return Number.isNaN(ms) ? null : ms;
   }
 
-  /** Neueste zuerst nach der Kennung, Gleichstand in der Reihenfolge der Eingabe (stabil), ohne Zeitpunkt ans Ende. */
-  function neuesteZuerst(zeilen) {
+  /** Nach dem Zeitpunkt der Kennung, neueste oder älteste zuerst; Gleichstand in der Reihenfolge der Eingabe (stabil), ohne Zeitpunkt ans Ende. */
+  function nachKennungszeit(zeilen, neuesteZuerst) {
     const mitZeit = zeilen.map(z => [z, kennungMs(z.kennung)]);
-    const datiert = mitZeit.filter(([, ms]) => ms !== null).sort((a, b) => b[1] - a[1]).map(([z]) => z);
+    const richtung = neuesteZuerst ? -1 : 1;
+    const datiert = mitZeit.filter(([, ms]) => ms !== null).sort((a, b) => richtung * (a[1] - b[1])).map(([z]) => z);
     const undatiert = mitZeit.filter(([, ms]) => ms === null).map(([z]) => z);
     return [...datiert, ...undatiert];
+  }
+  const neuesteZuerst = zeilen => nachKennungszeit(zeilen, true);
+
+  /** Die Läufe der Karte zum Blättern (R00239 FA 10, PO Z. 521): die Transkripte mit Kennung in jedem Zustand, Lauf 1 der älteste.
+      Liefert `{k, n, lauf, vorige, naechste}` für die gezeigte Kennung, oder null, wenn sie nicht in der Folge steht. */
+  function laeufeFolge(transkripte, kennung) {
+    const folge = nachKennungszeit(transkripte.filter(hatKennung), false);
+    const i = folge.findIndex(t => t.kennung === kennung);
+    if (i < 0) return null;
+    return { k: i + 1, n: folge.length, lauf: folge[i], vorige: folge[i - 1] || null, naechste: folge[i + 1] || null };
   }
 
   /** Hat sich die Menge der Kennungen in `a.transkripte` gegenüber dem Stand beim letzten Lesen geändert (FA 7, ADR-0039 L2)?
@@ -214,13 +228,40 @@
 
   /** Rolle, Zeitpunkt, Spalte samt Nebentext und Größe der Datei (`groesse` wie bei den Anhängen); der Betrag steht als Kennzahl
       „Kosten“ im Kopf (R00221 Nachtrag, R00234 FA 4). */
-  function laeufeLeisteHtml(z, esc, groesse) {
+  function laeufeLeisteHtml(z, esc, groesse, blaettern = '') {
     const feld = (name, inhalt) => `<span><span class="k">${name}</span>${inhalt}</span>`;
     const bytes = z.transkript && typeof z.transkript.bytes === 'number' ? `<span class="mono">${esc(groesse(z.transkript.bytes))}</span>` : ohneWert('keine Größe');
     return `<div class="lv-leiste">${feld('ROLLE', esc(ohneSteuerzeichen(z.role)))}${feld('ZEITPUNKT', `<span class="mono">${zeitpunktText(z.kennung) || ''}</span>`)}`
-      + `${feld('SPALTE', spalteHtml(z, esc))}${feld('GRÖSSE', bytes)}</div>`;
+      + `${feld('SPALTE', spalteHtml(z, esc))}${feld('GRÖSSE', bytes)}${blaettern}</div>`;
   }
 
-  Object.assign(ziel, { laeufeTitelHtml, laeufeLeisteHtml });
+  /* ── Blättern zwischen den Läufen (R00239 FA 11, FA 12; Zeichnung D0009 `#laufansicht` Bild 9, Notiz „Blättern (B)“) ── */
+
+  /** Ein Link auf den Nachbarn: echter Verweis über `adresse(kennung)`; ohne Nachbarn die Sperrform von Z. 216/484 — ohne `href` und
+      ohne `data-act`, weiter fokussierbar. Die Pfeile sind Schmuck, der Name ist „Voriger Lauf“ bzw. „Nächster Lauf“. */
+  function blaetternLinkHtml(id, nachbar, inhalt, adresse, esc) {
+    if (!nachbar) return `<a class="btn" id="${id}" role="link" tabindex="0" aria-disabled="true">${inhalt}</a>`;
+    return `<a class="btn" id="${id}" href="${esc(adresse(nachbar.kennung))}" data-act="lauf-blaettern" data-arg="${esc(nachbar.kennung)}">${inhalt}</a>`;
+  }
+
+  /** „‹ Voriger Lauf“ · „Lauf k von n“ · „Nächster Lauf ›“; ohne Folge nichts. */
+  function laeufeBlaetternHtml(folge, adresse, esc) {
+    if (!folge) return '';
+    const vor = blaetternLinkHtml('lv-vor', folge.vorige, '<span aria-hidden="true">‹ </span>Voriger Lauf', adresse, esc);
+    const nach = blaetternLinkHtml('lv-nach', folge.naechste, 'Nächster Lauf<span aria-hidden="true"> ›</span>', adresse, esc);
+    return `<nav class="lv-blatt" aria-label="Läufe dieser Aufgabe">${vor}<span class="stelle">Lauf ${folge.k} von ${folge.n}</span>${nach}</nav>`;
+  }
+
+  /** Ansage nach einem Wechsel (PO Z. 589): „Lauf <k> von <n>, <Rolle>[, erster/letzter Lauf]. <Zustandssatz>“; ohne Rolle entfällt
+      sie samt Komma. Die Rolle ist Text, kein HTML. */
+  function laufBlaetternAnsage(folge, satz) {
+    const teile = [`Lauf ${folge.k} von ${folge.n}`];
+    if (typeof folge.lauf.role === 'string' && folge.lauf.role) teile.push(ohneSteuerzeichen(folge.lauf.role));
+    if (folge.k === 1) teile.push('erster Lauf');
+    else if (folge.k === folge.n) teile.push('letzter Lauf');
+    return `${teile.join(', ')}. ${satz}`;
+  }
+
+  Object.assign(ziel, { laeufeTitelHtml, laeufeLeisteHtml, laeufeFolge, laeufeBlaetternHtml, laufBlaetternAnsage });
   Object.assign(ziel, { laeufe, kennungsmengeGeaendert, laeufeTabelleHtml, laeufeAnsichtHtml, laeufeHinweisText, laeufeFehlerText });
 })(typeof module !== 'undefined' ? module.exports : window);

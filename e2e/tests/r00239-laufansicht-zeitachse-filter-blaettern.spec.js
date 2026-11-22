@@ -4,8 +4,6 @@
 // Verneinungen erst nach einem sichtbaren Signal. Aufbau: Testfälle in Fachwörtern, darunter die Testsprache (Abschnitt „Sprache“),
 // die als einzige Selektoren kennt.
 const { test, expect } = require('@playwright/test');
-/** Rote Spezifikation (ATDD): bis zum Bau der Bubbles erwartet rot; die Markierung fällt je Test, sobald er grün ist. */
-const ERWARTET_ROT = true;
 const fs = require('fs');
 const path = require('path');
 const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastVerstoesse, kontrastFarben, kontrastAm, reiter } = require('./hilfen');
@@ -386,7 +384,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   }
 
   test('AK 7 · US-5: Folge, „Lauf k von n“, Links auf die Nachbarn; Sperrform am ersten und letzten Lauf und bei einem Lauf; T5 ohne Anfrage', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await s.oeffnen(T.T1);
     await s.gelesen();
     await expect(page.locator(VORIGER)).toHaveText('‹ Voriger Lauf');
@@ -438,7 +435,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   });
 
   test('AK 8 · US-5: Wechsel mit replaceState — Abbruch der gehaltenen Anfrage, Ansagen je Wechsel, Fokus auf dem Link, Rückweg zu „Läufe“', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     const wartend = [];
     await page.route(url => istTranskriptVon(url.href, T.T3), route => wartend.push(route));
     await s.laeufeVonEins();
@@ -500,7 +496,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   /* ── Live und Darstellung ── */
 
   test('AK 9: ein neues Transkript ändert „Lauf k von n“ ohne neues Lesen; Insel, Klappzustand, Filter, Fokus und Live-Regionen bleiben', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await s.oeffnen(T.T1);
     await s.gelesen();
     await expect(page.locator(STELLE)).toHaveText('Lauf 3 von 6');
@@ -526,7 +521,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
 
   const BREITEN = [320, 641, 980, 1280];
   test('AK 10: Breite — T1 und T10 ohne Querscrollen; Balken ohne Überlauf bei 320/375/414 px; Spalte 232/200 px; Lage unter 641 px', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     test.setTimeout(90000);
     for (const kennung of [T.T1, T.T10]) {
       await s.oeffnen(kennung);
@@ -574,7 +568,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   });
 
   test('AK 10: Themen und Zugänglichkeit — Stücke ≥ 3:1, Wörter ≥ 4,5:1, gesperrt ≥ 3:1, Fokusring, Legende verborgen, kein Stück ein Tab-Ziel', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await breiteSetzen(page, 320);
     await s.oeffnen(T.T1);
     await s.gelesen();
@@ -653,7 +646,6 @@ test.describe('R00239 Laufansicht: Ziele bei grobem Zeiger', () => {
   test.afterEach(() => k.stoppen());
 
   test('AK 10: Kästchen samt Beschriftung und die Links des Blätterns ≥ 48 px hoch', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await page.goto(k.adresse + adresse(1, T.T1));
     await expect(page.locator(STATUS)).toHaveText(ENDE);
     expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);

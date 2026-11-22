@@ -2116,10 +2116,39 @@ function laufAnstossen() {
   if (!adresse.lauf || (v && v.adresse === hash)) return;
   if (v) laufAbbrechen(v);
   const l = adresse.lauf;
+  // geblättert (R00239 FA 6, FA 12): die Filter kommen mit, der Fokus bleibt auf dem Link; sonst Vorgabe und Fokus auf „Lauf“
+  const wechsel = S.ui.laufWechsel && S.ui.laufWechsel.adresse === hash ? S.ui.laufWechsel : null;
+  S.ui.laufWechsel = null;
   S.ui.lauf = { adresse: hash, nr: l.nummer, basis: l.basis, slug: adresse.slug, gesucht: l.kennung, laedt: false, ergebnis: null, anfrage: null, erneut: false, insel: null,
-    filter: FILTER_VORGABE, ansage: null };
-  S.ui.fokus = '#lv-h1';
+    filter: wechsel ? wechsel.filter : FILTER_VORGABE, ansage: null, geblaettert: Boolean(wechsel) };
+  S.ui.fokus = wechsel ? wechsel.fokus : '#lv-h1';
   laufLesen(S.ui.lauf);
+}
+
+/** Die Läufe der Aufgabe als Folge um die gezeigte Kennung (R00239 FA 10), aus dem Stand der Aufgabe, ohne Anfrage; sonst null. */
+function laufFolge(v) {
+  const a = aufgabe(v.nr);
+  return a ? laeufeFolge(a.transkripte || [], v.gesucht) : null;
+}
+
+/** Endansage nach dem Blättern (R00239 FA 12, PO Z. 589): „Lauf k von n, Rolle …“ vor dem Satz des Zustands; einmal gesetzt, damit
+    ein späteres Live-Ereignis sie nicht ändert. */
+function laufWechselAnsage(v) {
+  const satz = laufAnsage({ laedt: false, ergebnis: v.ergebnis });
+  const folge = laufFolge(v);
+  return folge ? laufBlaetternAnsage(folge, satz) : satz;
+}
+
+/** „‹ Voriger Lauf“ / „Nächster Lauf ›“ (R00239 FA 12, ADR-0041 N1 Punkt 5): ersetzt die Adresse ohne Verlaufseintrag — der Eintrag
+    behält seinen Zustand, „‹ #<nr>“ führt weiter zu „Läufe“; die Filter kommen mit, der Fokus bleibt auf dem gewählten Link. */
+function laufBlaettern(kennung) {
+  const v = S.ui.lauf, folge = v && laufFolge(v);
+  if (!folge) return;
+  const zurueck = folge.vorige && folge.vorige.kennung === kennung;
+  const adresse = laufAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, kennung });
+  S.ui.laufWechsel = { adresse, filter: v.filter, fokus: zurueck ? '#lv-vor' : '#lv-nach' };
+  history.replaceState(history.state, '', adresse);
+  adresseGewechselt();
 }
 
 /** Bricht die laufende Anfrage ab: Verlassen, ein Wechsel der Kennung oder ein neues Lesen (ADR-0041 Punkt 4). */
@@ -2148,6 +2177,7 @@ async function laufLesen(v) {
   v.anfrage = null;
   v.laedt = false;
   v.ergebnis = ergebnis;
+  if (v.geblaettert) v.ansage = laufWechselAnsage(v);
   const nachOben = v.erneut;
   if (v.erneut) S.ui.fokus = ergebnis.art === 'fehler' ? '#lv-erneut' : '#lv-h1';
   v.erneut = false;
@@ -2242,7 +2272,8 @@ function vLauf() {
   if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter))}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
   const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten }, esc);
   const zeitachse = laufZeitachseHtml(e && e.art === 'eintraege' ? e.auswertung : null);
-  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${kopf}${zeitachse}${laufRumpfHtml(v, insel, esc)}</div>`;
+  const blaettern = laeufeBlaetternHtml(laufFolge(v), kennung => laufAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, kennung }), esc);
+  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse, blaettern) : ''}${kopf}${zeitachse}${laufRumpfHtml(v, insel, esc)}</div>`;
 }
 
 /** Zustand des Kopfs (R00234 FA 3, FA 4): Einträge gelesen, liest gerade (auch erneut) oder ohne Einträge (fehlt, Fehler). */
@@ -3674,6 +3705,7 @@ async function aktion(a, arg, wert) {
       case 'review-oeffnen': reviewOeffnen(arg); return;
       case 'lauf-oeffnen': laufOeffnen(arg); return;
       case 'lauf-zurueck': laufZurueck(); return;
+      case 'lauf-blaettern': laufBlaettern(arg); return;
       case 'lauf-springe': {
         // der Fokus geht über die Rangfolge des Neuzeichnens (S.ui.fokus); gerollt wird danach, an die Zeile unter dem Seitenkopf
         const zeile = document.getElementById(arg);
@@ -4774,7 +4806,7 @@ document.addEventListener('click', e => {
     return;
   }
   // Ein Review-Verweis mit Umschalt-, Strg- oder Meta-Taste bleibt ein Link (neuer Tab, neues Fenster; ADR-0033 Punkt 2)
-  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-umschalten', 'review-alle-zeigen', 'lauf-oeffnen', 'lauf-zurueck'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
+  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-umschalten', 'review-alle-zeigen', 'lauf-oeffnen', 'lauf-zurueck', 'lauf-blaettern'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });
