@@ -400,3 +400,32 @@ test('Muss 1: Rückfall — wirft das Setzen einen RangeError, steht der Aufruf 
   assert.strictEqual(ergebnisSatz('{"a":{"b":1}}', wirft).html, '<pre>{&quot;a&quot;:{&quot;b&quot;:1}}</pre>');
   assert.throws(() => aufrufSatz('X', '{"q":{"a":1}}', () => { throw new TypeError('anderer Fehler'); }), TypeError, 'nur RangeError ist Rückfall');
 });
+
+/* Muss 2: shellUmbruch nie innerhalb von "…" mit $(…), ${…} oder $'…' — Abnahme-Probe a–e wörtlich. */
+
+test('Muss 2: a, b — $(…) in "…" mit Anführungszeichen darin bleibt unverändert', () => {
+  for (const befehl of ['echo "$(echo "x;y")"', 'echo "$(sed "s/a/b/;s/c/d/" f)"']) assert.strictEqual(shellUmbruch(befehl), befehl, befehl);
+});
+
+test('Muss 2: c — nach dem geschlossenen "$(…)" bricht && um, genau 2 Zeilen', () => {
+  const befehl = 'echo "$(git log --format="%h;%s" -1)" && echo ok';
+  assert.deepStrictEqual(shellUmbruch(befehl).split('\n'), ['echo "$(git log --format="%h;%s" -1)" &&', ' echo ok']);
+});
+
+test('Muss 2: d — ${…} mit ; darin, 2 Zeilen nach „x=a;“', () => {
+  assert.deepStrictEqual(shellUmbruch('x=a; echo ${x//;/,}').split('\n'), ['x=a;', ' echo ${x//;/,}']);
+});
+
+test("Muss 2: e — $'…' mit \\' darin, 2 Zeilen nach „…more';“", () => {
+  const befehl = "echo $'it\\'s; more'; echo ok";
+  assert.deepStrictEqual(shellUmbruch(befehl).split('\n'), ["echo $'it\\'s; more';", ' echo ok']);
+});
+
+test('Muss 2: Varianten — verschachtelt, Backticks in "…", Klammern in $(…), Kommentar in $(…), unausgeglichen; ohne \\n stets wieder der Befehl', () => {
+  for (const befehl of ['echo "${x:-a;b}"', 'echo "`a; b`"', 'echo $(echo $(a; b); c)', 'echo $( (a; b) ; c)', "echo \"$'a;b'\"", 'echo ${a:-"x;y"}',
+    'echo $(a # ) ; b\n)', 'a; echo "b; c', 'a; echo $(b; c', 'a; echo ${b', 'x=$(cat <<EOF\na); b\nEOF\n)']) {
+    assert.strictEqual(shellUmbruch(befehl), befehl, `unverändert: ${befehl}`);
+  }
+  assert.deepStrictEqual(shellUmbruch('echo $((1+2)); b').split('\n'), ['echo $((1+2));', ' b']);
+  assert.deepStrictEqual(shellUmbruch('echo "$x;$(a)"; b').split('\n'), ['echo "$x;$(a)";', ' b']);
+});

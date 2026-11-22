@@ -28,42 +28,77 @@
 
   /* ── Shell-Block (N4 Punkt 2): Umbruch nach &&, || und ; auf oberster Ebene, sonst ändert sich kein Zeichen ── */
 
-  /** `command` → derselbe Text mit `\n` nach `&&`, `||` und `;` auf oberster Ebene: nie in `'…'`, `"…"`, `$(…)` oder Backticks, nie
-      nach `\`, nie bei `;;`, nie hinter einem `#`, das ein Wort beginnt, nie ab dem ersten `<<`, nie am Ende oder vor einem `\n`.
+  /** `command` → derselbe Text mit `\n` nach `&&`, `||` und `;` auf oberster Ebene: nie in `'…'`, `$'…'`, `"…"`, `$(…)`, `${…}` oder
+      Backticks, auch nicht verschachtelt, nie nach `\`, nie bei `;;`, nie hinter einem `#`, das ein Wort beginnt, nie ab dem ersten `<<`,
+      nie am Ende oder vor einem `\n`. Bleibt am Ende eine Klammer oder ein Anführungszeichen offen, unverändert — im Zweifel kein Umbruch.
       Über 16 KiB unverändert. Ein Durchlauf. */
   function shellUmbruch(befehl) {
     if (bytesUeber(befehl, SATZ_GRENZEN.befehlBytes)) return befehl;
-    let aus = '', quote = null, tiefe = 0, kommentar = false;
-    for (let i = 0; i < befehl.length; i++) {
-      const c = befehl[i], naechstes = befehl[i + 1];
-      if (kommentar) {
-        if (c === '\n') kommentar = false;
-        aus += c;
+    const offen = [];
+    let aus = '';
+    for (let i = 0; i < befehl.length;) {
+      const art = offen[offen.length - 1];
+      if (istCode(art) && befehl.startsWith('<<', i)) return aus + befehl.slice(i);
+      let operator = null;
+      if (art === undefined) operator = operatorAn(befehl, i);
+      if (operator !== null) {
+        aus += operator;
+        i += operator.length;
+        if (operator !== ';;' && umbruchErlaubt(befehl[i])) aus += '\n';
         continue;
       }
-      if (c === '\\' && quote !== "'") { aus += befehl.slice(i, i + 2); i++; continue; }
-      if (quote !== null) {
-        if (c === quote) quote = null;
-        aus += c;
-        continue;
-      }
-      if (c === "'" || c === '"' || c === '`') { quote = c; aus += c; continue; }
-      if (c === '$' && naechstes === '(') { tiefe++; aus += '$('; i++; continue; }
-      if (tiefe > 0) {
-        if (c === '(') tiefe++;
-        if (c === ')') tiefe--;
-        aus += c;
-        continue;
-      }
-      if (c === '<' && naechstes === '<') return aus + befehl.slice(i);
-      if (c === '#' && wortbeginn(befehl[i - 1])) { kommentar = true; aus += c; continue; }
-      const operator = operatorAn(befehl, i);
-      if (operator === null) { aus += c; continue; }
-      aus += operator;
-      i += operator.length - 1;
-      if (operator !== ';;' && umbruchErlaubt(befehl[i + 1])) aus += '\n';
+      const laenge = shellStueck(befehl, i, offen);
+      aus += befehl.slice(i, i + laenge);
+      i += laenge;
     }
+    if (offen.length) return befehl;
     return aus;
+  }
+
+  /** Was eine offene Art schließt: Anführungszeichen, `$'…'`, `${…}`, `$(…)` und Klammern darin. */
+  const SHELL_ENDE = Object.freeze({ "'": "'", "$'": "'", '"': '"', '`': '`', '${': '}', '$(': ')', '(': ')' });
+  /** Oberste Ebene, `$(…)` und Klammern darin lesen sich als Befehl: Kommentar und Heredoc gelten dort. */
+  const istCode = art => art === undefined || art === '$(' || art === '(';
+
+  /** Länge des Stücks ab `i` — ein Zeichen, ein Escape `\x`, eine Öffnung wie `$(` oder ein Kommentar —, `offen` nachgeführt. */
+  function shellStueck(text, i, offen) {
+    const art = offen[offen.length - 1], c = text[i];
+    if (art === "'") {
+      if (c === "'") offen.pop();
+      return 1;
+    }
+    if (c === '\\') return 2;
+    if (art !== undefined && c === SHELL_ENDE[art]) {
+      offen.pop();
+      return 1;
+    }
+    if (art === "$'" || art === '`') return 1;
+    const oeffnung = oeffnungAn(text, i, art);
+    if (oeffnung !== null) {
+      offen.push(oeffnung);
+      return oeffnung.length;
+    }
+    if (istCode(art) && c === '#' && wortbeginn(text[i - 1])) return kommentarLaenge(text, i);
+    return 1;
+  }
+
+  /** Was an `i` eine Art öffnet, oder null: in `"…"` nur `$(`, `${` und Backticks, in `${…}` dazu Anführungszeichen, in `$(…)` auch `(`. */
+  function oeffnungAn(text, i, art) {
+    const zwei = text.slice(i, i + 2);
+    if (zwei === '$(' || zwei === '${') return zwei;
+    const c = text[i];
+    if (c === '`') return c;
+    if (art === '"') return null;
+    if (zwei === "$'") return zwei;
+    if (c === "'" || c === '"') return c;
+    if (c === '(' && (art === '$(' || art === '(')) return c;
+    return null;
+  }
+
+  function kommentarLaenge(text, i) {
+    const ende = text.indexOf('\n', i);
+    if (ende < 0) return text.length - i;
+    return ende - i;
   }
 
   const wortbeginn = davor => davor === undefined || /[\s;&|()]/.test(davor);
