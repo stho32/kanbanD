@@ -43,6 +43,15 @@ async function halten(page, muster, antwort = null) {
   return { frei: (i, wert) => tore[i](wert), angehalten: () => tore.length };
 }
 
+/** Bis 1099 px stehen Dateiliste und Commits hinter dem Aufklapper „Dateien (<n>) und Commits“ (R00235 FA 11): öffnet ihn, wenn er zu ist. */
+async function aufklapperOeffnen(page) {
+  if (await page.evaluate(() => innerWidth > 1099)) return;
+  const auf = page.locator('#rv-auf');
+  await auf.waitFor();
+  if (await auf.getAttribute('aria-expanded') === 'false') await auf.click();
+  await expect(auf).toHaveAttribute('aria-expanded', 'true');
+}
+
 const textDer = (page, sel) => page.locator(sel).first().evaluate(e => e.textContent);
 
 test.describe('R00207 Review-Seite eines Commits', () => {
@@ -854,11 +863,12 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
     await expect(page.locator('#rv-rueckweg')).toBeFocused();
     const reihe = [];
-    for (let i = 0; i < 8; i++) {
+    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk-code) in der Tab-Folge
+    for (let i = 0; i < 9; i++) {
       await page.keyboard.press('Tab');
       reihe.push(await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); return { id: e.id || e.className, ring: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0 }; }));
     }
-    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-u-commit', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-dk0', 'df-sc']);
+    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-u-commit', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-gk-code', 'rv-dk0', 'df-sc']);
     for (const r of reihe) expect(r.ring, `Fokusring an ${r.id}`).toBe(true);
     await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
     await expect(page.locator(POS)).toHaveAttribute('aria-live', 'polite');
@@ -901,6 +911,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     test(`AK 9: ${breite} px hell und dunkel — die Seite scrollt nie quer, nur der Code-Bereich; Spalten ≥ 160 px und Pfad ≤ 3 Zeilen zwischen 641 und 980`, async ({ page }) => {
       await breiteSetzen(page, breite, 900);
       await merkmaleOeffnen(page);
+      await aufklapperOeffnen(page);
       await expect(datei(page, 'lang.dat').locator('table.dz')).toBeVisible();
       for (const farbe of ['light', 'dark']) {
         await thema(page, farbe);

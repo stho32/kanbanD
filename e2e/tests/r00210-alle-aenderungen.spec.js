@@ -57,12 +57,23 @@ async function festeAntwort(page, nr, aendern) {
 }
 
 const patchMit = (n, vorsatz = 'x') => '@@ -0,0 +1 @@\n' + Array.from({ length: n - 1 }, (_, i) => `+${vorsatz}${i}\n`).join('');
+// eine geänderte statt einer neuen Datei: neue Dateien über 500 Zeilen beginnen seit R00235 FA 6 eingeklappt und zählen nicht ins Budget
+const geaendert = name => ({ status: 'M', alt: name });
 const netto = (name, n, zusatz = {}) => ({ neu: name, alt: null, status: 'A', plus: n - 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: patchMit(n), ...zusatz });
 const commitEintrag = (k, hash, titel) => ({ verweis: `${k}:${hash}`, anwendung: k, hash, titel, autor: 'Ada', datum: '2026-05-02T10:00:00Z', plus: 1, minus: 0, dateien: 1 });
 const schritt = (k, hash, n, zusatz = {}) => ({ commit: `${k}:${hash}`, alt: 'f.dat', neu: 'f.dat', status: 'M', plus: n - 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: patchMit(n), ...zusatz });
 
 /** Gezeichnete Zeilen offener Dateien und Schritte: Zeilen aller Code-Tabellen je Datei-Abschnitt. */
 const offeneDateien = page => page.locator('#rv-insel section.df').evaluateAll(ds => ds.filter(d => d.querySelector('.df-k').getAttribute('aria-expanded') === 'true' && d.querySelector('table.dz')).map(d => d.id));
+
+/** Bis 1099 px stehen Dateiliste und Commits hinter dem Aufklapper „Dateien (<n>) und Commits“ (R00235 FA 11): öffnet ihn, wenn er zu ist. */
+async function aufklapperOeffnen(page) {
+  if (await page.evaluate(() => innerWidth > 1099)) return;
+  const auf = page.locator('#rv-auf');
+  await auf.waitFor();
+  if (await auf.getAttribute('aria-expanded') === 'false') await auf.click();
+  await expect(auf).toHaveAttribute('aria-expanded', 'true');
+}
 
 test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   let k, rep;
@@ -270,11 +281,12 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
-    for (let i = 0; i < 14; i++) {
+    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge
+    for (let i = 0; i < 15; i++) {
       folge.push(await page.evaluate(() => { const e = document.activeElement; return e.closest('#review, #kopf') ? (e.id || e.className) : 'aus'; }));
       await page.keyboard.press('Tab');
     }
-    expect(folge).toEqual(['rv-rueckweg', 'rv-u-alle', 'rv-u-commit', 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-dk0-0', 'df-sc', 'aus']);
+    expect(folge).toEqual(['rv-rueckweg', 'rv-u-alle', 'rv-u-commit', 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'df-sc', 'aus']);
   });
 
   /* ── AK 1 Adresse, Umschalter, Titel, Ansage ── */
@@ -504,9 +516,9 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   test('AK 5 (a): kd vier Dateien zu 2.250, wb eine zu 1.500 — die Datei von wb bleibt zu (Budget über die Seite)', async ({ page }) => {
     await festeAntwort(page, 11, (json, url) => {
       const anw = url.searchParams.get('anwendung');
-      if (anw === 'wb') return { anwendung: 'wb', commits: [commitEintrag('wb', rep.w1, 'W')], dateien: [netto('w.dat', 1500)], hinweise: [] };
+      if (anw === 'wb') return { anwendung: 'wb', commits: [commitEintrag('wb', rep.w1, 'W')], dateien: [netto('w.dat', 1500, geaendert('w.dat'))], hinweise: [] };
       if (anw === 'xx') return { anwendung: 'xx', commits: [commitEintrag('xx', rep.x1, 'X')], dateien: [], hinweise: [] };
-      return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K')], dateien: [1, 2, 3, 4].map(n => netto(`b${n}.dat`, 2250)), hinweise: [{ art: 'weitere_anwendungen', anwendungen: ['wb', 'xx'] }] };
+      return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K')], dateien: [1, 2, 3, 4].map(n => netto(`b${n}.dat`, 2250, geaendert(`b${n}.dat`))), hinweise: [{ art: 'weitere_anwendungen', anwendungen: ['wb', 'xx'] }] };
     });
     await page.goto(reviewAdresse(k, 11));
     await expect(page.locator('#rv-a2 h2')).toHaveText(/1 Commit/);
@@ -518,7 +530,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     let fall = 'b';
     await festeAntwort(page, 2, () => {
       const folge = (...je) => ({ pfad: 'f.dat', plus: 0, minus: 0, binaer: false, schritte: je.map((n, j) => (n === null ? schritt('kd', rep.k1, 2, { gross: true, patch: undefined }) : schritt('kd', j % 2 ? rep.k2 : rep.k1, n))) });
-      if (fall === 'b') return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K1'), commitEintrag('kd', rep.k2, 'K2')], dateien: [netto('a.dat', 2000), folge(2800, 2800, 2800), netto('z.dat', 100)], hinweise: [] };
+      if (fall === 'b') return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K1'), commitEintrag('kd', rep.k2, 'K2')], dateien: [netto('a.dat', 2000, geaendert('a.dat')), folge(2800, 2800, 2800), netto('z.dat', 100)], hinweise: [] };
       return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K1'), commitEintrag('kd', rep.k2, 'K2')], dateien: [folge(2800, 2800, null, 2800, 2800), netto('z.dat', 100)], hinweise: [] };
     });
     await page.goto(reviewAdresse(k, 2));
@@ -545,6 +557,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
       });
       const wb = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'wb');
       await page.goto(reviewAdresse(k, 11));
+      await aufklapperOeffnen(page);
       await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
       await expect(page.locator('#rv-a1 .zw')).toHaveText('lädt …');
       await expect(page.locator('#rv-a1 .rv-abs-zust')).toHaveText('Lädt die Änderungen der Anwendung wb …');
@@ -731,6 +744,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
       await breiteSetzen(page, breite, 900);
       for (const nr of [2, 12]) {
         await page.goto(reviewAdresse(k, nr));
+        await aufklapperOeffnen(page);
         await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
         for (const farbe of ['light', 'dark']) {
           await thema(page, farbe);
@@ -765,6 +779,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     test('AK 9: grober Zeiger — Umschalter, Schrittköpfe, „einzeln ansehen“ und Verweise der Commit-Liste ≥ 48 × 48 px', async ({ page }) => {
       for (const nr of [2, 12]) {
         await page.goto(reviewAdresse(k, nr));
+        await aufklapperOeffnen(page);
         await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
         const klein = await page.evaluate(() => [...document.querySelectorAll('.umsch > a, .rv-einzeln, .rv-cv, .fs-l')].map(e => { const r = e.getBoundingClientRect(); return [e.className || e.id, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 48 || h < 48));
         expect(klein).toEqual([]);

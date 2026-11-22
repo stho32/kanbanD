@@ -22,6 +22,9 @@ const zeilen = (n, kopf) => Array.from({ length: n }, (_, i) => `${kopf} ${i + 1
 function budgetCommits(r, h) {
   const tag = '2026-04-01T09:00:00+00:00';
   gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
+  // leere Vorgänger: E ändert sie (M) und zeichnet dieselben Zeilen wie neue Dateien; neue über 500 Zeilen begännen seit R00235 FA 6 zu
+  for (let i = 1; i <= 4; i++) fs.writeFileSync(path.join(r, `budget-${i}.dat`), '');
+  commitAlles(r, tag, 'Budget vorbereiten');
   for (let i = 1; i <= 4; i++) fs.writeFileSync(path.join(r, `budget-${i}.dat`), zeilen(2499, `b${i}`));
   fs.writeFileSync(path.join(r, 'budget-5.dat'), 'b5 1\n');
   h.e = commitAlles(r, tag, 'Budget anlegen');
@@ -33,6 +36,9 @@ function budgetCommits(r, h) {
 function nachladeCommit(r, h) {
   const tag = '2026-04-02T09:00:00+00:00';
   gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
+  // leere Vorgänger wie in budgetCommits: F und F2 ändern die 25 Dateien (M), statt sie neu anzulegen (R00235 FA 6)
+  for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.dat`), '');
+  const vorF = commitAlles(r, tag, '25 leere Dateien');
   const inhalt = ('a'.repeat(99) + '\n').repeat(2000);
   for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.dat`), inhalt);
   fs.writeFileSync(path.join(r, 'gross.dat'), zeilen(3001, 'g'));
@@ -40,7 +46,7 @@ function nachladeCommit(r, h) {
   gitAls(r, ADA, tag, 'branch', 'karte/9', h.f);
   // F2 (#10, Nacharbeit 1): Geschwister von F mit denselben Pfaden und Größen, anderem Inhalt — dieselben Dateien laden nach
   const tag2 = '2026-04-02T10:00:00+00:00';
-  gitAls(r, ADA, tag2, 'checkout', '-q', '--detach', h.k2);
+  gitAls(r, ADA, tag2, 'checkout', '-q', '--detach', vorF);
   const anders = ('b'.repeat(99) + '\n').repeat(2000);
   for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.dat`), anders);
   fs.writeFileSync(path.join(r, 'gross.dat'), zeilen(3001, 'h'));

@@ -227,7 +227,7 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
   test('UX S1: erst feindlich.md, dann gut.rs aufgeklappt — gut.rs steht sofort mit Text da und wird gefärbt, sobald feindlich.md nach der Frist endet', async ({ page }) => {
     await page.goto(reviewAdresse(k, 3));
     await alleZu(page);
-    await datei(page, 'feindlich.md').locator('.df-k').click();
+    await aufklappen(page, 'feindlich.md');
     await expect(bereich(page, 'feindlich.md')).toHaveAttribute('data-farbe', 'laeuft');
     await datei(page, 'gut.rs').locator('.df-k').click();
     await expect(bereich(page, 'gut.rs').locator('td.c')).toHaveText(['hinzugefügt: fn gut() {}']);
@@ -336,6 +336,14 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     await expect(page.locator('#rv-insel .df-sc')).toHaveCount(0);
   }
 
+  /** Klappt eine Datei auf. feindlich.md ist seit R00235 Doku: sie steht in der eingeklappten Gruppe „Doku und Planung“, und das
+      Öffnen der Gruppe zeigt ihre Dateien offen (FA 4, Bild 7 e) — für sie ist der Gruppenkopf der Klick, der sie aufklappt. */
+  async function aufklappen(page, pfad) {
+    if (pfad.endsWith('.md')) await page.locator('section.rv-gr').filter({ hasText: pfad }).locator('.rv-gk').click();
+    else await datei(page, pfad).locator('.df-k').click();
+    await expect(datei(page, pfad).locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
+  }
+
   test('AK 1: feindlich.md, feindlich.html, feindlich.js — Text sofort, Ende ohne Farbe, kein Long Task über 150 ms; danach gut.rs gefärbt', async ({ page }) => {
     test.setTimeout(60000);
     const b = beobachten(page);
@@ -345,7 +353,7 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     await alleZu(page);
     for (const [pfad, zeilen] of [['feindlich.md', 64], ['feindlich.html', 64], ['feindlich.js', 261]]) {
       const t0 = await jetzt(page);
-      await datei(page, pfad).locator('.df-k').click();
+      await aufklappen(page, pfad);
       await expect(bereich(page, pfad)).toHaveAttribute('data-farbe', 'laeuft');
       // solange gefärbt wird, steht der Text schon ganz da
       const texte = await bereich(page, pfad).evaluate(el => Array.from(el.querySelectorAll('tr:not(.hk) td.c'), c => c.textContent));
@@ -436,7 +444,7 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     const b = beobachten(page);
     await page.goto(reviewAdresse(k, 3));
     await alleZu(page);
-    await datei(page, 'feindlich.md').locator('.df-k').click();
+    await aufklappen(page, 'feindlich.md');
     expect(await farbeAbwarten(page, 'feindlich.md')).toBe('nein');
     expect(await bereich(page, 'feindlich.md').locator('[class^="tk-"]').count()).toBe(0);
     await expect(datei(page, 'feindlich.md').locator('.df-inhalt')).not.toContainText(/Farbe|Hervorhebung/);
