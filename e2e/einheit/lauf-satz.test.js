@@ -211,7 +211,7 @@ test('aufrufSatz Write: 25 Zeilen nur „+“, 20 offen bis b20, dann „weitere
 });
 
 test('aufrufSatz Grenzen: 64 KiB + 1 Byte und 2.001 Zeilen ergeben null, genau an der Grenze ein Satz', () => {
-  const mitLaenge = n => JSON.stringify({ query: 'q'.repeat(n - 13) });
+  const mitLaenge = n => JSON.stringify({ query: 'q'.repeat(n - 12) });
   assert.strictEqual(mitLaenge(SATZ_GRENZEN.aufrufBytes).length, SATZ_GRENZEN.aufrufBytes);
   assert.notStrictEqual(aufrufSatz('X', mitLaenge(SATZ_GRENZEN.aufrufBytes), esc), null);
   assert.strictEqual(aufrufSatz('X', mitLaenge(SATZ_GRENZEN.aufrufBytes + 1), esc), null);
@@ -302,4 +302,15 @@ test('ergebnisSatz: Hinweise und Kürzung — ein Hinweis zählt seine Zeilen, d
   const text = [...zeilen(19), '<system-reminder>', 'h', '</system-reminder>', ...zeilen(3, 'r')].join('\n');
   const e = ergebnisSatz(text, esc);
   assert.match(e.html, /z19<\/pre><details class="lv-e sys lv-ein">[\s\S]*?<\/details><details class="lv-mehr"><summary>[\s\S]*weitere 3 Zeilen<span class="vh"> des Ergebnisses<\/span><\/summary><pre>r1\nr2\nr3<\/pre><\/details>$/);
+});
+
+test('Budget: der Satz zählt genau die Zeichen als Marke, die zeichenBuchen (lauf.js) bucht', () => {
+  const { zeichenBuchen } = require('../../web/lauf.js');
+  const abweichend = [];
+  for (let c = 0; c <= 0xffff; c++) {
+    const zeichen = String.fromCharCode(c);
+    const gebucht = zeichenBuchen(zeichen, { lauf: 10, gebucht: 0 }).gezeigt === 1;
+    if (gebucht !== new RegExp(satz.MARKIERBAR_SATZ.source).test(zeichen)) abweichend.push(c.toString(16));
+  }
+  assert.deepStrictEqual(abweichend, []);
 });

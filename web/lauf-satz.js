@@ -101,5 +101,190 @@
 
   const preHuelle = klasse => zeilen => `<pre${klasse}>${zeilen.join('\n')}</pre>`;
 
-  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml });
+  /* ── JSON (N4 Punkt 2, ADR-0037 Rollen): aus dem Ergebnis von JSON.parse, zwei Leerzeichen Einzug ── */
+
+  /** Ein Wert → Zeilen (HTML) mit den Rollen `tk-function` (Schlüssel), `tk-string`, `tk-number` und `tk-keyword`. */
+  function jsonZeilen(wert, zeile) {
+    const zeilen = [];
+    jsonWert(wert, { einzug: '', vorne: '', hinten: '' }, zeilen, zeile);
+    return zeilen;
+  }
+
+  function jsonWert(wert, ort, zeilen, zeile) {
+    if (Array.isArray(wert)) {
+      jsonListe(wert.map(w => ['', w]), ['[', ']'], ort, zeilen, zeile);
+      return;
+    }
+    if (istObjekt(wert)) {
+      const felder = Object.entries(wert).map(([k, w]) => [`<span class="tk-function">${zeile(JSON.stringify(k))}</span>: `, w]);
+      jsonListe(felder, ['{', '}'], ort, zeilen, zeile);
+      return;
+    }
+    zeilen.push(`${ort.einzug}${ort.vorne}${jsonSkalar(wert, zeile)}${ort.hinten}`);
+  }
+
+  function jsonListe(eintraege, [auf, zu], ort, zeilen, zeile) {
+    if (!eintraege.length) {
+      zeilen.push(`${ort.einzug}${ort.vorne}${auf}${zu}${ort.hinten}`);
+      return;
+    }
+    zeilen.push(`${ort.einzug}${ort.vorne}${auf}`);
+    eintraege.forEach(([vorne, w], i) => {
+      let hinten = ',';
+      if (i === eintraege.length - 1) hinten = '';
+      jsonWert(w, { einzug: ort.einzug + '  ', vorne, hinten }, zeilen, zeile);
+    });
+    zeilen.push(`${ort.einzug}${zu}${ort.hinten}`);
+  }
+
+  const JSON_ROLLE = { string: 'tk-string', number: 'tk-number' };
+  function jsonSkalar(wert, zeile) {
+    const rolle = JSON_ROLLE[typeof wert] || 'tk-keyword';
+    return `<span class="${rolle}">${zeile(JSON.stringify(wert))}</span>`;
+  }
+
+  function jsonBlock(wert, zeile, block) {
+    return kuerzungHtml(jsonZeilen(wert, zeile), block, preHuelle(' class="lv-json"'));
+  }
+
+  /** `{wert}` aus JSON.parse oder null, wenn der Text kein JSON ist. */
+  function jsonLesen(text) {
+    try {
+      return { wert: JSON.parse(text) };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  const istObjekt = w => typeof w === 'object' && w !== null && !Array.isArray(w);
+  const istFlach = o => Object.values(o).every(w => w === null || typeof w !== 'object');
+
+  /** Innerhalb der Grenzen für „Schlüssel: Wert“, JSON-Satz und Diff: höchstens 64 KiB und 2.000 Zeilen. */
+  function satzErlaubt(text) {
+    if (bytesUeber(text, SATZ_GRENZEN.aufrufBytes)) return false;
+    let zeilen = 1;
+    for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) {
+      zeilen++;
+      if (zeilen > SATZ_GRENZEN.aufrufZeilen) return false;
+    }
+    return true;
+  }
+
+  /* ── Aufruf (N4 Punkt 2, FA 1–4, 13) ── */
+
+  /** Text eines Aufrufs → HTML des Inhalts im Block „Aufruf“, oder null für „wie heute als `pre`“: über den Grenzen, kein JSON, oder ein
+      Satz, der mehr markierbare Zeichen zeigte, als im Text stehen und gebucht sind (etwa ein Escape `‮`). */
+  function aufrufSatz(name, text, zeile) {
+    if (!satzErlaubt(text)) return null;
+    const gelesen = jsonLesen(text);
+    if (gelesen === null) return null;
+    const zaehler = markenZaehler(zeile);
+    const html = aufrufInhalt(name, gelesen.wert, zaehler.zeile);
+    if (zaehler.gezeigt() > markenIn(text)) return null;
+    return html;
+  }
+
+  function aufrufInhalt(name, wert, zeile) {
+    if (!istObjekt(wert)) return jsonBlock(wert, zeile, 'aufruf');
+    if (name === 'Bash' && typeof wert.command === 'string') return shellHtml(wert, zeile);
+    if (name === 'Edit' && typeof wert.old_string === 'string' && typeof wert.new_string === 'string') return editHtml(wert, zeile);
+    if (name === 'Write' && typeof wert.content === 'string') return writeHtml(wert, zeile);
+    if (!istFlach(wert)) return jsonBlock(wert, zeile, 'aufruf');
+    return felderHtml(Object.entries(wert), zeile);
+  }
+
+  /** Bash: `command` als Shell-Block, `description` entfällt (sie steht als Absicht in der Zusammenfassung), der Rest als Felder. */
+  function shellHtml(wert, zeile) {
+    const befehl = kuerzungHtml(textZeilen(shellUmbruch(wert.command)).map(zeile), 'aufruf', preHuelle(' class="lv-sh"'));
+    const weitere = Object.entries(wert).filter(([k]) => k !== 'command' && k !== 'description');
+    return befehl + felderHtml(weitere, zeile);
+  }
+
+  /** Edit: Felder außer den Texten, darunter der Diff, `replace_all` nur bei `true` als Feld unter dem Diff. */
+  function editHtml(wert, zeile) {
+    const ohneDiff = Object.entries(wert).filter(([k]) => !['old_string', 'new_string', 'replace_all'].includes(k));
+    let alleErsetzen = '';
+    if (wert.replace_all === true) alleErsetzen = felderHtml([['replace_all', true]], zeile);
+    return felderHtml(ohneDiff, zeile) + diffHtml(editDiff(wert.old_string, wert.new_string), zeile) + alleErsetzen;
+  }
+
+  /** Write: Felder außer `content`, darunter `content` ganz als hinzugefügt. */
+  function writeHtml(wert, zeile) {
+    const ohneInhalt = Object.entries(wert).filter(([k]) => k !== 'content');
+    return felderHtml(ohneInhalt, zeile) + diffHtml(editDiff('', wert.content), zeile);
+  }
+
+  /** Felder als „Schlüssel: Wert“ in der Reihenfolge des Objekts; ohne Felder nichts. */
+  function felderHtml(felder, zeile) {
+    if (!felder.length) return '';
+    return `<dl class="lv-kv">${felder.map(([schluessel, wert]) => feldHtml(zeile(schluessel), wert, zeile)).join('')}</dl>`;
+  }
+
+  /** Ein Text mit `\n` steht als Block unter seinem Schlüssel, ein verschachtelter Wert als JSON-Block, alles andere daneben. */
+  function feldHtml(schluessel, wert, zeile) {
+    if (typeof wert === 'string' && wert.includes('\n')) return `<dt class="blk">${schluessel}:</dt><dd class="blk">${kuerzungHtml(textZeilen(wert).map(zeile), 'aufruf', preHuelle(''))}</dd>`;
+    if (wert !== null && typeof wert === 'object') return `<dt class="blk">${schluessel}:</dt><dd class="blk">${jsonBlock(wert, zeile, 'aufruf')}</dd>`;
+    if (typeof wert === 'string') return `<dt>${schluessel}:</dt><dd>${zeile(wert)}</dd>`;
+    return `<dt>${schluessel}:</dt><dd>${zeile(JSON.stringify(wert))}</dd>`;
+  }
+
+  /* ── Diff (N4 Punkt 2, FA 4): Präfix und Suffix als Kontext, kein LCS ── */
+
+  /** `alt`, `neu` → Zeilen `{art: 'kontext'|'weg'|'neu', zeile}`; ein leerer Text hat keine Zeilen, Präfix und Suffix überlappen nie. */
+  function editDiff(alt, neu) {
+    const a = diffZeilen(alt), b = diffZeilen(neu);
+    let vorne = 0;
+    while (vorne < a.length && vorne < b.length && a[vorne] === b[vorne]) vorne++;
+    let hinten = 0;
+    while (hinten < a.length - vorne && hinten < b.length - vorne && a[a.length - 1 - hinten] === b[b.length - 1 - hinten]) hinten++;
+    const als = art => z => ({ art, zeile: z });
+    return [
+      ...a.slice(0, vorne).map(als('kontext')),
+      ...a.slice(vorne, a.length - hinten).map(als('weg')),
+      ...b.slice(vorne, b.length - hinten).map(als('neu')),
+      ...a.slice(a.length - hinten).map(als('kontext')),
+    ];
+  }
+
+  function diffZeilen(text) {
+    if (text === '') return [];
+    return text.split('\n');
+  }
+
+  const DIFF_FORM = {
+    kontext: { klasse: 'ctx', marke: ' ', lesetext: '' },
+    weg: { klasse: 'del', marke: '−', lesetext: '<span class="vh">entfernt: </span>' },
+    neu: { klasse: 'add', marke: '+', lesetext: '<span class="vh">hinzugefügt: </span>' },
+  };
+
+  /** Diff-Zeilen wie auf der Review-Seite, ohne Syntaxfarben und Zeilennummern, gekürzt als „… der Änderung“. */
+  function diffHtml(diff, zeile) {
+    const zeilen = diff.map(({ art, zeile: z }) => {
+      const form = DIFF_FORM[art];
+      return `<div class="${form.klasse}"><span class="m" aria-hidden="true">${form.marke}</span>${form.lesetext}<span class="c">${zeile(z)}</span></div>`;
+    });
+    return kuerzungHtml(zeilen, 'aenderung', teile => `<div class="lv-dif">${teile.join('')}</div>`);
+  }
+
+  /* ── Budget der Marken: ein Satz zeigt nie mehr markierbare Zeichen, als `zeichenBuchen` (lauf.js) im Text gebucht hat ── */
+
+  /** Was `zeichenBuchen` als Marke zählt (MARKIERBAR in lauf.js); ein Node-Test hält beide gleich. */
+  const MARKIERBAR = new RegExp('[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u0000-\u0008\u000B-\u001F\u007F-\u009F\u00AD\u200B-\u200D\u2028\u2029\u2060\uFEFF]', 'g');
+
+  function markenIn(text) {
+    const treffer = text.match(MARKIERBAR);
+    if (treffer === null) return 0;
+    return treffer.length;
+  }
+
+  /** `zeile` mit Zähler der markierbaren Zeichen, die der Satz zeigt. */
+  function markenZaehler(zeile) {
+    let gezeigt = 0;
+    return {
+      zeile: t => { gezeigt += markenIn(t); return zeile(t); },
+      gezeigt: () => gezeigt,
+    };
+  }
+
+  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, MARKIERBAR_SATZ: MARKIERBAR });
 })(typeof module !== 'undefined' ? module.exports : window);
