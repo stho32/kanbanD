@@ -145,7 +145,16 @@ fn index_zuruecksetzen(wurzel: &Path, pfade: &[String], autor: &Person) -> Resul
     }
 }
 
-/// Rücknahme (ADR-0005 N1, N4): unsere Pfade aus dem Index zurück auf HEAD, geänderte und gelöschte aus dem
+/// Steht der Index der Pfade auf HEAD? `git diff --cached --quiet` braucht die Sperre nicht (N4 Punkt 2): scheitert
+/// der Index-Reset an einer fremden Sperre, ist das nur ein Fehlschlag, wenn der Index wirklich abweicht — scheitert
+/// schon `git add` an der Sperre, ist er unverändert.
+fn index_wie_head(wurzel: &Path, pfade: &[String], autor: &Person) -> bool {
+    let mut diff = git(wurzel, autor);
+    diff.args(["diff", "--cached", "--quiet", "--"]).args(pfade);
+    diff.status().is_ok_and(|s| s.success())
+}
+
+/// Rücknahme (ADR-0005 N1, N4): unsere Pfade aus dem Index zurück auf HEAD (nach bestem Vermögen, zuerst), geänderte und gelöschte aus dem
 /// Objekt von HEAD zurückschreiben, was HEAD nicht kennt, hat die Aktion angelegt und verschwindet. Fremde Pfade
 /// bleiben unberührt. Wird nur mit lesbarem HEAD aufgerufen (`in_head` liefert die Modi); ist er nicht lesbar,
 /// löscht `committen` nichts.
@@ -157,7 +166,9 @@ fn index_zuruecksetzen(wurzel: &Path, pfade: &[String], autor: &Person) -> Resul
 fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &Modi, autor: &Person) -> Result<(), String> {
     let mut fehler = vec![];
     if let Err(grund) = index_zuruecksetzen(wurzel, pfade, autor) {
-        fehler.push(format!("Index nicht zurückgesetzt: {grund}"));
+        if !index_wie_head(wurzel, pfade, autor) {
+            fehler.push(format!("Index nicht zurückgesetzt: {grund}"));
+        }
     }
     for pfad in pfade {
         if let Some(modus) = bekannt.get(pfad) {
