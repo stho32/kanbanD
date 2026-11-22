@@ -154,9 +154,9 @@ fn index_wie_head(wurzel: &Path, pfade: &[String], autor: &Person) -> bool {
     diff.status().is_ok_and(|s| s.success())
 }
 
-/// Rücknahme (ADR-0005 N1, N4): unsere Pfade aus dem Index zurück auf HEAD (nach bestem Vermögen, zuerst), geänderte und gelöschte aus dem
-/// Objekt von HEAD zurückschreiben, was HEAD nicht kennt, hat die Aktion angelegt und verschwindet. Fremde Pfade
-/// bleiben unberührt. Wird nur mit lesbarem HEAD aufgerufen (`in_head` liefert die Modi); ist er nicht lesbar,
+/// Rücknahme (ADR-0005 N1, N4): zuerst unsere Pfade im Index zurück auf HEAD (nach bestem Vermögen), dann geänderte
+/// und gelöschte aus dem Objekt von HEAD zurückschreiben; was HEAD nicht kennt, hat die Aktion angelegt und
+/// verschwindet. Fremde Pfade bleiben unberührt. Wird nur mit lesbarem HEAD aufgerufen (`in_head` liefert die Modi); ist er nicht lesbar,
 /// löscht `committen` nichts.
 ///
 /// Der Arbeitsbaum braucht dafür keinen Git-Befehl, der `.git/index.lock` nimmt (N4): hält jemand anderes die
@@ -165,10 +165,9 @@ fn index_wie_head(wurzel: &Path, pfade: &[String], autor: &Person) -> bool {
 /// „zurückgenommen“ zu behaupten. Ein Pfad, der schon fehlt, ist kein Fehlschlag.
 fn zuruecknehmen(wurzel: &Path, pfade: &[String], bekannt: &Modi, autor: &Person) -> Result<(), String> {
     let mut fehler = vec![];
-    if let Err(grund) = index_zuruecksetzen(wurzel, pfade, autor) {
-        if !index_wie_head(wurzel, pfade, autor) {
-            fehler.push(format!("Index nicht zurückgesetzt: {grund}"));
-        }
+    match index_zuruecksetzen(wurzel, pfade, autor) {
+        Err(grund) if !index_wie_head(wurzel, pfade, autor) => fehler.push(format!("Index nicht zurückgesetzt: {grund}")),
+        _ => {}
     }
     for pfad in pfade {
         if let Some(modus) = bekannt.get(pfad) {
