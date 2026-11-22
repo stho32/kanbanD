@@ -1940,6 +1940,19 @@ mod tests {
         assert_eq!((status, rumpf.as_str()), (StatusCode::SERVICE_UNAVAILABLE, r#"{"fehler":"Antwortbudget"}"#), "R00206 AK 20");
     }
 
+    // R00226 AK 3: die belegte Lesegrenze ist 503 mit Rumpf genau {fehler} — kein weiteres Feld, kein Retry-After
+    #[tokio::test]
+    async fn belegte_lesegrenze_ist_503_nur_mit_fehler() {
+        for endung in ["keine Liste", "kein Diff", "keine Suche nach dem Nachfolger"] {
+            let wortlaut = format!("Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — {endung}");
+            let a = Fehler::Ausgelastet(wortlaut.clone()).into_response();
+            assert_eq!(a.status(), StatusCode::SERVICE_UNAVAILABLE, "{endung}");
+            assert!(a.headers().get("retry-after").is_none(), "{endung}: kein Retry-After");
+            let (status, rumpf) = antwort(Fehler::Ausgelastet(wortlaut.clone())).await;
+            assert_eq!((status, rumpf), (StatusCode::SERVICE_UNAVAILABLE, serde_json::json!({ "fehler": wortlaut }).to_string()), "{endung}");
+        }
+    }
+
     // R00096 / ADR-0003: Agenten lesen die Felder, nicht den Text; `fehler` bleibt das erste Feld
     #[tokio::test]
     async fn grenze_erreicht_ist_409_mit_feldern_hinter_fehler() {

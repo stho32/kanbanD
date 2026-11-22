@@ -277,7 +277,7 @@ impl Kanban {
         Verweisform::lesen(gespeichert).map_err(|f| zustand(Commitzustand::Unlesbar, Some(f.meldung)))?;
         let (anwendung, hash) = verweis_lesen(gespeichert, &anwendungen).map_err(|_| zustand(Commitzustand::AnwendungUnbekannt, None))?;
         // ab hier startet Git: ein Platz der Lesegrenze für die ganze Suche, das Warten zählt zur Frist
-        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| abbruch(Arbeitsrepofehler::Zeitgrenze))?;
+        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| super::lesegrenze::belegt("keine Suche nach dem Nachfolger"))?;
         let wurzel = arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist).map_err(repo_fehler)?;
         let fingerabdruck = arbeitsrepo::fingerabdruck(&wurzel, frist).map_err(repo_fehler)?;
         let etag = (hash.len() == 40 || hash.len() == HASH_MAX).then(|| etag(gespeichert, &wurzel, &fingerabdruck, &aufgabe.commits));

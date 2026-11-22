@@ -311,7 +311,7 @@ impl Kanban {
             }
         }
         // ab hier startet Git: höchstens 4 Lesevorgänge gleichzeitig, das Warten zählt zur Frist
-        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| abbruch(Arbeitsrepofehler::Zeitgrenze))?;
+        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| super::lesegrenze::belegt("kein Diff"))?;
         let wurzel = arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist).map_err(repo_fehler)?;
         let voll = match arbeitsrepo::objekte_pruefen(&wurzel, &[hash.as_str()], frist).map_err(repo_fehler)?.remove(0) {
             Objekt::Commit(voll) => voll,

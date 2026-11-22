@@ -4,7 +4,7 @@
 //! mit den Grenzen und dem Antwortbudget des Diffs je Commit; höchstens 15 Git-Prozesse je Anfrage.
 
 use super::Kanban;
-use super::diff::{Diffantwort, Diffanfrage, Diffcommit, Diffformat, abbruch, repo_fehler};
+use super::diff::{Diffantwort, Diffanfrage, Diffcommit, Diffformat, repo_fehler};
 use crate::fehler::Fehler;
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Metadaten, Objekt, Teil, Vergleich, Vielart};
 use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, EINTEILUNG_VERSION, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschliessen, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, im_bezug_zugeordnet, leerer_baum, namen_lesen, nicht_zugeordnet_im_bezug, ordnen, patch_text, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen};
@@ -73,7 +73,7 @@ impl Kanban {
         let weitere: Vec<String> = je_anwendung.iter().enumerate().filter(|(i, _)| *i != gewaehlt).map(|(_, (a, _))| a.kuerzel.clone()).collect();
         let (anwendung, verweise) = &je_anwendung[gewaehlt];
         // ab hier startet Git: höchstens 4 Lesevorgänge gleichzeitig, das Warten zählt zur Frist
-        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| abbruch(Arbeitsrepofehler::Zeitgrenze))?;
+        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| super::lesegrenze::belegt("kein Diff"))?;
         let wurzel = arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist).map_err(repo_fehler)?;
         let spitzen = arbeitsrepo::fingerabdruck(&wurzel, frist).map_err(repo_fehler)?;
         let etag = etag(&aufgabe.commits, &spitzen, &anwendung.kuerzel, anfrage);

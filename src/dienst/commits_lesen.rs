@@ -42,7 +42,7 @@ impl Kanban {
             return Ok(sortiert(eintraege.into_iter().flatten().collect()));
         }
         // ab hier startet Git: höchstens 4 Lesevorgänge gleichzeitig, das Warten zählt zur Frist
-        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| abbruch(Arbeitsrepofehler::Zeitgrenze))?;
+        let _platz = self.lesegrenze.betreten(frist).ok_or_else(|| super::lesegrenze::belegt("keine Liste"))?;
         let mut je_wurzel: Vec<(PathBuf, Vec<Verweis>)> = vec![];
         for (anwendung, verweise) in je_anwendung {
             match arbeitsrepo::wurzel_bis(self.ordner().wurzel(), anwendung, frist) {
