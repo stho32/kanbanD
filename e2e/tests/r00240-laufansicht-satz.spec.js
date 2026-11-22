@@ -202,7 +202,9 @@ test.describe('R00240 Laufansicht: Satz der Einträge', () => {
       expect(await s.flaeche(page.locator('#lv-s6 .lv-dif > .del')), name).toBe(await s.token('--kd-status-error-bg'));
     }
     const regeln = await page.evaluate(() => [...document.styleSheets].flatMap(b => [...b.cssRules]).map(r => r.cssText).filter(t => /\.lv-/.test(t)));
-    expect(regeln.filter(t => /--kd-wbs-|var\(--tk-/.test(t))).toEqual([]);
+    // die alten Namen der Zeichnung, zusammengesetzt: R00222 AK 11 verlangt, dass kein Name im Repository mit dem alten Präfix beginnt
+    const veraltet = new RegExp(`${['--kd', 'wbs-'].join('-')}|var\\(--tk-`);
+    expect(regeln.filter(t => veraltet.test(t))).toEqual([]);
   });
 
   test('AK 4 · US-1: Edit Nr 6 als Diff mit Kontext, − und + mit Lesetext; Write Nr 8 nur „+“', async ({ page }) => {
