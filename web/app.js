@@ -2116,19 +2116,32 @@ function laufAnstossen() {
   if (!adresse.lauf || (v && v.adresse === hash)) return;
   if (v) laufAbbrechen(v);
   const l = adresse.lauf;
-  // geblättert (R00239 FA 6, FA 12): die Filter kommen mit, der Fokus bleibt auf dem Link; sonst Vorgabe und Fokus auf „Lauf“
-  const wechsel = S.ui.laufWechsel && S.ui.laufWechsel.adresse === hash ? S.ui.laufWechsel : null;
-  S.ui.laufWechsel = null;
   S.ui.lauf = { adresse: hash, nr: l.nummer, basis: l.basis, slug: adresse.slug, gesucht: l.kennung, laedt: false, ergebnis: null, anfrage: null, erneut: false, insel: null,
-    filter: wechsel ? wechsel.filter : FILTER_VORGABE, ansage: null, geblaettert: Boolean(wechsel) };
-  S.ui.fokus = wechsel ? wechsel.fokus : '#lv-h1';
+    filter: FILTER_VORGABE, ansage: null, geblaettert: false };
+  S.ui.fokus = '#lv-h1';
+  // geblättert (R00239 FA 6, FA 12): die Filter kommen mit, der Fokus bleibt auf dem Link
+  const wechsel = laufWechselNehmen(hash);
+  if (wechsel) {
+    S.ui.lauf.filter = wechsel.filter;
+    S.ui.lauf.geblaettert = true;
+    S.ui.fokus = wechsel.fokus;
+  }
   laufLesen(S.ui.lauf);
+}
+
+/** Der Merker des Blätterns, wenn er zu dieser Adresse gehört; er gilt genau einmal. */
+function laufWechselNehmen(hash) {
+  const wechsel = S.ui.laufWechsel;
+  S.ui.laufWechsel = null;
+  if (wechsel && wechsel.adresse === hash) return wechsel;
+  return null;
 }
 
 /** Die Läufe der Aufgabe als Folge um die gezeigte Kennung (R00239 FA 10), aus dem Stand der Aufgabe, ohne Anfrage; sonst null. */
 function laufFolge(v) {
   const a = aufgabe(v.nr);
-  return a ? laeufeFolge(a.transkripte || [], v.gesucht) : null;
+  if (!a) return null;
+  return laeufeFolge(a.transkripte || [], v.gesucht);
 }
 
 /** Endansage nach dem Blättern (R00239 FA 12, PO Z. 589): „Lauf k von n, Rolle …“ vor dem Satz des Zustands; einmal gesetzt, damit
@@ -2136,7 +2149,8 @@ function laufFolge(v) {
 function laufWechselAnsage(v) {
   const satz = laufAnsage({ laedt: false, ergebnis: v.ergebnis });
   const folge = laufFolge(v);
-  return folge ? laufBlaetternAnsage(folge, satz) : satz;
+  if (!folge) return satz;
+  return laufBlaetternAnsage(folge, satz);
 }
 
 /** „‹ Voriger Lauf“ / „Nächster Lauf ›“ (R00239 FA 12, ADR-0041 N1 Punkt 5): ersetzt die Adresse ohne Verlaufseintrag — der Eintrag
@@ -2144,9 +2158,10 @@ function laufWechselAnsage(v) {
 function laufBlaettern(kennung) {
   const v = S.ui.lauf, folge = v && laufFolge(v);
   if (!folge) return;
-  const zurueck = folge.vorige && folge.vorige.kennung === kennung;
+  let fokus = '#lv-nach';
+  if (folge.vorige && folge.vorige.kennung === kennung) fokus = '#lv-vor';
   const adresse = laufAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, kennung });
-  S.ui.laufWechsel = { adresse, filter: v.filter, fokus: zurueck ? '#lv-vor' : '#lv-nach' };
+  S.ui.laufWechsel = { adresse, filter: v.filter, fokus };
   history.replaceState(history.state, '', adresse);
   adresseGewechselt();
 }
@@ -2271,9 +2286,11 @@ function vLauf() {
   // der Bericht steht im Dokument vor der Gliederung: unter 641 px liest er sich zuerst (PO Z. 590); daneben ordnet ihn das Raster
   if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter))}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
   const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten }, esc);
-  const zeitachse = laufZeitachseHtml(e && e.art === 'eintraege' ? e.auswertung : null);
-  const blaettern = laeufeBlaetternHtml(laufFolge(v), kennung => laufAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, kennung }), esc);
-  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse, blaettern) : ''}${kopf}${zeitachse}${laufRumpfHtml(v, insel, esc)}</div>`;
+  let zeitachse = '';
+  if (e && e.art === 'eintraege') zeitachse = laufZeitachseHtml(e.auswertung);
+  let leiste = '';
+  if (zeile) leiste = laeufeLeisteHtml(zeile, esc, groesse, laeufeBlaetternHtml(laufFolge(v), kennung => laufAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, kennung }), esc));
+  return `<div class="lv" id="lauf">${leiste}${kopf}${zeitachse}${laufRumpfHtml(v, insel, esc)}</div>`;
 }
 
 /** Zustand des Kopfs (R00234 FA 3, FA 4): Einträge gelesen, liest gerade (auch erneut) oder ohne Einträge (fehlt, Fehler). */

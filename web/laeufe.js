@@ -65,7 +65,8 @@
   /** Nach dem Zeitpunkt der Kennung, neueste oder älteste zuerst; Gleichstand in der Reihenfolge der Eingabe (stabil), ohne Zeitpunkt ans Ende. */
   function nachKennungszeit(zeilen, neuesteZuerst) {
     const mitZeit = zeilen.map(z => [z, kennungMs(z.kennung)]);
-    const richtung = neuesteZuerst ? -1 : 1;
+    let richtung = 1;
+    if (neuesteZuerst) richtung = -1;
     const datiert = mitZeit.filter(([, ms]) => ms !== null).sort((a, b) => richtung * (a[1] - b[1])).map(([z]) => z);
     const undatiert = mitZeit.filter(([, ms]) => ms === null).map(([z]) => z);
     return [...datiert, ...undatiert];

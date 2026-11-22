@@ -384,6 +384,8 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   }
 
   test('AK 7 · US-5: Folge, „Lauf k von n“, Links auf die Nachbarn; Sperrform am ersten und letzten Lauf und bei einem Lauf; T5 ohne Anfrage', async ({ page }) => {
+    // viele Seiten, darunter T3 mit 20.000 Zeilen: unter voller Last der Suite reichen 30 s nicht (Gate #253)
+    test.setTimeout(60000);
     await s.oeffnen(T.T1);
     await s.gelesen();
     await expect(page.locator(VORIGER)).toHaveText('‹ Voriger Lauf');
@@ -435,6 +437,8 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   });
 
   test('AK 8 · US-5: Wechsel mit replaceState — Abbruch der gehaltenen Anfrage, Ansagen je Wechsel, Fokus auf dem Link, Rückweg zu „Läufe“', async ({ page }) => {
+    // viele Seiten, darunter T3 mit 20.000 Zeilen: unter voller Last der Suite reichen 30 s nicht (Gate #253)
+    test.setTimeout(60000);
     const wartend = [];
     await page.route(url => istTranskriptVon(url.href, T.T3), route => wartend.push(route));
     await s.laeufeVonEins();
