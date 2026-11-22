@@ -1,6 +1,6 @@
 ---
 id: R00227
-status: Neu
+status: Erledigt
 datum: 2026-11-21
 ursprung: Bug-Report
 ursprungslauf: R00002
@@ -75,15 +75,15 @@ Nicht nötig. `DATEIEN` bleibt privat, denn der Abgleich läuft über HTTP und d
 
 ### Bug behoben
 
-- [ ] **AK 1 Lizenz der Schriften (Abnahme-Probe der Karte, wörtlich):** `GET /web/fonts/LICENSE-OFL.txt` ergibt Status 200 und `Content-Type` genau `text/plain; charset=utf-8`. Der Text beginnt mit „Copyright 2019 IBM Corp.“ und enthält „SIL OPEN FONT LICENSE Version 1.1“. Heute: 404 „nicht gefunden“ (rot).
-- [ ] **AK 2 Abgleich der Ordner (Sollte des architekt):** Ein Test liest `web/fonts/` und `web/vendor/` zur Laufzeit aus dem Dateisystem (`CARGO_MANIFEST_DIR`), ohne die Dateinamen im Test aufzuzählen. Für jede Datei verlangt er `GET /web/<ordner>/<name>` mit Status 200 und dem `Content-Type` nach Endung: `.woff2` → `font/woff2`, `.js` → `text/javascript; charset=utf-8`, `.txt` → `text/plain; charset=utf-8`. Bei einer anderen Endung schlägt der Test fehl und nennt die Datei. Der Test verlangt außerdem mindestens 8 gefundene Dateien, damit ein leer gelesener Ordner nicht grün wird. Die Fehlermeldung nennt jede fehlende Datei mit Pfad. Heute: rot für `fonts/LICENSE-OFL.txt`, die anderen 7 sind grün.
-- [ ] **AK 3 Mutanten:** Jeder Mutant wird von einem benannten Test getötet. Die Mutanten laufen in einer eigenen Kopie, nicht im Worktree.
+- [x] **AK 1 Lizenz der Schriften (Abnahme-Probe der Karte, wörtlich):** `GET /web/fonts/LICENSE-OFL.txt` ergibt Status 200 und `Content-Type` genau `text/plain; charset=utf-8`. Der Text beginnt mit „Copyright 2019 IBM Corp.“ und enthält „SIL OPEN FONT LICENSE Version 1.1“. Heute: 404 „nicht gefunden“ (rot).
+- [x] **AK 2 Abgleich der Ordner (Sollte des architekt):** Ein Test liest `web/fonts/` und `web/vendor/` zur Laufzeit aus dem Dateisystem (`CARGO_MANIFEST_DIR`), ohne die Dateinamen im Test aufzuzählen. Für jede Datei verlangt er `GET /web/<ordner>/<name>` mit Status 200 und dem `Content-Type` nach Endung: `.woff2` → `font/woff2`, `.js` → `text/javascript; charset=utf-8`, `.txt` → `text/plain; charset=utf-8`. Bei einer anderen Endung schlägt der Test fehl und nennt die Datei. Der Test verlangt außerdem mindestens 8 gefundene Dateien, damit ein leer gelesener Ordner nicht grün wird. Die Fehlermeldung nennt jede fehlende Datei mit Pfad. Heute: rot für `fonts/LICENSE-OFL.txt`, die anderen 7 sind grün.
+- [x] **AK 3 Mutanten:** Jeder Mutant wird von einem benannten Test getötet. Die Mutanten laufen in einer eigenen Kopie, nicht im Worktree.
   - (m1) Die Zeile `fonts/LICENSE-OFL.txt` fehlt in `dateien!` → AK 1 und AK 2 rot.
   - (m2) Die Zeile steht da, aber mit `text/html; charset=utf-8` → AK 1 und AK 2 rot.
   - (m3) Eine neue Datei `web/vendor/probe.txt` liegt im Ordner, steht aber nicht in `dateien!` → AK 2 rot und nennt `vendor/probe.txt`. Dieser Mutant belegt, dass der Test den Ordner liest und keine feste Liste prüft.
 
   Lässt sich ein Mutant nicht töten, meldet der entwickler das mit Begründung.
-- [ ] **AK 4 Bug-Vorlage:** Die Reproduktionstests (AK 1, AK 2) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, `tests/statisch_faerben.rs` ohne geänderte Erwartung.
+- [x] **AK 4 Bug-Vorlage:** Die Reproduktionstests (AK 1, AK 2) sind ohne Fix rot und mit Fix grün. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, `tests/statisch_faerben.rs` ohne geänderte Erwartung.
 
 ## Implementierungshinweise
 
