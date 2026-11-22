@@ -503,7 +503,7 @@ test.describe('R00219 Ansicht „Läufe“', () => {
   }
 
   for (const farbe of ['hell', 'dunkel']) {
-    test(`AK 10 (UX Nacharbeit Sollte 2): ${farbe} — „Erneut versuchen“ gesperrt ist gedämpft (andere Farbe, ≥ 3:1, Zeiger progress), der Ring bleibt`, async ({ page }) => {
+    test(`AK 10 (UX Nacharbeit Sollte 2): ${farbe} — „Erneut versuchen“ gesperrt ist gedämpft (andere Farbe, ≥ 3:1, Zeiger default), der Ring bleibt`, async ({ page }) => {
       const h = await gehaltenOeffnen(page, 1, 503);
       await thema(page, farbe === 'hell' ? 'light' : 'dark');
       const knopf = page.locator(ERNEUT);
@@ -513,7 +513,7 @@ test.describe('R00219 Ansicht „Läufe“', () => {
       await expect(knopf).toHaveAttribute('aria-disabled', 'true');
       const stil = await knopf.evaluate(e => ({ farbe: getComputedStyle(e).color, zeiger: getComputedStyle(e).cursor, ring: getComputedStyle(e).outlineStyle }));
       expect(stil.farbe, 'gedämpft').not.toBe(vorher);
-      expect(stil.zeiger).toBe('progress');
+      expect(stil.zeiger).toBe('default');
       expect(stil.ring).toBe('solid');
       expect(await kontrastAm(knopf)).toBeGreaterThanOrEqual(3);
       await h.freigeben(503);

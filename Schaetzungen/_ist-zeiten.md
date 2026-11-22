@@ -1053,3 +1053,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #238 R00226 | B1182 Mutanten m1–m6 (zehn Rust-Varianten in eigener Kopie, m6 in Kopie von web/) getötet, volles Gate, R00226 Erledigt | Standard | 0,5-1h | 0,8h | 0,8h | autonom |
 | 2026-11-22 | Karte #243 R00227 | B1183 Lizenz-Probe und Ordner-Abgleich rot (404), Zeile in `dateien!`, grün; Prism-Gegenprobe | Standard | 0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-22 | Karte #243 R00227 | B1184 Mutanten m1–m3 in eigener Kopie getötet, Regression, volles Gate (cargo 1217, node 1519/1520, e2e 2357 + 1 Wackler 3× grün), R00227 Erledigt | Standard | 0,5h | 0,4h | 0,4h | autonom |
+| 2026-11-22 | Karte #247 R00229 | B1187 Proben rot (Node-Probe AK 8, E2E AK 1–7), dann eine Sperrform je Komponente in `web/kd-app.css`, Allowlist der Faint-Probe nachgezogen | Standard | 0,5-1h | 0,6h | 0,6h | autonom |

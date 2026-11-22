@@ -214,7 +214,8 @@ const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz',
   // R00220: die gesperrte Gruppe des Schalters „Transkripte erfassen“ (Z. 216, PO Z. 484 und Z. 491)
   '.ts-seg[aria-disabled="true"]>button,.ts-seg[aria-disabled="true"]>button:hover', '.ts-seg[aria-disabled="true"]>button[aria-checked="true"]',
   // gesperrtes „Erneut versuchen“ der Laufansicht in der Sperrform von PO Z. 484 S-A (R00221, PO Z. 491)
-  '.lv-ganz .cl-knopf[aria-disabled="true"],.lv-ganz .cl-knopf[aria-disabled="true"]:hover'];
+  '.cl-textknopf[aria-disabled="true"],.cl-textknopf[aria-disabled="true"]:hover',
+  '.cl-knopf[aria-disabled="true"],.cl-knopf[aria-disabled="true"]:hover'];
 /** Regeln mit --kd-faint außerhalb der Erlaubt-Liste, als `datei:zeile selektor`. */
 function faintStellen(datei, text) {
   return regeln(text).filter(regel => regel.rumpf.includes('var(--kd-faint)') && !FAINT_ERLAUBT.includes(regel.selektor)).map(regel => `${datei}:${regel.zeile} ${regel.selektor}`);
