@@ -421,7 +421,7 @@
       `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. */
   function laufAuswerten(zeilen, grenze) {
     const summe = { werkzeug: 0, denken: 0, warten: 0 };
-    const luecken = [], schritte = [], offen = offeneAufrufe(), tokens = tokenZaehlung();
+    const luecken = [], schritte = [], offen = offeneAufrufe(), tokens = tokenZaehlung(), achse = zeitachseBeginnen();
     let vorher = null, mitZeit = 0;
     for (const { nr, eintrag } of zeilen) {
       if (!eintrag) { unlesbarZaehlen(tokens); continue; }
@@ -435,15 +435,65 @@
       if (vorher !== null) {
         const dauer = Math.max(0, ms - vorher), art = lueckenArt(eintrag);
         summe[art] += dauer;
+        stueckAnhaengen(achse, art, dauer);
         if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS) luecken.push({ vorNr: nr, art, dauer, vor: schritt ? schrittText(schritt) : `Nachricht von ${eintrag.name || WER_WORT[eintrag.wer]}` });
         if (art === 'warten' && dauer >= DENKZEILE_AB_MS) tokens.wartenSeit = dauer;
-      }
+      } else achse.erste = ms;
       vorher = ms;
     }
     const gesamt = summe.werkzeug + summe.denken + summe.warten, bekannt = mitZeit >= 2;
     const kennzahlen = { werkzeugaufrufe: schritte.filter(s => s.aufruf).length, fehler: schritte.filter(s => s.fehler).length };
     const top3 = bekannt ? laengsteSchritte(schritte, luecken) : [];
-    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen), tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer) };
+    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen), tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer), zeitachse: zeitachseAbschliessen(achse, bekannt) };
+  }
+
+  /* ── Zeitachse (R00239 FA 1, FA 2; ADR-0041 N1 Punkt 2): Stücke im selben Durchlauf, Fächer danach in O(Stücke + 200) ── */
+
+  /** Ab mehr als so vielen Stücken teilt die Zeitachse die Gesamtdauer in ebenso viele gleich lange Fächer (PO Z. 530). */
+  const FAECHER = 200;
+  /** Reihenfolge der Arten bei Gleichstand im Fach — dieselbe wie in Kopf, Legende und Lesetext. */
+  const ACHSEN_ARTEN = ['werkzeug', 'denken', 'warten'];
+
+  function zeitachseBeginnen() {
+    return { erste: null, bisher: 0, stuecke: [] };
+  }
+
+  /** Eine Lücke der Art `art`: ab 1 ms ein Stück, das an ein gleichartiges davor anschließt; 0 ms trennt keine Stücke. */
+  function stueckAnhaengen(achse, art, dauer) {
+    if (dauer === 0) return;
+    const letztes = achse.stuecke[achse.stuecke.length - 1];
+    if (letztes && letztes.art === art) letztes.dauer += dauer;
+    else achse.stuecke.push({ art, ab: achse.erste + achse.bisher, dauer });
+    achse.bisher += dauer;
+  }
+
+  /** `{erste, gesamt, stuecke, faecher}` oder null: ohne bekannte Dauer und bei 0 ms gibt es keine Zeitachse (FA 4). */
+  function zeitachseAbschliessen({ erste, bisher, stuecke }, bekannt) {
+    if (!bekannt || bisher === 0) return null;
+    return { erste, gesamt: bisher, stuecke, faecher: stuecke.length > FAECHER ? faecherBilden(erste, bisher, stuecke) : null };
+  }
+
+  /** 200 gleich lange Fächer über die Gesamtdauer, je mit der Art, deren Stücke darin am meisten Zeit haben. Gerechnet in
+      200-fachen Millisekunden: so sind Grenzen und Anteile ganze Zahlen, und ein Gleichstand ist ein echter. */
+  function faecherBilden(erste, gesamt, stuecke) {
+    const faecher = [];
+    let j = 0, beginn = 0;
+    for (let i = 0; i < FAECHER; i++) {
+      const von = gesamt * i, bis = gesamt * (i + 1), anteil = { werkzeug: 0, denken: 0, warten: 0 };
+      let k = j, ab = beginn;
+      while (k < stuecke.length && ab < bis) {
+        const ende = ab + stuecke[k].dauer * FAECHER;
+        anteil[stuecke[k].art] += Math.min(ende, bis) - Math.max(ab, von);
+        if (ende > bis) break;
+        ab = ende;
+        k++;
+      }
+      j = k;
+      beginn = ab;
+      const art = ACHSEN_ARTEN.reduce((sieger, a) => (anteil[a] > anteil[sieger] ? a : sieger));
+      faecher.push({ art, ab: erste + von / FAECHER, bis: erste + bis / FAECHER });
+    }
+    return faecher;
   }
 
   /* ── Tokens je Antwort (R00238, ADR-0041 N3 Punkte 2–5, N3.1): im selben Durchlauf, je Eintrag O(1) ── */

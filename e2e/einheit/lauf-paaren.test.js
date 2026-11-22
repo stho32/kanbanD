@@ -30,14 +30,17 @@ test('AK 1: T6 — vertauschte Ergebnisse gehören zu ihrem Aufruf, Dauer, Fehle
   assert.deepStrictEqual(a.kennzahlen, { werkzeugaufrufe: 2, fehler: 1 });
 });
 
+/** R00239 ergänzt die Auswertung um die Zeitachse; geprüft wird sie in lauf-zeitachse.test.js, hier bleibt jedes alte Feld gleich. */
+const ohneNeueFelder = ({ zeitachse, ...alt }) => alt;
+
 test('AK 2: T6o ohne Felder ist deepStrictEqual zum Literal vor dem Fix (Nr 1 mit 3 s, Nr 2 mit 9 s und Fehler)', () => {
   const a = auswerten(ohneFelder(T6));
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), { ...VOR_DER_KARTE.T6o, tokens: null, teuer3: [] }, 'R00238: dazu tokens null und keine teuersten');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(ohneNeueFelder(a))), { ...VOR_DER_KARTE.T6o, tokens: null, teuer3: [] }, 'R00238: dazu tokens null und keine teuersten');
   assert.strictEqual(text(a), '1→3:3 2→4:9!');
 });
 
 test('AK 2: T1 aus R00234 ist deepStrictEqual zum Literal vor dem Fix', () => {
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(laufAuswerten(T1_ZEILEN, false))), { ...VOR_DER_KARTE.T1, tokens: null, teuer3: [] }, 'R00238: dazu tokens null und keine teuersten');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(ohneNeueFelder(laufAuswerten(T1_ZEILEN, false)))), { ...VOR_DER_KARTE.T1, tokens: null, teuer3: [] }, 'R00238: dazu tokens null und keine teuersten');
 });
 
 test('AK 4: ein zu ohne passenden Aufruf steht allein, die Warteschlange greift nicht', () => {

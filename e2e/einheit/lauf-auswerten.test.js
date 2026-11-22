@@ -198,7 +198,9 @@ const ALTBESTAND_T1 = {
 };
 
 test('R00238 AK 2: Altbestand — T1 ohne tokens ergibt dieselbe Auswertung wie vor #263, bis auf tokens: null und eine leere Liste der teuersten', () => {
-  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false), { ...ALTBESTAND_T1, tokens: null, teuer3: [] });
+  // R00239 ergänzt die Zeitachse (geprüft in lauf-zeitachse.test.js); jedes alte Feld bleibt gleich
+  const { zeitachse, ...alt } = laufAuswerten(T1_ZEILEN, false);
+  assert.deepStrictEqual(alt, { ...ALTBESTAND_T1, tokens: null, teuer3: [] });
 });
 
 /* ── R00238 B1238: Zahlform der Tokens (PO Z. 573, 574; UX S1) ── */
