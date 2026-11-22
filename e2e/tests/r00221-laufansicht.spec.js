@@ -146,7 +146,7 @@ test.describe('R00221 Laufansicht', () => {
     await laeufeOeffnen(page);
     const amAnfang = await page.evaluate(() => history.length);
     await ansehen(page, L.L1).click();
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await expect(page.locator(H1)).toBeFocused();
     const vorher = await page.evaluate(() => history.length);
     expect(vorher).toBe(amAnfang + 1);
@@ -161,7 +161,7 @@ test.describe('R00221 Laufansicht', () => {
 
   test('AK 4 · US-2: als Lesezeichen geladen führt „‹ #1“ zu „Läufe“, ohne die Seite zu verlassen, und history.length wächst nicht', async ({ page }) => {
     await laufOeffnen(page, L.L1);
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     const vorher = await page.evaluate(() => { window.kdSelbeSeite = 1; return history.length; });
     await page.locator(RUECKWEG).click();
     await expect(page.locator(ANSICHT_LAEUFE)).toBeVisible();
@@ -171,7 +171,7 @@ test.describe('R00221 Laufansicht', () => {
 
   test('AK 4: L1 inzwischen gelöscht — der Rückweg setzt den Fokus auf die Überschrift von „Läufe“, nie auf body', async ({ page }) => {
     await laufOeffnen(page, L.L1);
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await liveBereit(page);
     const weg = await fetch(`${k.adresse}api/aufgaben/1/transkripte/${kodiert(L.L1)}`, { method: 'DELETE', headers: { 'X-KanbanD-Wer': lv.AGENT } });
     expect(weg.ok).toBe(true);
@@ -209,27 +209,30 @@ test.describe('R00221 Laufansicht', () => {
   test('AK 6 · US-1: Kopf, Leiste und Einträge von L1; für die Leiste geht keine Anfrage an die Liste hinaus', async ({ page }) => {
     const z = zaehlen(page);
     await laufOeffnen(page, L.L1);
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await expect(page.locator('#kopf')).toContainText('Lauf');
     await expect(page.locator('#kopf .rv-titel')).toHaveText('entwickler · 20.11.2026 10:00');
     await expect(page.locator('#kopf .rv-liest')).toHaveText('liest nur');
     await expect(page.locator(RUECKWEG)).toHaveText('#1');
     const felder = await page.locator(`${LEISTE} > span`).allInnerTexts();
-    expect(felder.map(f => f.replace(/\s+/g, ''))).toEqual(['ROLLEentwickler', 'ZEITPUNKT20.11.202610:00', 'SPALTEEntwicklungKostengebuchtinReviews', 'BETRAG1,80$', `GRÖSSE${bytes[L.L1]}B`]);
+    // R00221 Nachtrag (#251): die Leiste nennt keinen Betrag mehr, er steht als Kennzahl „Kosten“ im Kopf
+    expect(felder.map(f => f.replace(/\s+/g, ''))).toEqual(['ROLLEentwickler', 'ZEITPUNKT20.11.202610:00', 'SPALTEEntwicklungKostengebuchtinReviews', `GRÖSSE${bytes[L.L1]}B`]);
+    await expect(page.locator(`${SEITE} .lv-kz > div:has(dt:text-is("Kosten")) dd`)).toHaveText(/1,80\s\$/);
     const e = page.locator(EINTRAEGE);
     await expect(e.nth(0)).toContainText('10:00:41');
     await expect(e.nth(0).locator('strong')).toHaveText('die Anforderung');
+    // Zeile 2 und 5 von L1 sind eine Zeile an der Stelle des Aufrufs: Name, Befehl, Kürzel des Ergebnisses, Dauer (10:00:42 → 09:00:43Z)
     await expect(e.nth(1).locator('details')).not.toHaveAttribute('open', '');
-    await expect(e.nth(1).locator('summary')).toHaveText(/Read\s*Aufruf\s*Anforderungen\/R00219\.md\s*10:00:42/);
+    await expect(e.nth(1).locator('summary')).toHaveText(/Read\s*Anforderungen\/R00219\.md\s*---\s*1 s/);
     await expect(e.nth(2)).toHaveText('Zeile 4 des Transkripts ist nicht lesbar.');
-    await expect(e.nth(3).locator('summary')).toHaveText(/Read\s*Ergebnis\s*---\s*10:00:43/);
-    await e.nth(3).locator('summary').click();
-    await expect(e.nth(3).locator('pre')).toHaveText('---\nid: R00219\nstatus: Neu');
-    expect(await e.nth(3).locator('pre').evaluate(p => getComputedStyle(p).fontFamily)).toMatch(/mono/i);
-    await expect(e.nth(4)).toContainText('Passt.');
-    await expect(e.nth(4).locator('.mono')).toHaveCount(0);
+    await e.nth(1).locator('summary').click();
+    await expect(e.nth(1).locator('pre')).toHaveText(['Anforderungen/R00219.md', '---\nid: R00219\nstatus: Neu']);
+    await expect(e.nth(1).locator('.lv-s-ganz .k')).toHaveText(['Aufruf', 'Ergebnis']);
+    expect(await e.nth(1).locator('pre').last().evaluate(p => getComputedStyle(p).fontFamily)).toMatch(/mono/i);
+    await expect(e.nth(3)).toContainText('Passt.');
+    await expect(e.nth(3).locator('.zt')).toHaveCount(0);
     await expect(e.nth(4).locator('b')).toHaveCount(0);
-    await expect(e.nth(5)).toHaveText(ENDE);
+    await expect(e.nth(4)).toHaveText(ENDE);
     expect(await page.locator(SEITE).innerText()).not.toContain('{"art"');
     expect(z.liste).toBe(0);
     expect(z.einzeln).toBe(1);
@@ -240,7 +243,7 @@ test.describe('R00221 Laufansicht', () => {
     const daten = Buffer.concat([lv.gz(lv.G), Buffer.alloc(281600 - lv.gz(lv.G).length, 0)]);
     expect((await lv.hochladen(k.adresse, 1, kennung, 'Entwicklung', daten)).bytes).toBe(281600);
     await laufOeffnen(page, kennung);
-    await expect(page.locator(`${LEISTE} > span`).nth(4)).toHaveText(/GRÖSSE\s*275,0 KB/);
+    await expect(page.locator(`${LEISTE} > span`).nth(3)).toHaveText(/GRÖSSE\s*275,0 KB/);
   });
 
   test('AK 6: solange die Antwort gehalten ist, steht kein Eintrag, nur „Liest das Transkript …“', async ({ page }) => {
@@ -250,7 +253,7 @@ test.describe('R00221 Laufansicht', () => {
     await expect(page.locator(STATUS)).toBeVisible();
     await expect(page.locator(INSEL)).toHaveCount(0);
     await h.freigeben();
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await expect(page.locator(STATUS)).toHaveText(ENDE);
   });
 
@@ -259,7 +262,7 @@ test.describe('R00221 Laufansicht', () => {
     await laufOeffnen(page, L.L1);
     const lang = 'w'.repeat(250);
     await h.freigeben({ body: lv.gz(lv.zeile({ art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Bash', text: lang + '\nzwei' })) });
-    const z1 = page.locator(`${EINTRAEGE} .z1`);
+    const z1 = page.locator(`${EINTRAEGE} .eg`);
     await expect(z1).toHaveText('w'.repeat(200) + '…');
     await page.locator(`${EINTRAEGE} summary`).click();
     await expect(page.locator(`${EINTRAEGE} pre`)).toHaveText(lang + '\nzwei');
@@ -314,7 +317,7 @@ test.describe('R00221 Laufansicht', () => {
     // Playwright wartet sonst, bis der Knopf nicht mehr gesperrt ist
     await page.locator(ERNEUT).click({ force: true });
     await h.freigeben();
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     expect(h.anzahl()).toBe(3);
   });
 
@@ -386,7 +389,7 @@ test.describe('R00221 Laufansicht', () => {
     await expect(name.locator('.mk-bidi')).toHaveCount(1);
     expect((await name.innerText()).indexOf('Bash')).toBeLessThan((await name.innerText()).indexOf('hs'));
     // eingeklappt steht die Marke als Text, das Markenelement trägt der aufgeklappte Text (Budget, PO Z. 493)
-    await expect(page.locator(`${EINTRAEGE} summary .z1`)).toContainText('⟨U+202E⟩abc');
+    await expect(page.locator(`${EINTRAEGE} summary .bf`)).toContainText('⟨U+202E⟩abc');
     await expect(page.locator(`${EINTRAEGE} pre .mk-bidi`)).toHaveCount(1);
   });
 
@@ -473,13 +476,14 @@ test.describe('R00221 Laufansicht', () => {
     expect(await page.locator('body').innerText()).not.toMatch(/Invalid string length|undefined/);
   });
 
-  test('UX S1: dunkel, Zeiger über dem ersten summary — die Uhrzeit trägt keinen eigenen Hintergrund', async ({ page }) => {
+  // R00221 Nachtrag (#251): die Werkzeugzeile zeigt statt der Uhrzeit die Dauer; geprüft wird deren Feld
+  test('UX S1: dunkel, Zeiger über dem ersten summary — die Dauer trägt keinen eigenen Hintergrund', async ({ page }) => {
     await laufOeffnen(page, L.L1);
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await thema(page, 'dark');
     const summary = page.locator(`${EINTRAEGE} summary`).first();
     await summary.hover();
-    const r = await summary.evaluate(s => [s.matches(':hover'), getComputedStyle(s.querySelector('.lv-zt')).backgroundColor, getComputedStyle(s).backgroundColor]);
+    const r = await summary.evaluate(s => [s.matches(':hover'), getComputedStyle(s.querySelector('.du')).backgroundColor, getComputedStyle(s).backgroundColor]);
     expect(r[0]).toBe(true);
     expect(['rgba(0, 0, 0, 0)', r[2]]).toContain(r[1]);
   });
@@ -489,7 +493,7 @@ test.describe('R00221 Laufansicht', () => {
   test('AK 9 · US-7: Kommentar an #1 und Umbenennen von #2 lassen Knoten und Klappen stehen, ohne neues Lesen; ein Kosteneintrag an L2 erscheint live', async ({ page }) => {
     const z = zaehlen(page);
     await laufOeffnen(page, L.L1);
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await liveBereit(page);
     await page.locator(INSEL).evaluate(el => { el.__probe = 1; });
     await page.locator(`${EINTRAEGE} summary`).first().click();
@@ -505,9 +509,10 @@ test.describe('R00221 Laufansicht', () => {
     await page.evaluate(h => { location.hash = h; }, `#/board/fabrik/aufgabe/1/lauf?kennung=${kodiert(L.L2)}`);
     await expect(page.locator(EINTRAEGE)).toHaveCount(3);
     await page.locator(INSEL).evaluate(el => { el.__probe = 2; });
-    await expect(page.locator(`${LEISTE} > span`).nth(3)).toHaveText(/BETRAG\s*—/);
+    const kosten = page.locator(`${SEITE} .lv-kz > div:has(dt:text-is("Kosten")) dd`);
+    await expect(kosten).toHaveText(/^–/);
     await lv.buchen(k.adresse, 1, L.L2, 'Detailplanung', 0.42);
-    await expect(page.locator(`${LEISTE} > span`).nth(3)).toHaveText(/BETRAG\s*0,42\s\$/);
+    await expect(kosten).toHaveText(/0,42\s\$/);
     expect(await page.locator(INSEL).evaluate(el => el.__probe)).toBe(2);
     expect(z.einzeln).toBe(2);
   });
@@ -537,7 +542,7 @@ test.describe('R00221 Laufansicht', () => {
     const fehler = [];
     fehler.push(...await breitenMessen(page, 'lädt'));
     await h.freigeben({ body: lv.gz(lv.G + lv.zeile({ art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: 'x'.repeat(45000) })) });
-    await expect(page.locator(EINTRAEGE)).toHaveCount(7);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
     await page.locator(`${EINTRAEGE} summary`).last().click();
     fehler.push(...await breitenMessen(page, 'Einträge'));
     await page.locator(RUECKWEG).click();
@@ -621,7 +626,7 @@ test.describe('R00221 Laufansicht', () => {
       await expect(page.locator(ERNEUT)).toHaveAttribute('aria-disabled', 'true');
       await ring(page.locator(ERNEUT), 'Erneut versuchen gesperrt');
       await h.freigeben();
-      await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+      await expect(page.locator(EINTRAEGE)).toHaveCount(5);
       await perTab(page.locator(`${EINTRAEGE} summary`).first());
       await ring(page.locator(`${EINTRAEGE} summary`).first(), 'summary');
       const h1Ring = await page.locator(H1).evaluate(e => { e.focus(); const st = getComputedStyle(e); return { stil: st.outlineStyle, breite: parseFloat(st.outlineWidth), farbe: st.outlineColor, flaeche: getComputedStyle(e.closest('header')).backgroundColor }; });
@@ -636,7 +641,7 @@ test.describe('R00221 Laufansicht', () => {
     await laeufeOeffnen(page);
     await ansehen(page, L.L1).focus();
     await page.keyboard.press('Enter');
-    await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+    await expect(page.locator(EINTRAEGE)).toHaveCount(5);
     await expect(page.locator(H1)).toBeFocused();
     expect(await page.evaluate(() => document.querySelector('#lv-h1').getAttribute('tabindex'))).toBe('-1');
     await page.keyboard.press('Tab');
@@ -736,7 +741,7 @@ test.describe('R00221 Laufansicht', () => {
       for (const [ort, wo] of [[page.locator(RUECKWEG), 'Rückweg'], [page.locator(ERNEUT), 'Erneut versuchen']]) expect(Math.min(...await mass(ort)), wo).toBeGreaterThanOrEqual(48);
       await page.locator(ERNEUT).click();
       await h.freigeben();
-      await expect(page.locator(EINTRAEGE)).toHaveCount(6);
+      await expect(page.locator(EINTRAEGE)).toHaveCount(5);
       for (const m of await page.locator(`${EINTRAEGE} summary`).evaluateAll(s => s.map(e => { const r = e.getBoundingClientRect(); return [r.width, r.height]; }))) expect(Math.min(...m)).toBeGreaterThanOrEqual(48);
     });
   });

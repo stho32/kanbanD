@@ -212,13 +212,13 @@
   /** „<Rolle> · <Zeitpunkt>“ hinter „Lauf“; Rolle ohne Bidi-Steuerzeichen, maskiert. */
   const laeufeTitelHtml = (z, esc) => `${esc(ohneSteuerzeichen(z.role))} · ${zeitpunktText(z.kennung) || ''}`;
 
-  /** Rolle, Zeitpunkt, Spalte samt Nebentext, Betrag und Größe der Datei (`groesse` wie bei den Anhängen). */
+  /** Rolle, Zeitpunkt, Spalte samt Nebentext und Größe der Datei (`groesse` wie bei den Anhängen); der Betrag steht als Kennzahl
+      „Kosten“ im Kopf (R00221 Nachtrag, R00234 FA 4). */
   function laeufeLeisteHtml(z, esc, groesse) {
     const feld = (name, inhalt) => `<span><span class="k">${name}</span>${inhalt}</span>`;
-    const betrag = z.kosten ? `<span class="mono">${esc(geld(inCent(z.kosten.amount), z.kosten.currency))}</span>` : ohneWert('kein Betrag');
     const bytes = z.transkript && typeof z.transkript.bytes === 'number' ? `<span class="mono">${esc(groesse(z.transkript.bytes))}</span>` : ohneWert('keine Größe');
     return `<div class="lv-leiste">${feld('ROLLE', esc(ohneSteuerzeichen(z.role)))}${feld('ZEITPUNKT', `<span class="mono">${zeitpunktText(z.kennung) || ''}</span>`)}`
-      + `${feld('SPALTE', spalteHtml(z, esc))}${feld('BETRAG', betrag)}${feld('GRÖSSE', bytes)}</div>`;
+      + `${feld('SPALTE', spalteHtml(z, esc))}${feld('GRÖSSE', bytes)}</div>`;
   }
 
   Object.assign(ziel, { laeufeTitelHtml, laeufeLeisteHtml });

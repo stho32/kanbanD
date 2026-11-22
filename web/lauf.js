@@ -4,6 +4,7 @@
   'use strict';
   const { markdownHtml } = typeof module !== 'undefined' ? require('./markdown.js') : window;
   const { sichtbarHtml, sichtbarText } = typeof module !== 'undefined' ? require('./diff.js') : window;
+  const { geld, inCent } = typeof module !== 'undefined' ? require('./kosten.js') : window;
 
   /** Grenze des Lesens (ADR-0041 Punkt 4): 16 MiB entpackt, gezählt vor dem Dekodieren, und 20.000 Zeilen — 10-mal der größte
       echte Lauf. Die Zahlen stehen nie in der Oberfläche (PO Z. 468). */
@@ -73,15 +74,10 @@
   const GRENZE_ERREICHT = 'Grenze erreicht: Der Rest des Transkripts wird nicht angezeigt.';
   const nichtLesbar = nr => `Zeile ${nr} des Transkripts ist nicht lesbar.`;
   const WER_WORT = { agent: 'Agent', mensch: 'Mensch', werkzeug: 'Werkzeug' };
-  const ART_WORT = { werkzeugaufruf: 'Aufruf', werkzeugergebnis: 'Ergebnis' };
   const ERSTE_ZEILE_ZEICHEN = 200;
   const ACHTUNG = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg>';
   const GRENZE_SYMBOL = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16"/><path d="M4 15h3M10 15h4M17 15h3M4 20h3M10 20h4M17 20h3"/></svg>';
   const PFEIL = '<span class="pf"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span>';
-  const ART_SYMBOL = {
-    werkzeugaufruf: '<span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6l6 6-6 6M12 18h8"/></svg></span>',
-    werkzeugergebnis: '<span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v9h12M14 9l4 4-4 4"/></svg></span>',
-  };
 
   /* ── Budget für sichtbar gemachte Zeichen (FA 10, PO Z. 493): gezählt und gebucht nur in `zeichenBuchen`, gezeichnet wird nur,
      was gebucht ist. Grund: jedes Zeichen wird zu einer Marke von gut 250 Byte HTML — ohne Budget wüchse ein Lauf aus 3 MiB
@@ -123,20 +119,57 @@
   const zeileHtml = (z, esc) => (new RegExp(MARKIERBAR).test(z) ? sichtbarHtml(z, esc) : esc(z));
   const zeilenHtml = (text, esc) => text.split('\n').map(z => zeileHtml(z, esc)).join('\n');
 
-  /** Die Liste der Einträge `[{nr, eintrag}]` samt Schluss: „Ende des Transkripts“ oder, an der Grenze, Wortlaut 15. Je Aufruf
-      ein Lauf und ein frisches Budget. */
-  function laufHtml(zeilen, grenze, esc) {
+  /** Die Liste der Einträge `[{nr, eintrag}]` samt Schluss: „Ende des Transkripts“ oder, an der Grenze, Wortlaut 15. Aufruf und
+      Ergebnis stehen als eine Zeile an der Stelle des Aufrufs, vor einem Eintrag steht seine Denk- oder Wartezeile (R00234 FA 6, FA 8).
+      Jede Zeile ist mit `id="lv-s<Nr>"` ein Sprungziel. Je Aufruf ein Lauf und ein frisches Budget. */
+  function laufHtml(zeilen, grenze, esc, auswertung = laufAuswerten(zeilen, grenze)) {
     const budget = { lauf: ZEICHEN_JE_LAUF, gebucht: 0 };
     const schluss = grenze
       ? `<li class="lv-g meld warn" role="note">${GRENZE_SYMBOL}<p>${GRENZE_ERREICHT}</p></li>`
       : `<li class="lv-ende">${ENDE}</li>`;
-    return `<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(z => eintragHtml(z, esc, budget)).join('')}${schluss}</ol>`;
+    const z = zeichenKontext(zeilen, auswertung, esc, budget);
+    return `<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(zeile => zeileMitLueckeHtml(zeile, z)).join('')}${schluss}</ol>`;
   }
 
-  function eintragHtml({ nr, eintrag }, esc, budget) {
-    if (!eintrag) return `<li class="lv-f meld fehl" role="note">${ACHTUNG}<p>${nichtLesbar(nr)}</p></li>`;
-    if (eintrag.art === 'nachricht') return nachrichtHtml(eintrag, esc, budget);
-    return werkzeugHtml(eintrag, esc, budget);
+  /** Was das Zeichnen einer Zeile braucht: Schritte und Lücken nach Nummer, Ergebnisse, die zu einem Aufruf gehören, die
+      Eingeklappten, die längste Dauer von „Längste Schritte“ (Maß der Balken) und die Einträge nach Nummer für die Partner. */
+  function zeichenKontext(zeilen, a, esc, budget) {
+    const schrittAm = new Map(a.schritte.map(s => [s.nr, s]));
+    const gepaart = new Set(a.schritte.filter(s => s.aufruf && s.ergebnisNr !== null).map(s => s.ergebnisNr));
+    const lueckeVor = new Map(a.luecken.map(l => [l.vorNr, l]));
+    const eintragAm = new Map(a.schritte.filter(s => s.ergebnisNr !== null).map(s => [s.ergebnisNr, null]));
+    for (const { nr, eintrag } of zeilen) if (eintragAm.has(nr)) eintragAm.set(nr, eintrag);
+    const laengste = a.top3.length ? a.top3[0].dauer : null;
+    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, laengste, esc, budget };
+  }
+
+  function zeileMitLueckeHtml(zeile, z) {
+    const luecke = z.lueckeVor.get(zeile.nr);
+    return (luecke ? lueckeHtml(luecke, z.laengste) : '') + eintragHtml(zeile, z);
+  }
+
+  const LUECKE_WORT = { denken: 'denkt', warten: 'wartet' };
+  const LUECKE_KLASSE = { werkzeug: 'w', denken: 'd', warten: 't' };
+
+  /** Denk- oder Wartezeile (FA 8): ein Listeneintrag, der sich mit seinem Text liest; Marke, Linie und Balken sind Schmuck. */
+  function lueckeHtml(l, laengste) {
+    const klasse = LUECKE_KLASSE[l.art];
+    return `<li id="lv-s${l.vorNr}-vor" tabindex="-1" class="lv-d ${klasse}"><span class="mk" aria-hidden="true"></span><span class="tx"><b>${dauerText(l.dauer)}</b> ${LUECKE_WORT[l.art]}</span><span class="ln" aria-hidden="true"></span><span class="du">${balkenHtml(l.dauer, laengste, klasse)}</span></li>`;
+  }
+
+  /** Balken der Dauer (FA 6): Anteil an der längsten Zeile von „Längste Schritte“, ganzzahlig, mindestens 2 %; ohne Maß keiner. */
+  function balkenHtml(dauer, laengste, klasse) {
+    if (dauer === null || laengste === null) return '';
+    const anteil = laengste > 0 ? Math.round((dauer / laengste) * 100) : 0;
+    return `<i class="${klasse}" style="width:${Math.max(2, anteil)}%" aria-hidden="true"></i>`;
+  }
+
+  function eintragHtml({ nr, eintrag }, z) {
+    if (!eintrag) return `<li id="lv-s${nr}" tabindex="-1" class="lv-f meld fehl" role="note">${ACHTUNG}<p>${nichtLesbar(nr)}</p></li>`;
+    if (eintrag.art === 'nachricht' && z.eingeklappt[nr]) return eingeklapptHtml(nr, eintrag, z.eingeklappt[nr], z.esc, z.budget);
+    if (eintrag.art === 'nachricht') return nachrichtHtml(nr, eintrag, z.esc, z.budget);
+    if (z.gepaart.has(nr)) return '';
+    return schrittHtml(z.schrittAm.get(nr), eintrag, z);
   }
 
   /** Name mit Marken, gebucht; leer ohne Namen. */
@@ -146,13 +179,28 @@
   }
 
   /** Nachricht offen: Kürzel, Name, Wer, Uhrzeit; der Text je Zeile sichtbar gemacht, dann Markdown (maskiert, ADR-0030). */
-  function nachrichtHtml(e, esc, budget) {
+  function nachrichtHtml(nr, e, esc, budget) {
     const uhrzeit = uhrzeitText(e.zeit);
     const name = e.name === null ? '' : `<b>${nameHtml(e.name, esc, budget)}</b>`;
     const zeit = uhrzeit === null ? '' : `<span class="mono">${uhrzeit}</span>`;
+    return `<li id="lv-s${nr}" tabindex="-1" class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}</div><div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div></li>`;
+  }
+
+  /** Text einer Nachricht oder des Berichts: gebucht, je Zeile sichtbar gemacht, dann Markdown (maskiert). */
+  function nachrichtTextHtml(text, esc, budget) {
     const alsMarkdown = teil => (teil ? markdownHtml(teil.split('\n').map(sichtbarText).join('\n'), 1) : '');
-    const text = gebuchtHtml(zeichenBuchen(e.text, budget), alsMarkdown, esc);
-    return `<li class="lv-n ${e.wer}"><span class="pk ${PK_KLASSE[e.wer]}" aria-hidden="true">${esc(kuerzel(e))}</span><div class="lv-wer">${name}<span>${WER_WORT[e.wer]}</span>${zeit}</div><div class="lv-text">${text}</div></li>`;
+    return gebuchtHtml(zeichenBuchen(text, budget), alsMarkdown, esc);
+  }
+
+  const EINGEKLAPPT_WORT = { auftrag: 'Auftrag', systemhinweis: 'Systemhinweis' };
+
+  /** Auftrag und Systemhinweis (FA 9) eingeklappt an ihrer Stelle: Wort, erste Zeile, Uhrzeit; aufgeklappt der Text als Nachricht. */
+  function eingeklapptHtml(nr, e, art, esc, budget) {
+    const uhrzeit = uhrzeitText(e.zeit);
+    const zeit = uhrzeit === null ? '' : `<span class="zt">${uhrzeit}</span>`;
+    const klasse = art === 'systemhinweis' ? 'lv-e sys' : 'lv-e';
+    const summary = `<summary>${PFEIL}<span class="nm">${EINGEKLAPPT_WORT[art]}</span><span class="z1">${esc(sichtbarText(ersteZeileGekuerzt(e.text)))}</span>${zeit}</summary>`;
+    return `<li id="lv-s${nr}" tabindex="-1"><details class="${klasse}">${summary}<div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div></details></li>`;
   }
 
   const PK_KLASSE = { agent: 'pk-a', mensch: 'pk-m', werkzeug: 'pk-0' };
@@ -164,15 +212,40 @@
     return Array.from(woerter[0] || '').slice(0, 2).join('').toUpperCase();
   }
 
-  /** Werkzeugaufruf und -ergebnis eingeklappt: Name, Art, erste Zeile gekürzt, Uhrzeit; aufgeklappt der ganze Text, nie Markdown. */
-  function werkzeugHtml(e, esc, budget) {
-    const uhrzeit = uhrzeitText(e.zeit);
-    const name = nameHtml(e.name, esc, budget);
-    const zeit = uhrzeit === null ? '' : `<span class="lv-zt">${uhrzeit}</span>`;
-    const gebucht = zeichenBuchen(e.text, budget);
-    const summary = `<summary>${PFEIL}${ART_SYMBOL[e.art]}<span class="nm">${name}<span>${ART_WORT[e.art]}</span></span><span class="z1">${ersteZeileHtml(gebucht, esc)}</span>${zeit}</summary>`;
-    return `<li class="lv-e"><details class="lv-w">${summary}<pre>${gebuchtHtml(gebucht, t => zeilenHtml(t, esc), esc)}</pre></details></li>`;
+  /** Werkzeugzeile (FA 6, FA 7): Aufruf samt Ergebnis an der Stelle des Aufrufs, oder einer allein. Eingeklappt Name, „parallel“,
+      Befehl, Absicht, Kürzel des Ergebnisses und Dauer mit Balken; aufgeklappt beide Texte ganz, nie Markdown (Wortlaut 20). */
+  function schrittHtml(s, eintrag, z) {
+    const { esc, budget } = z;
+    const aufruf = s.aufruf ? eintrag : null;
+    const ergebnis = s.aufruf ? (s.ergebnisNr === null ? null : z.eintragAm.get(s.ergebnisNr)) : eintrag;
+    const name = nameHtml(s.name, esc, budget) + (s.parallel ? '<span class="par">parallel</span>' : '');
+    const aufrufGebucht = aufruf ? zeichenBuchen(aufruf.text, budget) : null;
+    const ergebnisGebucht = ergebnis ? zeichenBuchen(ergebnis.text, budget) : null;
+    const befehl = aufruf ? `<span class="bf">${esc(sichtbarText(s.befehl || ''))}</span>` : '';
+    const absicht = s.absicht === null ? '' : `<span class="ab">${esc(sichtbarText(s.absicht))}</span>`;
+    const fehler = s.fehler ? `${ACHTUNG}<span class="vh">Fehler: </span>` : '';
+    const kuerzelTeil = ergebnisGebucht ? `<span class="eg">${fehler}${ersteZeileHtml(ergebnisGebucht, esc)}</span>` : '';
+    const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span></summary>`;
+    const teil = (wort, b) => (b ? `<span class="k">${wort}</span><pre>${gebuchtHtml(b, t => zeilenHtml(t, esc), esc)}</pre>` : '');
+    const klasse = `lv-s${s.fehler ? ' fehl' : ''}${s.absicht === null ? ' ohne-ab' : ''}`;
+    return `<li id="lv-s${s.nr}" tabindex="-1"><details class="${klasse}">${summary}<div class="lv-s-ganz">${teil('Aufruf', aufrufGebucht)}${teil('Ergebnis', ergebnisGebucht)}</div></details></li>`;
   }
+
+  /** Dauer der Werkzeugzeile mit Balken; „–“ mit Lesetext: ohne Partner „kein Ergebnis“ bzw. „kein Aufruf“, sonst „Dauer unbekannt“. */
+  function schrittDauerHtml(s, aufruf, ergebnis, laengste) {
+    if (s.dauer !== null) return `<span>${dauerText(s.dauer)}</span>${balkenHtml(s.dauer, laengste, 'w')}`;
+    if (!ergebnis) return ohneWert('kein Ergebnis');
+    if (!aufruf) return ohneWert('kein Aufruf');
+    return ohneWert('Dauer unbekannt');
+  }
+
+  /** Karte „Bericht“ vor den Einträgen, außerhalb ihrer Liste (FA 5); ohne Bericht die gedämpfte Zeile. */
+  function laufBerichtHtml(a, esc) {
+    if (!a.bericht) return `<p class="lv-ohne-ber">${KEIN_BERICHT}</p>`;
+    const budget = { lauf: ZEICHEN_JE_LAUF, gebucht: 0 };
+    return `<article class="lv-ber ${a.bericht.ergebnis}" aria-labelledby="lv-ber-t"><h2 id="lv-ber-t">Bericht</h2><div class="lv-text">${nachrichtTextHtml(a.bericht.text, esc, budget)}</div></article>`;
+  }
+  const KEIN_BERICHT = 'Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile „Ergebnis:“.';
 
   /** Die erste Zeile eingeklappt, gekürzt auf 200 Zeichen, aus dem gebuchten Text; endet sie am Budget, folgt die Zusammenfassung.
       Ihre Zeichen sind schon im aufgeklappten Text als Marke gezählt: hier stehen sie nur als Text der Marke (`⟨U+202E⟩`), ohne
@@ -365,6 +438,52 @@
     return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
   }
 
+  /* ── Kopf mit Gesamtdauer und Kennzahlen (R00234 FA 3, FA 4; Zeichnung D0009 `#laufansicht`) ── */
+
+  const LESETEXT = { liest: 'wird gelesen', ohne: 'nicht verfügbar' };
+  const ERGEBNIS_FORM = { bestanden: 'ok', befund: 'warn', blockiert: 'fehl' };
+  const HAKEN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+  /** „–“ für Augen, daneben der Lesetext; nie ein `aria-label` an einem `span` (FA 4). */
+  const ohneWert = lesetext => `<span class="lv-leerwert" aria-hidden="true">–</span><span class="vh">${lesetext}</span>`;
+
+  /** Kopf aus `{zustand, auswertung, kosten}`: `zustand` ist `eintraege` (mit Auswertung), `liest` oder `ohne` (fehlt, Fehler);
+      `kosten` ist der Kosteneintrag der Karte mit dieser Kennung (`{amount, currency}`) oder null. */
+  function laufKopfHtml({ zustand, auswertung, kosten }, esc) {
+    const a = zustand === 'eintraege' ? auswertung : null;
+    const leer = ohneWert(LESETEXT[zustand]);
+    const feld = (name, wert, klasse = '') => `<div class="${klasse}"><dt>${name}</dt><dd>${wert}</dd></div>`;
+    const kostenWert = kosten ? `<span class="mono">${esc(geld(inCent(kosten.amount), kosten.currency))}</span>` : ohneWert('kein Kosteneintrag');
+    let kennzahlen = feld('Ergebnis', leer, 'ohne') + feld('Werkzeugaufrufe', leer, 'ohne') + feld('Fehler erkannt', leer, 'ohne') + feld('Commits', leer, 'ohne');
+    if (a) {
+      const k = a.kennzahlen;
+      kennzahlen = feld('Ergebnis', ergebnisHtml(a.bericht), a.bericht ? '' : 'ohne') + feld('Werkzeugaufrufe', String(k.werkzeugaufrufe))
+        + feld('Fehler erkannt', String(k.fehler), k.fehler ? 'fehl' : '') + feld('Commits', commitsHtml(a.bericht), a.bericht && a.bericht.commits !== null ? '' : 'ohne');
+    }
+    kennzahlen += feld('Kosten', kostenWert, kosten ? '' : 'ohne');
+    return `<div class="lv-aw"><div class="lv-gd"><span class="k">Gesamtdauer</span>${a ? dauerKopfHtml(a) : `<span class="w">${leer}</span>`}</div><dl class="lv-kz">${kennzahlen}</dl></div>`;
+  }
+
+  /** Wert und Zeilen unter „Gesamtdauer“ (FA 3): Dauer mit Aufteilung, an der Grenze „mindestens“, sonst „Dauer unbekannt“. */
+  function dauerKopfHtml(a) {
+    if (!a.bekannt) return '<span class="w">Dauer unbekannt</span><span class="auf">Weniger als zwei Einträge tragen eine Zeit.</span>';
+    const teile = [['Werkzeuge', a.werkzeug], ['Denken', a.denken], ['Warten', a.warten]].filter(([, ms]) => ms > 0);
+    const aufteilung = `<span class="auf">${teile.map(([name, ms]) => `${name} ${dauerText(ms)}`).join(' · ')}</span>`;
+    if (a.grenze) return `<span class="w">mindestens ${dauerText(a.gesamt)}</span><span class="auf">gerechnet bis zur Grenze des Transkripts</span>${aufteilung}`;
+    return `<span class="w">${dauerText(a.gesamt)}</span>${aufteilung}`;
+  }
+
+  function ergebnisHtml(bericht) {
+    if (!bericht) return ohneWert('kein Bericht erkannt');
+    const form = ERGEBNIS_FORM[bericht.ergebnis];
+    return `<span class="erg ${form}">${form === 'ok' ? HAKEN : ACHTUNG}${bericht.ergebnis}</span>`;
+  }
+
+  function commitsHtml(bericht) {
+    if (!bericht) return ohneWert('kein Bericht erkannt');
+    if (bericht.commits === null) return ohneWert('nicht verfügbar');
+    return String(bericht.commits);
+  }
+
   /* ── Zustände der Seite (FA 7, FA 8, FA 11; Bilder 2, 4, 5): Meldungen, Ansage und Rumpf ── */
 
   const LIEST = 'Liest das Transkript …';
@@ -420,5 +539,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { laufKopfHtml, laufBerichtHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

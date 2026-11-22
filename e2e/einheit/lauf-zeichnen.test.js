@@ -18,21 +18,22 @@ const G = [
   e(6, 'nachricht', 'mensch', 'Passt.', { zeit: 'gestern' }),
 ];
 
-test('AK 6: Datei G — Nachricht offen mit fett, Aufruf und Ergebnis eingeklappt, Fehlereintrag an seiner Stelle, Ende', () => {
+// R00221 Nachtrag (#251): Aufruf und Ergebnis sind eine Zeile an der Stelle des Aufrufs, mit Befehl, Kürzel und Dauer statt Uhrzeit.
+test('AK 6: Datei G — Nachricht offen mit fett, Aufruf und Ergebnis als eine Zeile eingeklappt, Fehlereintrag an seiner Stelle, Ende', () => {
   const html = laufHtml(G, false, esc);
   assert.match(html, /^<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">/);
-  const [n1, w2, f4, w5, n6, ende] = eintraegeVon(html);
-  assert.strictEqual(eintraegeVon(html).length, 6);
+  const [n1, w2, f4, n6, ende] = eintraegeVon(html);
+  assert.strictEqual(eintraegeVon(html).length, 5);
   assert.match(n1, /<b>entwickler<\/b><span>Agent<\/span><span class="mono">10:00:41<\/span>/);
   assert.match(n1, /<strong>die Anforderung<\/strong>/);
   assert.doesNotMatch(n1, /<details/);
-  assert.match(w2, /<details class="lv-w"><summary>/);
-  assert.match(w2, /<span class="nm">Read<span>Aufruf<\/span><\/span><span class="z1">Anforderungen\/R00219.md<\/span><span class="lv-zt">10:00:42<\/span><\/summary>/);
+  assert.match(w2, /<details class="lv-s ohne-ab"><summary>/);
+  assert.match(w2, /<span class="nm">Read<\/span><span class="bf">Anforderungen\/R00219.md<\/span><span class="eg">---<\/span><span class="du"><span>1 s<\/span>/, 'Dauer aus 10:00:42+01:00 bis 09:00:43Z');
   assert.strictEqual(ohneTags(f4), 'Zeile 4 des Transkripts ist nicht lesbar.');
-  assert.match(w5, /<span class="nm">Read<span>Ergebnis<\/span><\/span><span class="z1">---<\/span><span class="lv-zt">10:00:43<\/span>/, 'Uhrzeit aus 09:00:43Z in Ortszeit');
-  assert.match(w5, /<pre>---\nid: R00219\nstatus: Neu<\/pre>/, 'aufgeklappt drei Zeilen in Mono, kein Markdown');
-  assert.match(n6, /<span>Mensch<\/span>/);
-  assert.doesNotMatch(n6, /class="mono"/, 'zeit in anderer Form entfällt');
+  assert.match(w2, /<span class="k">Aufruf<\/span><pre>Anforderungen\/R00219.md<\/pre><span class="k">Ergebnis<\/span><pre>---\nid: R00219\nstatus: Neu<\/pre>/, 'aufgeklappt beide Texte in Mono, kein Markdown');
+  // R00234 FA 9: die erste Nachricht von mensch ist der Auftrag und steht eingeklappt
+  assert.match(n6, /<details class="lv-e"><summary>[\s\S]*<span class="nm">Auftrag<\/span><span class="z1">Passt\.<\/span><\/summary>/);
+  assert.doesNotMatch(n6, /class="zt"/, 'zeit in anderer Form entfällt');
   assert.doesNotMatch(n6, /<b>/, 'ohne name kein Name');
   assert.strictEqual(ohneTags(ende), 'Ende des Transkripts');
   assert.doesNotMatch(html, /\{"art"/, 'kein Rohtext');
@@ -49,13 +50,13 @@ test('FA 6: Uhrzeit nur aus ISO 8601 mit Versatz oder Z, Sekunden erlaubt; jede 
 test('AK 6: erste Zeile eines Werkzeugtexts eingeklappt höchstens 200 Zeichen und „…“, aufgeklappt alle', () => {
   const lang = 'a'.repeat(250);
   const html = laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', lang + '\nzweite', { name: 'Bash' })], false, esc);
-  const z1 = /<span class="z1">([^<]*)<\/span>/.exec(html)[1];
-  assert.strictEqual(z1, 'a'.repeat(200) + '…');
+  const kuerzelText = /<span class="eg">([^<]*)<\/span>/.exec(html)[1];
+  assert.strictEqual(kuerzelText, 'a'.repeat(200) + '…');
   assert.match(html, new RegExp(`<pre>${lang}\nzweite</pre>`));
-  const kurz = /<span class="z1">([^<]*)<\/span>/.exec(laufHtml([e(1, 'werkzeugaufruf', 'agent', 'b'.repeat(200), {})], false, esc))[1];
+  const kurz = /<span class="bf">([^<]*)<\/span>/.exec(laufHtml([e(1, 'werkzeugaufruf', 'agent', 'b'.repeat(200), {})], false, esc))[1];
   assert.strictEqual(kurz, 'b'.repeat(200), 'genau 200 ohne „…“');
   const ohneName = laufHtml([e(1, 'werkzeugaufruf', 'agent', 'x')], false, esc);
-  assert.match(ohneName, /<span class="nm"><span>Aufruf<\/span><\/span>/, 'ohne name nur die Art');
+  assert.match(ohneName, /<span class="nm"><\/span>/, 'ohne name kein Name');
 });
 
 test('AK 8: fremder Text bleibt Text — script, javascript:-Verweis, img, Bidi-Zeichen als Marke', () => {
@@ -70,10 +71,10 @@ test('AK 8: fremder Text bleibt Text — script, javascript:-Verweis, img, Bidi-
   assert.doesNotMatch(html, /<img/);
   assert.doesNotMatch(html, /‮/, 'U+202E steht nie als Zeichen');
   assert.match(html, /<span class="nm">Bash<span class="mk-z mk-bidi" role="img" aria-label="sichtbar gemachtes Bidi-Steuerzeichen U\+202E">/);
-  assert.ok(html.indexOf('Bash') < html.indexOf('hs<span>Aufruf'), 'Bash vor hs');
+  assert.ok(html.indexOf('Bash') < html.indexOf('hs</span>'), 'Bash vor hs');
   const summary = html.split('<summary>')[1].split('</summary>')[0];
   // eingeklappt steht die Marke als Text, das Markenelement trägt der aufgeklappte Text (Budget, PO Z. 493)
-  assert.match(summary, /<span class="z1">echo &lt;img src=x onerror=window.pwn=3&gt;⟨U\+202E⟩abc<\/span>/);
+  assert.match(summary, /<span class="bf">echo &lt;img src=x onerror=window.pwn=3&gt;⟨U\+202E⟩abc<\/span>/);
   assert.match(html, /<pre>echo &lt;img src=x onerror=window.pwn=3&gt;<span class="mk-z mk-bidi"/);
 });
 
@@ -96,7 +97,7 @@ test('FA 7: an der Grenze steht Wortlaut 15 statt des Endes; ohne Einträge nur 
 test('Jede Art hat ihr Wort: Agent, Mensch, Werkzeug; Aufruf, Ergebnis', () => {
   const html = laufHtml([e(1, 'nachricht', 'werkzeug', 'x'), e(2, 'werkzeugergebnis', 'agent', 'y')], false, esc);
   assert.match(html, /<span>Werkzeug<\/span>/);
-  assert.match(html, /<span>Ergebnis<\/span>/);
+  assert.match(html, /<span class="k">Ergebnis<\/span>/);
 });
 
 test('web/lauf.js überschreibt im Browser keinen Namen, den ein anderes Modul auf window legt (Lehre #217)', () => {
@@ -178,7 +179,7 @@ test('Budget: Zähler der Marken über 1, 10 und 30 Texte — höchstens 1.000 j
     assert.strictEqual(marken(html), erwartet, `${anzahl} Texte`);
   }
   const elf = laufHtml(Array.from({ length: 11 }, (_, i) => e(i + 1, 'werkzeugergebnis', 'werkzeug', RLO.repeat(1000))), false, esc);
-  const elfter = elf.split('<li class="lv-e">')[11];
+  const elfter = eintraegeVon(elf)[10];
   assert.strictEqual(marken(elfter), 0);
   assert.strictEqual(zusammenfassung(elfter), '… und 1.000 weitere Steuerzeichen');
   // ein neues Zeichnen (anderer Lauf) beginnt mit vollem Budget
@@ -215,4 +216,145 @@ test('FA 8 (PO Z. 495): eine unerwartete Ausnahme heißt „…: Die Datei läss
   assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('Frist'), { status: 503, frist: true })), { art: 'verbindung' });
   assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('e'), { entpacken: true })), { art: 'entpacken' });
   assert.deepStrictEqual(laufFehlerArt(Object.assign(new Error('nicht da'), { status: 404, daten: { zustand: 'fehlt' } })), { art: 'fehlt' });
+});
+
+// R00234 B1209: Kopf mit Gesamtdauer und Kennzahlen (FA 3, FA 4; AK 1–3 Node) — aus der Auswertung und dem Kosteneintrag der
+// Karte; „–“ ist aria-hidden und trägt daneben einen Lesetext der Klasse vh, nie ein aria-label.
+const { laufKopfHtml, laufAuswerten } = require('../../web/lauf.js');
+const { T1_ZEILEN } = require('../tests/laufansicht-t1.js');
+const KOSTEN = { amount: 1.79, currency: 'USD' };
+/** Sichtbarer Text (ohne vh) und vorgelesener Text (ohne aria-hidden) eines Ausschnitts. */
+const sichtbar = html => ohneTags(html.replace(/<span class="vh">[^<]*<\/span>/g, ''));
+const vorgelesen = html => ohneTags(html.replace(/<span[^>]*aria-hidden="true"[^>]*>[^<]*<\/span>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, ''));
+const gesamtdauer = html => /<div class="lv-gd">([\s\S]*?)<\/div>/.exec(html)[1];
+const kennzahlen = html => [...html.matchAll(/<dt>([^<]*)<\/dt><dd>([\s\S]*?)<\/dd>/g)].map(m => [m[1], sichtbar(m[2]), vorgelesen(m[2])].map(t => t.replace(/\u00a0/g, ' ')));
+const t1 = laufAuswerten(T1_ZEILEN, false);
+
+test('AK 1, AK 3: Kopf von T1 — Gesamtdauer mit Aufteilung, Ergebnis, Werkzeugaufrufe, Fehler erkannt, Commits, Kosten', () => {
+  const html = laufKopfHtml({ zustand: 'eintraege', auswertung: t1, kosten: KOSTEN }, esc);
+  const gd = [...gesamtdauer(html).matchAll(/<span class="[^"]*">([^<]*)<\/span>/g)].map(m => m[1]);
+  assert.deepStrictEqual(gd, ['Gesamtdauer', '2 min 30 s', 'Werkzeuge 13 s · Denken 1 min 11 s · Warten 1 min 6 s']);
+  assert.deepStrictEqual(kennzahlen(html).map(k => [k[0], k[1]]), [['Ergebnis', 'bestanden'], ['Werkzeugaufrufe', '6'], ['Fehler erkannt', '2'], ['Commits', '1'], ['Kosten', '1,79 $']]);
+  assert.doesNotMatch(html, /Betrag/);
+  assert.doesNotMatch(html, /aria-label/);
+});
+
+test('FA 3: ein Teil mit 0 ms entfällt; an der Grenze „mindestens“ und der Satz zur Grenze; weniger als zwei Zeiten „Dauer unbekannt“', () => {
+  const nurZwei = { ...t1, warten: 0, gesamt: 84000 };
+  assert.match(laufKopfHtml({ zustand: 'eintraege', auswertung: nurZwei, kosten: null }, esc), /<span class="auf">Werkzeuge 13 s · Denken 1 min 11 s<\/span>/);
+  const grenze = laufKopfHtml({ zustand: 'eintraege', auswertung: { ...t1, grenze: true }, kosten: null }, esc);
+  assert.deepStrictEqual([...gesamtdauer(grenze).matchAll(/<span class="[^"]*">([^<]*)<\/span>/g)].map(m => m[1]),
+    ['Gesamtdauer', 'mindestens 2 min 30 s', 'gerechnet bis zur Grenze des Transkripts', 'Werkzeuge 13 s · Denken 1 min 11 s · Warten 1 min 6 s']);
+  const unbekannt = laufKopfHtml({ zustand: 'eintraege', auswertung: { ...t1, bekannt: false }, kosten: null }, esc);
+  assert.deepStrictEqual([...gesamtdauer(unbekannt).matchAll(/<span class="[^"]*">([^<]*)<\/span>/g)].map(m => m[1]), ['Gesamtdauer', 'Dauer unbekannt', 'Weniger als zwei Einträge tragen eine Zeit.']);
+});
+
+test('AK 3: T4 ohne Bericht und ohne Kosten — „–“ mit Lesetext „kein Bericht erkannt“ bzw. „kein Kosteneintrag“', () => {
+  const ohne = { ...t1, bericht: null, kennzahlen: { werkzeugaufrufe: 1, fehler: 0 } };
+  const k = kennzahlen(laufKopfHtml({ zustand: 'eintraege', auswertung: ohne, kosten: null }, esc));
+  assert.deepStrictEqual(k, [['Ergebnis', '–', 'kein Bericht erkannt'], ['Werkzeugaufrufe', '1', '1'], ['Fehler erkannt', '0', '0'], ['Commits', '–', 'kein Bericht erkannt'], ['Kosten', '–', 'kein Kosteneintrag']]);
+});
+
+test('AK 2, AK 3: ohne gelesene Einträge „–“ mit „wird gelesen“ bzw. „nicht verfügbar“; Kosten bleiben aus der Karte', () => {
+  for (const [zustand, lesetext] of [['liest', 'wird gelesen'], ['ohne', 'nicht verfügbar']]) {
+    const html = laufKopfHtml({ zustand, auswertung: null, kosten: { amount: 0.42, currency: 'USD' } }, esc);
+    assert.deepStrictEqual([sichtbar(gesamtdauer(html)), vorgelesen(gesamtdauer(html))], ['Gesamtdauer–', `Gesamtdauer${lesetext}`], zustand);
+    assert.deepStrictEqual(kennzahlen(html), [...['Ergebnis', 'Werkzeugaufrufe', 'Fehler erkannt', 'Commits'].map(n => [n, '–', lesetext]), ['Kosten', '0,42 $', '0,42 $']], zustand);
+    assert.doesNotMatch(html, /aria-label/);
+  }
+});
+
+test('FA 4: Ergebnis befund und blockiert tragen ihre Form; Commits ohne Zeile „Commits:“ ist „–“ mit „nicht verfügbar“', () => {
+  const html = ergebnis => laufKopfHtml({ zustand: 'eintraege', auswertung: { ...t1, bericht: { nr: 1, text: '', ergebnis, commits: null } }, kosten: null }, esc);
+  assert.match(html('befund'), /<span class="erg warn">[\s\S]*befund<\/span>/);
+  assert.match(html('blockiert'), /<span class="erg fehl">[\s\S]*blockiert<\/span>/);
+  assert.deepStrictEqual(kennzahlen(html('befund'))[3], ['Commits', '–', 'nicht verfügbar']);
+});
+
+// R00234 B1210: Bericht zuerst, gepaarte Werkzeugzeilen, Denk- und Wartezeilen, Auftrag und Systemhinweise eingeklappt (FA 5–9;
+// AK 4–8 Node). Die Zeilen tragen `id="lv-s<Nr>"` und `tabindex="-1"` als Sprungziele.
+const { laufBerichtHtml } = require('../../web/lauf.js');
+const t1Html = laufHtml(T1_ZEILEN, false, esc, t1);
+const t1Li = eintraegeVon(t1Html);
+const liVon = id => t1Li.find(li => li.startsWith(`<li id="${id}"`));
+/** Vorgelesener Text einer summary: ohne aria-hidden-Teile, mit vh-Text. */
+const summaryName = li => vorgelesen(/<summary>([\s\S]*?)<\/summary>/.exec(li)[1]).replace(/ /g, ' ');
+
+test('AK 7: T1 hat 14 Listeneinträge vor dem Schluss — 10 Zeilen und 4 Denk- und Wartezeilen, je ein li mit Sprungziel', () => {
+  const ids = t1Li.slice(0, -1).map(li => /^<li id="([^"]+)" tabindex="-1"/.exec(li)[1]);
+  assert.deepStrictEqual(ids, ['lv-s1', 'lv-s2', 'lv-s3-vor', 'lv-s3', 'lv-s5', 'lv-s7-vor', 'lv-s7', 'lv-s8', 'lv-s11', 'lv-s13-vor', 'lv-s13', 'lv-s14', 'lv-s15-vor', 'lv-s15']);
+  assert.strictEqual(ohneTags(t1Li[14]), 'Ende des Transkripts');
+});
+
+test('AK 7: Denk- und Wartezeilen lesen sich mit ihrem Text; Marke, Linie und Balken sind aria-hidden', () => {
+  const texte = ['lv-s3-vor', 'lv-s7-vor', 'lv-s13-vor', 'lv-s15-vor'].map(id => vorgelesen(liVon(id)));
+  assert.deepStrictEqual(texte, ['21 s denkt', '5 s denkt', '1 min 5 s wartet', '38 s denkt']);
+  assert.match(liVon('lv-s13-vor'), /class="lv-d t"/);
+  assert.match(liVon('lv-s3-vor'), /class="lv-d d"/);
+  assert.doesNotMatch(liVon('lv-s3-vor').slice(0, 40), /aria-hidden/, 'das li selbst ist nicht verborgen');
+});
+
+test('AK 5: Nr 3 mit Nr 4 eine Zeile — Bash, Befehl in Festbreite, Absicht, Kürzel, 4 s, Balken 6 %; Nr 4 keine eigene Zeile', () => {
+  const z = liVon('lv-s3');
+  assert.match(z, /<span class="nm">Bash<\/span><span class="bf">ls Anforderungen \| tail -2<\/span><span class="ab">Nächste freie Nummer<\/span><span class="eg">R00228-wackler-unter-last.md<\/span>/);
+  assert.match(z, /<span class="du"><span>4 s<\/span><i class="w" style="width:6%" aria-hidden="true"><\/i><\/span>/);
+  assert.strictEqual(liVon('lv-s4'), undefined);
+  assert.match(z, /<span class="k">Aufruf<\/span><pre>\{&quot;command&quot;:&quot;ls Anforderungen \| tail -2&quot;,&quot;description&quot;:&quot;Nächste freie Nummer&quot;\}<\/pre><span class="k">Ergebnis<\/span><pre>R00228-wackler-unter-last.md\nR00229-frei.md<\/pre>/);
+});
+
+test('AK 5: Nr 5 ohne Absicht ohne Platzhalter; Nr 7 und 8 parallel mit 2 s und 3 s (Balken 5 %); Nr 11 und 15 „–“ ohne Balken', () => {
+  assert.doesNotMatch(liVon('lv-s5'), /class="ab"/);
+  assert.match(liVon('lv-s5'), /class="lv-s fehl ohne-ab"/);
+  for (const [id, dauer] of [['lv-s7', '2 s'], ['lv-s8', '3 s']]) {
+    assert.match(liVon(id), /<span class="nm">Read<span class="par">parallel<\/span><\/span>/);
+    assert.match(liVon(id), new RegExp(`<span class="du"><span>${dauer}</span>`));
+  }
+  assert.match(liVon('lv-s8'), /style="width:5%"/);
+  assert.match(liVon('lv-s11'), /<span class="du"><span class="lv-leerwert" aria-hidden="true">–<\/span><span class="vh">Dauer unbekannt<\/span><\/span>/);
+  assert.match(liVon('lv-s15'), /<span class="du"><span class="lv-leerwert" aria-hidden="true">–<\/span><span class="vh">kein Ergebnis<\/span><\/span>/);
+  assert.doesNotMatch(liVon('lv-s11') + liVon('lv-s15'), /<i class="w"/);
+  const allein = eintraegeVon(laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', 'ok')], false, esc))[0];
+  assert.match(allein, /<span class="vh">kein Aufruf<\/span>/);
+});
+
+test('AK 6: Fehlerzeilen Nr 5 und Nr 8 rot mit Warnzeichen aria-hidden und Lesetext „Fehler: “ vor dem Kürzel; Nr 3 und Nr 11 nicht', () => {
+  assert.strictEqual(summaryName(liVon('lv-s5')), 'Bashgrep -n kd-muted web/laeufe.jsFehler: Exit code 11 s');
+  assert.strictEqual(summaryName(liVon('lv-s8')), 'Readparallelb.mdFehler: &lt;tool_use_error&gt;File does not exist.&lt;/tool_use_error&gt;3 s');
+  for (const id of ['lv-s5', 'lv-s8']) {
+    assert.match(liVon(id), /<details class="lv-s fehl/);
+    assert.match(liVon(id), /<span class="eg"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">[\s\S]*?<\/svg><span class="vh">Fehler: <\/span>/);
+  }
+  for (const id of ['lv-s3', 'lv-s11']) {
+    assert.doesNotMatch(summaryName(liVon(id)), /Fehler/);
+    assert.doesNotMatch(liVon(id), /lv-s fehl/);
+  }
+});
+
+test('AK 8: Auftrag und Systemhinweis eingeklappt an ihrer Stelle, Nr 13 offen', () => {
+  assert.match(liVon('lv-s1'), /^<li id="lv-s1" tabindex="-1"><details class="lv-e"><summary>[\s\S]*<span class="nm">Auftrag<\/span><span class="z1">Projekt: kanbanD · Karte: #247<\/span><span class="zt">23:30:00<\/span><\/summary>/);
+  assert.match(liVon('lv-s2'), /<details class="lv-e sys"><summary>[\s\S]*<span class="nm">Systemhinweis<\/span>/);
+  assert.match(liVon('lv-s2'), /&lt;system-reminder&gt;Lies zuerst/);
+  assert.doesNotMatch(liVon('lv-s13'), /<details/);
+  assert.match(liVon('lv-s13'), /Bitte weiter\./);
+});
+
+test('AK 4: der Bericht steht außerhalb der Liste — Karte mit Überschrift und Text aus Nr 15; ohne Bericht die gedämpfte Zeile', () => {
+  const b = laufBerichtHtml(t1, esc);
+  assert.match(b, /^<article class="lv-ber bestanden" aria-labelledby="lv-ber-t"><h2 id="lv-ber-t">Bericht<\/h2><div class="lv-text">/);
+  assert.match(b, /R00229 angelegt\./);
+  assert.match(b, /Commits: f9e808a6/);
+  assert.doesNotMatch(t1Html, /lv-ber/);
+  assert.doesNotMatch(liVon('lv-s15'), /lv-ber/);
+  assert.strictEqual(ohneTags(laufBerichtHtml({ ...t1, bericht: null }, esc)), 'Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile „Ergebnis:“.');
+  assert.match(laufBerichtHtml({ ...t1, bericht: null }, esc), /^<p class="lv-ohne-ber">/);
+  const fremd = laufBerichtHtml({ ...t1, bericht: { nr: 1, text: '<script>x</script>‮\nErgebnis: befund', ergebnis: 'befund', commits: null } }, esc);
+  assert.doesNotMatch(fremd, /<script|‮/);
+  assert.match(fremd, /class="lv-ber befund"/);
+});
+
+test('FA 6: ohne Dauer („Dauer unbekannt“) gibt es keinen Balken, und die Zeilen zeigen „–“', () => {
+  const zeilen = [e(1, 'werkzeugaufruf', 'agent', '2026-11-21T23:40:00+01:00', '{"command":"true"}', { name: 'Bash' }), e(2, 'werkzeugergebnis', 'werkzeug', 'Exit code 0')];
+  const html = laufHtml(zeilen, false, esc);
+  assert.doesNotMatch(html, /<i class="w"/);
+  assert.match(html, /<span class="vh">Dauer unbekannt<\/span>/);
 });

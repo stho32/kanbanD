@@ -2079,7 +2079,9 @@ async function transkriptLesen(pfad, abbruchSignal) {
       if (grenze) abbruch.abort();
       return { zeilen, grenze };
     });
-    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, html: laufHtml(gelesen.zeilen, gelesen.grenze, esc) };
+    // einmal je erfolgreichem Lesen ausgewertet (R00234 FA 11); Live zeichnet Kopf und Kennzahlen aus dieser Auswertung neu
+    const auswertung = laufAuswerten(gelesen.zeilen, gelesen.grenze);
+    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung) };
   } catch (g) {
     // FA 8: Server, Verbindung, Entpacken, `fehlt` — jede andere Ausnahme beim Lesen oder Zeichnen heißt „verarbeiten“ (PO Z. 495)
     const fehler = laufFehlerArt(g);
@@ -2136,8 +2138,17 @@ function vLauf() {
   const zeile = laufZeile(v);
   const e = v.ergebnis;
   let insel = '';
-  if (e && e.art === 'eintraege') insel = laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e);
-  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${laufRumpfHtml(v, insel, esc)}</div>`;
+  // der Bericht steht vor der Insel, nicht in ihr: ein Filter der Einträge verbirgt ihn nie (R00234 FA 5)
+  if (e && e.art === 'eintraege') insel = `<div class="lv-haupt">${e.bericht}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div>`;
+  const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten }, esc);
+  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${kopf}${laufRumpfHtml(v, insel, esc)}</div>`;
+}
+
+/** Zustand des Kopfs (R00234 FA 3, FA 4): Einträge gelesen, liest gerade (auch erneut) oder ohne Einträge (fehlt, Fehler). */
+function laufKopfZustand(v) {
+  if (v.ergebnis && v.ergebnis.art === 'eintraege') return 'eintraege';
+  if (v.laedt || !v.ergebnis) return 'liest';
+  return 'ohne';
 }
 
 /** Vor dem Zeichnen: steht die Insel des gezeigten Ergebnisses im Dokument, bleibt sie; der Schlüssel ist das Ergebnis selbst. */
@@ -2161,7 +2172,7 @@ function laufInselNachher(gehalten, gehaltenGeblieben) {
 
 /** Der Text der Einträge: einmal beim Lesen gebaut; nach dem Einsetzen nur noch aus den Einträgen, wenn die Insel neu entsteht. */
 function laufInselText(e) {
-  return e.html === null ? laufHtml(e.zeilen, e.grenze, esc) : e.html;
+  return e.html === null ? laufHtml(e.zeilen, e.grenze, esc, e.auswertung) : e.html;
 }
 
 /** Öffnet die Laufansicht aus „Läufe“ mit einem neuen Verlaufseintrag samt Marke (ADR-0041 Punkt 2). */
