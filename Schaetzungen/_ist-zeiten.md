@@ -1135,3 +1135,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #261 R00240 | B1271 Nacharbeit 2: `;&`/`;;&` als Operator, `case` in `$(`/`(` unverändert, Bash-Gegenprobe; Mutanten M1–M4 | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-23 | Karte #264 R00242 | B1264 Proben zuerst: T14/T14o als Daten, 23 Node-Fälle (AK 1, 3–7, 9) und 10 E2E-Fälle (AK 2–5, 7, 8) rot gegen den Stand nach #261 | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-23 | Karte #264 R00242 | B1265 pfadMarken und pfadKurz in lauf-satz.js, Wurzeln einmal je Lesen in laufAuswerten (erste Nachricht von mensch) | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-23 | Karte #264 R00242 | B1266 pfadLinkHtml: Link nur über vscodeLink, Marke aus data-marke mit verborgenem Anfang, title/aria-label mit Zeile, Bidi/Steuerzeichen/.. als Text | Standard | 1h | 0,3h | 0,3h | autonom |

@@ -618,6 +618,47 @@
     return { marke: treffer.marke, wurzel: treffer.wurzel, rest: pfad.slice(treffer.wurzel.length) };
   }
 
+  /* ── Pfad als Link und Marke (R00242 FA 2, 6; N4 Punkt 5; R00236 FA 4–6) ── */
+
+  const { vscodeLink } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /** Ein Pfad trägt Marke oder Link nur, wenn das Sichtbarmachen ihn nicht ändert und kein Teil `..` ist — sonst täuschte das
+      Sichtbare über das Ziel. */
+  const pfadSauber = pfad => unveraendertSichtbar(pfad) && !pfad.split('/').includes('..');
+  /** Ein Link braucht einen absoluten Pfad aus mindestens zwei Teilen. */
+  const linkfaehig = pfad => /^\/[^/]+\/./.test(pfad) && pfadSauber(pfad);
+
+  /** Pfad → HTML: mit `mitLink` ein Link nach VS Code (an `sprung`, wenn es eine Zeile gibt), beginnt er mit einer Wurzel, als Marke
+      und Rest; ohne Link trägt die Marke den vollen Pfad als `title`. Ein Pfad mit Bidi- oder Steuerzeichen oder einem Teil `..` steht
+      als Text. `zeile` maskiert und macht sichtbar (Inhalt), Attribute maskiert `esc`. */
+  function pfadLinkHtml(pfad, sprung, wurzeln, mitLink, zeile) {
+    if (!pfadSauber(pfad)) return zeile(pfad);
+    const inhalt = pfadInhaltHtml(pfad, wurzeln, zeile);
+    if (mitLink && linkfaehig(pfad)) return linkHtml(pfad, sprung, inhalt);
+    if (pfadKurz(pfad, wurzeln) === null) return inhalt;
+    return `<span class="lv-pfadt" title="${esc(pfad)}">${inhalt}</span>`;
+  }
+
+  /** Marke als erzeugter Inhalt aus `data-marke`, der volle Anfang als nicht blockifizierter, unsichtbarer Text darin (FA 2). */
+  function pfadInhaltHtml(pfad, wurzeln, zeile) {
+    const kurz = pfadKurz(pfad, wurzeln);
+    if (kurz === null) return zeile(pfad);
+    return `<span class="lv-mk" data-marke="${esc(kurz.marke)}"><span class="vh">${zeile(kurz.wurzel)}</span></span>${zeile(kurz.rest)}`;
+  }
+
+  /** Der Link: Ziel nur über `vscodeLink`, `title` und bei einer Zeile der Name `<voller Pfad>:<Zeile>` (PO Z. 620–621). */
+  function linkHtml(pfad, sprung, inhalt) {
+    let name = pfad, beschriftung = '';
+    if (sprung !== null) {
+      name = `${pfad}:${sprung}`;
+      beschriftung = ` aria-label="${esc(name)}"`;
+    }
+    const schnitt = pfad.lastIndexOf('/');
+    const ziel = vscodeLink(pfad.slice(0, schnitt), pfad.slice(schnitt + 1), sprung);
+    return `<a class="lv-pfad" href="${esc(ziel)}" title="${esc(name)}"${beschriftung}>${inhalt}</a>`;
+  }
+
   /* ── Budget der Marken: ein Satz zeigt nie mehr markierbare Zeichen, als `zeichenBuchen` (lauf.js) im Text gebucht hat ── */
 
   /** Was `zeichenBuchen` als Marke zählt (MARKIERBAR in lauf.js); ein Node-Test hält beide gleich. */
@@ -639,5 +680,5 @@
   }
 
   Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
-  Object.assign(ziel, { pfadMarken, pfadKurz });
+  Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml });
 })(typeof module !== 'undefined' ? module.exports : window);
