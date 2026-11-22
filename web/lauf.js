@@ -318,13 +318,55 @@
   }
   const KEIN_BERICHT = 'Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile „Ergebnis:“.';
 
-  /** „Längste Schritte“ (FA 10): je Zeile ein Knopf, der über `act` zu ihr springt — nie `href="#…"`, der Hash ist die Adresse
-      (ADR-0029). Ohne Dauer gibt es keine Liste. */
+  /** Die Gliederung links: „Längste Schritte“ (R00234 FA 10) und darunter „Teuerste Schritte“ (R00238 FA 8), beide aus
+      `schrittListeHtml`. Ohne Dauer entfällt die erste, ohne `tokens` die zweite, ohne beide der Abschnitt. */
   function laufTopHtml(a, esc) {
-    if (!a.top3.length) return '';
+    const listen = [];
+    if (a.top3.length) listen.push(laengsteListe(a.top3, esc));
+    if (a.teuer3 && a.teuer3.length) listen.push(teuersteListe(a.teuer3, esc));
+    if (!listen.length) return '';
+    return `<section class="lv-gl" aria-labelledby="${listen.map(l => `${l.praefix}-t`).join(' ')}">${listen.map(schrittListeHtml).join('')}</section>`;
+  }
+
+  /** Eine Liste der Gliederung: Überschrift, wahlweise ein Erklärsatz, auf den die Liste mit `aria-describedby` zeigt, und je Eintrag
+      ein Knopf `<praefix>-<i>`, der über `act` zu seiner Zeile springt — nie `href="#…"`, der Hash ist die Adresse (ADR-0029). */
+  function schrittListeHtml({ praefix, titel, erklaerung, eintraege }) {
+    let satz = '', beschrieben = '';
+    if (erklaerung) {
+      satz = `<p class="lv-erkl" id="${praefix}-erkl">${erklaerung}</p>`;
+      beschrieben = ` aria-describedby="${praefix}-erkl"`;
+    }
+    const knoepfe = eintraege.map((e, i) => {
+      const id = `${praefix}-${i + 1}`;
+      if (!e.name) return `<li><button type="button" id="${id}" data-act="lauf-springe" data-arg="${e.ziel}">${e.inhalt}</button></li>`;
+      return `<li><button type="button" id="${id}" data-act="lauf-springe" data-arg="${e.ziel}" aria-labelledby="${id}-n">${e.inhalt}<span class="vh" id="${id}-n">${e.name}</span></button></li>`;
+    });
+    return `<h2 id="${praefix}-t">${titel}</h2>${satz}<ol class="${praefix}"${beschrieben}>${knoepfe.join('')}</ol>`;
+  }
+
+  function laengsteListe(top3, esc) {
     const ziel = t => (t.schritt ? `lv-s${t.nr}` : `lv-s${t.nr}-vor`);
-    const knoepfe = a.top3.map((t, i) => `<li><button type="button" id="lv-top-${i + 1}" data-act="lauf-springe" data-arg="${ziel(t)}"><span class="was">${esc(sichtbarText(t.was))}</span><span class="d">${dauerText(t.dauer)}</span></button></li>`);
-    return `<section class="lv-gl" aria-labelledby="lv-top-t"><h2 id="lv-top-t">Längste Schritte</h2><ol class="lv-top">${knoepfe.join('')}</ol></section>`;
+    const eintraege = top3.map(t => ({ ziel: ziel(t), inhalt: `<span class="was">${esc(sichtbarText(t.was))}</span><span class="d">${dauerText(t.dauer)}</span>` }));
+    return { praefix: 'lv-top', titel: 'Längste Schritte', eintraege };
+  }
+
+  const TEUERSTE_ERKLAERUNG = 'Gezählt sind die neuen Tokens je Antwort: Eingabe, Cache-Schreiben und Ausgabe. Den schon vorhandenen Kontext (Cache-Lesen) trägt jede Antwort, er zählt hier nicht.';
+
+  /** „Teuerste Schritte“: Beschriftung, darunter gedämpft der Anlass, rechts die neuen Tokens; der Name des Knopfes ist
+      „<Beschriftung>, <Wert in Lesefassung>, <nach …>“ (UX S3) — als eigener Lesetext, weil die Teile Blöcke sind. Ziel ist die
+      Zeile, die die Tokens der Antwort trägt. */
+  function teuersteListe(teuer3, esc) {
+    const eintraege = teuer3.map(t => {
+      const was = esc(sichtbarText(t.was));
+      let nach = '';
+      const name = [was, neueTokensLesetext(t.neu)];
+      if (t.nach !== null) {
+        nach = `<span class="nach">${esc(sichtbarText(t.nach))}</span>`;
+        name.push(esc(sichtbarText(t.nach)));
+      }
+      return { ziel: `lv-s${t.nr}`, inhalt: `<span class="was">${was}</span>${nach}<span class="d">${neueTokensHtml(t.neu)}</span>`, name: name.join(', ') };
+    });
+    return { praefix: 'lv-teu', titel: 'Teuerste Schritte', erklaerung: TEUERSTE_ERKLAERUNG, eintraege };
   }
 
   /** Die erste Zeile eingeklappt, gekürzt auf 200 Zeichen, aus dem gebuchten Text; endet sie am Budget, folgt die Zusammenfassung.
@@ -683,6 +725,11 @@
   function neueTokensText(n) {
     if (n === 1) return EIN_TOKEN;
     return `${tokenKurz(n)} neue Tokens`;
+  }
+
+  function neueTokensLesetext(n) {
+    if (n === 1) return EIN_TOKEN;
+    return `${tokenLesetext(n)} neue Tokens`;
   }
 
   function neueTokensHtml(n) {

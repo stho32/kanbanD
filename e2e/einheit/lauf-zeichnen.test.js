@@ -480,3 +480,39 @@ test('R00238 AK 4 · US-5: T1 ohne tokens — jede Zeile von agent „–“ mit
   for (const id of mitAngabe) assert.deepStrictEqual([sichtbar(angabeVon(liVon(id))), vorgelesen(angabeVon(liVon(id)))], ['–', 'Tokens unbekannt'], id);
   assert.doesNotMatch(t1Html, /lv-tokens|lv-tk4/);
 });
+
+/* ── R00238 B1242: „Teuerste Schritte“ aus derselben Listenfunktion wie „Längste Schritte“ (FA 8; N3 Punkte 4, 6) ── */
+
+const ERKLAERSATZ = 'Gezählt sind die neuen Tokens je Antwort: Eingabe, Cache-Schreiben und Ausgabe. Den schon vorhandenen Kontext (Cache-Lesen) trägt jede Antwort, er zählt hier nicht.';
+const teuerKnoepfe = html => [...html.matchAll(/<button type="button" id="(lv-teu-\d)" data-act="lauf-springe" data-arg="([^"]+)" aria-labelledby="([^"]+)">([\s\S]*?)<\/button>/g)].map(m => {
+  const name = new RegExp(`<span class="vh" id="${m[3]}">([^<]*)</span>`).exec(m[4]);
+  const inhalt = m[4].replace(/<span class="vh" id="[^"]+">[^<]*<\/span>$/, '');
+  const teil = muster => { const t = muster.exec(inhalt); return t ? sichtbar(t[1]) : null; };
+  return { id: m[1], ziel: m[2], name: name && name[1], was: teil(/<span class="was">([^<]*)<\/span>/), nach: teil(/<span class="nach">([^<]*)<\/span>/), wert: teil(/<span class="d">([\s\S]*)<\/span>$/) };
+});
+
+test('R00238 AK 6, AK 8: T8 — „Teuerste Schritte“ unter „Längste Schritte“ im selben Abschnitt, mit Erklärsatz und aria-describedby', () => {
+  const html = laufTopHtml(t8, esc);
+  assert.match(html, /^<section class="lv-gl" aria-labelledby="lv-top-t lv-teu-t"><h2 id="lv-top-t">Längste Schritte<\/h2><ol class="lv-top">[\s\S]*?<\/ol><h2 id="lv-teu-t">Teuerste Schritte<\/h2>/);
+  assert.ok(html.includes(`<p class="lv-erkl" id="lv-teu-erkl">${ERKLAERSATZ}</p><ol class="lv-teu" aria-describedby="lv-teu-erkl">`));
+  assert.match(html, /<\/ol><\/section>$/);
+});
+
+test('R00238 AK 6, AK 8: T8 — drei Knöpfe zur Trägerzeile, Beschriftung, „nach …“, Wert; zugänglicher Name mit Kommata und Lesefassung', () => {
+  assert.deepStrictEqual(teuerKnoepfe(laufTopHtml(t8, esc)), [
+    { id: 'lv-teu-1', ziel: 'lv-s12', name: 'Nachricht von Agent, 61 Tausend neue Tokens, nach 5 min 17 s Warten', was: 'Nachricht von Agent', nach: 'nach 5 min 17 s Warten', wert: '61 Tsd. neue Tokens' },
+    { id: 'lv-teu-2', ziel: 'lv-s5', name: 'Bash grep -n tokens web/lauf.js, 35 Tausend neue Tokens, nach Read regeln.md', was: 'Bash grep -n tokens web/lauf.js', nach: 'nach Read regeln.md', wert: '35 Tsd. neue Tokens' },
+    { id: 'lv-teu-3', ziel: 'lv-s2', name: 'Read regeln.md, 18 Tausend neue Tokens', was: 'Read regeln.md', nach: null, wert: '18 Tsd. neue Tokens' },
+  ]);
+  assert.doesNotMatch(laufTopHtml(t8, esc), /href|aria-label=/);
+});
+
+test('R00238 FA 8: ohne tokens keine Liste (T1 unverändert); ohne Dauer nur „Teuerste Schritte“; fremder Text maskiert; Einzahl', () => {
+  assert.doesNotMatch(laufTopHtml(t1, esc), /lv-teu|Teuerste/);
+  const nurTeuer = laufTopHtml({ ...t8, top3: [] }, esc);
+  assert.match(nurTeuer, /^<section class="lv-gl" aria-labelledby="lv-teu-t"><h2 id="lv-teu-t">Teuerste Schritte<\/h2>/);
+  assert.doesNotMatch(nurTeuer, /lv-top/);
+  assert.strictEqual(laufTopHtml({ ...t8, top3: [], teuer3: [] }, esc), '');
+  const fremd = teuerKnoepfe(laufTopHtml({ ...t8, top3: [], teuer3: [{ nr: 4, neu: 1, was: 'Read <b>x</b>', nach: 'nach Bash <i>' }] }, esc));
+  assert.deepStrictEqual(fremd, [{ id: 'lv-teu-1', ziel: 'lv-s4', name: 'Read &lt;b&gt;x&lt;/b&gt;, 1 neues Token, nach Bash &lt;i&gt;', was: 'Read &lt;b&gt;x&lt;/b&gt;', nach: 'nach Bash &lt;i&gt;', wert: '1 neues Token' }]);
+});
