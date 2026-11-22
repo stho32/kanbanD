@@ -1756,6 +1756,10 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-laedt{display:flex;align-items:center;gap:var(--kd-s3);margin:0;color:var(--kd-muted)}
 .lv-l{list-style:none;margin:0;padding:0;width:100%;max-width:880px;min-width:0;display:flex;flex-direction:column;gap:var(--kd-s3)}
 .lv-l>li{min-width:0;content-visibility:auto;contain-intrinsic-size:auto 56px}
+/* R00241, ADR-0041 N5: Zeilen der Insel sind `block`, nie `list-item`. Der Browser nummeriert die folgenden Listenelemente bei jeder verborgenen
+   `list-item`-Zeile neu (O(n·k) beim Filterwechsel, auf T3 Minuten); ein `block` hat keine Ordnungszahl. `:where` hält die Spezifität bei 0,0,1,
+   damit `.lv-n` und `.lv-d` (grid) und jede künftige Zeilenart ihr eigenes `display` behalten — eine neue Art setzt es selbst oder bleibt bei dieser Regel. */
+:where(.lv-l)>li{display:block}
 .lv-n{display:grid;grid-template-columns:18px minmax(0,1fr);column-gap:var(--kd-s3);padding:var(--kd-s3) var(--kd-s4);background:var(--kd-surface);border:1px solid var(--kd-line);border-left:3px solid var(--kd-line-strong)}
 .lv-n.mensch{border-left-color:var(--kd-mensch)}.lv-n.agent{border-left-color:var(--kd-agent)}
 .lv-n .pk{grid-row:1/3;margin-top:1px;font-size:9.5px}

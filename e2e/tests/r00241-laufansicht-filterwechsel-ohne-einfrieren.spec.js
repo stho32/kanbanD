@@ -1,7 +1,8 @@
 // R00241 Laufansicht — Filterwechsel auf großen Läufen ohne Einfrieren (Karte #265, I0231) — AK 1–3 im echten Programm; AK 4 ist die Spec von
 // R00239 unverändert, AK 5 die Messung im Bericht (Beobachtung, kein Gate). Technik: ADR-0041 Nachtrag N5 „Durchsetzung“.
 // Ausgangslage wie R00239: Board `fabrik` mit `record-transcripts: true`, an #1 liegt T1 aus R00234, über die API abgelegt.
-// Mutanten (AK 2) setzt `KD_MUTANTE` ein (hilfen.js, Pfad `/web/kd-app.css`): m1 „Regel entfernt“, m2 „ohne :where“ — der Test muss rot werden.
+// Mutanten (AK 2) setzt `KD_MUTANTE` ein (hilfen.js, Pfad `/web/kd-app.css`): m1 „Regel entfernt“ (alt `:where(.lv-l)>li{display:block}`, neu leer) tötet AK 1
+// über den Zähler der list-item-Zeilen, m2 „ohne :where“ (neu `.lv-l>li{display:block}`) tötet AK 1 über „lv-n/lv-d ohne grid“.
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, alsPerson, mutanteEinsetzen } = require('./hilfen');
 const lv = require('./laufansicht-hilfen');
@@ -74,7 +75,6 @@ test.describe('R00241 Laufansicht: Filterwechsel ohne Einfrieren', () => {
   test.afterEach(() => k.stoppen());
 
   test('AK 1 · US-1: keine Zeile der Insel ist list-item, Nachrichten und Denkzeilen bleiben grid', async () => {
-    test.fail(true, 'erwartet rot bis B1262 (Regel :where(.lv-l)>li)');
     const zeilen = await s.displayDerZeilen();
     // Vorbedingung: das Bild zeigt alle drei Arten, sonst wäre die Probe leer
     expect(zeilen.filter(z => z.nachricht).length, 'Nachrichten (lv-n)').toBeGreaterThan(0);
