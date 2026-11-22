@@ -1,6 +1,6 @@
 # ADR-0026: E2E-Tests warten auf den Zielzustand statt auf Zeit — fünf Regeln und zwei Hilfen in `e2e/tests/hilfen.js`
 
-**Status**: Vorgeschlagen
+**Status**: Vorgeschlagen (Nachträge N1–N4; N4 Regel 11 an eine Probe gebunden)
 **Datum**: 2026-11-14
 **Entscheider**: Claude (autonom, architekt, Auftrag Betreiber 2026-11-14, Karte #139)
 **Kontext-Anforderung**: — (Sammelkarte #139 „E2E-Wackler: Tests warten auf Zustand statt auf Zeit“, ohne WBS-Knoten)
@@ -175,3 +175,77 @@ Schließt die offene Frage zu `tests/live.rs:57`. **Belegt (Code, Ist; nicht gef
 - Eine zusätzliche Variante lässt die Seite in jedem Frame neu zeichnen (`requestAnimationFrame`-Schleife mit `render()`). Sie ist 10 von 10 Mal grün. Mit dem alten `rechteck(locator)` ist sie 10 von 10 Mal rot.
 - `:332` und `:356` sind mit `--repeat-each=20 --workers=1` 40 von 40 Mal grün.
 - Mutante: `masse` löst über `elementHandle` auf und misst danach. Die Variante wird rot.
+
+## Nachtrag 2026-11-22: Folgearbeit der Ansicht, Antwort vor dem Körper, Halter vor der Navigation (Karte #246)
+
+**Anlass**: Vier Tests waren in Gates unter Last (2026-11-21/22, Last 5,9–7,6) einzeln rot und allein 3 von 3 grün: `tests/transkripte_api.rs` `ak03_wirksamer_schalter`, `e2e/tests/r00124-datums-trenner.spec.js:46` (US-1), `e2e/tests/r00148-zweiter-ausloeser.spec.js:515` (B2 Taste „t“, im Gate von `55108b99` Zeile 535) und `e2e/tests/r00223-ohne-phasen.spec.js:262/285/308` (AK 12/13). Es sind drei verschiedene Ursachen und ein offener Fall. Den Takt einer laufenden Stoppuhr (N3) hat keiner dieser Tests in den Daten, und keiner misst Geometrie über `locator.evaluate`. N3 wirkt hier also nicht mit.
+
+Die Proben liefen ohne Last mit 1 Worker gegen `target/debug/kanbanD` vom Stand `6dcc1b69` (`gemeinsam/scratchpad/arch-246/`).
+
+### r00124 US-1: Lesung vor dem ersten Zeichnen (Regel 1 und 3, keine neue Regel)
+
+- **Belegt (Code)**: Die Seite verbindet die Live-Leitung vor dem ersten Laden (`web/app.js:5329–5330`). `onopen` setzt `data-live="verbunden"` (`:5188`), unabhängig davon, ob `laden()` schon gezeichnet hat. Karten und Trenner der Spalte „Fertig“ entstehen erst mit der Sammelabfrage samt `GET /api/berichte/bewegungen` (`:277–284`, Git-Verlauf, unter Last langsam). Die Spec liest nach `liveBereit` sofort mit `allInnerTexts` (`r00124-datums-trenner.spec.js:49`).
+- **Belegt (Probe)**: Mit einem um 1,5 s verzögerten `GET /api/berichte/bewegungen` (`page.route`) ist die heutige Lesung 3 von 3 Mal rot. Das Fehlerbild gleicht dem Gate: `Array []` statt drei Trennern. Die Zusicherung `await expect(trenner(page)).toHaveText([...])` ist mit Verzögerung 3 von 3 Mal grün und ohne Verzögerung ebenfalls 3 von 3 Mal.
+- **Urteil**: Die Ursache liegt im Test. Er verletzt Regel 1 (nackte Lesung) und Regel 3 (`liveBereit` allein ist nicht „die Ansicht steht“). Eine neue Regel braucht es nicht. Die Folge-Lesung `evaluateAll` (`:51`) gehört hinter die Zusicherung oder unter `expect.poll`.
+
+### r00223 AK 12/13: Folgearbeit der Ansicht setzt den Klappzustand zurück
+
+- **Belegt (Code)**: Das Fever Chart rechnet nach dem ersten Zeichnen fehlende Tage nach (`fieberNachtragen`, `web/app.js:448–478`). Danach schreibt es den Cache (`POST …/fieber/cache`, ein Commit, dazu ein Live-Ereignis) und zeichnet am Ende neu (`:477`). Dabei ersetzt `render()` die Kinder von `#main` (`hauptbereichErsetzen`, `:2117`). Ein aufgeklapptes `<details>` (`web/ansicht.js:2089`, `:2143`) steht danach wieder zu. Diesen Restfall nimmt ADR-0007 bewusst in Kauf, er ist also gewolltes Programmverhalten und kein Defekt. Der Anker `#main .fb-einst` und `kdTest.gezeichnet()` sind schon vor dem Ende dieser Folgearbeit wahr. `allesAufklappen` (`r00223-ohne-phasen.spec.js:99–106`) klappt deshalb einen Stand auf, den das nächste Zeichnen wieder ersetzt.
+- **Belegt (Probe)**:
+  - Ohne Verzögerung ersetzt die Seite `#main` nach `bereit()` noch zweimal, nach 50 und 63 ms. Bei „Wie lange noch“ ersetzt sie es in 3 s nie.
+  - Mit einem um 1,5 s verzögerten `POST …/fieber/cache` ist `allesAufklappen` rot. Das Fehlerbild gleicht dem Gate: `#main details:not([open])`, erwartet 0, erhalten 1.
+- **Urteil**: Die Ursache liegt im Test. Er stellt einen Sichtzustand her, den die Seite beim Neuzeichnen nicht hält, und liest ihn erst in späteren Aufrufen. Die Lücke in diesem ADR: Regel 3 kennt kein Ende der Folgearbeit, und Regel 8 deckt nur die Geometrie ab.
+
+### Rust `ak03_wirksamer_schalter`: Antwort vor dem Körper mit einem Client, der erst schreibt
+
+- **Belegt (Gate-Log)**: Der Lauf panickte an `tests/transkripte_api.rs:110` (`send().await.unwrap()`) mit `hyper::Error(BodyWrite, Os { code: 32, kind: BrokenPipe })` auf `POST /api/aufgaben/2/transkripte`. Das ist der zweite Upload einer Zeile mit `aus` (`:184`, `gross(ZEHN_MB + 1)`).
+- **Belegt (Code)**: Der Server antwortet 409, bevor er den Körper liest (`src/web/mod.rs:1351–1357`, ADR-0036 Regel 5). Danach schließt er die Verbindung, ohne den Rest zu lesen.
+- **Belegt (Probe, roher Socket, Python)**: Schickt der Client Kopf und Körper ohne Pause, endet sein Schreiben nach rund 1,8 MB von 10 MB mit `BrokenPipe`, 5 von 5 Mal. Die Antwort `HTTP/1.1 409` bleibt danach lesbar, auch nach 0, 50 und 300 ms Pause.
+- **Belegt (Lock-Datei)**: hyper 1.12, reqwest 0.12.28.
+- **Begründet, nicht geprobt**: reqwest schreibt den ganzen Körper und liest dabei. Ob er die Antwort liefert oder den Schreibfehler, hängt davon ab, was er zuerst bearbeitet. Unter Last kommt der Schreibfehler zuerst. Dieselbe Klasse tragen die 413-Proben `:209` und `:213`, denn der Server liest dort bis zur Grenze und schließt dann.
+- **Urteil**: Die Ursache liegt im Test, die Zusage des Servers stimmt. Der Client der Probe passt nicht zu einer Antwort, die vor dem Körper kommt.
+
+### r00148 B2 Taste „t“: eingegrenzt, nicht belegt
+
+- **Belegt (Diagnose von #198, Gate von `55108b99`)**:
+  - Der Halter stand 7 ms vor dem Tastendruck.
+  - Die Seite nahm den Start auf: `timerStart` war gesetzt, der Server führte einen offenen Zeiteintrag „09:52“, und 17 ms nach dem Tastendruck lud die Seite neu.
+  - Playwright meldete für `POST …/timer/start` weder einen Treffer der Route noch ein `request`-Ereignis. Die Anfrage ging also an der Abfangschicht vorbei.
+  - Fokus, Fenster und Sperre waren richtig.
+- **Vermutung**: `anfragenHalten` (`r00148-zweiter-ausloeser.spec.js:44–58`) registriert die erste Route der Seite erst nach der Navigation. Unter Last greift das Abfangen für eine Anfrage, die Millisekunden später abgeht, noch nicht.
+- **Probe ohne Last**: 150 frische Seiten, je erste Route nach dem Laden, Anfrage sofort danach. Keine Anfrage ging vorbei (0 von 150). Bei einer Rate von 1 zu 1000 bis 3300 ist das kein Gegenbeleg, stellt den Fehler aber auch nicht nach.
+
+### N4 Regel 9: Sichtzustand, den die Probe herstellt, wird im selben Zug gelesen
+
+9. **Was die Probe selbst aufklappt, auswählt oder einblendet und was die Seite beim Neuzeichnen nicht hält (ADR-0007, Restfälle wie `<details>`), wird in demselben Aufruf in der Seite hergestellt und gelesen.** Ein Beispiel ist `page.evaluate`, das alle `#main details` öffnet und in derselben Aufgabe Text, Zahl oder `scrollWidth` liest, wenn nötig unter `expect.poll`. Für Text genügt die Kopie: `sichttext` setzt `open` in der geklonten Wurzel. Aufklappen per Klick und spätere Lesung in getrennten Aufrufen sind untersagt, solange die Ansicht noch Folgearbeit hat. Folgearbeit ist zum Beispiel ein Nachtrag, eine Rechnung in Häppchen oder ein Schreiben beim Lesen. Sie macht `kdTest.gezeichnet()` nicht falsch. Ort: `allesAufklappen` und `sichttext` in `r00223-ohne-phasen.spec.js`, als Hilfe nach `e2e/tests/hilfen.js`, sobald eine zweite Spec sie braucht.
+
+### N4 Regel 10: Antwort vor dem Körper mit einem Client prüfen, der sie unabhängig vom Schreiben liest (`tests/*.rs`)
+
+10. **Eine Zusage „Antwort, bevor der Körper gelesen wird“ (409 Erfassung aus, 409 bei 1000 Einträgen) prüft der Test mit einem rohen `std::net::TcpStream`.** Er schickt Kopf, die Felder vor der Datei und höchstens ein erstes Stück, mit `Content-Length` über 10 MB. Dann liest er Statuszeile und JSON mit einer Lesefrist von 5 s. Liest der Server den Körper doch, hängt der Server und der Test scheitert benannt an der Frist. Für 413 schreibt der Client weiter, bis der Server schließt. Einen Schreibfehler (`BrokenPipe`, `ConnectionReset`) zählt er dabei nicht als Ergebnis, danach liest er die Antwort. Ein reqwest-Aufruf mit vollem Körper ist für beide Fälle untersagt. Ort: eine Hilfe in `tests/gemeinsam/mod.rs` oder in `tests/transkripte_api.rs`, benutzt an `:184`, `:209` und `:213`.
+
+### N4 Regel 11 (Vorgeschlagen): Anfragen dort halten, wo die Seite sie absendet
+
+11. **Ein Halter für „die Anfrage läuft“ steht, bevor die Seite lädt, und wird danach nur scharf geschaltet.** Möglich ist das auf zwei Wegen:
+    - eine Hülle um `window.fetch` per `page.addInitScript` vor `page.goto`, die zählt und hält;
+    - oder `page.route` vor `page.goto`, mit einer Marke `scharf`.
+
+    Neben der Zählung am Halter prüft die Probe den Zustand am Server: genau ein Zeiteintrag bzw. ein Commit. Ort: `anfragenHalten` in `r00148-zweiter-ausloeser.spec.js`. **Vorgeschlagen**, weil die Ursache nicht belegt ist. Das entscheidet die Probe unten.
+
+### Nicht entschieden
+
+- **Kein Produktivcode.** Der Server bleibt bei „409 vor dem Körper“, und die Seite hält `<details>` weiter nicht (ADR-0007).
+- **Clients mit vollem Körper**: Ein Client, der ohne `Expect: 100-continue` den ganzen Körper schreibt, sieht statt der 409 womöglich einen Schreibfehler. Das betrifft einen künftigen Upload-Client der Factory. Zur Zusage aus ADR-0036 gehört deshalb der Hinweis „mit `Expect: 100-continue` senden oder beim Schreiben lesen“. Das ist eine Frage an die Beschreibung des Endpunkts und keine Änderung des Servers.
+
+### Durchsetzung
+
+Review-Punkt wie oben:
+- ein Klick-Aufklappen mit späterer Lesung in einer Ansicht mit Folgearbeit;
+- ein reqwest-Upload mit vollem Körper gegen eine Antwort vor dem Körper;
+- ein `page.route`-Halter, der erst nach `page.goto` steht.
+
+### Probe (Abnahme je Ursache)
+
+- **r00124**: Variante mit 1,5 s verzögertem `GET /api/berichte/bewegungen`. Heute ist sie 3 von 3 Mal rot (`Array []`), nach dem Fix 10 von 10 Mal grün. Dazu `r00124-datums-trenner.spec.js` mit `--repeat-each=20 --workers=1` grün.
+- **r00223**: Variante mit 1,5 s verzögertem `POST …/fieber/cache` und eine Variante, die in jedem Frame neu zeichnet (wie N3). Beide sind heute rot und nach dem Fix je 10 von 10 Mal grün. Mutante: Aufklappen per Klick und spätere Lesung, die Variante wird rot.
+- **ak03 sowie `:209`/`:213`**: Variante mit künstlich langsamem Leser: Der Client schreibt den vollen Körper und liest erst 300 ms nach dem Schreibfehler. Sie ist heute rot, denn der reqwest-Weg liefert den Fehler statt der Antwort, und nach dem Fix 10 von 10 Mal grün. Mutante: Der Server liest den Körper vor der Prüfung, dann scheitert die Probe an der Lesefrist bzw. an 413 statt 409.
+- **r00148 (entscheidet Regel 11)**: Der Halter steht vor `page.goto`. Mutante: Der Halter wird erst nach dem Laden angelegt. Die Diagnose aus #198 bleibt. Die Regel wird `Akzeptiert`, wenn das Gate in 10 vollen Läufen mit Last kein Rot an r00148:515 zeigt. Bis dahin gilt die Regel als Vorschlag.
