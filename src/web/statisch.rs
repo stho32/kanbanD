@@ -27,6 +27,7 @@ dateien! {
     "laeufe.js" => "text/javascript; charset=utf-8",
     "transkripte-schalter.js" => "text/javascript; charset=utf-8",
     "register.js" => "text/javascript; charset=utf-8",
+    "review-uebersicht.js" => "text/javascript; charset=utf-8",
     "diff.js" => "text/javascript; charset=utf-8",
     "lauf.js" => "text/javascript; charset=utf-8",
     "gesamt.js" => "text/javascript; charset=utf-8",
