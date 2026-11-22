@@ -1653,11 +1653,11 @@ function pfadFeldZeigen(ort, text) {
   pfadFeldMarkieren();
 }
 
+/** Fokus über den einen Fokusweg (fokusVersuchen), ohne zu rollen; danach der ganze Pfad markiert. */
 function pfadFeldMarkieren() {
-  const feld = document.getElementById('rv-pfin' + pfadFeld.id);
-  if (!feld) return;
-  feld.focus();
-  feld.select();
+  const ziel = '#' + CSS.escape('rv-pfin' + pfadFeld.id);
+  if (!fokusVersuchen(ziel, null, null, { selektor: ziel, sichtbar: false })) return;
+  $(ziel).select();
 }
 
 function pfadFeldWeg() {
@@ -1672,8 +1672,8 @@ function pfadFeldWeg() {
 function pfadFeldSchliessen() {
   const id = pfadFeld.id;
   pfadFeldWeg();
-  const knopf = document.getElementById('rv-pk' + id);
-  if (knopf) knopf.focus();
+  const ziel = '#' + CSS.escape('rv-pk' + id);
+  fokusVersuchen(ziel, null, null, { selektor: ziel, sichtbar: false });
 }
 
 /** Folgt einem Link nach VS Code wie ein Klick auf einen Verweis: kurz im Code-Bereich eingehängt, damit derselbe Weg gilt wie für
