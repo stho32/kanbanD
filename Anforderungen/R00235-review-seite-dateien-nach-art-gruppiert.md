@@ -1,6 +1,6 @@
 ---
 id: R00235
-status: Neu
+status: Erledigt
 datum: 2026-11-22
 ---
 
@@ -78,31 +78,31 @@ Heute (Stand `92493baf`) stehen alle Dateien in der Reihenfolge der API ohne Gru
 
 ### Einteilung und Reihenfolge
 
-- [ ] **AK 1 Code zuerst:** Gegeben K-Art, wenn `sh` die Review-Seite des Commits öffnet, dann stehen im Hauptteil und in der Dateiliste die Gruppen in dieser Reihenfolge:
+- [x] **AK 1 Code zuerst:** Gegeben K-Art, wenn `sh` die Review-Seite des Commits öffnet, dann stehen im Hauptteil und in der Dateiliste die Gruppen in dieser Reihenfolge:
   - „Code“ mit „1 Datei · +2 −3“ (`web/kd-app.css`)
   - „Tests“ mit „4 Dateien · +297 −3“ in der Reihenfolge `kontrast.test.js`, `sperrform.test.js`, `r00219-ansicht.spec.js`, `r00229-sperrform.spec.js`. Rechnung: 2 + 143 + 2 + 150 = 297 und 1 + 2 = 3.
   - „Doku und Planung“ mit „3 Dateien · +3 −0“
 
   In der Einheitenprobe von `dateiArt` gilt: `src/foo_test.go`, `FooTests.cs` und `tests/fixtures/a.md` sind `test`, `README.md` ist `doku`, `Cargo.toml` und `.github/workflows/ci.yml` sind `code` (ADR-0042 „Durchsetzung“). Heute rot: Doku steht zuerst, Code zuletzt.
-- [ ] **AK 2 Doku zu, Liste vollständig** (gestalter, PO Z. 543): Gegeben K-Art, wenn die Seite geladen ist, dann ist „Doku und Planung“ eingeklappt, ihre Dateien zeigen keinen Code, und die Dateiliste führt alle 8 Dateien, die drei Doku-Dateien mit Zahlen. Klickt `sh` auf den Gruppenkopf, so öffnet die Gruppe und zeigt ihre Dateien offen. Ein zweiter Klick schließt sie wieder. Der Gruppenkopf ist mit der Tastatur erreichbar und sagt „eingeklappt“ bzw. „ausgeklappt“ an (`aria-expanded`). „Alle aufklappen“ öffnet auch die Gruppen. Leerfall: Gegeben K-Doku, dann steht nur die Gruppe „Doku und Planung“ mit „2 Dateien · +2 −0“ da, eingeklappt, ohne Fehlermeldung.
+- [x] **AK 2 Doku zu, Liste vollständig** (gestalter, PO Z. 543): Gegeben K-Art, wenn die Seite geladen ist, dann ist „Doku und Planung“ eingeklappt, ihre Dateien zeigen keinen Code, und die Dateiliste führt alle 8 Dateien, die drei Doku-Dateien mit Zahlen. Klickt `sh` auf den Gruppenkopf, so öffnet die Gruppe und zeigt ihre Dateien offen. Ein zweiter Klick schließt sie wieder. Der Gruppenkopf ist mit der Tastatur erreichbar und sagt „eingeklappt“ bzw. „ausgeklappt“ an (`aria-expanded`). „Alle aufklappen“ öffnet auch die Gruppen. Leerfall: Gegeben K-Doku, dann steht nur die Gruppe „Doku und Planung“ mit „2 Dateien · +2 −0“ da, eingeklappt, ohne Fehlermeldung.
   - Fokus und Name (PO Z. 552 (b)): Betätigt `sh` den Gruppenkopf „Doku und Planung“ mit Enter oder Leertaste, dann steht `aria-expanded` auf `true`, `aria-controls` zeigt auf den vorhandenen Bereich der Gruppe, und `document.activeElement` ist danach derselbe Gruppenkopf (dieselbe `id` nach dem Neuzeichnen). Der zugängliche Name beginnt mit „Doku und Planung“ und enthält „3 Dateien“. Der Kopf ist mindestens 24 px hoch, bei `pointer: coarse` mindestens 44 px (`--kd-ziel` gibt dort 48 px).
   - Überschriften (PO Z. 552 (a)): In „Ein Commit“ sind die Gruppenköpfe `h2` und die Dateiköpfe `h3`. In „Alle Änderungen“ (Aufgabe #3) bleibt die Anwendung `h2`, die Gruppe ist `h3`, der Dateikopf `h4`. Probe: In der Reihenfolge des Dokuments steigt keine Überschrift um mehr als eine Ebene tiefer als die vorige.
   - Einklappen und Blättern (PO Z. 550): „Alle einklappen“ schließt alle Dateien. Jede Gruppe behält ihren Zustand, und die Köpfe der Dateien offener Gruppen bleiben sichtbar. „Alle aufklappen“ öffnet Gruppen und Dateien außer den großen neuen Dateien nach FA 6: in K-Rand bleiben `genau-501.json`, `src/grosse-antwort.json` und `Dokumentation/neu.md` zu. Öffnet `sh` in K-Art „Doku und Planung“, blättert zu einem anderen Commit und zurück, dann ist die Gruppe wieder zu.
 
   Heute rot.
-- [ ] **AK 3 Klick in der Dateiliste klappt auf** (PO Z. 539 Änderung 3, Z. 543): Gegeben K-Art mit eingeklappter Doku, wenn `sh` in der Dateiliste `Dokumentation/Gelerntes.md` wählt, dann sind die Gruppe „Doku und Planung“ und die Datei aufgeklappt, der Kopf der Datei hat den Fokus, und seine Oberkante liegt im sichtbaren Bereich (`getBoundingClientRect`). Ebenso klappt die Wahl von `src/grosse-antwort.json` in K-Rand die eingeklappte Datei auf.
+- [x] **AK 3 Klick in der Dateiliste klappt auf** (PO Z. 539 Änderung 3, Z. 543): Gegeben K-Art mit eingeklappter Doku, wenn `sh` in der Dateiliste `Dokumentation/Gelerntes.md` wählt, dann sind die Gruppe „Doku und Planung“ und die Datei aufgeklappt, der Kopf der Datei hat den Fokus, und seine Oberkante liegt im sichtbaren Bereich (`getBoundingClientRect`). Ebenso klappt die Wahl von `src/grosse-antwort.json` in K-Rand die eingeklappte Datei auf.
   - Fokusring ganz sichtbar (PO Z. 552 (c)): Nach der Wahl liegt der Fokusring des Kopfs ganz im sichtbaren Bereich des Scroll-Behälters `.rv`. Probe: `kopf.getBoundingClientRect().top − max(0, Ringstärke + Versatz) ≥ rv.getBoundingClientRect().top`, Ringstärke und Versatz aus `getComputedStyle(kopf).outlineWidth` und `outlineOffset` bei sichtbarem Fokus. Rechenbeispiel: Ring 2 px, Versatz 2 px, dann liegt die Oberkante des Kopfs mindestens 4 px unter der Oberkante von `.rv`; bündig (0 px) ist rot. Dasselbe gilt in „Alle Änderungen“ (AK 8) und bei 414 px, wo die Dateiliste hinter dem Aufklapper steht (AK 9).
 
   Heute rot: Gruppen gibt es nicht, und `scrollIntoView({block:'start'})` legt den Kopf bündig an `.rv` (`web/app.js:3511`, aus dem Code gelesen, nicht gemessen).
 
 ### Hinweise und Größen
 
-- [ ] **AK 4 Test-Hinweise** (Wortlaut PO Z. 537): Hinweise stehen in der Dateiliste und im Kopf der Datei, sonst nirgends.
+- [x] **AK 4 Test-Hinweise** (Wortlaut PO Z. 537): Hinweise stehen in der Dateiliste und im Kopf der Datei, sonst nirgends.
   - Gegeben K-Art, dann tragen `kontrast.test.js` (−1) und `r00219-ansicht.spec.js` (−2) den Hinweis „bestehender Test geändert“. Die neuen Tests und `web/kd-app.css` (Code, −3) tragen keinen Hinweis.
   - Gegeben K-Rand, dann trägt `r00150-alte-leiste.spec.js` „Test gelöscht“ und die umbenannte `sperrform-alt.test.js` (−2) „bestehender Test geändert“. `tests/nur-neu.rs` (M, −0) trägt keinen Hinweis, das ist die Grenze zwischen 0 und 1 entfernter Zeile.
 
   Heute rot.
-- [ ] **AK 5 Große neue Datei, Grenze 500/501** (gestalter, PO Z. 536, 540 (a)): Gegeben K-Rand, wenn die Seite geladen ist:
+- [x] **AK 5 Große neue Datei, Grenze 500/501** (gestalter, PO Z. 536, 540 (a)): Gegeben K-Rand, wenn die Seite geladen ist:
   - `genau-500.json` (A +500) ist offen.
   - `genau-501.json` ist eingeklappt mit dem Satz „Neue Datei mit 501 Zeilen, beginnt eingeklappt.“, dem Knopf „Änderungen anzeigen“ und im Kopf „+501 −0“.
   - `src/grosse-antwort.json` zeigt „Neue Datei mit 1.240 Zeilen, beginnt eingeklappt.“.
@@ -113,12 +113,12 @@ Heute (Stand `92493baf`) stehen alle Dateien in der Reihenfolge der API ohne Gru
   - Ein Satz je Grund (PO Z. 551): Gegeben K-Budget, dann trägt `tests/g.rs` (M, wegen des Budgets zu) nicht „Neue Datei mit …“, sondern „Der Patch ist groß (<n> Zeilen) und wird erst auf Wunsch geladen.“ mit „Änderungen anzeigen“; <n> ist `plus + minus` der Datei aus der Antwort, mit Tausenderpunkt. Gegeben K-Rand, öffnet `sh` die Gruppe „Doku und Planung“, dann bleibt `Dokumentation/neu.md` (A +600) darin zu mit „Neue Datei mit 600 Zeilen, beginnt eingeklappt.“.
 
   Heute rot.
-- [ ] **AK 6 Zeichenbudget nach Gruppen** (ADR-0042 Punkt 1, ADR-0033 Punkt 5): Gegeben K-Budget, wenn die Seite geladen ist, dann sind `src/b.rs`, `src/e.rs`, `src/f.rs` und `tests/c.rs` offen, `src/d.rs`, `tests/g.rs` und `Dokumentation/a.md` zu.
+- [x] **AK 6 Zeichenbudget nach Gruppen** (ADR-0042 Punkt 1, ADR-0033 Punkt 5): Gegeben K-Budget, wenn die Seite geladen ist, dann sind `src/b.rs`, `src/e.rs`, `src/f.rs` und `tests/c.rs` offen, `src/d.rs`, `tests/g.rs` und `Dokumentation/a.md` zu.
   - Rechnung: b 2.500 → `d` zählt nicht (A +600 > 500) → e 5.000 → f 7.500 → c 10.000 ≤ 10.000 offen → g 12.501 > 10.000 zu, danach öffnet keine mehr → `a` zählt als Doku nicht.
   - Heute (Reihenfolge der API, ohne Regeln) sind a, b, d und e offen: 2.500, 5.000, 5.601, 8.101; f käme auf 10.601. Deshalb rot.
   - Einheitenprobe: Eine Doku-Datei zu 11.000 Zeilen an erster Stelle, danach Code zu 10.500 Zeilen. Dann öffnet der Code („die erste Datei, die öffnen darf“), und die Doku bleibt zu.
   - Dieselben Regeln gelten seitenweit über die Abschnitte von „Alle Änderungen“ (ADR-0033 N1.4).
-- [ ] **AK 7 Größenbalken** (ADR-0042 Punkt 9, Skala PO Z. 548): Gegeben K-Art, dann trägt jede Datei der Liste einen Balken mit einem Teil für `+` und einem für `−`. Jeder Teil ist so lang wie seine Zahl, geteilt durch die größte Summe `plus + minus` derselben Gruppe, mal die volle Länge L, auf ±1 px genau. Jede Zahl über 0 ergibt mindestens 1 px, eine 0 ergibt keinen Teil. In „Alle Änderungen“ gilt die Gruppe je Abschnitt. Rechnung mit L = 44 px:
+- [x] **AK 7 Größenbalken** (ADR-0042 Punkt 9, Skala PO Z. 548): Gegeben K-Art, dann trägt jede Datei der Liste einen Balken mit einem Teil für `+` und einem für `−`. Jeder Teil ist so lang wie seine Zahl, geteilt durch die größte Summe `plus + minus` derselben Gruppe, mal die volle Länge L, auf ±1 px genau. Jede Zahl über 0 ergibt mindestens 1 px, eine 0 ergibt keinen Teil. In „Alle Änderungen“ gilt die Gruppe je Abschnitt. Rechnung mit L = 44 px:
   - „Code“ (größte Summe 5): `web/kd-app.css` (+2 −3) hat zusammen die volle Länge L, `+` 2/5 · 44 = 17,6 px und `−` 3/5 · 44 = 26,4 px.
   - „Tests“ (größte Summe 150): `r00229-sperrform.spec.js` (+150) hat L, `sperrform.test.js` (+143) hat 143/150 · 44 = 41,9 px. `kontrast.test.js` (+2 −1) hat je Teil mindestens 1 px, denn 2/150 · 44 = 0,59 px und 1/150 · 44 = 0,29 px.
   - „Doku und Planung“ (größte Summe 1): jede der drei Dateien (+1 −0) hat einen `+`-Teil der Länge L und keinen `−`-Teil.
@@ -128,8 +128,8 @@ Heute (Stand `92493baf`) stehen alle Dateien in der Reihenfolge der API ohne Gru
 
 ### Alle Änderungen, Breite, Bestand
 
-- [ ] **AK 8 Alle Änderungen gruppiert** (ADR-0042 Punkt 1): Gegeben Aufgabe #3, wenn `sh` „Alle Änderungen“ öffnet, dann zeigt der Abschnitt `kd` „Code“ (`src/a.rs`), „Tests“ (`tests/a_test.rs`) und eingeklappt „Doku und Planung“ (`README.md`). Der Abschnitt `wb` zeigt „Code“ (`b.js`) und eingeklappt „Doku und Planung“ (`docs/b.md`), aber keine Gruppe „Tests“. Die Dateiliste führt je Abschnitt alle Dateien. Ein Klick auf `docs/b.md` in der Liste klappt Gruppe und Datei in `wb` auf wie in AK 3. In der Einheitenprobe wird eine Folge-Datei `docs/x.md` als `doku` eingeteilt. Ein Abschnitt, der lädt, wartet oder fehlschlug, zeigt nur seinen heutigen Zustandstext (etwa „Lädt die Änderungen der …“) und keinen Gruppenkopf; die Gruppen erscheinen erst mit den Dateien, und ein geöffneter Gruppenstand bleibt beim Nachladen erhalten (PO Z. 553 (b)). Probe: Die Antwort für `wb` wird im Test zurückgehalten (`page.route`) und dann mit 503 beantwortet; so lange steht in `wb` kein Gruppenkopf. Hat `sh` vorher in `kd` „Doku und Planung“ geöffnet, ist sie danach noch offen, ebenso nachdem `wb` über „Erneut versuchen“ geladen ist. Heute rot.
-- [ ] **AK 9 320 px ohne Querscrollen, beide Themen** (PO Z. 539 Änderung 1, Teil S1): Gegeben K-Art und K-Rand, Breiten 320, 414, 641, 980 und 1280 px, Themen hell und dunkel.
+- [x] **AK 8 Alle Änderungen gruppiert** (ADR-0042 Punkt 1): Gegeben Aufgabe #3, wenn `sh` „Alle Änderungen“ öffnet, dann zeigt der Abschnitt `kd` „Code“ (`src/a.rs`), „Tests“ (`tests/a_test.rs`) und eingeklappt „Doku und Planung“ (`README.md`). Der Abschnitt `wb` zeigt „Code“ (`b.js`) und eingeklappt „Doku und Planung“ (`docs/b.md`), aber keine Gruppe „Tests“. Die Dateiliste führt je Abschnitt alle Dateien. Ein Klick auf `docs/b.md` in der Liste klappt Gruppe und Datei in `wb` auf wie in AK 3. In der Einheitenprobe wird eine Folge-Datei `docs/x.md` als `doku` eingeteilt. Ein Abschnitt, der lädt, wartet oder fehlschlug, zeigt nur seinen heutigen Zustandstext (etwa „Lädt die Änderungen der …“) und keinen Gruppenkopf; die Gruppen erscheinen erst mit den Dateien, und ein geöffneter Gruppenstand bleibt beim Nachladen erhalten (PO Z. 553 (b)). Probe: Die Antwort für `wb` wird im Test zurückgehalten (`page.route`) und dann mit 503 beantwortet; so lange steht in `wb` kein Gruppenkopf. Hat `sh` vorher in `kd` „Doku und Planung“ geöffnet, ist sie danach noch offen, ebenso nachdem `wb` über „Erneut versuchen“ geladen ist. Heute rot.
+- [x] **AK 9 320 px ohne Querscrollen, beide Themen** (PO Z. 539 Änderung 1, Teil S1): Gegeben K-Art und K-Rand, Breiten 320, 414, 641, 980 und 1280 px, Themen hell und dunkel.
   - Die Seite scrollt nicht quer: `document.documentElement.scrollWidth ≤ clientWidth`.
   - Gruppenköpfe, Zahlen, Test-Hinweise, der Satz der großen neuen Datei, die Größenbalken und der Aufklapper liegen ganz innerhalb der Breite: rechte Kante ≤ `clientWidth`. Kein Text ist abgeschnitten, gemessen so: Für jedes Element in Gruppenkopf, Zeile der Dateiliste, Test-Hinweis, Satz und Aufklapper gilt `scrollWidth ≤ clientWidth`.
   - Quer scrollt nur der Code-Bereich einer Datei (`.df-sc`).
@@ -139,7 +139,7 @@ Heute (Stand `92493baf`) stehen alle Dateien in der Reihenfolge der API ohne Gru
   - Aufklapper (PO Z. 549): Bei 320, 414, 641, 980 und 1099 px steht die linke Spalte hinter „Dateien (8) und Commits“ (K-Art und K-Rand) bzw. „Dateien (5) und Commits“ (Aufgabe #3), beim Öffnen der Seite zu. Bei 812 px Fensterhöhe liegt die Oberkante des Kopfs der ersten Code-Datei unter dem Fensterrand: `getBoundingClientRect().top < 812` (K-Art `web/kd-app.css`). Ein Klick auf den Aufklapper zeigt die Dateiliste mit allen Dateien. Bei 1100 und 1280 px gibt es keinen Aufklapper, die Dateiliste steht links neben dem Hauptteil (rechte Kante der Liste ≤ linke Kante des Hauptteils). Bestehende Tests, die bei höchstens 1099 px in der Dateiliste wählen, öffnen zuerst den Aufklapper; ihre Erwartungen bleiben (AK 10).
 
   Heute grün ist nur der Bestand ohne Gruppen, als Wächter in `r00207-review-seite.spec.js:900–908` und `r00210-alle-aenderungen.spec.js:728–737`. Die neuen Teile sind rot, weil es sie nicht gibt, der Aufklapper ebenso (bis 1099 px steht die Dateiliste heute vor dem Hauptteil, `web/kd-app.css:1631`).
-- [ ] **AK 10 Bestand bleibt, Mutanten:** Was nicht S1 ist, bleibt wie in B2/B3: Umschalter „Alle Änderungen | Ein Commit“, Commit-Kopf, Zweig-Chips, Blättern, Syntaxfarben, „Zu groß zum Anzeigen“ und Nachladen (D0009 Bild 3). Es gibt keine Commit-Leiste, kein „Gesehen“, keine Knöpfe je Datei und keine Wortmarke.
+- [x] **AK 10 Bestand bleibt, Mutanten:** Was nicht S1 ist, bleibt wie in B2/B3: Umschalter „Alle Änderungen | Ein Commit“, Commit-Kopf, Zweig-Chips, Blättern, Syntaxfarben, „Zu groß zum Anzeigen“ und Nachladen (D0009 Bild 3). Es gibt keine Commit-Leiste, kein „Gesehen“, keine Knöpfe je Datei und keine Wortmarke.
   - Bestehende Tests behalten ihre Erwartungen. Hat eine Ausgangslage Code nur zufällig `.txt` oder `.md` genannt und wird ihre Datei dadurch zu `doku`, bekommt sie eine Endung der Art `code` ohne Farbe (`.dat`). Prüft ein Test Markdown selbst (`r00217` `feindlich.md`), klappt er die Gruppe zuerst auf. Jede so geänderte Ausgangslage und jede geänderte Erwartung nennt der entwickler im Bericht mit Grund.
   - Mutanten, je von einem benannten Test getötet, in einer eigenen Kopie:
     - (m1) `dateiArt` prüft `doku` vor `test` → AK 1 rot (`tests/fixtures/a.md`)
