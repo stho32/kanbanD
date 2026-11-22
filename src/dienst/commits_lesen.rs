@@ -340,18 +340,27 @@ mod tests {
     }
 
     // Nacharbeit #211, Security Muss 3: sind alle Plätze belegt, wartet das Lesen bis zur Frist und antwortet dann 503,
-    // ohne Git zu starten
+    // ohne Git zu starten — R00226 AK 1 (Probe B): mit eigener Meldung „Lesegrenze …“, nicht der Zeitgrenze von Git
     #[test]
     fn belegte_lesegrenze_ist_503_nach_der_frist() {
         let s = stand();
         let fern = Instant::now() + Duration::from_secs(5);
         let plaetze: Vec<_> = (0..super::super::lesegrenze::LESEN_HOECHSTENS).map(|_| s.k.lesegrenze.betreten(fern).unwrap()).collect();
         let (vorher, start) = (arbeitsrepo::aufrufe(), Instant::now());
-        assert!(matches!(s.k.commits_lesen(1, Instant::now() + Duration::from_millis(300)), Err(Fehler::Zeitgrenze(_))));
+        let f = s.k.commits_lesen(1, Instant::now() + Duration::from_millis(300)).unwrap_err();
+        assert!(matches!(&f, Fehler::Ausgelastet(m) if m == "Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — keine Liste"), "{f:?}");
         assert!(start.elapsed() >= Duration::from_millis(300), "{:?}", start.elapsed());
         assert_eq!(arbeitsrepo::aufrufe() - vorher, 0);
         drop(plaetze);
         assert_eq!(s.k.commits_lesen(1, frist()).unwrap().len(), 2, "danach wieder frei");
+    }
+
+    // R00226 AK 4 (Probe Z): Lesegrenze frei, Frist abgelaufen — weiter die Zeitgrenze von Git mit ihrem Wortlaut
+    #[test]
+    fn abgelaufene_frist_bleibt_zeitgrenze_keine_liste() {
+        let s = stand();
+        let f = s.k.commits_lesen(1, Instant::now()).unwrap_err();
+        assert!(matches!(&f, Fehler::Zeitgrenze(m) if m == "Git in einem Arbeits-Repository antwortete nicht innerhalb von 10 s — keine Liste"), "{f:?}");
     }
 
     const K1: &str = "3f2a9c1e0b7d4a6f8e2c1b0a9d8e7f6a5b4c3d2e";

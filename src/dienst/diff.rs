@@ -548,4 +548,39 @@ mod tests {
         drop(alles);
         assert!(k.diff_lesen(1, &anfrage(&c1, Diffformat::Patch), Instant::now() + Duration::from_secs(10)).is_ok());
     }
+
+    const BELEGT_KEIN_DIFF: &str = "Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — kein Diff";
+
+    /// Diff eines Commits (`commit=kd:<c1>`) und Gesamt-Diff (ohne `commit`) — der Gesamt-Diff läuft über `diff_lesen`.
+    fn beide(c1: &str) -> [(&'static str, Diffanfrage); 2] {
+        [("commit", anfrage(c1, Diffformat::Json)), ("gesamt", Diffanfrage { commit: None, anwendung: None, datei: None, format: Diffformat::Json, bekannt: None })]
+    }
+
+    // R00226 AK 1 (Probe B): alle Plätze der Lesegrenze bis über die Frist belegt → 503 „Lesegrenze … — kein Diff“ für den
+    // Diff eines Commits und den Gesamt-Diff, nach mindestens 300 ms, ohne Git; danach frei → derselbe Aufruf gelingt
+    #[test]
+    fn belegte_lesegrenze_ist_503_kein_diff() {
+        let (_tmp, k, c1) = stand();
+        for (name, a) in beide(&c1) {
+            let fern = Instant::now() + Duration::from_secs(5);
+            let plaetze: Vec<_> = (0..super::super::lesegrenze::LESEN_HOECHSTENS).map(|_| k.lesegrenze.betreten(fern).unwrap()).collect();
+            let (vorher, start) = (arbeitsrepo::aufrufe(), Instant::now());
+            let f = k.diff_lesen(1, &a, Instant::now() + Duration::from_millis(300)).unwrap_err();
+            assert!(matches!(&f, Fehler::Ausgelastet(m) if m == BELEGT_KEIN_DIFF), "{name}: {f:?}");
+            assert!(start.elapsed() >= Duration::from_millis(300), "{name}: {:?}", start.elapsed());
+            assert_eq!(arbeitsrepo::aufrufe() - vorher, 0, "{name}: Git nicht gestartet");
+            drop(plaetze);
+            assert!(k.diff_lesen(1, &a, Instant::now() + Duration::from_secs(10)).is_ok(), "{name}: danach wieder frei");
+        }
+    }
+
+    // R00226 AK 4 (Probe Z): Lesegrenze frei, Frist abgelaufen → weiter die Zeitgrenze von Git mit ihrem Wortlaut
+    #[test]
+    fn abgelaufene_frist_bleibt_zeitgrenze_kein_diff() {
+        let (_tmp, k, c1) = stand();
+        for (name, a) in beide(&c1) {
+            let f = k.diff_lesen(1, &a, Instant::now()).unwrap_err();
+            assert!(matches!(&f, Fehler::Zeitgrenze(m) if m == "Git im Arbeits-Repository antwortete nicht innerhalb von 10 s — kein Diff"), "{name}: {f:?}");
+        }
+    }
 }

@@ -807,6 +807,32 @@ mod tests {
         assert_eq!(arbeitsrepo::aufrufe() - vorher, 0);
     }
 
+    // R00226 AK 1 (Probe B): alle Plätze der Lesegrenze bis über die Frist belegt → 503 „Lesegrenze … — keine Suche nach
+    // dem Nachfolger“ nach mindestens 300 ms, ohne Git; danach frei → dieselbe Suche gelingt
+    #[test]
+    fn belegte_lesegrenze_ist_503_keine_suche() {
+        let s = rebase();
+        let k = board(s._tmp.path(), &s.r, &[format!("kd:{}", s.k)]);
+        let fern = Instant::now() + Duration::from_secs(5);
+        let plaetze: Vec<_> = (0..super::super::lesegrenze::LESEN_HOECHSTENS).map(|_| k.lesegrenze.betreten(fern).unwrap()).collect();
+        let (vorher, start) = (arbeitsrepo::aufrufe(), Instant::now());
+        let f = k.nachfolger_suchen(1, &format!("kd:{}", s.k), None, Instant::now() + Duration::from_millis(300)).unwrap_err();
+        assert!(matches!(&f, Fehler::Ausgelastet(m) if m == "Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — keine Suche nach dem Nachfolger"), "{f:?}");
+        assert!(start.elapsed() >= Duration::from_millis(300), "{:?}", start.elapsed());
+        assert_eq!(arbeitsrepo::aufrufe() - vorher, 0, "Git nicht gestartet");
+        drop(plaetze);
+        assert!(suchen(&k, &format!("kd:{}", s.k)).is_ok(), "danach wieder frei");
+    }
+
+    // R00226 AK 4 (Probe Z): Lesegrenze frei, Frist abgelaufen → weiter die Zeitgrenze von Git mit ihrem Wortlaut
+    #[test]
+    fn abgelaufene_frist_bleibt_zeitgrenze_keine_suche() {
+        let s = rebase();
+        let k = board(s._tmp.path(), &s.r, &[format!("kd:{}", s.k)]);
+        let f = k.nachfolger_suchen(1, &format!("kd:{}", s.k), None, Instant::now()).unwrap_err();
+        assert!(matches!(&f, Fehler::Zeitgrenze(m) if m == "Git im Arbeits-Repository antwortete nicht innerhalb von 10 s — keine Suche nach dem Nachfolger"), "{f:?}");
+    }
+
     // R00218 AK 5 (ADR-0038 Q3, Pre-Mortem c): die Antwort trägt keinen Schlüssel `patch`, `pfad`, `dateien`, keinen
     // Dateinamen und nie den Titel eines Commits mit anderer `patch-id`
     #[test]

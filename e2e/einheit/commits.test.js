@@ -3,7 +3,7 @@
 process.env.TZ = 'Europe/Berlin';
 const test = require('node:test');
 const assert = require('node:assert');
-const { zeilenwerte, kurzform, titelGekuerzt, zahlenText, zweigmarken, zustandsmarke, fehlerText, gelesenText, ZUSTANDSWOERTER } = require('../../web/commits.js');
+const { zeilenwerte, kurzform, titelGekuerzt, zahlenText, zweigmarken, zustandsmarke, fehlerText, gelesenText, nachfolgerDeuten, ZUSTANDSWOERTER } = require('../../web/commits.js');
 
 const K = 'a41e0c5b3c7d9e8f00112233445566778899aabb';
 const auf = (zusatz = {}) => ({ verweis: `kd:${K}`, anwendung: 'kd', hash: K, zustand: 'auf_zweig', zweige: ['main'], titel: 'c.txt anlegen', autor: 'Ada Autorin', datum: '2026-03-01T10:00:00+01:00', plus: 3, minus: 0, dateien: 1, ...zusatz });
@@ -237,4 +237,15 @@ test('anwendungName steht in commits.js und ist dieselbe Funktion wie in diff.js
   assert.strictEqual(c.anwendungName('wb'), 'Anwendung wb');
   assert.strictEqual(c.anwendungName(''), 'Standardanwendung');
   assert.strictEqual(d.anwendungName, c.anwendungName);
+});
+
+// R00226 AK 5 (Probe O, Wächter): der 503 der belegten Lesegrenze steht wörtlich da — nie der Wortlaut der Zeitgrenze
+const BELEGT = 'Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet';
+test('fehlerText: 503 „Lesegrenze … — keine Liste“ steht wörtlich da, nicht „Das Repository antwortete nicht innerhalb von 10 Sekunden“', () => {
+  assert.strictEqual(fehlerText({ status: 503, fehler: `${BELEGT} — keine Liste` }), `Die Commits ließen sich nicht lesen: ${BELEGT} — keine Liste (503).`);
+});
+
+test('nachfolgerDeuten: 503 „Lesegrenze … — keine Suche nach dem Nachfolger“ steht wörtlich im Satz', () => {
+  const d = nachfolgerDeuten({ status: 503, fehler: `${BELEGT} — keine Suche nach dem Nachfolger` }, `kd:${K}`);
+  assert.deepStrictEqual([d.art, d.saetze], ['fehler', [`Der Nachfolger ließ sich nicht suchen: ${BELEGT} — keine Suche nach dem Nachfolger (503).`]]);
 });

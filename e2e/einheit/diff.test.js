@@ -160,3 +160,20 @@ for (const [c, marke] of [[0x200E, 'bidi'], [0x200F, 'bidi'], [0x061C, 'bidi'], 
     assert.deepStrictEqual(sichtbarTeile('a' + String.fromCodePoint(c) + 'b'), [{ text: 'a' }, { marke, code, text }, { text: 'b' }]);
   });
 }
+
+// R00226 AK 5 (Probe O, Wächter; PO Z. 513): die Liste nennt den Text der belegten Lesegrenze wörtlich, die Diff-Seite
+// behält den Kopf „Zeitgrenze überschritten.“ und nennt darunter den Text
+const BELEGT = 'Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet';
+test('listeFehlerText: 503 „Lesegrenze … — keine Liste“ steht wörtlich da', () => {
+  const d = require('../../web/diff.js');
+  assert.strictEqual(d.listeFehlerText({ status: 503, fehler: `${BELEGT} — keine Liste` }), `Die Liste der Commits ließ sich nicht lesen: ${BELEGT} — keine Liste (503).`);
+});
+
+test('fehlerArt und Diff-Seite: 503 „Lesegrenze … — kein Diff“ bleibt zeitgrenze mit Kopf „Zeitgrenze überschritten.“ und dem Text darunter', () => {
+  const d = require('../../web/diff.js');
+  const f = { status: 503, fehler: `${BELEGT} — kein Diff` };
+  assert.strictEqual(d.fehlerArt(f, 'diff'), 'zeitgrenze');
+  const text = d.diffFehlerHtml(f, 'kd:a41e0c5b3c7d9e8f00112233445566778899aabb', s => String(s)).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+  assert.ok(text.includes('Zeitgrenze überschritten.'), text);
+  assert.ok(text.includes(`Der Diff ließ sich nicht lesen: ${BELEGT} — kein Diff (503).`), text);
+});
