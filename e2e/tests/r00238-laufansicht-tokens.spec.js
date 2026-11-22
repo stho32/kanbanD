@@ -96,13 +96,9 @@ const zeileVon = (page, nr) => page.locator(`#lv-s${nr}`);
 const angabe = (page, nr) => zeileVon(page, nr).locator('.tk');
 const rechteck = (ort) => ort.evaluate(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, height: r.height }; });
 
-// ATDD: erwartet rot, bis R00238 gebaut ist; die Markierung fällt mit dem letzten grünen Bubble
-const ERWARTET_ROT = true;
-
 test.describe('R00238 Laufansicht: Tokens', () => {
   let k;
   test.beforeEach(async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'R00238 noch nicht gebaut');
     await mutanteEinsetzen(page);
     await alsPerson(page, lv.MENSCH);
     k = await kanbanStarten(lv.ausgangslage());
@@ -480,7 +476,6 @@ test.describe('R00238 Laufansicht: Ziele bei grobem Zeiger', () => {
   test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
   let k;
   test.beforeEach(async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'R00238 noch nicht gebaut');
     await mutanteEinsetzen(page);
     await alsPerson(page, lv.MENSCH);
     k = await kanbanStarten(lv.ausgangslage());
