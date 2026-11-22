@@ -84,6 +84,13 @@ const sprache = (page, k) => ({
     const s = getComputedStyle(el, '::before');
     return { content: s.content, farbe: s.color, grund: s.backgroundColor, linie: s.textDecorationLine };
   }),
+  /** `ariaSnapshot()` eines Links: Playwright 1.65 hängt an die Zeile mit dem Namen das Kind `/url:` und bei `<code>` im Link `code:`. */
+  async linkImBaum(link) {
+    const [name, url, ...rest] = (await link.ariaSnapshot()).split('\n');
+    const baum = { name: name.replace(/:$/, ''), url: url.replace(/^\s+- \/url: /, '') };
+    if (rest.length) baum.code = rest.map(z => z.replace(/^\s+- code: /, ''));
+    return baum;
+  },
   anfangBreite: ort => ort.locator('.lv-mk > .vh, .lv-anf > .vh').first().evaluate(el => el.getBoundingClientRect().width),
 });
 
@@ -105,7 +112,7 @@ test.describe('R00242 Laufansicht: Pfade als Links und kurze Pfad-Marken', () =>
     const auftrag = await s.sichtbar(s.text(1));
     expect(auftrag.split('\n')[0].startsWith('Projekt: ‹demo›  ·  Factory: /w/fab')).toBe(true);
     expect(auftrag).toContain('Arbeitsort: Worktree ‹Worktree #7›, Zweig karte/7.');
-    expect(auftrag).toContain('Ablage: ‹Ablage› (nur dieser Ordner)');
+    expect(auftrag).toContain('Ablage: ‹Ablage›/ (nur dieser Ordner)');
     await s.aufklappen(8);
     expect(await s.sichtbar(s.aufruf(8).locator('pre'))).toBe('cat ‹demo›/README.md &&\n ls ‹Worktree #7›/web');
     await expect(s.links(s.aufruf(8))).toHaveCount(0);
@@ -133,11 +140,11 @@ test.describe('R00242 Laufansicht: Pfade als Links und kurze Pfad-Marken', () =>
     await s.aufklappen(6);
     const write = s.pfadLink(6);
     await expect(write).toHaveAttribute('title', '/w/fab/ablage/plan-7/notiz.md');
-    expect(await write.ariaSnapshot()).toBe('- link "/w/fab/ablage/plan-7/notiz.md"');
+    expect(await s.linkImBaum(write)).toEqual({ name: '- link "/w/fab/ablage/plan-7/notiz.md"', url: 'vscode://file/w/fab/ablage/plan-7/notiz.md' });
     expect(await write.evaluate(el => el.innerText)).toBe('/w/fab/ablage/plan-7/notiz.md');
     expect(await s.anfangBreite(write)).toBe(0);
     const code = s.links(s.zeile(16)).first();
-    expect(await code.ariaSnapshot()).toBe('- link "/w/wt/demo/karte-7/web/a.js"');
+    expect(await s.linkImBaum(code)).toEqual({ name: '- link "/w/wt/demo/karte-7/web/a.js"', url: 'vscode://file/w/wt/demo/karte-7/web/a.js', code: ['/w/wt/demo/karte-7/web/a.js'] });
     expect(await code.evaluate(el => el.innerText)).toBe('/w/wt/demo/karte-7/web/a.js');
   });
 

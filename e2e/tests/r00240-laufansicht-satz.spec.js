@@ -178,7 +178,9 @@ test.describe('R00240 Laufansicht: Satz der Einträge', () => {
     await s.oeffnen();
     await s.aufklappen(10);
     expect(await s.felder(10)).toEqual(['file_path: /w/demo/a.md', 'offset: 10', 'limit: 2']);
-    await expect(s.zeile(10).locator('a')).toHaveCount(0);
+    // R00242 FA 4: das Pfadfeld von Read ist ab C2 ein Link nach VS Code an `offset`, sonst trägt die Zeile keinen
+    await expect(s.zeile(10).locator('a')).toHaveCount(1);
+    await expect(s.zeile(10).locator('a')).toHaveAttribute('href', 'vscode://file/w/demo/a.md:10');
     await s.aufklappen(13);
     expect(await s.felder(13)).toEqual(['query: stand']);
     const json = page.locator('#lv-s13 .lv-erg pre.lv-json');
@@ -254,7 +256,9 @@ test.describe('R00240 Laufansicht: Satz der Einträge', () => {
     await expect(s.fehlerImKopf()).toHaveText('1');
     await s.aufklappen(4);
     await expect(s.marke(4)).toHaveText('Von Claude Code gekürzt (69,9 KB): Der Agent sah nur diese Vorschau. Vollständig: /tmp/demo/tool-results/b1.txt');
-    await expect(s.marke(4).locator('a')).toHaveCount(0);
+    // R00242 FA 5 (PO Z. 594): der Pfad der Marke ist ab C2 ein Link ohne Zeile
+    await expect(s.marke(4).locator('a')).toHaveCount(1);
+    await expect(s.marke(4).locator('a')).toHaveAttribute('href', 'vscode://file/tmp/demo/tool-results/b1.txt');
     expect((await page.locator('#lv-s4 .lv-erg > pre').textContent()).split('\n')).toEqual(['Exit code 1', 'fehlt: gross.log', '...']);
     for (const name of ['light', 'dark']) {
       await thema(page, name);
