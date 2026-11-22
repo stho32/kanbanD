@@ -566,6 +566,58 @@
   /** Kurzform der Zusammenfassung (PO Z. 604): „Von Claude Code gekürzt“ mit Symbol, ohne Größe. */
   const GEKUERZT_KURZ = `<span class="lv-cck">${SCHERE}Von Claude Code gekürzt</span>`;
 
+  /* ── Wurzeln aus dem Auftragskopf (R00242 FA 1, N4 Punkt 6, M1) ── */
+
+  const { sichtbarTeile } = typeof module !== 'undefined' ? require('./diff.js') : window;
+
+  /** Ändert das Sichtbarmachen den Text nicht, trägt er weder Bidi- noch Steuerzeichen. */
+  const unveraendertSichtbar = text => sichtbarTeile(String(text)).every(t => !t.marke);
+
+  const WURZEL_SCHLUESSEL = /^\s*(Projekt|Arbeitsort|Ablage):/;
+  const ERSTER_ABSOLUTER_PFAD = /(?:^|\s)(\/\S+)/;
+  /** Satzzeichen und `/` am Ende gehören nicht zum Pfad. */
+  const PFAD_ENDE = /[.,;:)/]+$/;
+
+  /** Text des Auftrags → Wurzeln `[{wurzel, marke, art}]`, die längste zuerst: je Zeile und je durch `·` getrennten Teil, der mit
+      `Projekt:`, `Arbeitsort:` oder `Ablage:` beginnt, dessen erster absoluter Pfad. Eine Wurzel mit Bidi- oder Steuerzeichen entfällt. */
+  function pfadMarken(auftrag) {
+    const wurzeln = [];
+    for (const zeile of String(auftrag).split('\n')) {
+      for (const teil of zeile.split('·')) {
+        const wurzel = wurzelAus(teil);
+        if (wurzel !== null) wurzeln.push(wurzel);
+      }
+    }
+    return wurzeln.sort((a, b) => b.wurzel.length - a.wurzel.length);
+  }
+
+  function wurzelAus(teil) {
+    const schluessel = WURZEL_SCHLUESSEL.exec(teil);
+    if (schluessel === null) return null;
+    const erster = ERSTER_ABSOLUTER_PFAD.exec(teil.slice(schluessel[0].length));
+    if (erster === null) return null;
+    const wurzel = erster[1].replace(PFAD_ENDE, '');
+    if (!wurzel || !unveraendertSichtbar(wurzel)) return null;
+    const art = schluessel[1].toLowerCase();
+    return { wurzel, marke: markeFuer(art, wurzel), art };
+  }
+
+  /** Wortlaut der Marken (PO Z. 596): ‹<letzter Teil des Projekts>›, ‹Worktree #<n>› bei `karte-<n>` am Ende, sonst ‹Arbeitsort›, ‹Ablage›. */
+  function markeFuer(art, wurzel) {
+    if (art === 'projekt') return `‹${wurzel.slice(wurzel.lastIndexOf('/') + 1)}›`;
+    if (art === 'ablage') return '‹Ablage›';
+    const karte = /\/karte-(\d+)$/.exec(wurzel);
+    if (karte !== null) return `‹Worktree #${karte[1]}›`;
+    return '‹Arbeitsort›';
+  }
+
+  /** Pfad → `{marke, wurzel, rest}` der längsten Wurzel, mit der er beginnt — nur an einer Grenze `/` —, oder null. */
+  function pfadKurz(pfad, wurzeln) {
+    const treffer = wurzeln.find(w => pfad === w.wurzel || pfad.startsWith(`${w.wurzel}/`));
+    if (treffer === undefined) return null;
+    return { marke: treffer.marke, wurzel: treffer.wurzel, rest: pfad.slice(treffer.wurzel.length) };
+  }
+
   /* ── Budget der Marken: ein Satz zeigt nie mehr markierbare Zeichen, als `zeichenBuchen` (lauf.js) im Text gebucht hat ── */
 
   /** Was `zeichenBuchen` als Marke zählt (MARKIERBAR in lauf.js); ein Node-Test hält beide gleich. */
@@ -587,4 +639,5 @@
   }
 
   Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
+  Object.assign(ziel, { pfadMarken, pfadKurz });
 })(typeof module !== 'undefined' ? module.exports : window);

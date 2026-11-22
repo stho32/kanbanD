@@ -625,7 +625,8 @@
     const kennzahlen = { werkzeugaufrufe: schritte.filter(s => s.aufruf).length, fehler: schritte.filter(s => s.fehler).length };
     const top3 = bekannt ? laengsteSchritte(schritte, luecken, vorSchritt) : [];
     const eingeklappt = eingeklapptFinden(zeilen);
-    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt, tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer), zeitachse: zeitachseAbschliessen(achse, bekannt), zeilenArten: artenAbschliessen(arten, schritte.length, luecken.length, eingeklappt, kennzahlen.fehler), eingebettet: einbettungAbschliessen(einbettung, eingeklappt) };
+    const wurzeln = wurzelnAusAuftrag(zeilen, eingeklappt);
+    return { wurzeln, gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt, tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer), zeitachse: zeitachseAbschliessen(achse, bekannt), zeilenArten: artenAbschliessen(arten, schritte.length, luecken.length, eingeklappt, kennzahlen.fehler), eingebettet: einbettungAbschliessen(einbettung, eingeklappt) };
   }
 
   /* ── Arten der Zeilen (R00239 FA 5): wie viele Zeilen der Liste Nachrichten, Werkzeuge und Systemhinweise sind, für die Ansage ── */
@@ -875,6 +876,13 @@
       auftragGefunden = true;
     }
     return eingeklappt;
+  }
+
+  /** Die Wurzeln der Pfad-Marken (R00242 FA 1) aus dem Auftrag, der ersten Nachricht von `mensch`; ohne Auftrag keine. */
+  function wurzelnAusAuftrag(zeilen, eingeklappt) {
+    const auftrag = zeilen.find(({ nr }) => eingeklappt[nr] === 'auftrag');
+    if (auftrag === undefined) return [];
+    return satz.pfadMarken(auftrag.eintrag.text);
   }
 
   /** Die offenen Aufrufe eines Laufs (ADR-0041 N2, G1): `alle` und `ohneId` sind Warteschlangen mit Kopfzeiger (gepaarte werden
