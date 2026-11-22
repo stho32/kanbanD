@@ -1511,7 +1511,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .rv-leer{margin:0;color:var(--kd-text)}
 .dn{list-style:none;margin:0;padding:0;border:1px solid var(--kd-line);background:var(--kd-surface)}
 .dn li{border-bottom:1px solid var(--kd-line)}.dn li:last-child{border-bottom:0}
-.dn-e{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 8px;align-items:center;inline-size:100%;min-block-size:max(28px,var(--kd-ziel));padding:3px var(--kd-s3);border:0;background:none;color:var(--kd-text);text-align:left;cursor:pointer}
+.dn-e{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:0 8px;align-items:center;inline-size:100%;min-block-size:max(28px,var(--kd-ziel));padding:3px var(--kd-s3);border:0;background:none;color:var(--kd-text);text-align:left;cursor:pointer}
 .dn-e:hover{background:var(--kd-accent-weak)}
 .dn .p{min-width:0;overflow-wrap:anywhere;font-size:12px;line-height:1.3}
 .dn .p .d,.df-k .p .d{color:var(--kd-muted)}
@@ -1648,6 +1648,37 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .rv-haupt{padding:var(--kd-s3)}
   .dz .n{min-inline-size:34px;inline-size:34px;padding:0 4px}
   .rv-meld{margin:var(--kd-s4)}
+}
+/* Übersicht der Review-Seite (R00235, ADR-0042 Punkte 1, 3, 9; D0009 #review-uebersicht Bild 3, 7): Gruppen Code, Tests, Doku und
+   Planung im Hauptteil und in der Dateiliste, Test-Hinweis als Marke, Größenbalken je Gruppe, Satz der zugeklappten Datei, Aufklapper
+   „Dateien (<n>) und Commits“ bis 1099 px. Nur Tokens. */
+.rv-gr{display:flex;flex-direction:column;gap:var(--kd-s3);min-width:0}
+.rv-gh{margin:0;font-size:inherit;font-weight:inherit}
+.rv-gk{display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px;inline-size:100%;min-block-size:max(32px,var(--kd-ziel));padding:0 var(--kd-s2);border:0;border-bottom:2px solid var(--kd-line-strong);background:none;color:var(--kd-text);font:600 14px var(--kd-font);text-align:left;cursor:pointer;scroll-margin-block-start:var(--kd-s3)}
+.rv-gk:hover{background:var(--kd-accent-weak)}
+.rv-gk svg.i{width:11px;height:11px;color:var(--kd-muted);flex:none}
+.rv-gk[aria-expanded="true"] .rv-gpf{transform:rotate(90deg)}
+.rv-gk .rv-gn{min-width:0;overflow-wrap:anywhere}
+.rv-gk .z,.rv-gl .z{font:400 11.5px var(--kd-mono);color:var(--kd-muted);white-space:nowrap}
+.rv-gc{display:flex;flex-direction:column;gap:var(--kd-s4);min-width:0}
+.rv-gc[hidden]{display:none}
+/* der Fokusring liegt außen; `scroll-margin` hält ihn nach dem Sprung aus der Dateiliste ganz im Behälter `.rv` (PO Z. 552 (c)) */
+.df-k:focus-visible,.rv-gk:focus-visible{outline:2px solid var(--kd-accent);outline-offset:2px}
+.df-k{scroll-margin-block-start:var(--kd-s3)}
+.rv-gl{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:0 8px;margin:0;font-size:12.5px;font-weight:600;color:var(--kd-text)}
+.rv-gl .rv-gn{min-width:0;overflow-wrap:anywhere}
+.rv-th{display:inline-flex;align-items:center;min-block-size:18px;padding:0 5px;border:1px solid var(--kd-status-warn-ink);background:var(--kd-status-warn-bg);color:var(--kd-status-warn-ink);font:600 12px/1.2 var(--kd-font);white-space:normal;overflow-wrap:anywhere}
+.dn .s .rv-th{margin-left:4px}
+.rv-gb{--rv-balken:44px;display:flex;align-items:center;inline-size:var(--rv-balken);block-size:6px}
+.rv-gb i{display:block;flex:none;block-size:6px;inline-size:max(1px,calc(var(--rv-balken) * var(--anteil)))}
+.rv-gb-p{background:var(--kd-c-green-line)}.rv-gb-m{background:var(--kd-c-red-line)}
+.df-zu{border-top:1px solid var(--kd-line)}
+.rv-auf{display:none}
+.rv-auf svg.i{width:11px;height:11px;flex:none}
+.rv-auf[aria-expanded="true"] .rv-auf-pf{transform:rotate(90deg)}
+@media (max-width:1099px){
+  .rv-auf{display:inline-flex;align-items:center;gap:6px;max-inline-size:100%;white-space:normal;text-align:left}
+  .rv:not(.rail-offen) .rv-liste,.rv:not(.rail-offen) .rv-abs-rail{display:none}
 }
 /* Transkripte erfassen in „Einrichten“ (R00220, D0009 #transkripte-schalter): je Zeile Name, Wahl und Wirkung, darunter der Satz.
    Gesperrt nach Z. 216 / PO Z. 484 und Z. 491: Schrift --kd-faint, Kontur --kd-line, die gewählte Fläche --kd-faint mit Schrift

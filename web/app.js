@@ -1166,7 +1166,8 @@ function reviewAnstossen() {
   }
   let ansicht = 'commit';
   if (!a.commit && !a.ungueltig) ansicht = 'alle';
-  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, ansicht, fokusOffen: true, laufend: null, schlange: [] });
+  // jede Adresse beginnt wie beim Laden: die linke Spalte hinter dem Aufklapper zu (R00235 FA 11)
+  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, ansicht, fokusOffen: true, laufend: null, schlange: [], railOffen: false });
   if (a.ungueltig) { r.diff = null; reviewFokus(r); return; }
   if (!gleicheSeite) reviewListeLesen(r);
   r.diff = null;
@@ -1365,15 +1366,20 @@ async function reviewDiffLesen(r, verweis) {
   render();
 }
 
-/** Dateien und Klappen beim Aufbau: der Plan des Budgets, oder das Bild, das dieser Commit auf dieser Seite zuletzt hatte. */
+/** Dateien und Klappen beim Aufbau: der Plan des Budgets, oder das Bild, das dieser Commit auf dieser Seite zuletzt hatte. Die Gruppen
+    beginnen immer wie beim Laden: Code und Tests offen, Doku zu (R00235 FA 4, PO Z. 550). */
 function reviewDateienAufbauen(r, antwort) {
   const hash = antwort.commits[0].hash;
   r.dateien = antwort.dateien.slice();
   r.hinweise = (antwort.hinweise || []).slice();
-  const plan = aufklappPlan(r.dateien, r.hinweise);
+  const plan = aufklappPlanSeite(r.dateien, r.hinweise, { rest: BUDGET_ZEILEN, gesperrt: false, erste: true });
   const gemerkt = r.klappenJe[hash];
-  r.staende = r.dateien.map((d, i) => ({ offen: gemerkt ? gemerkt[i] : (plan[i] || (d.status !== 'D' && dateiZustand(d, r.hinweise) !== 'patch')), laden: null, fehler: null }));
+  r.staende = r.dateien.map((d, i) => ({ offen: gemerkt ? gemerkt[i] : (plan.offen[i] || (d.status !== 'D' && dateiZustand(d, r.hinweise) !== 'patch')), budgetZu: plan.budgetZu[i], laden: null, fehler: null }));
+  r.gruppenOffen = gruppenAnfang();
 }
+
+/** Klappzustand der Gruppen beim Laden einer Seite oder eines Abschnitts (R00235 FA 4). */
+const gruppenAnfang = () => ({ code: true, test: true, doku: false });
 
 /** Was die Seite gerade zeigt (R00207 FA 2, 4, 8): eine Meldung, das Laden oder den Diff samt Folge. */
 function reviewBild(r) {
@@ -1455,6 +1461,68 @@ function reviewDateiNeu(r, i) {
     }
   }
   reviewKlappenMerken(r);
+}
+
+/* ── Gruppen der Review-Seite (R00235 FA 3, 4, 8; PO Z. 543, 550, 552) ── */
+
+/** Öffnet „Alle aufklappen“ die Datei? Mit `patch`, außer der großen neuen Datei (FA 6); eine Folge-Datei mit einem Schritt mit `patch`. */
+function reviewAufklappbar(d, hinweise) {
+  if (istFolge(d)) return d.schritte.some(x => dateiZustand(x, hinweise) === 'patch');
+  return dateiZustand(d, hinweise) === 'patch' && !grosseNeueDatei(d);
+}
+
+/** Öffnet der Mensch die Gruppe „Doku und Planung“, zeigen sich ihre Dateien offen — gelöschte und große neue bleiben zu (R00235,
+    Entscheidung des planers zu Bild 7 e). Die Gruppen Code und Tests beginnen offen; sie schalten nur sich selbst. */
+function reviewGruppeOeffnen(gruppen, art, dateien, staende, hinweise) {
+  gruppen[art] = true;
+  if (art !== 'doku') return;
+  dateiGruppen(dateien).filter(g => g.art === art).flatMap(g => g.indizes).forEach(i => {
+    if (dateien[i].status !== 'D' && reviewAufklappbar(dateien[i], hinweise)) staende[i].offen = true;
+  });
+}
+
+/** Zeichnet eine Gruppe in der Insel neu; stand der Fokus darin, steht er danach auf demselben Element, sonst auf dem Gruppenkopf. */
+function reviewKnotenNeu(id, html, kopf) {
+  const alt = document.getElementById(id);
+  if (!alt) return;
+  const fokus = alt.contains(document.activeElement) ? document.activeElement.id : null;
+  alt.outerHTML = html;
+  if (fokus === null) return;
+  const ziel = fokus && document.getElementById(fokus) ? '#' + CSS.escape(fokus) : kopf;
+  fokusVersuchen(ziel, null, null, { selektor: ziel, sichtbar: false });
+}
+
+function reviewGruppeNeu(r, art) {
+  const g = dateiGruppen(r.dateien).find(x => x.art === art);
+  if (!g) return;
+  reviewKnotenNeu(`rv-g-${art}`, commitGruppeHtml(g, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen[art]), `#rv-gk-${art}`);
+  reviewKlappenMerken(r);
+}
+
+function reviewGesamtGruppeNeu(r, a, art) {
+  const ab = r.alle.abschnitte[a];
+  if (!dateiGruppen(ab.antwort.dateien).some(x => x.art === art)) return;
+  reviewKnotenNeu(`rv-g${a}-${art}`, abschnittGruppeHtml(ab, a, art, reviewGesamtKontext(r)), `#rv-gk${a}-${art}`);
+  reviewAlleKlappenMerken(r);
+}
+
+/** Der Gruppenkopf schaltet seine Gruppe; der Fokus bleibt auf ihm (PO Z. 552 (b)). `arg` ist die Art oder „<a>:<art>“. */
+function reviewGruppeSchalten(r, arg) {
+  const alle = /^(\d+):(\w+)$/.exec(String(arg));
+  if (alle && r.ansicht === 'alle' && r.alle) {
+    const a = +alle[1], art = alle[2], ab = r.alle.abschnitte[a];
+    if (!ab || ab.status !== 'da') return;
+    if (ab.gruppen[art]) ab.gruppen[art] = false;
+    else reviewGruppeOeffnen(ab.gruppen, art, ab.antwort.dateien, ab.staende, ab.antwort.hinweise);
+    reviewGesamtGruppeNeu(r, a, art);
+    S.ui.fokus = `#rv-gk${a}-${art}`;
+    return;
+  }
+  if (!r.gruppenOffen || !(arg in r.gruppenOffen)) return;
+  if (r.gruppenOffen[arg]) r.gruppenOffen[arg] = false;
+  else reviewGruppeOeffnen(r.gruppenOffen, arg, r.dateien, r.staende, r.hinweise);
+  reviewGruppeNeu(r, arg);
+  S.ui.fokus = `#rv-gk-${arg}`;
 }
 
 /** Bricht die laufende Anfrage `datei=` ab, wenn die Seite ihre Adresse wechselt oder verlassen wird (Code-Review #209 M2): das gibt
@@ -1622,7 +1690,7 @@ function reviewAlleAusListe(r, alle) {
 /** Ein geladener Abschnitt: Klappen aus dem Plan des seitenweiten Budgets, oder wie zuletzt bei gleicher Dateiliste (`alle:<kürzel>`). */
 function reviewAbschnittAufbauen(r, alle, antwort) {
   const dateien = antwort.dateien;
-  const { offen, stand } = aufklappPlanSeite(dateien, antwort.hinweise, alle.plan);
+  const { offen, budgetZu, stand } = aufklappPlanSeite(dateien, antwort.hinweise, alle.plan);
   alle.plan = stand;
   const gemerkt = r.klappenJe[`alle:${antwort.anwendung}`];
   const namen = dateien.map(d => (istFolge(d) ? d.pfad : d.neu ?? d.alt)).join('\n');
@@ -1630,9 +1698,9 @@ function reviewAbschnittAufbauen(r, alle, antwort) {
   const staende = dateien.map((d, i) => {
     let auf = offen[i] || ohnePatch(d) || (istFolge(d) && !d.schritte.some(s => dateiZustand(s, antwort.hinweise) === 'patch'));
     if (gemerkt && gemerkt.namen === namen) auf = gemerkt.offen[i];
-    return { offen: auf, laden: null, fehler: null, wartetAuf: null };
+    return { offen: auf, budgetZu: budgetZu[i], laden: null, fehler: null, wartetAuf: null };
   });
-  return { status: 'da', kuerzel: antwort.anwendung, antwort: { ...antwort, dateien: dateien.slice(), hinweise: (antwort.hinweise || []).slice() }, staende, namen };
+  return { status: 'da', kuerzel: antwort.anwendung, antwort: { ...antwort, dateien: dateien.slice(), hinweise: (antwort.hinweise || []).slice() }, staende, namen, gruppen: gruppenAnfang() };
 }
 
 function reviewAlleAbschnitt(r, alle, a, antwort, fehler) {
@@ -1813,6 +1881,8 @@ function vReviewAlle(r, b) {
     let knopfAlle = '';
     if (mitDateien) knopfAlle = knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle');
     summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span>${knopfAlle}</div>`;
+    const mitListe = alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da' && ab.antwort.dateien.length);
+    if (mitListe.length) summe += reviewAufklapperHtml(r, abschnittSummen(alle.abschnitte).dateien, mitListe.map(([, a]) => `rv-a${a}-rail`).join(' '));
   }
   return `<div class="rv-leiste">${umschalter}${summe}${ansage}</div>${inhalt}`;
 }
@@ -1831,7 +1901,9 @@ function vReview() {
   const r = S.ui.review;
   if (!r) return '<div class="rv" id="review"></div>';
   const b = reviewBild(r);
-  const seite = inhalt => `<div class="rv" id="review">${inhalt}</div>`;
+  let railKlasse = '';
+  if (r.railOffen) railKlasse = ' rail-offen';
+  const seite = inhalt => `<div class="rv${railKlasse}" id="review">${inhalt}</div>`;
   const erneut = ziel => knopf('Erneut versuchen', 'review-erneut', ziel, 'rv-erneut');
   const zurListe = knopf('Zur Liste der Commits', 'review-liste');
   if (b.art === 'ungueltig') return seite(meldungHtml({ rolle: 'status', kopf: 'Verweis ungültig.', text: 'Die Adresse nennt keinen Commit in gültiger Form.', knoepfe: zurListe }));
@@ -1864,10 +1936,22 @@ function reviewDiffHtml(r, b) {
   const summe = `<div class="sum"><span>${dateienWort(c.dateien)} · <span class="pl">+${tausender(c.plus)}</span> <span class="mi">−${tausender(c.minus)}</span></span>${alle}</div>`;
   const eintrag = b.liste.status === 'da' ? b.liste.eintraege.find(e => e.hash && e.hash.toLowerCase() === c.hash.toLowerCase()) : null;
   const leer = !r.dateien.length;
-  const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc) + (leer ? '<p class="rv-leer">Dieser Commit ändert keine Dateien.</p>' : dateilisteHtml(r.dateien, esc));
+  let liste = '<p class="rv-leer">Dieser Commit ändert keine Dateien.</p>';
+  let aufklapper = '';
+  if (!leer) {
+    liste = `<div class="rv-liste" id="rv-liste">${dateilisteHtml(r.dateien, esc)}</div>`;
+    aufklapper = reviewAufklapperHtml(r, r.dateien.length, 'rv-liste');
+  }
+  const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc) + liste;
   const schluessel = reviewInselSchluessel();
-  const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc);
-  return `<div class="rv-leiste">${reviewUmschalterCommit(r)}${navigation}${summe}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
+  const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen);
+  return `<div class="rv-leiste">${reviewUmschalterCommit(r)}${navigation}${summe}${aufklapper}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
+}
+
+/** Aufklapper „Dateien (<n>) und Commits“ (R00235 FA 11, PO Z. 549): bis 1099 px stehen Dateiliste und Commits dahinter, beim Öffnen
+    der Seite zu; ab 1100 px blendet das CSS ihn aus, die Liste steht links. `steuert` sind die Kennungen der Listen. */
+function reviewAufklapperHtml(r, n, steuert) {
+  return `<button type="button" class="btn rv-auf" id="rv-auf" data-act="review-rail" aria-expanded="${r.railOffen}" aria-controls="${steuert}">${symbol('pfeil', ' rv-auf-pf')}Dateien (${tausender(n)}) und Commits</button>`;
 }
 
 /** Kopf der Review-Seite (Artboard `#diff-fenster`): Rückweg „← #nr“, „Review“ als h1, Titel der Aufgabe, „liest nur“. */
@@ -3505,8 +3589,11 @@ async function aktion(a, arg, wert) {
         break;
       }
       case 'review-datei': {
+        // Gruppe und Datei auf, auch wenn eins davon zu war (R00235 FA 8); `scroll-margin` am Kopf hält den Fokusring im Blick
         const r = u.review, ort = reviewOrt(r, arg);
         if (ort) {
+          const ab = r.alle.abschnitte[ort.a], art = dateiArt(dateiPfad(ab.antwort.dateien[ort.i]));
+          if (!ab.gruppen[art]) { reviewGruppeOeffnen(ab.gruppen, art, ab.antwort.dateien, ab.staende, ab.antwort.hinweise); reviewGesamtGruppeNeu(r, ort.a, art); }
           if (!ort.st.offen) { ort.st.offen = true; reviewGesamtDateiNeu(r, ort.a, ort.i); }
           u.fokus = `#rv-dk${ort.a}-${ort.i}`;
           render();
@@ -3516,6 +3603,8 @@ async function aktion(a, arg, wert) {
         }
         const i = +arg;
         if (!r || !r.staende || !r.staende[i]) break;
+        const art = dateiArt(dateiPfad(r.dateien[i]));
+        if (!r.gruppenOffen[art]) { reviewGruppeOeffnen(r.gruppenOffen, art, r.dateien, r.staende, r.hinweise); reviewGruppeNeu(r, art); }
         if (!r.staende[i].offen) { r.staende[i].offen = true; reviewDateiNeu(r, i); }
         u.fokus = '#rv-dk' + i;
         render();
@@ -3523,30 +3612,46 @@ async function aktion(a, arg, wert) {
         if (kopf) kopf.scrollIntoView({ block: 'start' });
         return;
       }
+      case 'review-gruppe': {
+        if (u.review) reviewGruppeSchalten(u.review, arg);
+        break;
+      }
+      case 'review-rail': {
+        const r = u.review;
+        if (!r) break;
+        r.railOffen = !r.railOffen;
+        u.fokus = '#rv-auf';
+        break;
+      }
       case 'review-alle': {
         const r = u.review;
         if (r && r.ansicht === 'alle' && r.alle) {
           const geladen = r.alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da');
           const zuklappen = geladen.some(([ab]) => ab.staende.some(st => st.offen));
-          geladen.forEach(([ab, a]) => ab.staende.forEach((st, i) => {
-            const d = ab.antwort.dateien[i];
-            let soll = false;
-            if (!zuklappen) soll = istFolge(d) ? d.schritte.some(x => dateiZustand(x, ab.antwort.hinweise) === 'patch') : dateiZustand(d, ab.antwort.hinweise) === 'patch';
-            if (st.offen === soll) return;
-            st.offen = soll;
-            reviewGesamtDateiNeu(r, a, i);
-          }));
+          // „Alle einklappen“ schließt nur die Dateien, „Alle aufklappen“ auch die Gruppen (R00235 FA 4, PO Z. 550)
+          geladen.forEach(([ab, a]) => {
+            if (!zuklappen) Object.keys(ab.gruppen).forEach(art => { ab.gruppen[art] = true; });
+            ab.staende.forEach((st, i) => {
+              const soll = !zuklappen && reviewAufklappbar(ab.antwort.dateien[i], ab.antwort.hinweise);
+              if (st.offen === soll) return;
+              st.offen = soll;
+              reviewGesamtDateiNeu(r, a, i);
+            });
+            if (!zuklappen) Object.keys(ab.gruppen).forEach(art => reviewGesamtGruppeNeu(r, a, art));
+          });
           u.fokus = '#rv-alle';
           break;
         }
         if (!r || !r.staende) break;
         const zuklappen = r.staende.some(st => st.offen);
+        if (!zuklappen) Object.keys(r.gruppenOffen).forEach(art => { r.gruppenOffen[art] = true; });
         r.staende.forEach((st, i) => {
-          const soll = zuklappen ? false : dateiZustand(r.dateien[i], r.hinweise) === 'patch';
+          const soll = !zuklappen && reviewAufklappbar(r.dateien[i], r.hinweise);
           if (st.offen === soll) return;
           st.offen = soll;
           reviewDateiNeu(r, i);
         });
+        if (!zuklappen) Object.keys(r.gruppenOffen).forEach(art => reviewGruppeNeu(r, art));
         u.fokus = '#rv-alle';
         break;
       }

@@ -135,4 +135,104 @@ function reviewVorbereiten(rep, { titel = {} } = {}) {
   };
 }
 
-module.exports = { reviewRepository, reviewVorbereiten, BOESE, ZWEIG_60 };
+/* ── Ausgangslage von R00235 (Übersicht der Review-Seite): K-Art, K-Rand, K-Budget, K-Doku in `kd`, Aufgabe #3 in `kd` und `wb` ── */
+
+const reihe = (n, kopf) => Array.from({ length: n }, (_, i) => `${kopf} ${i + 1}\n`).join('');
+let uhr = 0;
+/** Schreibt `aenderungen` (Pfad → Inhalt, null löscht, [alt, neu] benennt um) und committet; liefert den Hash. */
+function aenderungsCommit(r, titel, aenderungen) {
+  uhr++;
+  const datum = `2026-06-01T${String(8 + uhr).padStart(2, '0')}:00:00+00:00`;
+  for (const [pfad, inhalt] of Object.entries(aenderungen)) {
+    const ort = path.join(r, pfad);
+    if (inhalt === null) { fs.rmSync(ort); continue; }
+    if (Array.isArray(inhalt)) { fs.mkdirSync(path.dirname(path.join(r, inhalt[0])), { recursive: true }); fs.renameSync(ort, path.join(r, inhalt[0])); fs.writeFileSync(path.join(r, inhalt[0]), inhalt[1]); continue; }
+    fs.mkdirSync(path.dirname(ort), { recursive: true });
+    fs.writeFileSync(ort, inhalt);
+  }
+  gitAls(r, ADA, datum, 'add', '-A');
+  gitAls(r, ADA, datum, 'commit', '-q', '-m', titel);
+  return gitAls(r, ADA, datum, 'rev-parse', 'HEAD');
+}
+
+const ersetzt = (text, von, bis, neu) => { const z = text.split('\n'); z.splice(von, bis - von, ...neu); return z.join('\n'); };
+
+/** `kd`: Vorgänger B0 mit allen alten Fassungen, darauf K-Art, K-Rand, K-Budget, K-Doku und K3 (Aufgabe #3); `wb`: W0, W3. */
+function uebersichtBauen(basis) {
+  const r = path.join(basis, 'KD'), s = path.join(basis, 'WB');
+  for (const ort of [r, s]) {
+    fs.mkdirSync(path.join(ort, 'Dokumentation/Planung'), { recursive: true });
+    fs.writeFileSync(path.join(ort, 'Dokumentation/Planung/app.md'), '# App\n');
+    gitAls(ort, ADA, '2026-06-01T08:00:00+00:00', 'init', '-q', '-b', 'main');
+  }
+  const alt = {
+    kontrast: reihe(6, 'kontrast'), r00219: reihe(8, 'ansicht'), css: reihe(8, '.c'), sperre: reihe(20, 'sperre'),
+  };
+  const h = { r, s };
+  h.b0 = aenderungsCommit(r, 'B0 Vorgänger', {
+    'Anforderungen/R00001.md': '# R00001\n', 'Dokumentation/Gelerntes.md': '# Gelerntes\n', 'Schaetzungen/S00001.md': '# S00001\n',
+    'e2e/einheit/kontrast.test.js': alt.kontrast, 'e2e/tests/r00219-ansicht.spec.js': alt.r00219, 'web/kd-app.css': alt.css,
+    'e2e/tests/r00150-alte-leiste.spec.js': reihe(118, 'leiste'), 'e2e/einheit/sperre.test.js': alt.sperre, 'tests/nur-neu.rs': reihe(3, 'nur'),
+    'src/lang.rs': 'fn lang() {}\n',
+    'Dokumentation/a.md': '', 'src/b.rs': '', 'src/e.rs': '', 'src/f.rs': '', 'tests/c.rs': '', 'tests/g.rs': '',
+    'Dokumentation/x.md': '# x\n', 'README.md': '# kd\n', 'src/a.rs': 'fn a() {}\n',
+  });
+  h.kArt = aenderungsCommit(r, '[R00229] B1187: Sperrform der Leseknöpfe', {
+    'Anforderungen/R00001.md': '# R00001\nneu\n', 'Dokumentation/Gelerntes.md': '# Gelerntes\nneu\n', 'Schaetzungen/S00001.md': '# S00001\nneu\n',
+    'e2e/einheit/kontrast.test.js': ersetzt(alt.kontrast, 2, 3, ['kontrast neu a', 'kontrast neu b']),
+    'e2e/einheit/sperrform.test.js': reihe(143, 'sperrform'),
+    'e2e/tests/r00219-ansicht.spec.js': ersetzt(alt.r00219, 3, 5, ['ansicht neu a', 'ansicht neu b']),
+    'e2e/tests/r00229-sperrform.spec.js': reihe(150, 'r00229'),
+    'web/kd-app.css': ersetzt(alt.css, 3, 6, ['.neu a', '.neu b']),
+  });
+  h.kRand = aenderungsCommit(r, 'K-Rand', {
+    'e2e/tests/r00150-alte-leiste.spec.js': null,
+    'e2e/einheit/sperre.test.js': ['e2e/einheit/sperrform-alt.test.js', ersetzt(alt.sperre, 10, 12, ['sperre neu a', 'sperre neu b', 'sperre neu c'])],
+    'tests/nur-neu.rs': reihe(3, 'nur') + reihe(4, 'dazu'),
+    'tests/fixtures/genau-500.json': reihe(500, 'g500'), 'tests/fixtures/genau-501.json': reihe(501, 'g501'),
+    'src/grosse-antwort.json': reihe(1240, 'antwort'), 'src/lang.rs': 'fn lang() {}\n' + reihe(600, '// lang'),
+    'Dokumentation/neu.md': reihe(600, 'neu'),
+  });
+  h.kBudget = aenderungsCommit(r, 'K-Budget', {
+    'Dokumentation/a.md': reihe(2499, 'a'), 'src/b.rs': reihe(2499, 'b'), 'src/d.rs': reihe(600, 'd'), 'src/e.rs': reihe(2499, 'e'),
+    'src/f.rs': reihe(2499, 'f'), 'tests/c.rs': reihe(2499, 'c'), 'tests/g.rs': reihe(2500, 'g'),
+  });
+  h.kDoku = aenderungsCommit(r, 'K-Doku', { 'Dokumentation/x.md': '# x\nneu\n', 'README.md': '# kd\nneu\n' });
+  h.k3 = aenderungsCommit(r, 'K3', { 'src/a.rs': 'fn a() { neu() }\n', 'tests/a_test.rs': 'fn t() {}\n', 'README.md': '# kd\nneu\nauch\n' });
+  aenderungsCommit(s, 'W0 Vorgänger', { 'b.js': 'b();\n' });
+  h.w3 = aenderungsCommit(s, 'W3', { 'b.js': 'b(1);\n', 'docs/b.md': '# b\n' });
+  return h;
+}
+
+let uebersicht = null;
+/** Ein Satz Repositories je Prozess, am Prozessende entfernt. */
+function uebersichtRepository() {
+  if (!uebersicht) {
+    const basis = basisAnlegen();
+    uebersicht = uebersichtBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return uebersicht;
+}
+
+/** Aufgaben: #1 K-Art und K-Doku (Blättern), #2 K-Rand, #3 K3 und W3, #4 K-Budget, #5 K-Doku; Register `kd`, `wb`. */
+function uebersichtVorbereiten(h) {
+  const aufgaben = { 1: [`kd:${h.kArt}`, `kd:${h.kDoku}`], 2: [`kd:${h.kRand}`], 3: [`kd:${h.k3}`, `wb:${h.w3}`], 4: [`kd:${h.kBudget}`], 5: [`kd:${h.kDoku}`] };
+  const register = EINSTELLUNGEN_KOPF
+    + `    kd: {name: KD, wbs: ${h.r}/Dokumentation/Planung/app.md, requirements: ""}\n`
+    + `    wb: {name: WB, wbs: ${h.s}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
+  const dateien = { 'kanbanD.md': register };
+  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/000${nr}-aufgabe-${nr}.md`] = aufgabeDatei(nr, `Aufgabe ${nr}`, verweise);
+  dateien['boards/entwicklung.md'] = `# Entwicklung\n\n## Zu erledigen\n\n${Object.keys(aufgaben).map(n => `- #${n}`).join('\n')}\n\n## In Arbeit\n\n## Erledigt\n`;
+  return ordner => {
+    for (const [rel, inhalt] of Object.entries(dateien)) {
+      fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
+      fs.writeFileSync(path.join(ordner, rel), inhalt);
+    }
+    execFileSync('git', ['-C', ordner, 'init', '-q']);
+    execFileSync('git', ['-C', ordner, 'add', '-A']);
+    execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-m', 'eingerichtet']);
+  };
+}
+
+module.exports = { reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, BOESE, ZWEIG_60 };
