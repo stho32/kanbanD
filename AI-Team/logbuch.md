@@ -1839,3 +1839,9 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Härtung, nicht gebaut:** `&text[..60]` schneidet an der Bytegrenze; `holen` ist doppelt (`statisch_faerben.rs`); die Fehlerliste ist unsortiert.
 - **Offen, im Backlog:** #250 Lizenzhinweise der 161 Rust-Pakete, wartet auf die Freigabe des Betreibers.
 | 2026-11-22 | #243 | Erledigt | director | Retrospektive | – | 1 Lehre (node_modules nie verlinken) |
+| 2026-11-22 | #247 | Entwicklung | entwickler | bestanden | 1 h 17 min | Gate cargo 1222, node 1527, PW 2367/1 Wackler r00223:285 · claude · sonnet · Lauf 247-entwickler-1 · 1,69 $ · Karte gesamt 5,76 $ |
+| 2026-11-22 | #247 | Auto-Reviews | code-reviewer | bestanden | 5 min | kein Muss; anforderung_falsch AK 5 Commits · claude · sonnet · Lauf 247-code-reviewer-1 · 1,31 $ · Karte gesamt 7,07 $ |
+| 2026-11-22 | #247 | Detailplanung | planer | bestanden | 1 min | AK 5 berichtigt · claude · opus · Lauf 247-planer-3 · 0,51 $ · Karte gesamt 7,58 $ |
+| 2026-11-22 | #247 | Auto-Reviews | ux-reviewer | bestanden | 3 min | kein Muss, kein Sollte · claude · sonnet · Lauf 247-ux-reviewer-2 · 1,17 $ · Karte gesamt 8,75 $ |
+| 2026-11-22 | #246 | Architektur | architekt | bestanden | 11 min | ADR-0026 N4, drei Ursachen · claude · opus · Lauf 246-architekt-1 · 3,82 $ · Karte gesamt 3,82 $ |
+| 2026-11-22 | #246 | Detailplanung | product-owner | bestanden | 1 min | PO Z. 516 Zuschnitt a · claude · opus · Lauf 246-product-owner-1 · 0,62 $ · Karte gesamt 4,44 $ |
