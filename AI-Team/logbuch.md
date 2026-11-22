@@ -1987,3 +1987,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Gut:** Gefunden hat den Fehler der Betreiber, an einem einzigen Beispiel. Der architekt hat ihn in 400 Protokollen gezählt: 27 % der Läufe waren betroffen. Die Literale vor der Karte, der Fuzz mit 40.000 Läufen im Code-Review und der Vergleich am Altbestand (57 Transkripte) im Legacy-Review belegen, dass der Rückfall ohne Kennung unverändert bleibt.
 - **Lehre:** Ein Format, das Antworten nur über die Reihenfolge zuordnet, braucht von Anfang an eine Kennung, sobald der Erzeuger parallel arbeiten kann.
 | 2026-11-22 | #262 | Erledigt | director | Retrospektive | – | 1 Lehre (Kennung statt Reihenfolge bei parallelem Erzeuger) |
+| 2026-11-22 | #263 | Detailplanung | planer | bestanden | 6 min | R00238, I0228 B1237–B1244 · claude · opus · Lauf 263-planer-1 · 2,46 $ · Karte gesamt 11,18 $ |
+| 2026-11-22 | #263 | Detailplanung | ux-reviewer | bestanden | 2 min | kein Muss, 6 Sollte · claude · sonnet · Lauf 263-ux-reviewer-1 · 0,48 $ · Karte gesamt 11,66 $ |
+| 2026-11-22 | #263 | Detailplanung | planer | bestanden | 1 min | R00238 nachgeschärft, 550ab6c8 · claude · sonnet · Lauf 263-planer-2 · 0,25 $ · Karte gesamt 11,91 $ |
