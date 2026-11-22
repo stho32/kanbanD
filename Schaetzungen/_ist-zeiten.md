@@ -1045,3 +1045,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #234 R00225 | B1190 Nacharbeit 1: verdorbene Gruppen bis zum Fixpunkt (Arbeitsliste je Gruppe), `teilen` mit `partition`, Modultests mit Gruppe je Pfad und Kette | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #234 R00225 | B1191 Nacharbeit 1: `datei=` mit Netto-Liste und Zähler bis 20 MB (Testnaht `grenze_netto_datei`), 404 hinter dem Schnitt nach PO Z. 514, README-Halbsatz | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-22 | Karte #234 R00225 | Nacharbeit 1, Legacy-Review Muss 1 (ohne eigene Bubble): eigene Versionskonstante der Einteilung im Gesamt-ETag, Probe gegen das Programm vor der Karte | Standard | — | 0,3h | 0,3h | autonom |
+| 2026-11-22 | Karte #234 R00225 | B1192 Nacharbeit 1: Mutanten m1–m9 (dazu m6b) in eigener Kopie, volles Gate im Worktree, R00225 abgeschlossen | Standard | 0,5-1h | 0,9h | 0,9h | autonom |

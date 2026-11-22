@@ -1,6 +1,6 @@
 ---
 id: R00225
-status: In Arbeit
+status: Erledigt
 datum: 2026-11-21
 ursprung: Bug-Report
 ursprungslauf: R00208
@@ -97,10 +97,10 @@ Ohne geänderte Erwartung grün:
   - Fall N: Der Abschnitt zeigt „2 Commits · 2 Dateien“, keine Datei `d/x`, keinen Satz, der mit „Zwischen den Commits der Aufgabe“ beginnt, und nirgends „Fremde Commits haben diese Datei“. Heute: `d/x` mit „Folge · 2 Commits“ und beiden Sätzen, einer davon mit „0 fremde Commits“.
   - Fall N+F: Wörtlich steht „Zwischen den Commits der Aufgabe liegt 1 fremder Commit. Er berührt Dateien der Aufgabe; 1 Datei steht deshalb als Folge der Schritte der Aufgabe. Die Änderungen des fremden Commits sind nicht zu sehen.“ Aufgeklappt steht „Fremde Commits haben diese Datei …“ genau einmal, und zwar an `g`. `d/x` steht nicht da.
   - Fall F: Die Sätze stehen wie in R00210 AK 2 und AK 3.
-- [ ] **AK 6 Abgeschnittene Netto-Liste (N8.3 Punkt 2, Pre-Mortem j):** Ist die Netto-Liste abgeschnitten (`netto_vollstaendig` falsch), werden unbelastete Kartenpfade nicht zu Folge. Sie verschwinden auch nicht ohne Zählung: Sie zählen über `gesamt` in `dateien_gekappt`. Der Test läuft mit einer Karte über der Kappe von 2.000 Einträgen und einem fremden Commit an einer anderen Datei der Karte, oder mit verkleinerter Grenze wie R00213 AK 4. `gesamt` ist größer oder gleich der Zahl der netto geänderten Dateien der Karte.
+- [x] **AK 6 Abgeschnittene Netto-Liste (N8.3 Punkt 2, Pre-Mortem j):** Ist die Netto-Liste abgeschnitten (`netto_vollstaendig` falsch), werden unbelastete Kartenpfade nicht zu Folge. Sie verschwinden auch nicht ohne Zählung: Sie zählen über `gesamt` in `dateien_gekappt`. Der Test läuft mit einer Karte über der Kappe von 2.000 Einträgen und einem fremden Commit an einer anderen Datei der Karte, oder mit verkleinerter Grenze wie R00213 AK 4. `gesamt` ist größer oder gleich der Zahl der netto geänderten Dateien der Karte.
   - **D1 (hinter dem Schnitt, ADR-0032 N8.6 „Durchsetzung“, wörtlich):** Ausgangslage von AK 6 (K1 legt `v/00000.txt`…`v/11999.txt` an und ändert `a.txt` Zeile 2; F fremd Zeile 6; K2 Zeile 11). `datei=v/11999.txt` ergibt 200 mit dem Netto-Eintrag (`A`), `datei=v/00000.txt` weiter 200, die Liste ohne `datei=` unverändert (`dateien_gekappt`). Heute: 404 „… in keinem Kartencommit …“.
   - **D2 (auch über 20 MB, N8.6, wörtlich):** D1 mit verkleinerter Grenze für `datei=` (wie R00213 AK 4) → 404, `fehler` enthält nicht „in keinem Kartencommit“ und nennt `commit=`. Gegenprobe: `datei=nicht/da.txt` → 404 mit „in keinem Kartencommit“. Dazu ist `fehler` der 404 von `datei=v/11999.txt` Zeichen für Zeichen gleich dem Text aus PO Z. 514, mit der Nummer der Aufgabe für `<nr>`: „die Datei steht in Kartencommits von #<nr>, die Liste der Änderungen ist aber zu groß, um zu sagen, ob sie im Gesamtbild eine Änderung hat — die Schritte mit commit= und datei= laden“. Der Text enthält keine Zahl.
-- [ ] **AK 7 Mutanten (N8.4):** Jeder Mutant wird von einem benannten Test getötet.
+- [x] **AK 7 Mutanten (N8.4):** Jeder Mutant wird von einem benannten Test getötet.
   - (m1) Unbelastete Pfade ohne Netto-Eintrag bleiben Folge → AK 1 rot.
   - (m2) Alle unbelasteten Pfade fallen heraus, auch die aus verworfenen Netto-Einträgen → `ak07_unbelasteter_pfad_aus_verworfenem_netto_eintrag_bleibt_folge` rot (berichtigt 2026-11-22: `b2_rest_zwilling_ausserhalb_der_netto_eintraege` tötet ihn nicht, seine verworfenen Einträge tragen nur belastete Pfade).
   - (m3) `fremd_dazwischen` ohne die Bedingung `commits ≥ 1` → AK 3 rot.
@@ -113,12 +113,12 @@ Ohne geänderte Erwartung grün:
   Prozessgrenze (höchstens 15 ohne `datei=`) und Lastprobe von R00208 bleiben grün; m2 (ak07) und AK 1–4 bleiben grün (ADR-0032 N8.6). Mutanten laufen in einer eigenen Kopie, nicht im Worktree der Karte.
 
   Lässt sich ein Mutant nicht töten, meldet der entwickler das mit Begründung.
-- [ ] **AK 8 README „Für Agenten“:** Der Abschnitt Gesamt-Diff sagt in einem Satz, dass eine Datei, die die Karte ändert und selbst zurücknimmt, nicht erscheint und dass `datei=` auf sie 404 ergibt. Außerdem sagt er, dass `fremd_dazwischen` nur mit mindestens einem fremden Commit steht. Der Satz zu `datei=` sagt in einem Halbsatz, dass ein Pfad in Kartencommits ohne Eintrag 404 mit eigenem Text ergibt, wenn die Liste der Änderungen auch mit `datei=` zu groß ist, um zu sagen, ob er im Gesamtbild eine Änderung hat, und dass der Text auf `commit=` und `datei=` verweist (ADR-0032 N8.6 Punkt 4 (d), PO Z. 514).
-- [ ] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1–3) sind ohne Fix rot und mit Fix grün, ebenso G1, G2, D1 und D2 (AK 6, AK 10) am Stand 7e3d9f47. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung, die Lastprobe von R00208 (p95 unter 500 ms) und die Prozessgrenze (höchstens 15 Git-Prozesse).
+- [x] **AK 8 README „Für Agenten“:** Der Abschnitt Gesamt-Diff sagt in einem Satz, dass eine Datei, die die Karte ändert und selbst zurücknimmt, nicht erscheint und dass `datei=` auf sie 404 ergibt. Außerdem sagt er, dass `fremd_dazwischen` nur mit mindestens einem fremden Commit steht. Der Satz zu `datei=` sagt in einem Halbsatz, dass ein Pfad in Kartencommits ohne Eintrag 404 mit eigenem Text ergibt, wenn die Liste der Änderungen auch mit `datei=` zu groß ist, um zu sagen, ob er im Gesamtbild eine Änderung hat, und dass der Text auf `commit=` und `datei=` verweist (ADR-0032 N8.6 Punkt 4 (d), PO Z. 514).
+- [x] **AK 9 Bug-Vorlage:** Die Reproduktionstests (AK 1–3) sind ohne Fix rot und mit Fix grün, ebenso G1, G2, D1 und D2 (AK 6, AK 10) am Stand 7e3d9f47. Der Fehler der Karte tritt im Szenario der User Story nicht mehr auf. Alle Tests aller Ebenen sind grün, darin die Regressionstests oben ohne geänderte Erwartung, die Lastprobe von R00208 (p95 unter 500 ms) und die Prozessgrenze (höchstens 15 Git-Prozesse).
 
 ### Gruppen (Code-Review #234 Muss 1, ADR-0032 N8.6)
 
-- [ ] **AK 10 Gruppen (N8.6 „Durchsetzung“, wörtlich):** Jede Gruppe ist ganz netto oder ganz Folge, auch wenn ein Gruppenpartner herausfällt oder ein Pfad der Gruppe in einem verworfenen Netto-Eintrag steht.
+- [x] **AK 10 Gruppen (N8.6 „Durchsetzung“, wörtlich):** Jede Gruppe ist ganz netto oder ganz Folge, auch wenn ein Gruppenpartner herausfällt oder ein Pfad der Gruppe in einem verworfenen Netto-Eintrag steht.
   - **G1 (Gruppenpartner, Probe des Code-Reviews):** A0 legt `p` an (zehn Zeilen `x0`…`x9`); K1 `git mv p q`; F (fremd) legt `b` mit dem Inhalt von `p` an; K2 löscht `q` und hängt an `b` die Zeile `zusatz` an; Karte `kd:<K1>`, `kd:<K2>`. Erwartet: ein Folge-Eintrag mit den Schritten K1 `R p → q` und K2 `D q`, dazu `b` Folge mit K2; `fremd_dazwischen {commits 1, dateien 2}`; `datei=p` und `datei=q` ergeben 200. Heute: nur `b`, `dateien 1`, `datei=p` 404.
   - **G2 (gespaltene Gruppe):** wie G1, aber K2 schreibt `q` ganz neu (zehn Zeilen `y0`…`y9`, unter 50 % ähnlich) statt es zu löschen. Erwartet: ein Folge-Eintrag mit K1 `R p → q` und K2 `M q`, kein Netto-Eintrag `q`, `b` Folge; `fremd_dazwischen {commits 1, dateien 2}`; `datei=p` 200. Heute: `q` netto `A`, `p` nirgends.
 
