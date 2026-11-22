@@ -1848,7 +1848,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 /* „Teuerste Schritte“ (R00238 FA 8): Wert rechts, der Anlass gedämpft unter der Beschriftung, beides umbricht statt abzuschneiden */
 .lv-teu button{grid-template-areas:"was d" "nach d";row-gap:0}
 .lv-teu .was{grid-area:was}.lv-teu .d{grid-area:d}
-.lv-teu .nach{grid-area:nach;font-size:11.5px;color:var(--kd-muted);overflow-wrap:anywhere;min-width:0}
+.lv-teu .nach{grid-area:nach;padding:0;font-size:11.5px;color:var(--kd-muted);overflow-wrap:anywhere;min-width:0}
 .lv-gl h2+p.lv-erkl{margin:0 0 2px;font-size:11.5px;line-height:1.4;color:var(--kd-muted);overflow-wrap:anywhere}
 .lv-gl ol+h2{margin-top:var(--kd-s3)}
 @media (min-width:641px) and (max-width:980px){
