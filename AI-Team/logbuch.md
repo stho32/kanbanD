@@ -1938,3 +1938,24 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
   - Jeder Bericht bekommt einen eigenen Dateinamen.
   - Vor `wache gruen` CARGO_EXIT und PW_EXIT lesen.
 | 2026-11-22 | #252 | Erledigt | director | Retrospektive | – | 3 Lehren (Reviewer aus der Tabelle, Bericht je Lauf eigener Name, Exit-Codes vor gruen lesen) |
+| 2026-11-22 | #244 | Entwicklertest | entwicklertester | bestanden | 4 min | US-1–3 bestanden, US-4 nicht beobachtbar · claude · sonnet · Lauf 244-entwicklertester-1 · 0,61 $ · Karte gesamt 9,21 $ |
+| 2026-11-22 | #255 | Detailplanung | planer | bestanden | 8 min | R00236, I0226 B1224–B1230 · claude · opus · Lauf 255-planer-1 · 3,16 $ · Karte gesamt 3,16 $ |
+| 2026-11-22 | #255 | Detailplanung | product-owner | bestanden | 1 min | Z. 555–557 · claude · opus · Lauf 255-product-owner-1 · 0,56 $ · Karte gesamt 3,72 $ |
+| 2026-11-22 | #255 | Detailplanung | architekt | befund | 4 min | ADR-0042 N2; kriterium_fehlt Folge-Datei · claude · opus · Lauf 255-architekt-1 · 1,78 $ · Karte gesamt 5,50 $ |
+| 2026-11-22 | #255 | Detailplanung | planer | bestanden | 4 min | R00236 nachgeschärft, 269f0bfd · claude · opus · Lauf 255-planer-2 · 1,47 $ · Karte gesamt 6,97 $ |
+| 2026-11-22 | #255 | Detailplanung | ux-reviewer | befund | 3 min | Muss F1, kriterium_fehlt · claude · sonnet · Lauf 255-ux-reviewer-1 · 0,52 $ · Karte gesamt 7,49 $ |
+| 2026-11-22 | #251 | Nacharbeit | entwickler | bestanden | 54 min | Nacharbeit 2: Sprung landet im Blick · claude · opus · Lauf 251-entwickler-3 · 3,99 $ · Karte gesamt 32,65 $ |
+| 2026-11-22 | #255 | Detailplanung | product-owner | bestanden | 2 min | Z. 558–566 · claude · opus · Lauf 255-product-owner-2 · 0,72 $ · Karte gesamt 8,21 $ |
+| 2026-11-22 | #251 | Entwicklertest | rechtschreib-reviewer | bestanden | 2 min | kein Muss · claude · sonnet · Lauf 251-rechtschreib-reviewer-1 · 0,69 $ · Karte gesamt 33,34 $ |
+| 2026-11-22 | #255 | Detailplanung | planer | bestanden | 4 min | R00236 nach UX-Vorprüfung, b9511542 · claude · opus · Lauf 255-planer-3 · 1,36 $ · Karte gesamt 9,57 $ |
+| 2026-11-22 | #251 | Entwicklertest | entwicklertester | bestanden | 6 min | Nachprüfung: Sprung im Blick · claude · sonnet · Lauf 251-entwicklertester-2 · 0,26 $ · Karte gesamt 33,60 $ |
+| 2026-11-22 | #255 | Detailplanung | ux-reviewer | bestanden | 1 min | Nachprüfung: F1 erledigt · claude · sonnet · Lauf 255-ux-reviewer-2 · 0,18 $ · Karte gesamt 9,75 $ |
+| 2026-11-22 | #251 | Entwicklertest | architekt | bestanden | 2 min | ADR-0041 N1 nach dem Bau, A00009 Ist · claude · opus · Lauf 251-architekt-2 · 0,95 $ · Karte gesamt 34,55 $ |
+
+**Retrospektive #244** (Rücknahme ohne Index-Sperre, R00233, ADR-0005 N4; 2026-11-22; Gate auf main ganz grün, ausgeliefert. Karte gesamt rund 9 $.)
+- **Gut:** Die Rücknahme schreibt Dateien aus HEAD per cat-file über eine Nachbardatei zurück, ohne checkout. Alle Reviews und der Entwicklertest liefen ohne Muss. Der Entwicklertest stellte echte Fehler über die Oberfläche her: Sperre, Haken, schreibgeschützter Ordner.
+- **Härtung offen:**
+  - Interne Fehler werden nicht protokolliert (ADR-0001).
+  - Der Zweig „Index-Reset scheitert und weicht ab“ hat keinen Test.
+- **Director:** Während die Wache offen war, habe ich `dokumente 255` aufgerufen, entgegen der Regel. Auf main kamen nur Dokumente; Tests lesen die echte WBS nicht, also ohne Folge. **Lehre:** Vor `dokumente` mit `wiederaufnahme` bzw. dem Journal prüfen, ob eine Wache offen ist.
+| 2026-11-22 | #244 | Erledigt | director | Retrospektive | – | 1 Lehre (dokumente nie bei offener Wache) |
