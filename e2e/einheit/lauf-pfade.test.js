@@ -110,6 +110,16 @@ test('AK 3: Pfade in Überschrift, Liste, Zitat und Tabelle einer Nachricht; Mar
   assert.deepStrictEqual(links(html).map(x => x.href), ['vscode://file/w/demo/a.js', 'vscode://file/w/demo/b.js', 'vscode://file/w/demo/c.js', 'vscode://file/w/demo/d.js', 'https://a.b/w/demo/e.js']);
 });
 
+test('AK 3: ein Pfad aus einem Teil ist kein Link, ein Code mit Satzzeichen am Ende bleibt Code, die Adresse eines Markdown-Links bleibt eine', () => {
+  const pfade = nachrichtPfade(wurzelnT14());
+  assert.deepStrictEqual(links(markdownInline('siehe /etc und /w/x', { pfade })).map(l => l.href), ['vscode://file/w/x']);
+  const code = markdownInline('`/w/demo/a.js.` und `web/a.js:`', { pfade });
+  assert.deepStrictEqual(links(code), []);
+  assert.match(code, /<code>\/w\/demo\/a\.js\.<\/code> und <code>web\/a\.js:<\/code>/);
+  const md = markdownInline('[Text](/w/demo/a.js)', { pfade });
+  assert.strictEqual(md, markdownInline('[Text](/w/demo/a.js)'), 'die Adresse in ](…) ist kein Pfad');
+});
+
 /* ── AK 4: Pfadfeld im Aufruf ── */
 
 test('AK 4: Read an offset, Edit an der ersten Zeile der Form cat -n, Write und NotebookEdit ohne Zeile', () => {
@@ -128,7 +138,11 @@ test('AK 4: command, path von Grep und ein file_path mit U+202E tragen keinen Li
   const grep = satz.aufrufSatz('Grep', t14.T14[9].text, zeile, pfadeT14());
   assert.deepStrictEqual(links(grep), []);
   assert.ok(sichtbar(grep).includes('path:‹demo›/src'), sichtbar(grep));
-  assert.deepStrictEqual(links(satz.aufrufSatz('Read', t14.T14[13].text, zeile, pfadeT14())), []);
+  const bidi = satz.aufrufSatz('Read', t14.T14[13].text, zeile, pfadeT14());
+  assert.deepStrictEqual(links(bidi), []);
+  assert.doesNotMatch(bidi, /lv-mk/, 'ein Pfad mit U+202E steht als Text wie heute, ohne Marke (FA 6)');
+  assert.ok(bidi.includes('/w/demo/⟨U+202E⟩evil.js'));
+  assert.doesNotMatch(satz.markenImText('cat /w/demo/\u202Ex.js', wurzelnT14(), zeile), /lv-mk/);
 });
 
 test('AK 4: Read ohne offset, Edit mit Ergebnis ohne cat -n und Edit ohne Ergebnis ergeben einen Link ohne Zeile', () => {
