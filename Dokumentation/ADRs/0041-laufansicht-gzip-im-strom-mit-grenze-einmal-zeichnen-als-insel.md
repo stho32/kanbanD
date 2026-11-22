@@ -135,3 +135,82 @@ Qualitätsziele (Szenarien mit Maß):
 - D0009 `#laufansicht` (Bilder 1–6 und Notizen)
 - `web/adresse.js:21–39`, `web/app.js:1078–1110`, `:1725–1760`, `web/diff.js:62–196`, `web/laeufe.js`, `src/dienst/transkripte.rs:318–340`, `src/web/mod.rs:1395–1406`, `tests/transkripte_api.rs:430`
 - Compression Streams: https://compression.spec.whatwg.org/ (abgerufen 2026-11-21). Das Verhalten bei Daten hinter dem Ende eines Glieds ist hier in Chromium und Node 20 geprobt, nicht aus der Spezifikation übernommen.
+
+## Nachtrag 2026-11-22 N1: Auswertung des Laufs — Dauer, Denkzeit, Paare, Fehler, Bericht zuerst, Blättern; ohne Abschnitte und ohne neues Feld (Karte #251)
+
+**Status bleibt `Akzeptiert`.** Karte #251 (Auftrag des Betreibers, Entwurf „Laufansicht – Vorschlag“) soll zwei Fragen beantworten: „War das ein sinnvolles Vorgehen?“ und „Was hat am längsten gedauert?“. Alles Neue wird **aus den gelesenen Einträgen gerechnet**. Format (PO Z. 371), Server und OpenAPI bleiben, wie sie sind. Punkte 1–7 gelten weiter.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #251, Lauf 251-architekt-1)
+**Erprobt durch**: Auswertung der 9 Transkripte an #247 (Instanz :7422, nur gelesen, 2026-11-22 06:25) mit Wegwerf-Skripten in der Ablage der Factory `gemeinsam/scratchpad/arch-251/`. Eine Messprobe in Node 20 lief bei Last 1,5–2,8 mit `nice -n 10`.
+
+### Belegt (Probe an #247)
+
+- In allen 534 Einträgen ist `zeit` gesetzt, die Zeitpunkte steigen monoton an. `name` steht nur an Aufrufen, **nie an Ergebnissen**.
+- Es gibt 250 Aufrufe und 250 Ergebnisse. Fünfmal kommen zwei Aufrufe vor ihren Ergebnissen (`A A E E`), und die Ergebnisse folgen dann der Reihenfolge der Aufrufe.
+- Die Aufteilung der Zeit zeigt, worauf es ankommt. Planer #247-1: 330 s gesamt, davon 270 s Denkzeit des Agenten und 60 s Werkzeug. Entwickler: 77 min gesamt, davon 72 min Werkzeug, vor allem Wartebefehle mit je etwa 180 s.
+- Fünf Ergebnisse sind Fehler. Drei beginnen mit `Exit code <n>` (n = 144, 2, 1), zwei mit `<tool_use_error>`. Ergebnisse, die nur irgendwo „error“ enthalten, sind keine Fehler.
+- **Commits stehen im Transkript nicht in fester Form**: `git commit -q` gefolgt von `git log --oneline`, ein Heredoc mit Commit. Fest steht dagegen der Bericht: Jeder der 9 Läufe hat einen Eintrag des Agenten mit der Zeile `Ergebnis: bestanden`. Sie steht im JSON-Text des letzten Aufrufs (`{"message": "Ergebnis: …"}`) oder in einer Nachricht. Diese Zeile gehört zum Vertrag der Factory (Schluss jedes Berichts mit `Ergebnis:` und `Commits:`).
+- An der Karte stehen **Ergebnis und Commits nicht je Lauf**. `a.commits` gilt für die ganze Karte, `durchlaeufe` ist leer, und die Timer in `zeiten` tragen andere Kennungen (`arch@…` statt `architekt@…`). Die Kosten von #247 stehen nur in der Altform `cost.items`, mit dem Text „architekt (247-architekt-1)“ und ohne Kennung. `kosteneintraege` ist leer.
+- Messprobe: `laufAuswerten` (Paaren, Lücken, Kategorien, Top 3, Kurzbefehl) läuft über 20.000 Zeilen (58 MB, also mehr, als die Bytegrenze zulässt) in **38–61 ms**.
+
+### Optionen zu den Abschnitten (Technikfrage 2)
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **W — weglassen; Zeitachse und Gliederung aus den Schritten** (gewählt) | kein neues Feld, keine Regel, die still falsch liegen kann; „was dauerte am längsten“ beantworten Top 3, Dauer je Zeile und die Aufteilung Werkzeug/Denken/Warten | weicht vom Entwurf ab (Abschnitte als Balken und in der Gliederung) — Frage an den PO |
+| R — ableiten aus Werkzeugen und Pfaden (etwa „liest“, „baut“, „prüft“) | sieht aus wie der Entwurf | Die Regeln hängen am Projekt und an der Rolle. Ein falsch zugeordneter Abschnitt ist nicht zu erkennen (verfehlt Q2). Fast alle Aufrufe heißen `Bash`, und Agentennachrichten als Trenner gibt es nur 0–9-mal je Lauf |
+| F — neues optionales Feld `abschnitt` im Format | sauber, wenn jemand es setzt | Auch der Erzeuger kennt keine Abschnitte, denn der Agent meldet keine. Das Feld bliebe leer oder würde ebenso geraten. Dazu kämen eine Änderung des Formats, ein Umwandler und Altbestand ohne das Feld |
+
+Ein späteres Feld bliebe möglich, denn der Leser übergeht unbekannte Schlüssel schon heute (Punkt 4). Kommt es, gibt es dafür einen neuen Nachtrag.
+
+### Entscheidung
+
+1. **Dauer (Technikfrage 1).**
+   - **Gesamtdauer**: Sie ist die Summe der Lücken zwischen aufeinanderfolgenden Einträgen mit gültiger `zeit` (Form nach Punkt 4). Eine negative Lücke zählt als 0.
+   - Jede Lücke gehört **dem späteren Eintrag**. Vor einem Ergebnis ist sie **Werkzeug**, vor einem Eintrag von `agent` (Aufruf oder Nachricht) **Denken**, vor einer Nachricht von `mensch` **Warten**. Werkzeug, Denken und Warten ergeben so zusammen genau die Gesamtdauer, auch bei parallelen Aufrufen, und nichts wird doppelt gezählt.
+   - **Ohne gültige `zeit`**: Der Eintrag hat keine eigene Dauer und zeigt „–“. Die Lücke vom vorigen zum nächsten Eintrag mit Zeit gehört dem nächsten. Haben weniger als zwei Einträge eine Zeit, zeigt der Kopf „Dauer unbekannt“, und es gibt weder Zeitachse noch Top 3.
+   - **Grenze erreicht** (Punkt 4): Gerechnet wird nur über das Gelesene, und der Kopf kennzeichnet das. Er zeigt nie eine Dauer, die wie die des ganzen Laufs aussieht (Q2).
+   - **Schrittzeile** (Aufruf mit Ergebnis): Ihre Dauer ist `zeit(Ergebnis) − zeit(Aufruf)`. Kommt ein Aufruf, bevor ein anderer sein Ergebnis hat, tragen beide die Marke „parallel“. Ihre Zeilendauern überlappen, der Kopf rechnet aber aus der Aufteilung oben.
+   - **Denk- und Wartezeile**: Eine Lücke der Art Denken oder Warten ab **5 s** wird eine eigene Zeile vor dem Eintrag, etwa „21 s denkt“ oder „wartet“. Kürzere Lücken zählen nur in der Summe. Die Schwelle ist eine Konstante in `web/lauf.js`, Frage an den PO.
+   - **Top 3**: Es zählen Schritt-, Denk- und Wartezeilen nach Dauer, bei Gleichstand die frühere zuerst. Gesprungen wird über einen Knopf mit `data-act` (`scrollIntoView` und Fokus auf die Zeile), **nie über `href="#…"`**, denn der Hash ist die Adresse der Seite (ADR-0029). Jede Zeile trägt `id="lv-s<Zeilennummer>"`.
+2. **Abschnitte**: Variante W. Die **Zeitachse** zeigt die Folge der Lücken in den drei Arten. Benachbarte Lücken derselben Art verschmelzen. Sind es mehr als 200 Stücke, wird die Gesamtdauer in 200 gleiche Fächer geteilt, und jedes Fach bekommt die Farbe der Art, die darin überwiegt. Die **Gliederung links** besteht aus Top 3 und den Filtern Nachrichten, Werkzeuge, Systemhinweise und nur Fehler. Ein Filter ist ein Attribut an der Wurzel der Insel und wirkt nur über CSS. Die Insel bleibt also derselbe Knoten (Punkt 5, Q4). Der Zustand des Filters liegt in `S.ui.lauf` und wird nach einem frischen Aufbau wieder gesetzt.
+3. **Paaren und Kurzbefehl (Technikfrage 3)**:
+   - Ein Ergebnis gehört zum **ältesten offenen Aufruf** (Warteschlange je Lauf). Den Namen übernimmt das Ergebnis vom Aufruf. Ein Ergebnis ohne offenen Aufruf und ein Aufruf ohne Ergebnis stehen je allein, mit „–“ als Dauer.
+   - `kurzbefehl(text)`: Ist `text` ein JSON-Objekt, gilt die erste Zeile des ersten Textwerts unter `command`, `file_path`, `pattern`, `url`, `query`, `prompt`, `message`, sonst die des ersten Textwerts überhaupt. Getrennt davon wird `description` als Absicht geliefert. Ist `text` kein Objekt, gilt die erste Zeile wie heute.
+   - Gekürzt wird auf 200 Zeichen, und die Zeichen laufen über `sichtbarText` und das Budget wie in `ersteZeileHtml`. Was die Zeile zeigt (Befehl, Absicht oder beides), entscheidet die Gestaltung, Frage an den PO. Aufgeklappt stehen Aufruf und Ergebnis ganz, wie heute.
+4. **Fehler (Technikfrage 4)**: `fehlerErkennen(ergebnistext)` ist wahr, wenn **die erste Zeile** `Exit code <n>` mit n ≠ 0 lautet oder der Text mit `<tool_use_error>` beginnt. Geprüft wird nur der Anfang des Texts, nie eine Suche nach „error“. Ein Fehler färbt die Schrittzeile rot und zählt im Kopf. Ein neues Feld gibt es nicht. Ein späteres optionales `fehler` wäre eine Ergänzung, die nichts bricht.
+5. **Kennzahlen und Bericht (Technikfrage 5)**:
+   - **Kosten** kommen aus der Karte: die Zeile von `laeufe(a.transkripte, a.kosteneintraege)` mit dieser Kennung, wie die Leiste (Punkt 3), also live. Die Altform `cost.items` wird nicht über ihren Text zugeordnet, denn das wäre brüchig. Ohne Kosteneintrag mit Kennung steht „–“.
+   - **Ergebnis und Commits** stehen an der Karte nicht je Lauf (siehe Belegt). Sie kommen deshalb aus dem **Bericht**, und das ist der letzte Eintrag von `agent`, dessen Text eine Zeile `^Ergebnis: (bestanden|befund|blockiert)` enthält. Ist der Text eines Aufrufs ein JSON-Objekt, werden seine Textwerte durchsucht.
+   - **Commits** zählen die Kennungen `\b[0-9a-f]{7,40}\b` in der Zeile `^Commits:` desselben Berichts. „keine“ ergibt 0, ohne Bericht steht „–“. Die **Zahl der Werkzeugaufrufe** und die Zahl der **Fehler** kommen aus der Auswertung.
+   - **Ergebnis zuerst**: Der Bericht steht als Karte über den Einträgen und wird gezeichnet wie eine Nachricht (`sichtbarText`, dann `markdownHtml`, Budget). Ohne Bericht gibt es keine Karte, und das Ergebnis zeigt „–“.
+   - **Auftrag und Systemhinweise eingeklappt**: Der Auftrag ist die erste Nachricht von `mensch`. Ein Systemhinweis ist eine Nachricht von `mensch`, deren Text ohne führenden Leerraum mit `<system-reminder>` oder `[SYSTEM NOTIFICATION` beginnt. Beide stehen als `details` an ihrer Stelle und sind über den Filter erreichbar.
+   - **Blättern**: Die Läufe der Karte kommen aus `a.transkripte` und werden nach dem Zeitpunkt der Kennung **aufsteigend** geordnet (`kennungMs`, der älteste ist 1), ganz ohne Anfrage: „Lauf k von n“. Vor und zurück sind echte `<a href>` auf `laufAdresseBilden`. Ein einfacher Linksklick über `act` nimmt `replaceState`, damit `history.length` nicht wächst und „‹ #<nr>“ weiter auf „Läufe“ führt (Punkt 2). Der Wechsel der Kennung bricht die laufende Anfrage ab (Punkt 4). Ein Lauf ohne Datei zeigt Bild 4, denn der Zustand ist ohne `GET …/transkripte` nicht bekannt.
+6. **Ort und Leistung (Technikfrage 6)**: Gerechnet wird im Browser. `laufAuswerten(zeilen)` steht in `web/lauf.js` und ist rein: ein Durchlauf, O(n), in Node testbar. Die Auswertung läuft **einmal je erfolgreichem Lesen** und liegt im Lauf-Objekt `S.ui.lauf` neben dem Text der Insel. Kopf, Kennzahlen und Zeitachse zeichnen bei Live aus dieser Auswertung und aus der Karte, die Auswertung wird dabei nie neu gerechnet. Schritt- und Denkzeilen gehören zur Insel. Die Messung nach Punkt 7 (Q5: < 300 ms für echte Läufe) wiederholt der Bau als Beobachtung.
+
+**In Kauf genommen**: Fehler, Auftrag, Systemhinweise und Bericht werden an Formen erkannt, die der heutige Erzeuger (Claude Code und der Umwandler der Factory) schreibt. Ein anderer Erzeuger ergibt dann „0 Fehler“ und „–“, und der Wortlaut muss das als „erkannt“ kennzeichnen. Auch die Paarung setzt voraus, dass Ergebnisse in der Reihenfolge der Aufrufe stehen. Die Zeitachse zeigt keine fachlichen Abschnitte.
+
+### Durchsetzung
+
+- Node-Tests `laufAuswerten` (`e2e/einheit/`):
+  - Werkzeug + Denken + Warten = Gesamtdauer, bei `A A E E` ohne Doppelzählung.
+  - Fehlende und falsch geformte `zeit` mitten im Lauf; eine negative Lücke; weniger als zwei Zeitpunkte ergeben „unbekannt“.
+  - Ein Ergebnis ohne Aufruf und ein Aufruf ohne Ergebnis.
+  - Die Denkzeile genau ab 5 s (4.999 ms ergibt keine).
+  - Top 3 mit Gleichstand; 201 Stücke ergeben 200 Fächer.
+  - `fehlerErkennen`: `Exit code 0` ist kein Fehler, `Exit code 2` ist einer, „error“ mitten im Text ist keiner, `<tool_use_error>` am Anfang ist einer.
+  - Bericht: im JSON eines Aufrufs; `Ergebnis:` nur mitten in einer Zeile wird nicht erkannt; `Commits: keine` ergibt 0.
+  - `kurzbefehl`: JSON mit `command`, Nicht-JSON, JSON ohne bekannten Schlüssel.
+- E2E:
+  - Top 3 springen, `location.hash` bleibt gleich, der Fokus liegt auf der Zeile.
+  - Ein Filter lässt die Marke an der Insel stehen (`el.__probe`).
+  - Ein gebuchter Kosteneintrag ändert die Kosten im Kopf, und die Insel bleibt.
+  - Blättern hält `history.length` gleich, „‹ #<nr>“ führt zu „Läufe“, und die vorige Anfrage wird abgebrochen.
+- Review-Punkt `architektur-reviewer`: Gerechnet wird nur in `web/lauf.js` und nur einmal je Lesen, und `app.js` rechnet keine Dauer.
+- Review-Punkt `security-reviewer`: Bericht, Kurzbefehl und Absicht gehen durch dieselben Wege wie bisher (`sichtbarText` und Budget, `markdownHtml`).
+
+### Folgeaufgaben
+
+- [ ] Planer: zwei Scheiben. **A „Ergebnis und Dauer“**: Punkte 1, 3, 4, 5 ohne Blättern, 6. **B „Überblick und Navigation“**: Zeitachse und Gliederung mit Filtern (Punkt 2) und Blättern. B braucht A.
+- [ ] PO: Abschnitte entfallen gegenüber dem Entwurf; Schwelle der Denkzeile 5 s; Kurzbefehl als Befehl oder Absicht; Wortlaute für „Dauer unbekannt“, für die Dauer bis zur Grenze und für „keine Fehler erkannt“, für das fehlende Ergebnis und für „Lauf k von n“; Blättern aufsteigend.
+- [ ] Gestalter: D0009 `#laufansicht` nach dem Entwurf nachzeichnen, ohne Abschnitte und mit der Zeitachse aus Werkzeug, Denken und Warten. Freigabe durch den PO.
+- [ ] Director/Factory: Kosten je Lauf als Kosteneintrag **mit der Kennung des Transkripts** buchen (ADR-0028). Sonst bleibt „Kosten“ im Kopf leer, wie heute an #247.
