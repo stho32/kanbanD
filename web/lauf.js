@@ -313,7 +313,7 @@
     const uhrzeit = uhrzeitText(e.zeit);
     const zeit = uhrzeit === null ? '' : `<span class="zt">${uhrzeit}</span>`;
     const klasse = art === 'systemhinweis' ? 'lv-e sys' : 'lv-e';
-    const summary = `<summary>${PFEIL}<span class="nm">${EINGEKLAPPT_WORT[art]}</span><span class="z1">${kurzTextHtml(ersteZeileGekuerzt(e.text), esc)}</span>${zeit}</summary>`;
+    const summary = `<summary>${PFEIL}<span class="nm">${EINGEKLAPPT_WORT[art]}</span><span class="z1">${kurzTextHtml(ersteZeileGekuerzt(e.text), esc, wurzeln)}</span>${zeit}</summary>`;
     return `<li id="lv-s${nr}" tabindex="-1"${artAttribut(zeileArt(e, art))}><details class="${klasse}">${summary}<div class="lv-text">${nachrichtTextHtml(e.text, esc, budget, wurzeln)}</div></details></li>`;
   }
 
@@ -338,16 +338,16 @@
     const ergebnisGebucht = ergebnis ? zeichenBuchen(ergebnis.text, budget) : null;
     const zeile = t => zeileHtml(t, esc);
     let ergebnisGesetzt = null;
-    if (ergebnisGebucht && !ergebnisGebucht.rest) ergebnisGesetzt = satz.ergebnisSatz(ergebnis.text, zeile);
-    const befehl = aufruf ? `<span class="bf">${kurzTextHtml(s.befehl || '', esc)}</span>` : '';
-    const absicht = s.absicht === null ? '' : `<span class="ab">${kurzTextHtml(s.absicht, esc)}</span>`;
+    if (ergebnisGebucht && !ergebnisGebucht.rest) ergebnisGesetzt = satz.ergebnisSatz(ergebnis.text, zeile, { wurzeln: z.wurzeln });
+    const befehl = aufruf ? `<span class="bf">${kurzTextHtml(s.befehl || '', esc, z.wurzeln)}</span>` : '';
+    const absicht = s.absicht === null ? '' : `<span class="ab">${kurzTextHtml(s.absicht, esc, z.wurzeln)}</span>`;
     const fehler = s.fehler ? `${ACHTUNG}<span class="vh">Fehler: </span>` : '';
     const kuerzelTeil = ergebnisGebucht ? `<span class="eg">${fehler}${kurzformHtml(ergebnisGesetzt, ergebnisGebucht, esc)}</span>` : '';
     let angabe = '', tokensGanz = '';
     if (aufruf) angabe = tokenAngabeHtml(s.nr, aufruf, z.tokens);
     if (aufruf && aufruf.wer === 'agent' && aufruf.tokens) tokensGanz = `<span class="k">Tokens</span><p class="lv-tk4">${vierWerteHtml(aufruf.tokens)}</p>`;
     const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span>${angabe}</summary>`;
-    const ganz = tokensGanz + aufrufBlockHtml(aufruf, aufrufGebucht, s.name, z) + ergebnisBlockHtml(aufruf, ergebnisGebucht, ergebnisGesetzt, esc);
+    const ganz = tokensGanz + aufrufBlockHtml(aufruf, aufrufGebucht, s.name, ergebnis, z) + ergebnisBlockHtml(aufruf, ergebnisGebucht, ergebnisGesetzt, esc);
     const klasse = `lv-s${s.fehler ? ' fehl' : ''}${s.absicht === null ? ' ohne-ab' : ''}`;
     let marken = artAttribut('w');
     if (s.fehler) marken += ' data-fehler';
@@ -359,10 +359,12 @@
 
   /** Block „Aufruf“ (FA 1, 13): Fläche, Rand, Kante und das Wort als erstes Kind; der Satz nur, wenn das Budget den ganzen Text trägt
       und die Grenzen ihn erlauben, sonst der Text wie heute. */
-  function aufrufBlockHtml(aufruf, gebucht, name, z) {
+  function aufrufBlockHtml(aufruf, gebucht, name, ergebnis, z) {
     if (!aufruf) return '';
+    let ergebnisText = null;
+    if (ergebnis) ergebnisText = ergebnis.text;
     let inhalt = null;
-    if (!gebucht.rest) inhalt = satz.aufrufSatz(name, aufruf.text, t => zeileHtml(t, z.esc));
+    if (!gebucht.rest) inhalt = satz.aufrufSatz(name, aufruf.text, t => zeileHtml(t, z.esc), { wurzeln: z.wurzeln, ergebnis: ergebnisText });
     if (inhalt === null) inhalt = rohHtml(gebucht, z.esc);
     return `<div class="lv-auf"><span class="k">Aufruf</span>${inhalt}</div>`;
   }
@@ -562,10 +564,12 @@
   /** Das „…“ von kanbanD (PO Z. 601, 610): eigenes, gedämpftes Element mit Tooltip; der Lesetext steht unsichtbar im Element. */
   const ELL = `<span class="lv-ell" title="${ELL_LESETEXT}"><span aria-hidden="true">…</span><span class="vh">${ELL_LESETEXT}</span></span>`;
 
-  /** Ein Text der Zusammenfassung oder der Listen: maskiert und sichtbar gemacht; hat kanbanD ihn gekürzt, mit dem eigenen „…“. */
-  function kurzTextHtml(text, esc) {
-    if (!vonKanbanGekuerzt(text)) return esc(sichtbarText(text));
-    return esc(sichtbarText(text.slice(0, -1))) + ELL;
+  /** Ein Text der Zusammenfassung oder der Listen: maskiert und sichtbar gemacht, mit `wurzeln` mit Pfad-Marken ohne Link (R00242
+      FA 2); hat kanbanD ihn gekürzt, mit dem eigenen „…“ — gekürzt zählt der Rohtext, eine angeschnittene Wurzel ergibt keine Marke. */
+  function kurzTextHtml(text, esc, wurzeln = []) {
+    const zeile = t => esc(sichtbarText(t));
+    if (!vonKanbanGekuerzt(text)) return satz.markenImText(text, wurzeln, zeile);
+    return satz.markenImText(text.slice(0, -1), wurzeln, zeile) + ELL;
   }
 
   function wortHtml(w, esc) {

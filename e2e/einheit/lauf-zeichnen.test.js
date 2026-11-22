@@ -530,7 +530,9 @@ const lesbar = html => ohneTags(html).replace(/&lt;/g, '<').replace(/&gt;/g, '>'
 
 test('R00240 AK 1: Nr 2 — Block „Aufruf“ mit dem Wort als erstem Kind, Shell-Block, timeout, darunter „Ergebnis“ mit der Testzeile', () => {
   const li = zeileVon(laufHtml(t13Zeilen(), false, esc), 2);
-  assert.match(li, /<div class="lv-s-ganz"><div class="lv-auf"><span class="k">Aufruf<\/span><pre class="lv-sh">cd \/w\/demo &amp;&amp;\n npm test;\n echo/);
+  // R00242: /w/demo ist die Wurzel „Projekt“ aus Nr 1 und steht im Befehl als Marke ‹demo› mit dem vollen Pfad im title
+  const marke = '<span class="lv-pfadt" title="/w/demo"><span class="lv-mk" data-marke="‹demo›"><span class="vh">/w/demo</span></span></span>';
+  assert.ok(li.includes(`<div class="lv-s-ganz"><div class="lv-auf"><span class="k">Aufruf</span><pre class="lv-sh">cd ${marke} &amp;&amp;\n npm test;\n echo`), li);
   assert.match(li, /<dl class="lv-kv"><dt>timeout:<\/dt><dd>120000<\/dd><\/dl><\/div><div class="lv-erg"><span class="k">Ergebnis<\/span><p class="lv-tz fehl">/);
   assert.doesNotMatch(/<div class="lv-auf">[\s\S]*?<\/div><div class="lv-erg">/.exec(li)[0], /Tests fahren/);
 });

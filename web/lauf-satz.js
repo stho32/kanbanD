@@ -256,59 +256,74 @@
   /* ── Aufruf (N4 Punkt 2, FA 1–4, 13) ── */
 
   /** Text eines Aufrufs → HTML des Inhalts im Block „Aufruf“, oder null für „wie heute als `pre`“: über den Grenzen, kein JSON, oder ein
-      Satz, der mehr markierbare Zeichen zeigte, als im Text stehen und gebucht sind (etwa ein Escape `‮`). */
-  function aufrufSatz(name, text, zeile) {
+      Satz, der mehr markierbare Zeichen zeigte, als im Text stehen und gebucht sind (etwa ein Escape `‮`). Mit `pfade = {wurzeln,
+      ergebnis}` (R00242 FA 2, 4) ist das Pfadfeld ein Link und Pfade in Befehl und anderen Feldern zeigen Marken; ohne wie bisher. */
+  function aufrufSatz(name, text, zeile, pfade = null) {
     if (!satzErlaubt(text)) return null;
     const gelesen = jsonLesen(text);
     if (gelesen === null) return null;
     const zaehler = markenZaehler(zeile);
-    const html = gedeckelt(() => aufrufInhalt(name, gelesen.wert, zaehler.zeile));
+    const html = gedeckelt(() => aufrufInhalt(name, gelesen.wert, aufrufSetzer(name, gelesen.wert, zaehler.zeile, pfade)));
     if (html === null || zaehler.gezeigt() > markenIn(text)) return null;
     return html;
   }
 
-  function aufrufInhalt(name, wert, zeile) {
-    if (!istObjekt(wert)) return jsonBlock(wert, zeile, 'aufruf');
-    if (name === 'Bash' && typeof wert.command === 'string') return shellHtml(wert, zeile);
-    if (name === 'Edit' && typeof wert.old_string === 'string' && typeof wert.new_string === 'string') return editHtml(wert, zeile);
-    if (name === 'Write' && typeof wert.content === 'string') return writeHtml(wert, zeile);
-    if (!istFlach(wert)) return jsonBlock(wert, zeile, 'aufruf');
-    return felderHtml(Object.entries(wert), zeile);
+  /** Wie der Aufruf Texte setzt: `zeile` für Schlüssel, JSON und Diff, `text` für Befehl und Texte der Felder, `feld` für den Wert eines
+      einzeiligen Felds. Mit Pfaden ist nur das Pfadfeld von Read, Edit, Write und NotebookEdit ein Link (PO Z. 593). */
+  function aufrufSetzer(name, wert, zeile, pfade) {
+    if (pfade === null) return { zeile, text: zeile, feld: (schluessel, t) => zeile(t) };
+    const text = t => markenImText(t, pfade.wurzeln, zeile);
+    const sprung = sprungImAufruf(name, wert, pfade.ergebnis);
+    const feld = (schluessel, t) => {
+      if (schluessel !== PFADFELD[name]) return text(t);
+      return pfadLinkHtml(t, sprung, pfade.wurzeln, true, zeile);
+    };
+    return { zeile, text, feld };
+  }
+
+  function aufrufInhalt(name, wert, setzer) {
+    if (!istObjekt(wert)) return jsonBlock(wert, setzer.zeile, 'aufruf');
+    if (name === 'Bash' && typeof wert.command === 'string') return shellHtml(wert, setzer);
+    if (name === 'Edit' && typeof wert.old_string === 'string' && typeof wert.new_string === 'string') return editHtml(wert, setzer);
+    if (name === 'Write' && typeof wert.content === 'string') return writeHtml(wert, setzer);
+    if (!istFlach(wert)) return jsonBlock(wert, setzer.zeile, 'aufruf');
+    return felderHtml(Object.entries(wert), setzer);
   }
 
   /** Bash: `command` als Shell-Block, `description` entfällt (sie steht als Absicht in der Zusammenfassung), der Rest als Felder. */
-  function shellHtml(wert, zeile) {
-    const befehl = kuerzungHtml(textZeilen(shellUmbruch(wert.command)).map(zeile), 'aufruf', preHuelle(' class="lv-sh"'));
+  function shellHtml(wert, setzer) {
+    const befehl = kuerzungHtml(textZeilen(shellUmbruch(wert.command)).map(setzer.text), 'aufruf', preHuelle(' class="lv-sh"'));
     const weitere = Object.entries(wert).filter(([k]) => k !== 'command' && k !== 'description');
-    return befehl + felderHtml(weitere, zeile);
+    return befehl + felderHtml(weitere, setzer);
   }
 
   /** Edit: Felder außer den Texten, darunter der Diff, `replace_all` nur bei `true` als Feld unter dem Diff. */
-  function editHtml(wert, zeile) {
+  function editHtml(wert, setzer) {
     const ohneDiff = Object.entries(wert).filter(([k]) => !['old_string', 'new_string', 'replace_all'].includes(k));
     let alleErsetzen = '';
-    if (wert.replace_all === true) alleErsetzen = felderHtml([['replace_all', true]], zeile);
-    return felderHtml(ohneDiff, zeile) + diffHtml(editDiff(wert.old_string, wert.new_string), zeile) + alleErsetzen;
+    if (wert.replace_all === true) alleErsetzen = felderHtml([['replace_all', true]], setzer);
+    return felderHtml(ohneDiff, setzer) + diffHtml(editDiff(wert.old_string, wert.new_string), setzer.zeile) + alleErsetzen;
   }
 
   /** Write: Felder außer `content`, darunter `content` ganz als hinzugefügt. */
-  function writeHtml(wert, zeile) {
+  function writeHtml(wert, setzer) {
     const ohneInhalt = Object.entries(wert).filter(([k]) => k !== 'content');
-    return felderHtml(ohneInhalt, zeile) + diffHtml(editDiff('', wert.content), zeile);
+    return felderHtml(ohneInhalt, setzer) + diffHtml(editDiff('', wert.content), setzer.zeile);
   }
 
   /** Felder als „Schlüssel: Wert“ in der Reihenfolge des Objekts; ohne Felder nichts. */
-  function felderHtml(felder, zeile) {
+  function felderHtml(felder, setzer) {
     if (!felder.length) return '';
-    return `<dl class="lv-kv">${felder.map(([schluessel, wert]) => feldHtml(zeile(schluessel), wert, zeile)).join('')}</dl>`;
+    return `<dl class="lv-kv">${felder.map(([schluessel, wert]) => feldHtml(schluessel, wert, setzer)).join('')}</dl>`;
   }
 
   /** Ein Text mit `\n` steht als Block unter seinem Schlüssel, ein verschachtelter Wert als JSON-Block, alles andere daneben. */
-  function feldHtml(schluessel, wert, zeile) {
-    if (typeof wert === 'string' && wert.includes('\n')) return `<dt class="blk">${schluessel}:</dt><dd class="blk">${kuerzungHtml(textZeilen(wert).map(zeile), 'aufruf', preHuelle(''))}</dd>`;
-    if (wert !== null && typeof wert === 'object') return `<dt class="blk">${schluessel}:</dt><dd class="blk">${jsonBlock(wert, zeile, 'aufruf')}</dd>`;
-    if (typeof wert === 'string') return `<dt>${schluessel}:</dt><dd>${zeile(wert)}</dd>`;
-    return `<dt>${schluessel}:</dt><dd>${zeile(JSON.stringify(wert))}</dd>`;
+  function feldHtml(schluessel, wert, setzer) {
+    const name = setzer.zeile(schluessel);
+    if (typeof wert === 'string' && wert.includes('\n')) return `<dt class="blk">${name}:</dt><dd class="blk">${kuerzungHtml(textZeilen(wert).map(setzer.text), 'aufruf', preHuelle(''))}</dd>`;
+    if (wert !== null && typeof wert === 'object') return `<dt class="blk">${name}:</dt><dd class="blk">${jsonBlock(wert, setzer.zeile, 'aufruf')}</dd>`;
+    if (typeof wert === 'string') return `<dt>${name}:</dt><dd>${setzer.feld(schluessel, wert)}</dd>`;
+    return `<dt>${name}:</dt><dd>${setzer.zeile(JSON.stringify(wert))}</dd>`;
   }
 
   /* ── Diff (N4 Punkt 2, FA 4): Präfix und Suffix als Kontext, kein LCS ── */
@@ -357,13 +372,13 @@
   /** Text eines Ergebnisses → `{html, kurz, fehlerText, hinweise}`: `kurz` ist die Kurzform der Zusammenfassung (`gekuerzt`,
       `systemhinweis` oder null), `fehlerText` der Text, an dessen Anfang `fehlerErkennen` prüft, `hinweise` die Zahl der eingebetteten.
       Eine von Claude Code gekürzte Ausgabe trägt die Marke, darunter die Vorschau, gesetzt wie ein Ergebnis. */
-  function ergebnisSatz(text, zeile) {
+  function ergebnisSatz(text, zeile, pfade = null) {
     const gekuerzt = gekuerztErkennen(text);
     if (gekuerzt === null) return { ...ergebnisKoerper(text, zeile), fehlerText: text };
     let inhalt = text;
     if (gekuerzt.form) inhalt = gekuerzt.vorschau;
     const koerper = ergebnisKoerper(inhalt, zeile);
-    return { html: markeHtml(gekuerzt, zeile) + koerper.html, kurz: 'gekuerzt', fehlerText: inhalt, hinweise: koerper.hinweise };
+    return { html: markeHtml(gekuerzt, zeile, pfade) + koerper.html, kurz: 'gekuerzt', fehlerText: inhalt, hinweise: koerper.hinweise };
   }
 
   /** Der Inhalt unter „Ergebnis“: leer, ein JSON-Objekt oder Text mit Testzeile und eingebetteten Hinweisen, gekürzt; nie Markdown. */
@@ -557,10 +572,12 @@
 
   const SCHERE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>';
 
-  /** Die Marke über der Vorschau (PO Z. 594); der Pfad steht an genau einer Stelle, als Text (C2 setzt dort den Link). */
-  function markeHtml(gekuerzt, zeile) {
+  /** Die Marke über der Vorschau (PO Z. 594); der Pfad steht an genau einer Stelle, mit `pfade` als Link mit Marke (R00242 FA 5). */
+  function markeHtml(gekuerzt, zeile, pfade) {
     if (!gekuerzt.form) return `<p class="lv-cc">${SCHERE}<span>Von Claude Code gekürzt: Der Agent sah nur diese Vorschau.</span></p>`;
-    return `<p class="lv-cc">${SCHERE}<span>Von Claude Code gekürzt (${zeile(gekuerzt.groesse)}): Der Agent sah nur diese Vorschau. Vollständig: <span class="mono lv-ccpfad">${zeile(gekuerzt.pfad)}</span></span></p>`;
+    let pfad = zeile(gekuerzt.pfad);
+    if (pfade !== null) pfad = pfadLinkHtml(gekuerzt.pfad, null, pfade.wurzeln, true, zeile);
+    return `<p class="lv-cc">${SCHERE}<span>Von Claude Code gekürzt (${zeile(gekuerzt.groesse)}): Der Agent sah nur diese Vorschau. Vollständig: <span class="mono lv-ccpfad">${pfad}</span></span></p>`;
   }
 
   /** Kurzform der Zusammenfassung (PO Z. 604): „Von Claude Code gekürzt“ mit Symbol, ohne Größe. */
@@ -659,6 +676,41 @@
     return `<a class="lv-pfad" href="${esc(ziel)}" title="${esc(name)}"${beschriftung}>${inhalt}</a>`;
   }
 
+  /* ── Pfade im Aufruf (R00242 FA 2, 4): das Pfadfeld als Link, sonst Marken ohne Link ── */
+
+  /** Das Feld, das ein Link wird, je Werkzeug; jedes andere Feld und `command` werden nie einer. */
+  const PFADFELD = { Read: 'file_path', Edit: 'file_path', Write: 'file_path', NotebookEdit: 'notebook_path' };
+  /** Eine Zeile in der Form von `cat -n`: Zahl, dann Tabulator oder `→`. */
+  const CAT_N = /^\s*(\d+)(?:\t|→)/;
+
+  /** Die Zeile des Links: Read an `offset`, Edit an der ersten Zeile seines Ergebnisses in der Form `cat -n`, sonst null. */
+  function sprungImAufruf(name, wert, ergebnis) {
+    if (name === 'Read' && Number.isInteger(wert.offset) && wert.offset > 0) return wert.offset;
+    if (name !== 'Edit' || typeof ergebnis !== 'string') return null;
+    for (const z of ergebnis.split('\n')) {
+      const m = CAT_N.exec(z);
+      if (m !== null) return Number(m[1]);
+    }
+    return null;
+  }
+
+  /** Ein absoluter Pfad in Befehl oder Feld beginnt nach einem Zeichen, das kein Teil eines Pfads ist, und endet vor Leerraum oder
+      einem Zeichen der Shell. */
+  const PFAD_IM_BEFEHL = /(?<![\w.~/-])\/[^\s"'`<>|;&()]+/g;
+
+  /** Text → HTML mit Marken an jedem Pfad, der mit einer Wurzel beginnt, ohne Link (Befehl, andere Felder, Zusammenfassung). */
+  function markenImText(text, wurzeln, zeile) {
+    if (!wurzeln.length) return zeile(text);
+    let html = '', ab = 0;
+    for (const treffer of text.matchAll(PFAD_IM_BEFEHL)) {
+      const pfad = treffer[0].replace(/[.,;:]+$/, '');
+      if (pfadKurz(pfad, wurzeln) === null) continue;
+      html += zeile(text.slice(ab, treffer.index)) + pfadLinkHtml(pfad, null, wurzeln, false, zeile);
+      ab = treffer.index + pfad.length;
+    }
+    return html + zeile(text.slice(ab));
+  }
+
   /* ── Pfade in Nachrichten (R00242 FA 3): für die Option `pfade` von markdownInline, gesucht im rohen Text ── */
 
   /** Absolut (`/…`) oder relativ (Teile aus Wortzeichen, `.`, `~`, `@`, `+`, `-` mit mindestens einem `/`, auch mit `:<zeile>`). */
@@ -728,5 +780,5 @@
   }
 
   Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
-  Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml, pfadeFinden, pfadImCodeHtml });
+  Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml, pfadeFinden, pfadImCodeHtml, markenImText });
 })(typeof module !== 'undefined' ? module.exports : window);

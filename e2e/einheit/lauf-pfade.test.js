@@ -173,7 +173,11 @@ test('AK 6: "><img …> in file_path und in einer Nachricht ergibt kein img und 
   const nach = markdownInline(`siehe ${boese} hier`, { pfade: nachrichtPfade(wurzelnT14()) });
   for (const html of [auf, nach]) {
     assert.doesNotMatch(html, /<img/);
-    for (const [, attrs] of html.matchAll(/<a\b([^>]*)>/g)) assert.deepStrictEqual(attrs.match(/\s[a-z-]+=/g).map(a => a.trim()).filter(a => !['class=', 'href=', 'title=', 'aria-label='].includes(a)), []);
+    for (const [, attrs] of html.matchAll(/<a\b([^>]*)>/g)) {
+      const ATTRIBUT = /\s([a-z-]+)="[^"]*"/g;
+      assert.strictEqual(attrs.replace(ATTRIBUT, ''), '', attrs);
+      assert.deepStrictEqual([...attrs.matchAll(ATTRIBUT)].map(m => m[1]).filter(n => !['class', 'href', 'title', 'aria-label'].includes(n)), []);
+    }
   }
   assert.match(satz.pfadLinkHtml('/w/demo/"x".js', null, wurzelnT14(), false, zeile), /title="\/w\/demo\/&quot;x&quot;\.js"/);
   assert.doesNotMatch(satz.pfadLinkHtml('/w/q/a.js', null, satz.pfadMarken('Projekt: /w/q"><b>'), false, zeile), /data-marke="[^"]*"[^>]*"/);
