@@ -84,13 +84,13 @@ test('sichtbarTeile: Bidi wird zur Marke ⟨U+202E⟩, ESC zu „␛ U+001B“, 
   assert.deepStrictEqual(sichtbarTeile(''), []);
 });
 
-const datei = (zusatz = {}) => ({ neu: 'a.txt', alt: 'a.txt', status: 'M', plus: 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-a\n+b\n', ...zusatz });
+const datei = (zusatz = {}) => ({ neu: 'a.dat', alt: 'a.dat', status: 'M', plus: 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-a\n+b\n', ...zusatz });
 
 test('dateiZustand: zu groß (Hinweis zur Datei) vor groß vor nachladen vor binär vor patch vor ohne Inhalt', () => {
-  const zuGross = [{ art: 'zu_gross_zum_anzeigen', datei: 'a.txt' }];
+  const zuGross = [{ art: 'zu_gross_zum_anzeigen', datei: 'a.dat' }];
   assert.strictEqual(dateiZustand(datei({ gross: true, patch: undefined }), zuGross), 'zu_gross');
-  assert.strictEqual(dateiZustand(datei({ gross: true, patch: undefined }), [{ art: 'zu_gross_zum_anzeigen', datei: 'b.txt' }]), 'gross');
-  assert.strictEqual(dateiZustand(datei({ gross: true, patch: undefined }), [{ art: 'unbekannt', datei: 'a.txt' }]), 'gross');
+  assert.strictEqual(dateiZustand(datei({ gross: true, patch: undefined }), [{ art: 'zu_gross_zum_anzeigen', datei: 'b.dat' }]), 'gross');
+  assert.strictEqual(dateiZustand(datei({ gross: true, patch: undefined }), [{ art: 'unbekannt', datei: 'a.dat' }]), 'gross');
   assert.strictEqual(dateiZustand(datei({ status: 'D', neu: undefined, gross: true, patch: undefined }), zuGross), 'zu_gross', 'gelöschte über alt');
   assert.strictEqual(dateiZustand(datei({ nachladen: true, patch: undefined }), []), 'nachladen');
   assert.strictEqual(dateiZustand(datei({ binaer: true, patch: undefined }), []), 'binaer');
@@ -143,7 +143,7 @@ test('fehlerArt: 503 mit „Antwortbudget …“ ist ausgelastet, jeder andere 5
 });
 
 test('zuordnen: aus einer Antwort mit mehreren gleichnamigen Dateien die mit gleichem status, alt, neu an derselben Position', () => {
-  const a = { status: 'M', alt: '�.txt', neu: '�.txt' }, b = { status: 'A', neu: '�.txt' };
+  const a = { status: 'M', alt: '�.dat', neu: '�.dat' }, b = { status: 'A', neu: '�.dat' };
   const liste = [datei({ neu: 'x' }), { ...a, nr: 1 }, { ...b, nr: 2 }, { ...a, nr: 3 }];
   const antwort = [{ ...a, patch: 'p1' }, { ...b, patch: 'p2' }, { ...a, patch: 'p3' }];
   assert.strictEqual(zuordnen(liste, 1, antwort).patch, 'p1');

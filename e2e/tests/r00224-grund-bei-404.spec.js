@@ -195,8 +195,8 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
     const wb = abschnitt(page, 'Anwendung wb');
     await expect(wb.locator('.rv-satz')).toHaveText('Das Repository der Anwendung wb ist nicht erreichbar.');
     await expect(wb.locator('.rv-hin')).toHaveText(grund);
-    await expect(abschnitt(page, 'Anwendung kd').locator('.dn .p', { hasText: 'k.txt' }).first()).toBeVisible();
-    await expect(abschnitt(page, 'Anwendung xx').locator('.dn .p', { hasText: 'x.txt' }).first()).toBeVisible();
+    await expect(abschnitt(page, 'Anwendung kd').locator('.dn .p', { hasText: 'k.dat' }).first()).toBeVisible();
+    await expect(abschnitt(page, 'Anwendung xx').locator('.dn .p', { hasText: 'x.dat' }).first()).toBeVisible();
     const seite = await page.locator('#review').textContent();
     expect(seite).not.toContain('Keine Änderungen zu zeigen.');
     expect(seite).not.toContain('An dieser Aufgabe sind keine Commit-Verweise hinterlegt.');

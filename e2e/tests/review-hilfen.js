@@ -22,8 +22,8 @@ const zeilen = (n, kopf) => Array.from({ length: n }, (_, i) => `${kopf} ${i + 1
 function budgetCommits(r, h) {
   const tag = '2026-04-01T09:00:00+00:00';
   gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
-  for (let i = 1; i <= 4; i++) fs.writeFileSync(path.join(r, `budget-${i}.txt`), zeilen(2499, `b${i}`));
-  fs.writeFileSync(path.join(r, 'budget-5.txt'), 'b5 1\n');
+  for (let i = 1; i <= 4; i++) fs.writeFileSync(path.join(r, `budget-${i}.dat`), zeilen(2499, `b${i}`));
+  fs.writeFileSync(path.join(r, 'budget-5.dat'), 'b5 1\n');
   h.e = commitAlles(r, tag, 'Budget anlegen');
   h.e0 = commitAlles(r, '2026-04-01T10:00:00+00:00', 'leerer Commit', '--allow-empty');
   gitAls(r, ADA, tag, 'branch', 'karte/8', h.e0);
@@ -34,16 +34,16 @@ function nachladeCommit(r, h) {
   const tag = '2026-04-02T09:00:00+00:00';
   gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
   const inhalt = ('a'.repeat(99) + '\n').repeat(2000);
-  for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.txt`), inhalt);
-  fs.writeFileSync(path.join(r, 'gross.txt'), zeilen(3001, 'g'));
+  for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.dat`), inhalt);
+  fs.writeFileSync(path.join(r, 'gross.dat'), zeilen(3001, 'g'));
   h.f = commitAlles(r, tag, '25 Dateien und eine große');
   gitAls(r, ADA, tag, 'branch', 'karte/9', h.f);
   // F2 (#10, Nacharbeit 1): Geschwister von F mit denselben Pfaden und Größen, anderem Inhalt — dieselben Dateien laden nach
   const tag2 = '2026-04-02T10:00:00+00:00';
   gitAls(r, ADA, tag2, 'checkout', '-q', '--detach', h.k2);
   const anders = ('b'.repeat(99) + '\n').repeat(2000);
-  for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.txt`), anders);
-  fs.writeFileSync(path.join(r, 'gross.txt'), zeilen(3001, 'h'));
+  for (let i = 1; i <= 25; i++) fs.writeFileSync(path.join(r, `f${String(i).padStart(2, '0')}.dat`), anders);
+  fs.writeFileSync(path.join(r, 'gross.dat'), zeilen(3001, 'h'));
   h.f2 = commitAlles(r, tag2, '25 Dateien mit anderem Inhalt');
   gitAls(r, ADA, tag2, 'branch', 'karte/10', h.f2);
 }
@@ -54,31 +54,31 @@ function nachladeCommit(r, h) {
 function merkmalCommit(r, h) {
   const vor = '2026-04-03T09:00:00+00:00', tag = '2026-04-03T10:00:00+00:00';
   gitAls(r, ADA, vor, 'checkout', '-q', '--detach', h.k2);
-  fs.writeFileSync(path.join(r, 'text.txt'), zeilen(40, 'zeile'));
-  fs.writeFileSync(path.join(r, 'weg.txt'), 'weg 1\n');
-  fs.writeFileSync(path.join(r, 'alt-name.txt'), zeilen(5, 'umbenannt'));
+  fs.writeFileSync(path.join(r, 'text.dat'), zeilen(40, 'zeile'));
+  fs.writeFileSync(path.join(r, 'weg.dat'), 'weg 1\n');
+  fs.writeFileSync(path.join(r, 'alt-name.dat'), zeilen(5, 'umbenannt'));
   fs.writeFileSync(path.join(r, 'skript.sh'), 'echo hallo\n');
-  fs.writeFileSync(path.join(r, 'latin.txt'), 'a\n');
+  fs.writeFileSync(path.join(r, 'latin.dat'), 'a\n');
   commitAlles(r, vor, 'Vorgänger von D');
   const text = zeilen(40, 'zeile').split('\n');
   text[1] = 'zeile 2 neu\r';
   text[19] = 'zeile 20   mit Trenner';
   text[37] = 'zeile 38 neu';
-  fs.writeFileSync(path.join(r, 'text.txt'), text.slice(0, 40).join('\n'));
-  fs.writeFileSync(path.join(r, 'neu.txt'), 'neu 1\n');
-  fs.rmSync(path.join(r, 'weg.txt'));
-  fs.renameSync(path.join(r, 'alt-name.txt'), path.join(r, 'neu-name.txt'));
+  fs.writeFileSync(path.join(r, 'text.dat'), text.slice(0, 40).join('\n'));
+  fs.writeFileSync(path.join(r, 'neu.dat'), 'neu 1\n');
+  fs.rmSync(path.join(r, 'weg.dat'));
+  fs.renameSync(path.join(r, 'alt-name.dat'), path.join(r, 'neu-name.dat'));
   fs.chmodSync(path.join(r, 'skript.sh'), 0o755);
   fs.writeFileSync(path.join(r, 'bild.bin'), Buffer.from([0, 1, 2, 0, 255, 0]));
-  fs.writeFileSync(path.join(r, 'latin.txt'), Buffer.from([0x61, 0x0a, 0x62, 0xe4, 0x0a]));
-  fs.writeFileSync(path.join(r, 'bidi-‮datei.txt'), 'a‮b\u001Bc\td\n');
-  fs.writeFileSync(path.join(r, `${BOESE}.txt`), `${BOESE}\n`);
-  fs.writeFileSync(path.join(r, 'lang.txt'), 'L'.repeat(200000) + '\n');
-  fs.writeFileSync(path.join(r, 'gross.txt'), zeilen(3001, 'g'));
-  fs.writeFileSync(path.join(r, 'p'.repeat(196) + '.txt'), 'p\n');
+  fs.writeFileSync(path.join(r, 'latin.dat'), Buffer.from([0x61, 0x0a, 0x62, 0xe4, 0x0a]));
+  fs.writeFileSync(path.join(r, 'bidi-‮datei.dat'), 'a‮b\u001Bc\td\n');
+  fs.writeFileSync(path.join(r, `${BOESE}.dat`), `${BOESE}\n`);
+  fs.writeFileSync(path.join(r, 'lang.dat'), 'L'.repeat(200000) + '\n');
+  fs.writeFileSync(path.join(r, 'gross.dat'), zeilen(3001, 'g'));
+  fs.writeFileSync(path.join(r, 'p'.repeat(196) + '.dat'), 'p\n');
   gitAls(r, ADA, tag, 'add', '-A');
   const blob = execFileSync('git', ['-C', r, 'hash-object', '-w', '--stdin'], { input: 'tief\n', encoding: 'utf8' }).trim();
-  const tief = Array.from({ length: 21 }, (_, i) => `t${i}`.padEnd(200, 't')).join('/') + '/x.txt';
+  const tief = Array.from({ length: 21 }, (_, i) => `t${i}`.padEnd(200, 't')).join('/') + '/x.dat';
   gitAls(r, ADA, tag, 'update-index', '--add', '--cacheinfo', `100644,${blob},${tief}`);
   const titel = (`Merkmale ${BOESE} ` + 'w'.repeat(300)).slice(0, 300);
   // der lange Pfad steht nur im Index: Git warnt beim Prüfen des Arbeitsbaums, das ist hier gewollt und wird nicht gezeigt

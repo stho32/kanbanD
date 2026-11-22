@@ -41,20 +41,20 @@ function arbeitsRepositoryBauen(basis, { breiten = true } = {}) {
   gitAls(r, ADA, '2026-02-01T09:00:00+00:00', 'init', '-q', '-b', 'main');
   for (const [k, v] of [['gc.auto', '0'], ['gc.writeCommitGraph', 'false']]) gitAls(r, ADA, '2026-02-01T09:00:00+00:00', 'config', k, v);
   const h = {};
-  h.k1 = dateiCommit(r, ADA, '2026-02-01T09:00:00+00:00', 'a.txt', 2, 'a.txt anlegen');
-  h.k2 = dateiCommit(r, ADA, '2026-02-02T09:00:00+00:00', 'a.txt', 3, 'a.txt ändern');
-  h.k3 = dateiCommit(r, ADA, '2026-03-01T10:00:00+01:00', 'c.txt', 3, 'c.txt anlegen');
-  h.k4 = dateiCommit(r, ADA, '2026-02-20T09:00:00+00:00', 'd.txt', 1, 'd.txt anlegen');
+  h.k1 = dateiCommit(r, ADA, '2026-02-01T09:00:00+00:00', 'a.dat', 2, 'a.dat anlegen');
+  h.k2 = dateiCommit(r, ADA, '2026-02-02T09:00:00+00:00', 'a.dat', 3, 'a.dat ändern');
+  h.k3 = dateiCommit(r, ADA, '2026-03-01T10:00:00+01:00', 'c.dat', 3, 'c.dat anlegen');
+  h.k4 = dateiCommit(r, ADA, '2026-02-20T09:00:00+00:00', 'd.dat', 1, 'd.dat anlegen');
   gitAls(r, ADA, '2026-02-02T09:00:00+00:00', 'worktree', 'add', '-q', '-b', 'karte/1', wt, h.k2);
-  h.w1 = dateiCommit(wt, 'Bernd Beispiel', '2026-03-02T09:00:00+00:00', 'b.txt', 1, 'b.txt anlegen');
+  h.w1 = dateiCommit(wt, 'Bernd Beispiel', '2026-03-02T09:00:00+00:00', 'b.dat', 1, 'b.dat anlegen');
   gitAls(r, ADA, '2026-03-03T09:00:00+00:00', 'checkout', '-q', '--detach');
-  h.v1 = dateiCommit(r, ADA, '2026-03-03T09:00:00+00:00', 'v.txt', 1, 'v.txt anlegen');
+  h.v1 = dateiCommit(r, ADA, '2026-03-03T09:00:00+00:00', 'v.dat', 1, 'v.dat anlegen');
   gitAls(r, ADA, '2026-03-03T09:00:00+00:00', 'tag', 'v1');
   gitAls(r, ADA, '2026-03-03T09:00:00+00:00', 'checkout', '-q', '--detach', h.k2);
-  h.r1 = dateiCommit(r, ADA, TITEL_PFAD, 'r.txt', 1, 'r.txt anlegen');
+  h.r1 = dateiCommit(r, ADA, TITEL_PFAD, 'r.dat', 1, 'r.dat anlegen');
   gitAls(r, ADA, TITEL_PFAD, 'update-ref', 'refs/remotes/o/x', h.r1);
   gitAls(r, ADA, '2026-03-05T09:00:00+00:00', 'checkout', '-q', '--detach', 'main');
-  h.v2 = dateiCommit(r, ADA, '2026-03-05T09:00:00+00:00', 'w.txt', 1, 'w.txt anlegen');
+  h.v2 = dateiCommit(r, ADA, '2026-03-05T09:00:00+00:00', 'w.dat', 1, 'w.dat anlegen');
   if (breiten) breitenCommits(r, h);
   gitAls(r, ADA, '2026-03-05T09:00:00+00:00', 'checkout', '-q', 'main');
   gitAls(r, ADA, '2026-03-05T09:00:00+00:00', 'update-ref', 'refs/remotes/o/main', h.k4);
@@ -72,18 +72,18 @@ function breitenCommits(r, h) {
   // Alle Breitendaten stehen auf Nebenästen ab K2: K3 liegt dann nur auf main und o/main, wie die Ausgangslage von #1 es verlangt
   gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
   // Zeilenmassen: der Vorgänger legt 987.654 Zeilen an, Z ersetzt die Datei durch 1.204.567 andere (+1.204.567 −987.654)
-  dateiCommit(r, ADA, tag, 'masse-alt.txt', 987654, 'Masse anlegen', 'alt ');
-  fs.rmSync(path.join(r, 'masse-alt.txt'));
+  dateiCommit(r, ADA, tag, 'masse-alt.dat', 987654, 'Masse anlegen', 'alt ');
+  fs.rmSync(path.join(r, 'masse-alt.dat'));
   const wort = 'W'.repeat(120);
   const titel600 = (`Langer Titel ${wort} ` + 'wort '.repeat(100)).slice(0, 600);
-  fs.writeFileSync(path.join(r, 'masse-neu.txt'), Array.from({ length: 1204567 }, (_, i) => `neu ${i + 1}\n`).join(''));
+  fs.writeFileSync(path.join(r, 'masse-neu.dat'), Array.from({ length: 1204567 }, (_, i) => `neu ${i + 1}\n`).join(''));
   gitAls(r, AUTOR_LANG, '2026-03-10T10:00:00+00:00', 'add', '-A');
   gitAls(r, AUTOR_LANG, '2026-03-10T10:00:00+00:00', 'commit', '-q', '-m', titel600);
   h.z = gitAls(r, AUTOR_LANG, tag, 'rev-parse', 'HEAD');
   for (let i = 1; i <= 11; i++) gitAls(r, ADA, tag, 'branch', aufgefuellt(`z${String(i).padStart(2, '0')}-`, 60), h.z);
   for (let i = 1; i <= 12; i++) gitAls(r, ADA, tag, 'update-ref', 'refs/remotes/' + aufgefuellt(`o/e${String(i).padStart(2, '0')}-`, 60), h.z);
   const rand = (n, zeit, titel, name = ADA) => {
-    const datei = `rand-${n}.txt`;
+    const datei = `rand-${n}.dat`;
     gitAls(r, ADA, tag, 'checkout', '-q', '--detach', h.k2);
     return dateiCommit(r, name, `2026-03-11T0${zeit}:00:00+00:00`, datei, 1, titel);
   };

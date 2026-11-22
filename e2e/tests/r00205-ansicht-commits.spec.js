@@ -186,7 +186,7 @@ test.describe('R00205 Ansicht „Commits“', () => {
   test('AK 2: Zeile K3 — Titel, Autor, Datum, +3 −0, Zweige main und o/main (kein o/HEAD); W1 karte/1; R1 nur o/x gestrichelt „(entfernt)“', async ({ page }) => {
     await commitsOeffnen(page);
     const k3 = zeileMit(page, kurz(rep.k3));
-    await expect(k3.locator('.cl-c-titel')).toHaveText('c.txt anlegen');
+    await expect(k3.locator('.cl-c-titel')).toHaveText('c.dat anlegen');
     await expect(k3.locator('.cl-c-autor')).toHaveText('Ada Autorin');
     await expect(k3.locator('.cl-c-datum')).toHaveText('01.03.2026 10:00');
     expect(await text(k3.locator('.cl-c-pm'))).toBe('+3 −0 Zeilen');
@@ -253,7 +253,7 @@ test.describe('R00205 Ansicht „Commits“', () => {
     await marke(zeileMit(page, 'kd:3f2a9c1;rm -rf x'), 'Eintrag nicht lesbar', semikolon.grund);
     // auf keinem Zweig hat Titel und Zahlen, die vier anderen „—“ (aria-hidden) mit verstecktem „keine Angabe“
     const v1 = zeileMit(page, kurz(rep.v1));
-    await expect(v1.locator('.cl-c-titel')).toHaveText('v.txt anlegen');
+    await expect(v1.locator('.cl-c-titel')).toHaveText('v.dat anlegen');
     expect(await text(v1.locator('.cl-c-pm'))).toBe('+1 −0 Zeilen');
     await expect(v1.getByText('keine Angabe')).toHaveCount(0);
     for (const hash of [kurz(rep.v2), `xx:${rep.k1.slice(0, 7)}`, `xy:${rep.k1.slice(0, 7)}`, 'kd:3f2a9c1;rm -rf x']) {

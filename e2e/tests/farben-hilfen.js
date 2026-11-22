@@ -45,12 +45,12 @@ function farbenRepositoryBauen(basis) {
     'src/hunks.rs': zeilenText(HUNKS_ALT),
     'Makefile': 'x\n', 'notiz.unbekannt': 'x\n', 'Typ.TS': 'x\n', 'SRC/GROSS.RS': 'x\n',
     'alt.py': 'def f(): pass\n',
-    'umbenannt.txt': '// u1\n// u2\n// u3\n// u4\nfn alt() {}\n',
+    'umbenannt.dat': '// u1\n// u2\n// u3\n// u4\nfn alt() {}\n',
   });
   const h = { r };
   h.k0 = commitAlles(r, 'Ausgangsstand');
   fs.rmSync(path.join(r, 'alt.py'));
-  fs.rmSync(path.join(r, 'umbenannt.txt'));
+  fs.rmSync(path.join(r, 'umbenannt.dat'));
   schreiben(r, {
     'src/main.rs': '/* Kopf\n   zweite Zeile\n*/\nfn main() {}\n',
     'src/seiten.rs': 'let a = 1;\nlet b = 2;\n*/ let c = 3;\n',

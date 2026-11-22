@@ -43,16 +43,16 @@ function fallN(r, fremd) {
   return [k1, k2];
 }
 
-/** Fall F (R00208 #2): K1, F (fremd) und K2 ändern `a.txt`; K1 und K2 ändern `k.txt`. Liefert [K1, K2]. */
+/** Fall F (R00208 #2): K1, F (fremd) und K2 ändern `a.dat`; K1 und K2 ändern `k.dat`. Liefert [K1, K2]. */
 function fallF(r) {
   let a = zeilen(12, 'z');
-  commit(r, 'A0 Fall F', { 'a.txt': a });
+  commit(r, 'A0 Fall F', { 'a.dat': a });
   a = ersetzt(a, 2, 'K1');
-  const k1 = commit(r, 'K1 a.txt und k.txt', { 'a.txt': a, 'k.txt': 'k1\nk2\n' });
+  const k1 = commit(r, 'K1 a.dat und k.dat', { 'a.dat': a, 'k.dat': 'k1\nk2\n' });
   a = ersetzt(a, 6, 'FREMD-6');
-  commit(r, 'F fremd', { 'a.txt': a, 'f.txt': 'FREMD-f\n' });
+  commit(r, 'F fremd', { 'a.dat': a, 'f.dat': 'FREMD-f\n' });
   a = ersetzt(a, 11, 'K2');
-  const k2 = commit(r, 'K2 a.txt', { 'a.txt': a, 'k.txt': 'k1\nk2\nk3\n' });
+  const k2 = commit(r, 'K2 a.dat', { 'a.dat': a, 'k.dat': 'k1\nk2\nk3\n' });
   return [k1, k2];
 }
 
@@ -128,11 +128,11 @@ test.describe('R00225 Alle Änderungen ohne fremden Commit', () => {
     expect(koepfe.filter(t => t.includes('d/x'))).toEqual([]);
   });
 
-  test('AK 5 Fall F (Gegenprobe): a.txt als Folge mit beiden Sätzen wie in R00210 AK 2 und AK 3', async ({ page }) => {
+  test('AK 5 Fall F (Gegenprobe): a.dat als Folge mit beiden Sätzen wie in R00210 AK 2 und AK 3', async ({ page }) => {
     await page.goto(reviewAdresse(k, 23));
     await expect(abschnitt(page).locator('h2')).toHaveText('Anwendung kd 2 Commits · 2 Dateien');
     await expect(page.locator('#rv-a0 .rv-hw')).toHaveText(SATZ_FREMD_EINS);
-    await expect(page.locator('#rv-dk0-0')).toHaveText('a.txtFolge · 2 Commits+2 −2');
+    await expect(page.locator('#rv-dk0-0')).toHaveText('a.datFolge · 2 Commits+2 −2');
     await expect(page.locator('#rv-d0-0 .df-folge')).toHaveText(FOLGE_SATZ);
   });
 });

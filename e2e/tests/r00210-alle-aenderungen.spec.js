@@ -59,7 +59,7 @@ async function festeAntwort(page, nr, aendern) {
 const patchMit = (n, vorsatz = 'x') => '@@ -0,0 +1 @@\n' + Array.from({ length: n - 1 }, (_, i) => `+${vorsatz}${i}\n`).join('');
 const netto = (name, n, zusatz = {}) => ({ neu: name, alt: null, status: 'A', plus: n - 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: patchMit(n), ...zusatz });
 const commitEintrag = (k, hash, titel) => ({ verweis: `${k}:${hash}`, anwendung: k, hash, titel, autor: 'Ada', datum: '2026-05-02T10:00:00Z', plus: 1, minus: 0, dateien: 1 });
-const schritt = (k, hash, n, zusatz = {}) => ({ commit: `${k}:${hash}`, alt: 'f.txt', neu: 'f.txt', status: 'M', plus: n - 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: patchMit(n), ...zusatz });
+const schritt = (k, hash, n, zusatz = {}) => ({ commit: `${k}:${hash}`, alt: 'f.dat', neu: 'f.dat', status: 'M', plus: n - 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: patchMit(n), ...zusatz });
 
 /** Gezeichnete Zeilen offener Dateien und Schritte: Zeilen aller Code-Tabellen je Datei-Abschnitt. */
 const offeneDateien = page => page.locator('#rv-insel section.df').evaluateAll(ds => ds.filter(d => d.querySelector('.df-k').getAttribute('aria-expanded') === 'true' && d.querySelector('table.dz')).map(d => d.id));
@@ -74,7 +74,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   });
   test.afterEach(() => k.stoppen());
 
-  /** Die erste Antwort von #11 mit `k.txt` (zweite Datei von kd) in `nachladen`; `aendern` kann die Hinweise ersetzen. */
+  /** Die erste Antwort von #11 mit `k.dat` (zweite Datei von kd) in `nachladen`; `aendern` kann die Hinweise ersetzen. */
   async function ersteAntwortElf(page, aendern = json => json) {
     await page.route(url => istDiff(url, 11) && !url.searchParams.has('anwendung') && !url.searchParams.has('datei'), async route => {
       const echt = await route.fetch();
@@ -201,7 +201,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     let mitNeuer = false;
     await festeAntwort(page, 2, json => {
       if (!mitNeuer) return json;
-      return { ...json, dateien: [{ neu: '0-neu.txt', status: 'A', plus: 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1 @@\n+n\n' }, ...json.dateien] };
+      return { ...json, dateien: [{ neu: '0-neu.dat', status: 'A', plus: 1, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1 @@\n+n\n' }, ...json.dateien] };
     });
     await page.goto(reviewAdresse(k, 2));
     await page.locator('#rv-dk0-0').click();
@@ -259,9 +259,9 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('.rv-laedt')).toBeVisible();
     h.frei(0);
     await expect(page.locator('#rv-a0 h2')).toHaveText('Anwendung kd 2 Commits · 2 Dateien');
-    await expect(page.locator('#rv-dk0-0')).toHaveText('a.txtFolge · 2 Commits+2 −2');
+    await expect(page.locator('#rv-dk0-0')).toHaveText('a.datFolge · 2 Commits+2 −2');
     await expect(page.locator('#rv-d0-0 .fs-l')).toHaveCount(2);
-    await expect(page.locator('#rv-dk0-1')).toHaveText(/^neuk\.txt\+3 −0/);
+    await expect(page.locator('#rv-dk0-1')).toHaveText(/^neuk\.dat\+3 −0/);
     await expect(page.locator('#rv-ansage')).toHaveText('Alle Änderungen der Aufgabe #2: 2 Dateien, 5 Zeilen hinzugefügt, 2 entfernt.');
   });
 
@@ -349,21 +349,21 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
 
   /* ── AK 2 Folge-Datei und Netto-Datei ── */
 
-  test('AK 2: #2 — „Anwendung kd“ mit 2 Commits · 2 Dateien; a.txt als Folge ohne Statuswort mit Schrittköpfen als Verweis; k.txt netto „neu“; nie fremd', async ({ page }) => {
+  test('AK 2: #2 — „Anwendung kd“ mit 2 Commits · 2 Dateien; a.dat als Folge ohne Statuswort mit Schrittköpfen als Verweis; k.dat netto „neu“; nie fremd', async ({ page }) => {
     await page.goto(reviewAdresse(k, 2));
     const ab = page.locator('#rv-a0');
     await expect(ab.locator('h2')).toHaveText('Anwendung kd 2 Commits · 2 Dateien');
     const kopf = page.locator('#rv-dk0-0');
-    await expect(kopf).toHaveText('a.txtFolge · 2 Commits+2 −2');
-    await expect(kopf).toHaveAttribute('aria-label', 'a.txt, Folge · 2 Commits, +2 −2, aufgeklappt');
+    await expect(kopf).toHaveText('a.datFolge · 2 Commits+2 −2');
+    await expect(kopf).toHaveAttribute('aria-label', 'a.dat, Folge · 2 Commits, +2 −2, aufgeklappt');
     await expect(kopf.locator('.st:not(.st-folge)')).toHaveCount(0);
     await expect(page.locator('#rv-d0-0 .df-folge')).toHaveText('Fremde Commits haben diese Datei zwischen den Schritten der Aufgabe geändert. Hier stehen die Schritte der Aufgabe nacheinander; Änderungen fremder Commits fehlen.');
     const schritte = page.locator('#rv-d0-0 .fs-l');
-    await expect(schritte).toHaveText([`${kurz(rep.k1)}K1 a.txt und k.txtgeändert+1 −1`, `${kurz(rep.k2)}K2 a.txtgeändert+1 −1`]);
-    await expect(schritte.first()).toHaveAttribute('aria-label', `Commit ${kurz(rep.k1)}, K1 a.txt und k.txt, geändert, +1 −1`);
+    await expect(schritte).toHaveText([`${kurz(rep.k1)}K1 a.dat und k.datgeändert+1 −1`, `${kurz(rep.k2)}K2 a.datgeändert+1 −1`]);
+    await expect(schritte.first()).toHaveAttribute('aria-label', `Commit ${kurz(rep.k1)}, K1 a.dat und k.dat, geändert, +1 −1`);
     expect(decodeURIComponent(await schritte.nth(1).getAttribute('href'))).toMatch(new RegExp(`review\\?commit=kd:${rep.k2}$`));
     await expect(page.locator('#rv-d0-0 .fs table.dz')).toHaveCount(2);
-    await expect(page.locator('#rv-dk0-1')).toHaveText(/^neuk\.txt\+3 −0/);
+    await expect(page.locator('#rv-dk0-1')).toHaveText(/^neuk\.dat\+3 −0/);
     // Summe gleich der Summe der Schritte; keine +/−-Zeile mit FREMD
     const zahlen = await page.locator('#rv-d0-0 .fs .z').allTextContents();
     expect(zahlen).toEqual(['+1 −1', '+1 −1']);
@@ -504,9 +504,9 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   test('AK 5 (a): kd vier Dateien zu 2.250, wb eine zu 1.500 — die Datei von wb bleibt zu (Budget über die Seite)', async ({ page }) => {
     await festeAntwort(page, 11, (json, url) => {
       const anw = url.searchParams.get('anwendung');
-      if (anw === 'wb') return { anwendung: 'wb', commits: [commitEintrag('wb', rep.w1, 'W')], dateien: [netto('w.txt', 1500)], hinweise: [] };
+      if (anw === 'wb') return { anwendung: 'wb', commits: [commitEintrag('wb', rep.w1, 'W')], dateien: [netto('w.dat', 1500)], hinweise: [] };
       if (anw === 'xx') return { anwendung: 'xx', commits: [commitEintrag('xx', rep.x1, 'X')], dateien: [], hinweise: [] };
-      return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K')], dateien: [1, 2, 3, 4].map(n => netto(`b${n}.txt`, 2250)), hinweise: [{ art: 'weitere_anwendungen', anwendungen: ['wb', 'xx'] }] };
+      return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K')], dateien: [1, 2, 3, 4].map(n => netto(`b${n}.dat`, 2250)), hinweise: [{ art: 'weitere_anwendungen', anwendungen: ['wb', 'xx'] }] };
     });
     await page.goto(reviewAdresse(k, 11));
     await expect(page.locator('#rv-a2 h2')).toHaveText(/1 Commit/);
@@ -517,9 +517,9 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   test('AK 5 (b)/(c): Folge 3 × 2.800 nach 2.000 ganz zu, danach 100 zu; erste Datei der Seite als Folge 4 × 2.800 mit Schritt ohne patch ganz offen', async ({ page }) => {
     let fall = 'b';
     await festeAntwort(page, 2, () => {
-      const folge = (...je) => ({ pfad: 'f.txt', plus: 0, minus: 0, binaer: false, schritte: je.map((n, j) => (n === null ? schritt('kd', rep.k1, 2, { gross: true, patch: undefined }) : schritt('kd', j % 2 ? rep.k2 : rep.k1, n))) });
-      if (fall === 'b') return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K1'), commitEintrag('kd', rep.k2, 'K2')], dateien: [netto('a.txt', 2000), folge(2800, 2800, 2800), netto('z.txt', 100)], hinweise: [] };
-      return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K1'), commitEintrag('kd', rep.k2, 'K2')], dateien: [folge(2800, 2800, null, 2800, 2800), netto('z.txt', 100)], hinweise: [] };
+      const folge = (...je) => ({ pfad: 'f.dat', plus: 0, minus: 0, binaer: false, schritte: je.map((n, j) => (n === null ? schritt('kd', rep.k1, 2, { gross: true, patch: undefined }) : schritt('kd', j % 2 ? rep.k2 : rep.k1, n))) });
+      if (fall === 'b') return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K1'), commitEintrag('kd', rep.k2, 'K2')], dateien: [netto('a.dat', 2000), folge(2800, 2800, 2800), netto('z.dat', 100)], hinweise: [] };
+      return { anwendung: 'kd', commits: [commitEintrag('kd', rep.k1, 'K1'), commitEintrag('kd', rep.k2, 'K2')], dateien: [folge(2800, 2800, null, 2800, 2800), netto('z.dat', 100)], hinweise: [] };
     });
     await page.goto(reviewAdresse(k, 2));
     await expect(page.locator('#rv-dk0-2')).toBeVisible();
@@ -562,7 +562,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
       wb.frei(0);
       await expect(page.locator('#rv-a2 .rv-cl')).toBeVisible();
       await expect(page.locator('#rv-d0-1 table.dz')).toBeVisible();
-      expect(z.diff).toEqual(['', '?anwendung=wb', '?datei=k.txt&anwendung=kd', '?anwendung=xx']);
+      expect(z.diff).toEqual(['', '?anwendung=wb', '?datei=k.dat&anwendung=kd', '?anwendung=xx']);
       expect(z.hoechstens).toBe(1);
       expect(Math.abs((await kante()) - vorher)).toBeLessThanOrEqual(1);
       expect(await page.evaluate(() => document.getElementById('rv-insel').kdMarke)).toBe('B3');
@@ -578,15 +578,15 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
 
   /* ── AK 7 Nachladen mit anwendung= ── */
 
-  test('AK 7: README.md in kd und wb mit nachladen — datei=README.md&anwendung=<kürzel> ohne commit, jede zeigt ihren Inhalt', async ({ page }) => {
+  test('AK 7: README.dat in kd und wb mit nachladen — datei=README.dat&anwendung=<kürzel> ohne commit, jede zeigt ihren Inhalt', async ({ page }) => {
     const z = zaehlen(page);
     await festeAntwort(page, 11, (json, url) => {
       const anw = url.searchParams.get('anwendung');
       const datei = url.searchParams.get('datei');
       const k2 = anw || 'kd';
-      if (datei) return { anwendung: k2, commits: [commitEintrag(k2, rep.k1, 'R')], dateien: [netto('README.md', 2, { patch: `@@ -0,0 +1 @@\n+Inhalt von ${k2}\n` })], hinweise: [] };
+      if (datei) return { anwendung: k2, commits: [commitEintrag(k2, rep.k1, 'R')], dateien: [netto('README.dat', 2, { patch: `@@ -0,0 +1 @@\n+Inhalt von ${k2}\n` })], hinweise: [] };
       const weitere = anw ? [] : [{ art: 'weitere_anwendungen', anwendungen: ['wb'] }];
-      return { anwendung: k2, commits: [commitEintrag(k2, rep.k1, 'R')], dateien: [netto('README.md', 2, { nachladen: true, patch: undefined })], hinweise: weitere };
+      return { anwendung: k2, commits: [commitEintrag(k2, rep.k1, 'R')], dateien: [netto('README.dat', 2, { nachladen: true, patch: undefined })], hinweise: weitere };
     });
     await page.goto(reviewAdresse(k, 11));
     await expect(page.locator('#rv-a1 .rv-cl')).toBeVisible();
@@ -594,19 +594,19 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('#rv-d1-0 table.dz')).toContainText('Inhalt von wb');
     await page.locator('#rv-d0-0').getByRole('button', { name: 'Nachladen' }).click();
     await expect(page.locator('#rv-d0-0 table.dz')).toContainText('Inhalt von kd');
-    expect(z.diff.filter(s => s.includes('datei='))).toEqual(['?datei=README.md&anwendung=wb', '?datei=README.md&anwendung=kd']);
+    expect(z.diff.filter(s => s.includes('datei='))).toEqual(['?datei=README.dat&anwendung=wb', '?datei=README.dat&anwendung=kd']);
   });
 
   test('AK 7: Standardanwendung (Kürzel leer) — datei= trägt das leere anwendung=, nie weggelassen', async ({ page }) => {
     const z = zaehlen(page);
     await festeAntwort(page, 2, (json, url) => {
-      if (url.searchParams.has('datei')) return { anwendung: '', commits: [], dateien: [{ neu: 'k.txt', status: 'A', plus: 3, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1,3 @@\n+k1\n+k2\n+k3\n' }], hinweise: [] };
+      if (url.searchParams.has('datei')) return { anwendung: '', commits: [], dateien: [{ neu: 'k.dat', status: 'A', plus: 3, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1,3 @@\n+k1\n+k2\n+k3\n' }], hinweise: [] };
       return { ...json, anwendung: '', dateien: [json.dateien[0], { ...json.dateien[1], nachladen: true, patch: undefined }] };
     });
     await page.goto(reviewAdresse(k, 2));
     await page.locator('#rv-d0-1').getByRole('button', { name: 'Nachladen' }).click();
     await expect(page.locator('#rv-d0-1 table.dz')).toBeVisible();
-    expect(z.diff.filter(s => s.includes('datei='))).toEqual(['?datei=k.txt&anwendung=']);
+    expect(z.diff.filter(s => s.includes('datei='))).toEqual(['?datei=k.dat&anwendung=']);
   });
 
   test('AK 7: Folge-Datei mit gross → „Änderungen anzeigen“ ersetzt den Eintrag, alle Schritte offen; zu_gross_zum_anzeigen ohne Knopf, Schrittköpfe als Verweise', async ({ page }) => {
@@ -614,7 +614,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await festeAntwort(page, 2, (json, url) => {
       const a = json.dateien[0];
       if (url.searchParams.has('datei')) {
-        if (zuGross) return { ...json, dateien: [{ ...a, schritte: a.schritte.map(s => ({ ...s, gross: true, patch: undefined })) }], hinweise: [{ art: 'zu_gross_zum_anzeigen', datei: 'a.txt' }] };
+        if (zuGross) return { ...json, dateien: [{ ...a, schritte: a.schritte.map(s => ({ ...s, gross: true, patch: undefined })) }], hinweise: [{ art: 'zu_gross_zum_anzeigen', datei: 'a.dat' }] };
         return { ...json, dateien: [a], hinweise: [] };
       }
       return { ...json, dateien: [{ ...a, schritte: [a.schritte[0], { ...a.schritte[1], gross: true, patch: undefined }] }, json.dateien[1]] };

@@ -7,7 +7,7 @@ const d = require('../../web/diff.js');
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BOESE = '<img src=x onerror=window.pwn=1> "x"';
-const datei = (zusatz = {}) => ({ neu: 'src/a.txt', alt: 'src/a.txt', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-a\n+b\n', ...zusatz });
+const datei = (zusatz = {}) => ({ neu: 'src/a.dat', alt: 'src/a.dat', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-a\n+b\n', ...zusatz });
 const offen = (zusatz = {}) => ({ offen: true, laden: null, ...zusatz });
 const zeichne = (z = {}, stand = offen(), hinweise = []) => d.dateiHtml(datei(z), 0, stand, hinweise, esc);
 const ohneTags = html => html.replace(/<[^>]*>/g, '');
@@ -34,8 +34,8 @@ test('Bidi in Pfad und Zeile: Marke mit Auge, role="img", Name „sichtbar gemac
 test('Datei mit patch offen: Kopf als Knopf mit aria-expanded, Tabelle „Änderungen in <Pfad>“, Lesetext, Zeilennummern und Zeichen aria-hidden', () => {
   const html = zeichne();
   assert.ok(/<h3 class="df-h"><button type="button" class="df-k" id="rv-dk0" data-act="review-klappe" data-arg="0" aria-expanded="true"/.test(html));
-  assert.ok(html.includes('<div class="df-sc" tabindex="0" role="region" aria-label="Änderungen in src/a.txt" data-farbe="nein">'));
-  assert.ok(html.includes('<table class="dz" aria-label="Änderungen in src/a.txt">'));
+  assert.ok(html.includes('<div class="df-sc" tabindex="0" role="region" aria-label="Änderungen in src/a.dat" data-farbe="nein">'));
+  assert.ok(html.includes('<table class="dz" aria-label="Änderungen in src/a.dat">'));
   assert.ok(html.includes('<td class="n" aria-hidden="true">1</td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true">−</td><td class="c"><span class="vh">entfernt: </span>a</td>'));
   assert.ok(html.includes('<td class="m" aria-hidden="true">+</td><td class="c"><span class="vh">hinzugefügt: </span>b</td>'));
   assert.ok(html.includes('<span class="st st-mod">geändert</span>'));
@@ -59,13 +59,13 @@ test('Merkmale nie still: groß mit Zeilen und Knopf, nachladen, zu groß ohne K
   assert.ok(gross.includes('Der Patch ist groß (3.001 Zeilen) und wird erst auf Wunsch geladen.Änderungen anzeigen'));
   assert.ok(zeichne({ gross: true, patch: undefined }).includes('<button type="button" class="btn" data-act="review-nachladen" data-arg="0">Änderungen anzeigen</button>'));
   assert.ok(ohneTags(zeichne({ nachladen: true, patch: undefined })).includes('Diese Datei war nicht in der ersten Antwort, weil die Antwort zu groß wurde. Sie wird einzeln geladen.Nachladen'));
-  const zuGross = zeichne({ gross: true, patch: undefined, plus: 1204, minus: 7 }, offen(), [{ art: 'zu_gross_zum_anzeigen', datei: 'src/a.txt' }]);
+  const zuGross = zeichne({ gross: true, patch: undefined, plus: 1204, minus: 7 }, offen(), [{ art: 'zu_gross_zum_anzeigen', datei: 'src/a.dat' }]);
   assert.ok(ohneTags(zuGross).includes('Zu groß zum Anzeigen. Es stehen nur die Zahlen: +1.204 −7.'));
   assert.ok(!zuGross.includes('<button type="button" class="btn"'), 'kein Knopf');
   assert.ok(ohneTags(zeichne({ binaer: true, patch: undefined })).includes('Binärdatei — der Inhalt wird nicht angezeigt.'));
   assert.ok(ohneTags(zeichne({ patch: undefined, modus_alt: '100644', modus_neu: '100755', plus: 0, minus: 0 })).includes('Dateimodus 100644 → 100755; der Inhalt ist unverändert.'));
   assert.ok(ohneTags(zeichne({ nicht_utf8: true })).includes('Nicht als UTF-8 lesbar — nicht darstellbare Zeichen sind ersatzweise mit � wiedergegeben.'));
-  assert.ok(ohneTags(zeichne({ status: 'R', alt: 'alt/b.txt', aehnlichkeit: 100, patch: undefined })).includes('umbenannt ← alt/b.txt · 100 %'));
+  assert.ok(ohneTags(zeichne({ status: 'R', alt: 'alt/b.dat', aehnlichkeit: 100, patch: undefined })).includes('umbenannt ← alt/b.dat · 100 %'));
   for (const [s, w] of [['A', 'neu'], ['M', 'geändert'], ['D', 'gelöscht'], ['R', 'umbenannt'], ['T', 'Typ geändert']]) assert.ok(zeichne({ status: s, alt: 'a', neu: 'a' }).includes(`>${w}</span>`), s);
   assert.ok(!/KB|MB/.test(ohneTags(gross + zuGross)));
 });
@@ -124,9 +124,9 @@ test('Rand (c) nennt je Eintrag Kurzform, Zustandswort und Hinweis; gekappt mit 
 });
 
 test('Commit-Kopf: Titel als h2 mit tabindex -1, verwaist mit „auf keinem Zweig“ und Band, Summe „1 Datei“ / „0 Dateien“', () => {
-  const c = { hash: 'c'.repeat(40), titel: 'v.txt anlegen', autor: 'Ada', datum: '2026-03-03T09:00:00+00:00', plus: 1, minus: 0, dateien: 1 };
+  const c = { hash: 'c'.repeat(40), titel: 'v.dat anlegen', autor: 'Ada', datum: '2026-03-03T09:00:00+00:00', plus: 1, minus: 0, dateien: 1 };
   const html = d.commitKopfHtml(c, 'kd', { zustand: 'verwaist' }, esc);
-  assert.ok(html.includes('<h2 id="rv-ctitel" tabindex="-1">v.txt anlegen</h2>') && html.includes('auf keinem Zweig'));
+  assert.ok(html.includes('<h2 id="rv-ctitel" tabindex="-1">v.dat anlegen</h2>') && html.includes('auf keinem Zweig'));
   assert.ok(ohneTags(html).includes('Dieser Commit ist verwaist: Kein Zweig führt zu ihm. Sein Diff bleibt lesbar. Nach einem Rebase mit ersetzen nachziehen; im Gesamtbild der Aufgabe zählt er nicht mit.'));
   assert.ok(ohneTags(html).includes('Ada · 03.03.2026 10:00 · +1 −0 · 1 Datei'));
   assert.strictEqual(d.dateienWort(0), '0 Dateien');

@@ -33,58 +33,58 @@ function commit(r, titel, aenderungen, ...extra) {
 
 const ersetzt = (text, nr, neu) => text.split('\n').map((z, i) => (i === nr - 1 ? neu : z)).join('\n');
 
-/** R (kd): A0; K1 ändert Zeile 2 von a.txt und legt k.txt an (3 Zeilen); F (fremd) ändert Zeile 5 von a.txt zu FREMD und f.txt;
- *  K2 ändert Zeile 11 von a.txt. Danach L1, L2 (l.txt), N1, MK (Merge mit y.txt FREMD-Y), N2, N1' (verwaist), P1 und P2 (seite). */
+/** R (kd): A0; K1 ändert Zeile 2 von a.dat und legt k.dat an (3 Zeilen); F (fremd) ändert Zeile 5 von a.dat zu FREMD und f.dat;
+ *  K2 ändert Zeile 11 von a.dat. Danach L1, L2 (l.dat), N1, MK (Merge mit y.dat FREMD-Y), N2, N1' (verwaist), P1 und P2 (seite). */
 function repositoryR(basis) {
   const r = path.join(basis, 'R');
   repositoryAnlegen(r);
   const h = { r };
   let a = zeilen(20, 'z');
-  h.a0 = commit(r, 'A0 anlegen', { 'a.txt': a, 'f.txt': 'f1\n' });
+  h.a0 = commit(r, 'A0 anlegen', { 'a.dat': a, 'f.dat': 'f1\n' });
   a = ersetzt(a, 2, 'K1');
-  h.k1 = commit(r, 'K1 a.txt und k.txt', { 'a.txt': a, 'k.txt': 'k1\nk2\nk3\n' });
+  h.k1 = commit(r, 'K1 a.dat und k.dat', { 'a.dat': a, 'k.dat': 'k1\nk2\nk3\n' });
   a = ersetzt(a, 5, 'FREMD');
-  h.f = commit(r, 'F fremd', { 'a.txt': a, 'f.txt': 'FREMD f\n' });
+  h.f = commit(r, 'F fremd', { 'a.dat': a, 'f.dat': 'FREMD f\n' });
   a = ersetzt(a, 11, 'K2');
-  h.k2 = commit(r, 'K2 a.txt', { 'a.txt': a });
-  h.l1 = commit(r, 'L1 l.txt anlegen', { 'l.txt': 'l1\n' });
-  h.l2 = commit(r, 'L2 l.txt ändern', { 'l.txt': 'l1\nl2\n' });
-  h.n1 = commit(r, 'N1 n.txt', { 'n.txt': 'n1\n' });
+  h.k2 = commit(r, 'K2 a.dat', { 'a.dat': a });
+  h.l1 = commit(r, 'L1 l.dat anlegen', { 'l.dat': 'l1\n' });
+  h.l2 = commit(r, 'L2 l.dat ändern', { 'l.dat': 'l1\nl2\n' });
+  h.n1 = commit(r, 'N1 n.dat', { 'n.dat': 'n1\n' });
   gitAls(r, ADA, '2026-05-20T09:00:00+00:00', 'checkout', '-q', '-b', 'nebenzweig');
-  commit(r, 'Y fremd', { 'y.txt': 'FREMD-Y\n' });
+  commit(r, 'Y fremd', { 'y.dat': 'FREMD-Y\n' });
   gitAls(r, ADA, '2026-05-20T09:00:00+00:00', 'checkout', '-q', 'main');
   gitAls(r, ADA, '2026-05-20T10:00:00+00:00', 'merge', '-q', '--no-ff', '-m', 'MK Merge nebenzweig', 'nebenzweig');
   h.mk = gitAls(r, ADA, '2026-05-20T10:00:00+00:00', 'rev-parse', 'HEAD');
   gitAls(r, ADA, '2026-05-20T10:00:00+00:00', 'branch', '-q', '-D', 'nebenzweig');
-  h.n2 = commit(r, 'N2 n.txt', { 'n.txt': 'n1\nn2\n' });
+  h.n2 = commit(r, 'N2 n.dat', { 'n.dat': 'n1\nn2\n' });
   // N1' verwaist: ein Commit, zu dem kein Zweig führt (wie nach einem Rebase)
-  h.n1s = commit(r, "N1' verwaist", { 'n.txt': 'n1 alt\n' });
+  h.n1s = commit(r, "N1' verwaist", { 'n.dat': 'n1 alt\n' });
   gitAls(r, ADA, '2026-05-21T09:00:00+00:00', 'reset', '-q', '--hard', h.n2);
   // P1 auf main, P2 auf `seite`, das vor P1 abzweigt und nicht gemergt ist (#7, nicht linear)
   gitAls(r, ADA, '2026-05-21T09:00:00+00:00', 'branch', '-q', 'seite');
-  h.p1 = commit(r, 'P1 p.txt', { 'p.txt': 'p1\n' });
+  h.p1 = commit(r, 'P1 p.dat', { 'p.dat': 'p1\n' });
   gitAls(r, ADA, '2026-05-21T09:00:00+00:00', 'checkout', '-q', 'seite');
-  h.p2 = commit(r, 'P2 q.txt', { 'q.txt': 'q1\n' });
+  h.p2 = commit(r, 'P2 q.dat', { 'q.dat': 'q1\n' });
   gitAls(r, ADA, '2026-05-21T09:00:00+00:00', 'checkout', '-q', 'main');
   // V2 „gelöscht“: ein Hash, den das Repository nicht kennt
   h.v2 = 'e'.repeat(40);
   return h;
 }
 
-/** S (wb): W1, FS (fremd), W2 an derselben Datei w.txt — w.txt ist eine Folge-Datei; T (xx): X1. */
+/** S (wb): W1, FS (fremd), W2 an derselben Datei w.dat — w.dat ist eine Folge-Datei; T (xx): X1. */
 function repositorienSundT(basis) {
   const s = path.join(basis, 'S'), t = path.join(basis, 'T');
   repositoryAnlegen(s);
   repositoryAnlegen(t);
   let w = zeilen(20, 'w');
-  commit(s, 'S0', { 'w.txt': w });
+  commit(s, 'S0', { 'w.dat': w });
   w = ersetzt(w, 2, 'W1');
-  const w1 = commit(s, 'W1 w.txt', { 'w.txt': w, 'README.md': 'wb lies mich\n' });
+  const w1 = commit(s, 'W1 w.dat', { 'w.dat': w, 'README.md': 'wb lies mich\n' });
   w = ersetzt(w, 8, 'FREMD');
-  commit(s, 'FS fremd', { 'w.txt': w });
+  commit(s, 'FS fremd', { 'w.dat': w });
   w = ersetzt(w, 15, 'W2');
-  const w2 = commit(s, 'W2 w.txt', { 'w.txt': w });
-  const x1 = commit(t, 'X1 x.txt', { 'x.txt': 'x1\n' });
+  const w2 = commit(s, 'W2 w.dat', { 'w.dat': w });
+  const x1 = commit(t, 'X1 x.dat', { 'x.dat': 'x1\n' });
   return { s, t, w1, w2, x1 };
 }
 

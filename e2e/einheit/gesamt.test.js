@@ -6,8 +6,8 @@ const g = require('../../web/gesamt.js');
 const hash = c => c.repeat(40);
 const v = c => `kd:${hash(c)}`;
 const commit = (c, titel) => ({ verweis: v(c), hash: hash(c), titel, autor: 'sh', datum: '2026-11-20T10:00:00+01:00', plus: 1, minus: 1, dateien: 1 });
-const schritt = (c, zusatz = {}) => ({ commit: v(c), alt: 'a.txt', neu: 'a.txt', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-x\n+y\n', ...zusatz });
-const folgeDatei = (schritte, zusatz = {}) => ({ pfad: 'a.txt', plus: schritte.reduce((n, s) => n + s.plus, 0), minus: schritte.reduce((n, s) => n + s.minus, 0), binaer: false, schritte, ...zusatz });
+const schritt = (c, zusatz = {}) => ({ commit: v(c), alt: 'a.dat', neu: 'a.dat', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-x\n+y\n', ...zusatz });
+const folgeDatei = (schritte, zusatz = {}) => ({ pfad: 'a.dat', plus: schritte.reduce((n, s) => n + s.plus, 0), minus: schritte.reduce((n, s) => n + s.minus, 0), binaer: false, schritte, ...zusatz });
 const netto = (name, zusatz = {}) => ({ neu: name, alt: null, status: 'A', plus: 3, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1,3 @@\n+1\n+2\n+3\n', ...zusatz });
 
 /* ── B1041 Folge-Datei und Schritte ── */
@@ -19,7 +19,7 @@ test('folgeWort: „Folge · 1 Commit“ in der Einzahl, „Folge · 2 Commits�
 
 test('istFolge: ein Eintrag mit schritte ist eine Folge-Datei, ein Netto-Eintrag nicht', () => {
   assert.strictEqual(g.istFolge(folgeDatei([schritt('a')])), true);
-  assert.strictEqual(g.istFolge(netto('k.txt')), false);
+  assert.strictEqual(g.istFolge(netto('k.dat')), false);
 });
 
 test('schrittKoepfe: Titel über commit wörtlich aus commits, Kurzverweis, Statuswort und Zahlen je Schritt, Ziel ist der Verweis', () => {
@@ -38,7 +38,7 @@ test('schrittKoepfe: Schritt ohne passenden Eintrag in commits → neutraler Kop
 
 test('folgeKopf: Summe aus plus/minus der Antwort (nicht aus dem letzten Schritt), kein Statuswort, Wort nach Zahl der Schritte', () => {
   const d = folgeDatei([schritt('a', { status: 'A', plus: 5, minus: 0 }), schritt('b', { plus: 1, minus: 2 })]);
-  assert.deepStrictEqual(g.folgeKopf(d), { pfad: 'a.txt', plus: 6, minus: 2, wort: 'Folge · 2 Commits', statuswort: null });
+  assert.deepStrictEqual(g.folgeKopf(d), { pfad: 'a.dat', plus: 6, minus: 2, wort: 'Folge · 2 Commits', statuswort: null });
 });
 
 /* ── B1041 Hinweise in Worten (R00210 FA 6, PO Z. 437/440/444) ── */
@@ -89,7 +89,7 @@ test('dateien_gekappt: „2.000 von 2.431 Dateien gezeigt …“ mit Verweis auf
 });
 
 test('unbekannte Art: neutraler Satz mit dem Namen; weitere_anwendungen und zu_gross_zum_anzeigen ohne Satz im Abschnitt', () => {
-  const h = g.abschnittHinweise([{ art: 'neu_art' }, { art: 'weitere_anwendungen', anwendungen: ['wb'] }, { art: 'zu_gross_zum_anzeigen', datei: 'a.txt' }]);
+  const h = g.abschnittHinweise([{ art: 'neu_art' }, { art: 'weitere_anwendungen', anwendungen: ['wb'] }, { art: 'zu_gross_zum_anzeigen', datei: 'a.dat' }]);
   assert.deepStrictEqual(h.saetze.map(s => [s.art, s.text]), [['unbekannt', 'Die Antwort nennt einen Hinweis „neu_art“, den diese Ansicht nicht kennt.']]);
   assert.strictEqual(h.saetze[0].name, 'neu_art');
 });
@@ -123,7 +123,7 @@ test('leerSatz: nur fehlt oder anwendung_unbekannt → „Zu den Verweisen diese
 
 /* ── B1041 Summen und Ansage (R00210 FA 3, 4) ── */
 
-const antwort2 = { anwendung: 'kd', commits: [commit('a', 'K1'), commit('b', 'K2')], dateien: [folgeDatei([schritt('a'), schritt('b')]), netto('k.txt')], hinweise: [{ art: 'fremd_dazwischen', commits: 1, dateien: 1 }] };
+const antwort2 = { anwendung: 'kd', commits: [commit('a', 'K1'), commit('b', 'K2')], dateien: [folgeDatei([schritt('a'), schritt('b')]), netto('k.dat')], hinweise: [{ art: 'fremd_dazwischen', commits: 1, dateien: 1 }] };
 
 test('abschnittSummen: über die geladenen Abschnitte — #2 hat 2 Dateien, +5 −2; ladende und gescheiterte zählen nicht', () => {
   assert.deepStrictEqual(g.abschnittSummen([{ status: 'da', antwort: antwort2 }, { status: 'laedt' }, { status: 'fehler' }]), { dateien: 2, plus: 5, minus: 2 });
@@ -148,7 +148,7 @@ test('ansageText: jeder gescheiterte Abschnitt einmal mit „ohne Anwendung <kü
 const { aufklappPlanSeite, BUDGET_ZEILEN } = require('../../web/diff.js');
 // gezeichnete Zeilen nach R00207 FA 6: ein Hunk-Kopf und n − 1 Zeilen ergeben n
 const patchMit = n => '@@ -0,0 +1 @@\n' + '+x\n'.repeat(n - 1);
-const nettoZeilen = n => netto('n.txt', { patch: patchMit(n) });
+const nettoZeilen = n => netto('n.dat', { patch: patchMit(n) });
 const folgeZeilen = (...je) => folgeDatei(je.map((n, k) => (n === null ? schritt(String.fromCharCode(97 + k), { patch: undefined, gross: true }) : schritt(String.fromCharCode(97 + k), { patch: patchMit(n) }))));
 const voll = () => ({ rest: BUDGET_ZEILEN, gesperrt: false, erste: true });
 
@@ -200,20 +200,20 @@ test('naechsteAnfrage: eine wartende Datei geht vor noch nicht begonnene Anwendu
 
 test('zuordnenGesamt: Folge über pfad und die Position unter gleichnamigen Folge-Einträgen', () => {
   const erste = folgeDatei([schritt('a')]), zweite = folgeDatei([schritt('b'), schritt('c')]);
-  const liste = [netto('a.txt'), erste, zweite];
+  const liste = [netto('a.dat'), erste, zweite];
   const antwort = [{ ...erste, plus: 7 }, { ...zweite, plus: 9 }];
   assert.strictEqual(g.zuordnenGesamt(liste, 2, antwort).plus, 9);
   assert.strictEqual(g.zuordnenGesamt(liste, 1, antwort).plus, 7);
 });
 
 test('zuordnenGesamt: Netto über zuordnen (status, alt, neu); fehlt der Eintrag in beiden Arten → null', () => {
-  const liste = [netto('k.txt'), netto('l.txt')];
-  assert.strictEqual(g.zuordnenGesamt(liste, 1, [netto('k.txt', { plus: 1 }), netto('l.txt', { plus: 2 })]).plus, 2);
-  assert.strictEqual(g.zuordnenGesamt(liste, 1, [netto('m.txt')]), null);
+  const liste = [netto('k.dat'), netto('l.dat')];
+  assert.strictEqual(g.zuordnenGesamt(liste, 1, [netto('k.dat', { plus: 1 }), netto('l.dat', { plus: 2 })]).plus, 2);
+  assert.strictEqual(g.zuordnenGesamt(liste, 1, [netto('m.dat')]), null);
 });
 
 test('zuordnenGesamt: Artwechsel Netto ↔ Folge — die neue Antwort gilt', () => {
-  const nettoA = netto('a.txt', { status: 'M', alt: 'a.txt' }), folgeA = folgeDatei([schritt('a'), schritt('b')]);
+  const nettoA = netto('a.dat', { status: 'M', alt: 'a.dat' }), folgeA = folgeDatei([schritt('a'), schritt('b')]);
   assert.strictEqual(g.zuordnenGesamt([nettoA], 0, [folgeA]), folgeA);
   assert.strictEqual(g.zuordnenGesamt([folgeA], 0, [nettoA]), nettoA);
 });

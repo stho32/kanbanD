@@ -11,9 +11,9 @@ const hash = c => c.repeat(40);
 const v = c => `kd:${hash(c)}`;
 const ctx = { esc, adresse: verweis => `#/aufgaben/aufgabe/2/review?commit=${encodeURIComponent(verweis)}`, titelVon: () => null };
 const commit = (c, titel) => ({ verweis: v(c), anwendung: 'kd', hash: hash(c), titel, autor: 'sh', datum: '2026-11-20T10:00:00+01:00', plus: 1, minus: 1, dateien: 1 });
-const schritt = (c, zusatz = {}) => ({ commit: v(c), alt: 'a.txt', neu: 'a.txt', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-x\n+y\n', ...zusatz });
-const folgeA = { pfad: 'a.txt', plus: 2, minus: 2, binaer: false, schritte: [schritt('a'), schritt('b')] };
-const nettoK = { neu: 'k.txt', alt: null, status: 'A', plus: 3, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1,3 @@\n+1\n+2\n+3\n' };
+const schritt = (c, zusatz = {}) => ({ commit: v(c), alt: 'a.dat', neu: 'a.dat', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-x\n+y\n', ...zusatz });
+const folgeA = { pfad: 'a.dat', plus: 2, minus: 2, binaer: false, schritte: [schritt('a'), schritt('b')] };
+const nettoK = { neu: 'k.dat', alt: null, status: 'A', plus: 3, minus: 0, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -0,0 +1,3 @@\n+1\n+2\n+3\n' };
 const antwort2 = { anwendung: 'kd', commits: [commit('a', 'K1'), commit('b', BOESE)], dateien: [folgeA, nettoK], hinweise: [{ art: 'fremd_dazwischen', commits: 1, dateien: 1 }] };
 const offen = n => Array.from({ length: n }, () => ({ offen: true, laden: null, fehler: null }));
 const da = (antwort, kuerzel = antwort.anwendung) => ({ status: 'da', kuerzel, antwort, staende: offen(antwort.dateien.length) });
@@ -24,16 +24,16 @@ test('Abschnitt #2: „Anwendung kd“ mit „2 Commits · 2 Dateien“; Folge-D
   const html = g.abschnittHtml(da(antwort2), 0, ctx);
   assert.match(ohneTags(html), /Anwendung kd 2 Commits · 2 Dateien/);
   const kopf = /<button[^>]*id="rv-dk0-0"[^>]*>(.*?)<\/button>/.exec(html)[1];
-  assert.match(ohneTags(kopf), /^a\.txtFolge · 2 Commits\+2 −2$/);
+  assert.match(ohneTags(kopf), /^a\.datFolge · 2 Commits\+2 −2$/);
   assert.doesNotMatch(kopf, /geändert|neu|class="st st-mod"/);
-  assert.match(html, /aria-label="a\.txt, Folge · 2 Commits, \+2 −2, aufgeklappt"/);
+  assert.match(html, /aria-label="a\.dat, Folge · 2 Commits, \+2 −2, aufgeklappt"/);
 });
 
 test('Folge-Datei aufgeklappt: Satz zur Folge, je Schritt ein Kopf als Verweis mit Name nach FA 13, darunter der Code des Schritts', () => {
   const html = g.abschnittHtml(da(antwort2), 0, ctx);
   assert.match(html, /Fremde Commits haben diese Datei zwischen den Schritten der Aufgabe geändert\./);
   assert.match(html, new RegExp(`<a class="fs-l" href="#/aufgaben/aufgabe/2/review\\?commit=kd%3A${hash('a')}" data-act="review-commit" data-arg="${v('a')}" aria-label="Commit kd:aaaaaaa, K1, geändert, \\+1 −1">`));
-  assert.strictEqual((html.match(/class="df-sc"/g) || []).length, 3, 'zwei Schritte und k.txt mit Code');
+  assert.strictEqual((html.match(/class="df-sc"/g) || []).length, 3, 'zwei Schritte und k.dat mit Code');
   assert.match(html, /id="rv-d0-0-0"/);
   assert.match(html, /id="rv-d0-0-1"/);
 });
@@ -80,7 +80,7 @@ test('ganz_als_folge: Grund über den Dateien, Satz an der Datei ohne „Fremde 
 
 test('zu_gross_zum_anzeigen an der Folge-Datei: nur Zahlen, Schrittköpfe bleiben Verweise, kein Knopf, kein Code', () => {
   const groß = { ...folgeA, schritte: folgeA.schritte.map(s => ({ ...s, gross: true, patch: undefined })) };
-  const html = g.abschnittHtml(da({ ...antwort2, dateien: [groß], hinweise: [{ art: 'zu_gross_zum_anzeigen', datei: 'a.txt' }] }), 0, ctx);
+  const html = g.abschnittHtml(da({ ...antwort2, dateien: [groß], hinweise: [{ art: 'zu_gross_zum_anzeigen', datei: 'a.dat' }] }), 0, ctx);
   assert.match(html, /Zu groß zum Anzeigen\. Es stehen nur die Zahlen: \+2 −2\. Jeder Schritt lässt sich über seinen Kopf einzeln ansehen\./);
   assert.strictEqual((html.match(/class="fs-l" href=/g) || []).length, 2);
   assert.doesNotMatch(html, /<button[^>]*data-act="review-nachladen"/);
@@ -155,7 +155,7 @@ test('AK 12: Standardanwendung (leeres Kürzel) in allen Sätzen — lädt, wart
   assert.match(texte[3], /Die Änderungen der Standardanwendung wurden nicht gelesen\./);
   assert.match(texte[4], /· Standardanwendung lädt noch …$/);
   for (const t of texte) assert.doesNotMatch(t, /Anwendung {2}|Anwendung  ?…|Anwendung $/);
-  const datei = require('../../web/diff.js').dateiHtml({ neu: 'k.txt', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'wartet', wartetAuf: '' }, [], esc);
+  const datei = require('../../web/diff.js').dateiHtml({ neu: 'k.dat', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'wartet', wartetAuf: '' }, [], esc);
   assert.match(ohneTags(datei), /Wartet, bis die Standardanwendung geladen ist …/);
 });
 
@@ -165,7 +165,7 @@ test('AK 12: Ansage „ohne Standardanwendung: ließ sich nicht lesen“', () =>
 
 test('AK 13: Netzabbruch ohne „(0)“ an Datei und Seite; mit Antwort bleibt „(503)“', () => {
   const d = require('../../web/diff.js');
-  const datei = ohneTags(d.dateiHtml({ neu: 'k.txt', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'fehler', fehler: { art: 'anderer', status: 0, text: 'keine Verbindung zum Programm' } }, [], esc));
+  const datei = ohneTags(d.dateiHtml({ neu: 'k.dat', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'fehler', fehler: { art: 'anderer', status: 0, text: 'keine Verbindung zum Programm' } }, [], esc));
   assert.match(datei, /ließen sich nicht laden: keine Verbindung zum Programm\.Erneut/);
   assert.doesNotMatch(datei, /\(0\)/);
   const seite = ohneTags(d.diffFehlerHtml({ status: 0, fehler: 'Keine Verbindung' }, null, esc));
@@ -176,7 +176,7 @@ test('AK 13: Netzabbruch ohne „(0)“ an Datei und Seite; mit Antwort bleibt �
 
 test('AK 14: wartetAuf wird nur beim Einsetzen maskiert — „a&b“ steht als a&amp;b, nie doppelt, an Abschnitt und Datei', () => {
   const ab = g.abschnittHtml({ status: 'wartet', kuerzel: 'xx', wartetAuf: 'a&b' }, 2, ctx);
-  const datei = require('../../web/diff.js').dateiHtml({ neu: 'k.txt', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'wartet', wartetAuf: 'a&b<i>' }, [], esc);
+  const datei = require('../../web/diff.js').dateiHtml({ neu: 'k.dat', status: 'A', plus: 1, minus: 0, nachladen: true }, 0, { offen: true, laden: 'wartet', wartetAuf: 'a&b<i>' }, [], esc);
   assert.match(ab, /Anwendung a&amp;b geladen/);
   assert.match(datei, /Anwendung a&amp;b&lt;i&gt; geladen/);
   assert.doesNotMatch(ab + datei, /&amp;amp;|<i>/);

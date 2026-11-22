@@ -61,7 +61,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     const z = zaehlen(page);
     await page.goto(reviewAdresse(k, 1, rep.v1.slice(0, 7)));
     await expect(page.locator(POS)).toHaveText('3 von 4');
-    await expect(page.locator('#rv-ctitel')).toHaveText('v.txt anlegen');
+    await expect(page.locator('#rv-ctitel')).toHaveText('v.dat anlegen');
     await expect(page.locator('#fenster')).toHaveCount(0);
     expect([z.commits.length, z.diff.length]).toEqual([1, 1]);
     await expect(page.locator('#rv-rueckweg')).toBeFocused();
@@ -83,7 +83,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
   test('AK 2: dieselbe Seite unter der Board-Form', async ({ page }) => {
     await page.goto(reviewAdresse(k, 1, `kd:${rep.w1}`, 'board'));
     await expect(page.locator(POS)).toHaveText('2 von 4');
-    await expect(page.locator('#rv-ctitel')).toHaveText('b.txt anlegen');
+    await expect(page.locator('#rv-ctitel')).toHaveText('b.dat anlegen');
   });
 
   for (const [name, commit] of [['6 Hex', 'a'.repeat(6)], ['65 Hex', 'a'.repeat(65)], ['<script>', '<script>alert(1)</script>']]) {
@@ -107,7 +107,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page.locator('#rv-zurueck')).toHaveCount(0);
     await expect(page.locator('#review button:disabled, #review [aria-disabled="true"]')).toHaveCount(0);
     const laenge = await page.evaluate(() => history.length);
-    const erwartet = [['2 von 4', rep.w1, 'b.txt anlegen'], ['3 von 4', rep.v1, 'v.txt anlegen'], ['4 von 4', rep.r1, 'r.txt anlegen']];
+    const erwartet = [['2 von 4', rep.w1, 'b.dat anlegen'], ['3 von 4', rep.v1, 'v.dat anlegen'], ['4 von 4', rep.r1, 'r.dat anlegen']];
     for (const [pos, hash, titel] of erwartet) {
       await page.locator('#rv-vor').click();
       await expect(page.locator(POS)).toHaveText(pos);
@@ -135,11 +135,11 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     const rand = page.locator('.rv-randb');
     await expect(rand).toContainText(`${kurz(rep.w1)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.`);
     await expect(rand).toHaveAttribute('role', 'status');
-    await expect(page.locator('#rv-ctitel')).toHaveText('b.txt anlegen');
+    await expect(page.locator('#rv-ctitel')).toHaveText('b.dat anlegen');
     await expect(page.locator(`${POS}, #rv-vor, #rv-zurueck`)).toHaveCount(0);
     await page.getByRole('button', { name: 'Zum ersten Commit' }).click();
     await expect(page.locator(POS)).toHaveText('1 von 3');
-    await expect(page.locator('#rv-ctitel')).toHaveText('c.txt anlegen');
+    await expect(page.locator('#rv-ctitel')).toHaveText('c.dat anlegen');
   });
 
   // umgestellt mit R00210 (AK 4): Rand (c) steht im Abschnitt der Anwendung, die seitenweiten Einträge darüber
@@ -304,7 +304,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect.poll(() => h.angehalten()).toBe(2);
     h.frei(1);
     await expect(page.locator(POS)).toHaveText('3 von 4');
-    await expect(page.locator('#rv-ctitel')).toHaveText('v.txt anlegen');
+    await expect(page.locator('#rv-ctitel')).toHaveText('v.dat anlegen');
     expect(verweiseDer(z.diff)).toEqual([`kd:${rep.v1}`, `kd:${rep.v1}`]);
   });
 
@@ -350,8 +350,8 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     h.frei(0);
     await page.waitForFunction(k3 => performance.getEntriesByType('resource').some(e => e.name.includes(k3) && e.responseEnd > 0), rep.k3);
     await expect(page.locator(POS)).toHaveText('2 von 4');
-    await expect(page.locator('#rv-ctitel')).toHaveText('b.txt anlegen');
-    await expect(page.locator('#rv-insel .df-k .p')).toHaveText(['b.txt']);
+    await expect(page.locator('#rv-ctitel')).toHaveText('b.dat anlegen');
+    await expect(page.locator('#rv-insel .df-k .p')).toHaveText(['b.dat']);
     expect([z.commits.length, z.diff.length]).toEqual([1, 2]);
   });
 
@@ -422,7 +422,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
       h.frei(1);
       await expect(page.locator('#rv-d21 table.dz').first()).toBeVisible();
       expect(z.datei.length).toBe(2);
-      expect(new URL(z.datei[1]).searchParams.get('datei')).toBe('f22.txt');
+      expect(new URL(z.datei[1]).searchParams.get('datei')).toBe('f22.dat');
     });
   }
 
@@ -542,16 +542,16 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     h.frei(0);
     await expect(gross.locator('table.dz')).toHaveCount(7);
     expect(await gross.locator('tr').count()).toBe(3002);
-    expect(new URL(z.datei[0]).searchParams.get('datei')).toBe('gross.txt');
+    expect(new URL(z.datei[0]).searchParams.get('datei')).toBe('gross.dat');
     expect(new URL(z.datei[0]).searchParams.get('commit')).toBe(`kd:${rep.f}`);
   });
 
   test('AK 5: Antwort mit zu_gross_zum_anzeigen → „Zu groß zum Anzeigen. Es stehen nur die Zahlen: +3.001 −0.“ ohne Knopf', async ({ page }) => {
-    await page.route(url => url.pathname === '/api/aufgaben/9/diff' && url.searchParams.get('datei') === 'gross.txt', async route => {
+    await page.route(url => url.pathname === '/api/aufgaben/9/diff' && url.searchParams.get('datei') === 'gross.dat', async route => {
       const antwort = await route.fetch();
       const json = await antwort.json();
       json.dateien = json.dateien.map(d => ({ ...d, gross: true, patch: undefined }));
-      json.hinweise = [{ art: 'zu_gross_zum_anzeigen', datei: 'gross.txt' }];
+      json.hinweise = [{ art: 'zu_gross_zum_anzeigen', datei: 'gross.dat' }];
       await route.fulfill({ response: antwort, json });
     });
     await page.goto(reviewAdresse(k, 9, `kd:${rep.f}`));
@@ -574,7 +574,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
 
   test('AK 1: je Zeile mit Diff genau ein Verweis mit Namen; Hash und Rand der Zeile treffen ihn; V2 ohne Verweis', async ({ page }) => {
     await listeOeffnen(page);
-    for (const [hash, titel, wort] of [[rep.k3, 'c.txt anlegen', 'auf 2 Zweigen'], [rep.w1, 'b.txt anlegen', 'auf Zweig karte/1'], [rep.v1, 'v.txt anlegen', 'auf keinem Zweig'], [rep.r1, 'r.txt anlegen', 'auf Zweig o/x']]) {
+    for (const [hash, titel, wort] of [[rep.k3, 'c.dat anlegen', 'auf 2 Zweigen'], [rep.w1, 'b.dat anlegen', 'auf Zweig karte/1'], [rep.v1, 'v.dat anlegen', 'auf keinem Zweig'], [rep.r1, 'r.dat anlegen', 'auf Zweig o/x']]) {
       const z = zeile(page, hash);
       expect(await z.evaluate(e => e.querySelectorAll('a[href]').length)).toBe(1);
       const verweis = z.locator('a[href]');
@@ -671,12 +671,12 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await merkmaleOeffnen(page);
     const eintraege = page.locator('.dn .dn-e');
     await expect(eintraege).toHaveCount(13);
-    for (const [pfad, wort] of [['text.txt', 'geändert'], ['neu.txt', 'neu'], ['weg.txt', 'gelöscht'], ['neu-name.txt', 'umbenannt'], ['skript.sh', 'geändert']]) {
+    for (const [pfad, wort] of [['text.dat', 'geändert'], ['neu.dat', 'neu'], ['weg.dat', 'gelöscht'], ['neu-name.dat', 'umbenannt'], ['skript.sh', 'geändert']]) {
       const e = eintraege.filter({ hasText: pfad }).first();
       await expect(e.locator('.s')).toHaveText(wort);
       await expect(e.locator('.z')).toHaveText(/^\+\d+ −\d+$/);
     }
-    const text = datei(page, 'text.txt');
+    const text = datei(page, 'text.dat');
     await expect(text.locator('tr.hk')).toHaveCount(3);
     const zeilen = await text.locator('tr').evaluateAll(z => z.map(r => [...r.children].map(c => c.textContent)));
     const nummern = zeilen.filter(z => z.length === 4).map(z => [z[0], z[1], z[2]]);
@@ -688,23 +688,23 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     const ohneEnde = zeilen.find(z => z[3] === '\\ No newline at end of file');
     expect(ohneEnde.slice(0, 3)).toEqual(['', '', '']);
     await expect(page.locator('h3 .df-k')).toHaveCount(13);
-    await expect(text.locator('table.dz').first()).toHaveAttribute('aria-label', 'Änderungen in text.txt');
+    await expect(text.locator('table.dz').first()).toHaveAttribute('aria-label', 'Änderungen in text.dat');
   });
 
   test('AK 4: Merkmale nie still — umbenannt, Modus, nicht UTF-8, binär, gelöscht zu, groß mit Knopf, Pfad über 4.096 Byte ohne Knopf, 200.000 Zeichen ganz', async ({ page }) => {
     await merkmaleOeffnen(page);
-    await expect(datei(page, 'neu-name.txt').locator('.ren')).toHaveText('umbenannt ← alt-name.txt · 100 %');
+    await expect(datei(page, 'neu-name.dat').locator('.ren')).toHaveText('umbenannt ← alt-name.dat · 100 %');
     await expect(datei(page, 'skript.sh')).toContainText('Dateimodus 100644 → 100755; der Inhalt ist unverändert.');
-    await expect(datei(page, 'latin.txt')).toContainText('Nicht als UTF-8 lesbar — nicht darstellbare Zeichen sind ersatzweise mit � wiedergegeben.');
+    await expect(datei(page, 'latin.dat')).toContainText('Nicht als UTF-8 lesbar — nicht darstellbare Zeichen sind ersatzweise mit � wiedergegeben.');
     await expect(datei(page, 'bild.bin')).toContainText('Binärdatei — der Inhalt wird nicht angezeigt.');
-    await expect(datei(page, 'weg.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
-    const gross = datei(page, 'gross.txt');
+    await expect(datei(page, 'weg.dat').locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
+    const gross = datei(page, 'gross.dat');
     await expect(gross).toContainText('Der Patch ist groß (3.001 Zeilen) und wird erst auf Wunsch geladen.');
     await expect(gross.getByRole('button', { name: 'Änderungen anzeigen' })).toBeVisible();
-    const tief = datei(page, 'x.txt');
+    const tief = datei(page, 'x.dat');
     await expect(tief).toContainText('Zu groß zum Anzeigen. Es stehen nur die Zahlen: +1 −0.');
     await expect(tief.locator('.df-inhalt button')).toHaveCount(0);
-    const lang = datei(page, 'lang.txt').locator('tr.add .c');
+    const lang = datei(page, 'lang.dat').locator('tr.add .c');
     expect(await lang.evaluate(c => c.textContent.length)).toBe('hinzugefügt: '.length + 200000);
     expect(await lang.evaluate(c => getComputedStyle(c).whiteSpace)).toBe('pre');
     expect(await lang.evaluate(c => c.getBoundingClientRect().height)).toBeLessThan(30);
@@ -713,9 +713,9 @@ test.describe('R00207 Review-Seite eines Commits', () => {
 
   test('AK 4: ein Eintrag der Dateiliste klappt eine zugeklappte Datei auf und bringt ihren Kopf ins Bild; Fokus auf ihrem Kopf', async ({ page }) => {
     await merkmaleOeffnen(page);
-    const weg = datei(page, 'weg.txt');
+    const weg = datei(page, 'weg.dat');
     await expect(weg.locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
-    await page.locator('.dn .dn-e').filter({ hasText: 'weg.txt' }).click();
+    await page.locator('.dn .dn-e').filter({ hasText: 'weg.dat' }).click();
     await expect(weg.locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
     await expect(weg.locator('tr.del')).toHaveCount(1);
     await expect(weg.locator('.df-k')).toBeFocused();
@@ -761,9 +761,9 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(alle).toBeFocused();
     await alle.click();
     await expect(alle).toHaveText('Alle einklappen');
-    await expect(datei(page, 'text.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
-    await expect(datei(page, 'weg.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
-    await expect(datei(page, 'gross.txt').locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
+    await expect(datei(page, 'text.dat').locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
+    await expect(datei(page, 'weg.dat').locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
+    await expect(datei(page, 'gross.dat').locator('.df-k')).toHaveAttribute('aria-expanded', 'false');
     expect(z.datei).toEqual([]);
   });
 
@@ -829,7 +829,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(datei(page, BOESE).locator('tr.add .c')).toHaveText(`hinzugefügt: ${BOESE}`);
     await expect(page.locator('#app img')).toHaveCount(0);
     expect(await page.evaluate(() => window.pwn)).toBeUndefined();
-    const bidi = datei(page, 'datei.txt');
+    const bidi = datei(page, 'datei.dat');
     const marken = page.locator('.mk-bidi');
     await expect(marken).toHaveCount(3);
     for (const m of await marken.all()) {
@@ -843,7 +843,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(bidi.locator('tr.add .mk-bidi')).toHaveCount(1);
     await expect(bidi.locator('tr.add .mk-st')).toHaveText('␛ U+001B');
     expect(await bidi.locator('tr.add .c').evaluate(c => c.textContent.includes('c\td'))).toBe(true);
-    await expect(datei(page, 'text.txt').locator('tr.add .mk-st').first()).toHaveText('␍');
+    await expect(datei(page, 'text.dat').locator('tr.add .mk-st').first()).toHaveText('␍');
     expect(await page.evaluate(() => document.getElementById('review').textContent.includes('‮'))).toBe(false);
   });
 
@@ -901,15 +901,15 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     test(`AK 9: ${breite} px hell und dunkel — die Seite scrollt nie quer, nur der Code-Bereich; Spalten ≥ 160 px und Pfad ≤ 3 Zeilen zwischen 641 und 980`, async ({ page }) => {
       await breiteSetzen(page, breite, 900);
       await merkmaleOeffnen(page);
-      await expect(datei(page, 'lang.txt').locator('table.dz')).toBeVisible();
+      await expect(datei(page, 'lang.dat').locator('table.dz')).toBeVisible();
       for (const farbe of ['light', 'dark']) {
         await thema(page, farbe);
         expect(await breiteMessen(page, `Review ${breite} ${farbe}`)).toEqual([]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
         // Blöcke außerhalb des Bildes zeichnet der Browser nicht (content-visibility): gemessen wird an der Zeile im Bild
-        await datei(page, 'lang.txt').locator('tr.add').scrollIntoViewIfNeeded();
+        await datei(page, 'lang.dat').locator('tr.add').scrollIntoViewIfNeeded();
         expect(await breiteMessen(page, `Review ${breite} ${farbe}, lange Zeile im Bild`)).toEqual([]);
-        const quer = await datei(page, 'lang.txt').locator('.df-sc').evaluate(e => e.scrollWidth > e.clientWidth);
+        const quer = await datei(page, 'lang.dat').locator('.df-sc').evaluate(e => e.scrollWidth > e.clientWidth);
         expect(quer, 'die lange Zeile scrollt in ihrem Code-Bereich').toBe(true);
         const lage = await lageMessen(page);
         expect(lage.rechts).toEqual([]);
