@@ -107,3 +107,61 @@ test('AK 6: fehlerErkennen nur am Anfang — Exit code 0 nein, Exit code 2 ja, e
   assert.strictEqual(fehlerErkennen(' <tool_use_error>x'), false, 'nur am Textanfang');
   assert.strictEqual(fehlerErkennen('Exit code 12'), true);
 });
+
+/* ── B1208: Bericht, Kennzahlen, Längste Schritte, Auftrag und Systemhinweise ── */
+const { BERICHT } = require('../tests/laufansicht-t1.js');
+
+test('AK 4: T1 — der Bericht ist Nr 15 (JSON eines Aufrufs), nicht Nr 14 mit „Ergebnis:“ mitten im Satz; Commits 1', () => {
+  const a = laufAuswerten(T1_ZEILEN, false);
+  assert.deepStrictEqual(a.bericht, { nr: 15, text: BERICHT, ergebnis: 'bestanden', commits: 1 });
+});
+
+test('AK 4: Bericht in einer Nachricht wie im Aufruf; der letzte zählt; „Commits: keine“ ergibt 0; ohne Commits-Zeile null', () => {
+  const n = laufAuswerten([e(1, 'nachricht', 'agent', null, 'Fertig.\nErgebnis: befund\nCommits: keine · Arbeitsbaum sauber: ja')], false);
+  assert.deepStrictEqual(n.bericht, { nr: 1, text: 'Fertig.\nErgebnis: befund\nCommits: keine · Arbeitsbaum sauber: ja', ergebnis: 'befund', commits: 0 });
+  const zwei = laufAuswerten([e(1, 'nachricht', 'agent', null, 'Ergebnis: befund'), e(2, 'nachricht', 'agent', null, 'Ergebnis: blockiert\nCommits: abc1234 def5678 0123456789abcdef0123456789abcdef01234567')], false);
+  assert.deepStrictEqual([zwei.bericht.nr, zwei.bericht.ergebnis, zwei.bericht.commits], [2, 'blockiert', 3]);
+  assert.strictEqual(laufAuswerten([e(1, 'nachricht', 'agent', null, 'Ergebnis: bestanden')], false).bericht.commits, null);
+});
+
+test('AK 4: kein Bericht — Ergebnis nur mitten in einer Zeile, unbekanntes Wort, Nachricht von mensch oder werkzeug', () => {
+  for (const [wer, text] of [['agent', 'Das Ergebnis: bestanden'], ['agent', 'Ergebnis: gut'], ['mensch', 'Ergebnis: bestanden'], ['werkzeug', 'Ergebnis: bestanden']]) {
+    assert.strictEqual(laufAuswerten([e(1, 'nachricht', wer, null, text)], false).bericht, null, `${wer}: ${text}`);
+  }
+});
+
+test('AK 3: Kennzahlen von T1 — 6 Werkzeugaufrufe, 2 Fehler', () => {
+  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false).kennzahlen, { werkzeugaufrufe: 6, fehler: 2 });
+});
+
+test('AK 9: Längste Schritte von T1 — Wartezeile vor 13, Denkzeilen vor 15 und vor 3', () => {
+  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false).top3, [
+    { art: 'warten', nr: 13, schritt: false, dauer: 65000 }, { art: 'denken', nr: 15, schritt: false, dauer: 38000 }, { art: 'denken', nr: 3, schritt: false, dauer: 21000 }]);
+});
+
+test('AK 9: Gleichstand — die frühere Zeile zuerst; eine Denkzeile vor Nr k liegt vor dem Schritt Nr k; ohne Dauer keine Liste', () => {
+  const gleich = laufAuswerten([1, 2, 3, 4, 5, 6, 7, 8].map(k => e(k, k % 2 ? 'werkzeugaufruf' : 'werkzeugergebnis', k % 2 ? 'agent' : 'werkzeug', um(k - 1))), false);
+  assert.deepStrictEqual(gleich.top3.map(t => [t.nr, t.schritt]), [[1, true], [3, true], [5, true]]);
+  const vorher = laufAuswerten([e(1, 'nachricht', 'mensch', um(0)), e(2, 'werkzeugaufruf', 'agent', um(9)), e(3, 'werkzeugergebnis', 'werkzeug', um(18))], false);
+  assert.deepStrictEqual(vorher.top3.map(t => [t.nr, t.schritt, t.dauer]), [[2, false, 9000], [2, true, 9000]]);
+  assert.deepStrictEqual(laufAuswerten([e(1, 'werkzeugaufruf', 'agent', um(0)), e(2, 'werkzeugergebnis', 'werkzeug', null)], false).top3, []);
+});
+
+test('AK 8: Auftrag ist die erste Nachricht von mensch, Systemhinweise beginnen ohne führenden Leerraum mit der Marke', () => {
+  assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false).eingeklappt, { 1: 'auftrag', 2: 'systemhinweis' });
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', null, 'a'), e(2, 'nachricht', 'mensch', null, 'Auftrag'), e(3, 'nachricht', 'mensch', null, '  [SYSTEM NOTIFICATION - x]'),
+    e(4, 'nachricht', 'mensch', null, 'Hinweis: <system-reminder>'), e(5, 'nachricht', 'mensch', null, '\n<system-reminder>y'), e(6, 'werkzeugaufruf', 'mensch', null, '<system-reminder>')], false);
+  assert.deepStrictEqual(a.eingeklappt, { 2: 'auftrag', 3: 'systemhinweis', 5: 'systemhinweis' });
+});
+
+test('AK 2: T3 — 20.000 gelesene Zeilen an der Grenze: 19.999 s, Werkzeug 10.000 s, Denken 9.999 s, kein Bericht, Top 3 Zeilen 1, 3, 5', () => {
+  const beginn = Date.parse('2026-11-21T08:00:00+01:00');
+  const iso = ms => new Date(ms).toISOString();
+  const zeilen = Array.from({ length: 20000 }, (_, i) => e(i + 1, i % 2 ? 'werkzeugergebnis' : 'werkzeugaufruf', i % 2 ? 'werkzeug' : 'agent', iso(beginn + i * 1000), i % 2 ? 'ok' : '{"command":"true"}', i % 2 ? null : 'Bash'));
+  const vor = process.hrtime.bigint();
+  const a = laufAuswerten(zeilen, true);
+  const dauer = Number(process.hrtime.bigint() - vor) / 1e6;
+  assert.deepStrictEqual([a.gesamt, a.werkzeug, a.denken, a.warten, a.grenze, a.bericht, a.kennzahlen.werkzeugaufrufe], [19999000, 10000000, 9999000, 0, true, null, 10000]);
+  assert.deepStrictEqual(a.top3.map(t => t.nr), [1, 3, 5]);
+  console.log(`# Beobachtung: laufAuswerten über 20.000 Zeilen in ${dauer.toFixed(1)} ms`);
+});

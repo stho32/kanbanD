@@ -242,8 +242,62 @@
       }
       vorher = ms;
     }
-    const gesamt = summe.werkzeug + summe.denken + summe.warten;
-    return { gesamt, ...summe, bekannt: mitZeit >= 2, grenze, luecken, schritte: schritte.map(ohneBeginn) };
+    const gesamt = summe.werkzeug + summe.denken + summe.warten, bekannt = mitZeit >= 2;
+    const kennzahlen = { werkzeugaufrufe: schritte.filter(s => s.aufruf).length, fehler: schritte.filter(s => s.fehler).length };
+    const top3 = bekannt ? laengsteSchritte(schritte, luecken) : [];
+    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(ohneBeginn), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen) };
+  }
+
+  /** Die drei längsten Schritt-, Denk- und Wartezeilen, nach Dauer absteigend, bei Gleichstand die frühere Zeile zuerst — eine Denk-
+      oder Wartezeile steht vor dem Eintrag `nr`, ein Schritt an seiner Stelle. */
+  function laengsteSchritte(schritte, luecken) {
+    const zeilen = [
+      ...luecken.map(l => ({ art: l.art, nr: l.vorNr, schritt: false, dauer: l.dauer, stelle: l.vorNr - 0.5 })),
+      ...schritte.filter(s => s.dauer !== null).map(s => ({ art: 'werkzeug', nr: s.nr, schritt: true, dauer: s.dauer, stelle: s.nr })),
+    ];
+    zeilen.sort((a, b) => b.dauer - a.dauer || a.stelle - b.stelle);
+    return zeilen.slice(0, 3).map(({ stelle, ...zeile }) => zeile);
+  }
+
+  const ERGEBNIS_ZEILE = /^Ergebnis: (bestanden|befund|blockiert)/m;
+
+  /** Der Bericht (N1 Punkt 5): der letzte Eintrag von `agent`, dessen Text — bei einem Aufruf ein Textwert seines JSON-Objekts —
+      eine Zeile `Ergebnis: bestanden|befund|blockiert` trägt; dazu die Zahl der Kennungen in seiner Zeile `Commits:` oder null. */
+  function berichtFinden(zeilen) {
+    for (let i = zeilen.length - 1; i >= 0; i--) {
+      const eintrag = zeilen[i].eintrag;
+      if (!eintrag || eintrag.wer !== 'agent' || eintrag.art === 'werkzeugergebnis') continue;
+      const text = berichtText(eintrag);
+      if (text !== null) return { nr: zeilen[i].nr, text, ergebnis: ERGEBNIS_ZEILE.exec(text)[1], commits: commitsZaehlen(text) };
+    }
+    return null;
+  }
+
+  function berichtText(eintrag) {
+    const objekt = eintrag.art === 'werkzeugaufruf' ? jsonObjekt(eintrag.text) : null;
+    const texte = objekt === null ? [eintrag.text] : Object.values(objekt).filter(w => typeof w === 'string');
+    return texte.find(t => ERGEBNIS_ZEILE.test(t)) || null;
+  }
+
+  function commitsZaehlen(text) {
+    const zeile = /^Commits:(.*)$/m.exec(text);
+    if (zeile === null) return null;
+    return (zeile[1].match(/\b[0-9a-f]{7,40}\b/g) || []).length;
+  }
+
+  /** Auftrag (erste Nachricht von `mensch`) und Systemhinweise (Nachricht von `mensch`, die ohne führenden Leerraum mit
+      `<system-reminder>` oder `[SYSTEM NOTIFICATION` beginnt) → `{<nr>: 'auftrag' | 'systemhinweis'}`. */
+  function eingeklapptFinden(zeilen) {
+    const eingeklappt = {};
+    let auftragGefunden = false;
+    for (const { nr, eintrag } of zeilen) {
+      if (!eintrag || eintrag.art !== 'nachricht' || eintrag.wer !== 'mensch') continue;
+      const anfang = eintrag.text.trimStart();
+      if (!auftragGefunden) eingeklappt[nr] = 'auftrag';
+      else if (anfang.startsWith('<system-reminder>') || anfang.startsWith('[SYSTEM NOTIFICATION')) eingeklappt[nr] = 'systemhinweis';
+      auftragGefunden = true;
+    }
+    return eingeklappt;
   }
 
   /** Ein Aufruf kommt in die Warteschlange; wartet dort schon einer, laufen alle offenen parallel (N1 Punkt 3). */

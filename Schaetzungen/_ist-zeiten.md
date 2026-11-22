@@ -1081,3 +1081,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #244 R00233 | B1204 Mutanten m1–m6 und eigener m7 (`HEAD:` ohne `./`) in eigener Kopie getötet, AK-6-Grep leer, Gate (cargo 1232, node 1528 + 1 übersprungen, playwright 2416 + 8 übersprungen, kein Wackler), R00233 Erledigt | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
 | 2026-11-22 | Karte #251 R00234 | B1206 Lücken, Arten und Dauerform rein: laufAuswerten (Dauer je Art, Denk-/Wartelücken), dauerText, T1 als geteilte Vorrichtung, grün | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-22 | Karte #251 R00234 | B1207 Paaren über die Warteschlange, kurzbefehl mit Absicht, fehlerErkennen am Textanfang, grün | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-22 | Karte #251 R00234 | B1208 Bericht (letzter agent-Eintrag mit Ergebnis-Zeile, JSON-Textwerte), Commits, Kennzahlen, Längste Schritte, Auftrag/Systemhinweise; Beobachtung 20.000 Zeilen 72 ms (nachts, Node), grün | Standard | 1h | 0,3h | 0,3h | autonom |
