@@ -118,3 +118,45 @@ test('AK 3: T3 bis zur Grenze — 19.999 Stücke, 200 Fächer, Fach 1 „Werkzeu
   assert.strictEqual(z.faecher.length, 200);
   assert.deepStrictEqual([z.faecher[0].art, uhr(z.faecher[0].ab), uhr(z.faecher[0].bis)], ['werkzeug', '08:00:00', '08:01:39']);
 });
+
+/* ── B1246: Zeitachse zeichnen ── */
+
+const { laufZeitachseHtml } = require('../../web/lauf.js');
+const attr = (html, name) => [...html.matchAll(new RegExp(`${name}="([^"]*)"`, 'g'))].map(m => m[1]);
+
+test('AK 1, AK 2: T1 — Überschrift, Legende mit drei Arten (verborgen), Balken als Bild mit Lesetext, 9 Tooltips, erste und letzte Zeit', () => {
+  const html = laufZeitachseHtml(laufAuswerten(T1_ZEILEN, false));
+  assert.match(html, /^<section class="lv-za" aria-labelledby="lv-za-t"><div class="lv-za-kopf"><h2 id="lv-za-t">Zeitachse<\/h2><ul class="lv-leg" aria-hidden="true"><li><i class="w"><\/i>Werkzeuge<\/li><li><i class="d"><\/i>Denken<\/li><li><i class="t"><\/i>Warten<\/li><\/ul><\/div>/);
+  assert.match(html, /<div class="lv-balken" role="img" aria-label="Zeitachse: Werkzeuge 13 s, Denken 1 min 11 s, Warten 1 min 6 s">/);
+  assert.deepStrictEqual(attr(html, 'title'), ['Warten 1 s ab 23:30:00', 'Denken 21 s ab 23:30:01', 'Werkzeuge 4 s ab 23:30:22', 'Denken 4 s ab 23:30:26', 'Werkzeuge 1 s ab 23:30:30',
+    'Denken 5 s ab 23:30:31', 'Werkzeuge 8 s ab 23:30:37', 'Warten 1 min 5 s ab 23:30:45', 'Denken 39 s ab 23:31:50']);
+  assert.deepStrictEqual(attr(html, 'style'), ['flex-grow:1000', 'flex-grow:21000', 'flex-grow:4000', 'flex-grow:4999', 'flex-grow:1000', 'flex-grow:5500', 'flex-grow:8000', 'flex-grow:65000', 'flex-grow:39501']);
+  assert.match(html, /<div class="lv-za-zeit" aria-hidden="true"><span>23:30:00<\/span><span>23:32:30<\/span><\/div><\/section>$/);
+  assert.doesNotMatch(html, /tabindex|href/);
+});
+
+test('AK 2: Lesetext ohne Teil mit 0 ms, ein Teil unter 1 s heißt „< 1 s“; die Legende nennt trotzdem alle drei Arten', () => {
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', '2026-11-21T08:00:00.000+01:00'), e(2, 'werkzeugergebnis', 'werkzeug', '2026-11-21T08:00:00.400+01:00'), e(3, 'nachricht', 'agent', '2026-11-21T08:00:05.400+01:00')], false);
+  const html = laufZeitachseHtml(a);
+  assert.match(html, /aria-label="Zeitachse: Werkzeuge &lt; 1 s, Denken 5 s"|aria-label="Zeitachse: Werkzeuge < 1 s, Denken 5 s"/);
+  assert.match(html, /Werkzeuge<\/li><li><i class="d"><\/i>Denken<\/li><li><i class="t"><\/i>Warten<\/li>/);
+});
+
+test('AK 2: ohne Zeitachse (Dauer unbekannt, 0 ms, ohne Auswertung) wird nichts gezeichnet', () => {
+  assert.strictEqual(laufZeitachseHtml(laufAuswerten([e(1, 'nachricht', 'agent', um(1)), e(2, 'nachricht', 'mensch', um(1))], false)), '');
+  assert.strictEqual(laufZeitachseHtml(null), '');
+});
+
+test('AK 3: T10 — 200 Fächer ohne Breitenangabe, Tooltip „überwiegend …“; T11 — 200 Stücke ohne Fach', () => {
+  const t10 = laufZeitachseHtml(laufAuswerten(tLauf(202, '2026-11-22T10:00:00+01:00'), false));
+  assert.match(t10, /<div class="lv-balken faecher" role="img"/);
+  const titel = attr(t10, 'title');
+  assert.strictEqual(titel.length, 200);
+  assert.deepStrictEqual([titel[0], titel[1], titel[99], titel[100], titel[199]], ['überwiegend Werkzeuge, 10:00:00–10:00:01', 'überwiegend Denken, 10:00:01–10:00:02',
+    'überwiegend Denken, 10:01:39–10:01:40', 'überwiegend Denken, 10:01:40–10:01:41', 'überwiegend Werkzeuge, 10:03:19–10:03:21']);
+  assert.deepStrictEqual(attr(t10, 'style'), []);
+  const t11 = laufZeitachseHtml(laufAuswerten(tLauf(201, '2026-11-22T10:30:00+01:00'), false));
+  assert.match(t11, /<div class="lv-balken" role="img"/);
+  const t11Titel = attr(t11, 'title');
+  assert.deepStrictEqual([t11Titel.length, t11Titel[0], t11Titel[199]], [200, 'Werkzeuge 1 s ab 10:30:00', 'Denken 1 s ab 10:33:19']);
+});

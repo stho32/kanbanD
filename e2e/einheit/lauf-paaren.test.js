@@ -30,8 +30,8 @@ test('AK 1: T6 — vertauschte Ergebnisse gehören zu ihrem Aufruf, Dauer, Fehle
   assert.deepStrictEqual(a.kennzahlen, { werkzeugaufrufe: 2, fehler: 1 });
 });
 
-/** R00239 ergänzt die Auswertung um die Zeitachse; geprüft wird sie in lauf-zeitachse.test.js, hier bleibt jedes alte Feld gleich. */
-const ohneNeueFelder = ({ zeitachse, ...alt }) => alt;
+/** R00239 ergänzt die Auswertung um Zeitachse und Arten der Zeilen; geprüft in lauf-zeitachse.test.js und lauf-filter.test.js, hier bleibt jedes alte Feld gleich. */
+const ohneNeueFelder = ({ zeitachse, zeilenArten, ...alt }) => alt;
 
 test('AK 2: T6o ohne Felder ist deepStrictEqual zum Literal vor dem Fix (Nr 1 mit 3 s, Nr 2 mit 9 s und Fehler)', () => {
   const a = auswerten(ohneFelder(T6));

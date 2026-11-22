@@ -161,7 +161,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   /* ── Zeitachse ── */
 
   test('AK 1 · US-1: T1 — „Zeitachse“ zwischen Kopf und Einträgen, 9 Stücke mit Tooltip, Breite nach Anteil, 23:30:00 bis 23:32:30', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await breiteSetzen(page, 1280);
     await s.oeffnen(T.T1);
     await s.gelesen();
@@ -191,14 +190,13 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   });
 
   test('AK 2 · US-1: vorgelesen als Bild mit Lesetext; T3 ohne „Warten“, Legende immer mit drei Arten; T4, T5, gehalten und 503 ohne Zeitachse', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await s.oeffnen(T.T1);
     await s.gelesen();
     await expect(page.locator(BALKEN)).toHaveAttribute('role', 'img');
-    expect(await page.locator(ZA).ariaSnapshot()).toContain('- img "Zeitachse: Werkzeuge 13 s, Denken 1 min 11 s, Warten 1 min 6 s"');
+    expect(await page.locator(ZA).ariaSnapshot()).toContain('img "Zeitachse: Werkzeuge 13 s, Denken 1 min 11 s, Warten 1 min 6 s"');
     await s.oeffnen(T.T3);
     await expect(page.locator(STATUS)).toHaveText(/^Grenze erreicht/);
-    expect(await page.locator(ZA).ariaSnapshot()).toContain('- img "Zeitachse: Werkzeuge 2 h 46 min, Denken 2 h 46 min"');
+    expect(await page.locator(ZA).ariaSnapshot()).toContain('img "Zeitachse: Werkzeuge 2 h 46 min, Denken 2 h 46 min"');
     await expect(page.locator(`${ZA} .lv-leg li`)).toHaveText(['Werkzeuge', 'Denken', 'Warten']);
     await expect(page.locator(`${ZA} .lv-leg`)).toHaveAttribute('aria-hidden', 'true');
     for (const kennung of [T.T4, T.T5]) {
@@ -219,7 +217,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   });
 
   test('AK 3 · US-2: T10 mit 200 Fächern, 100 Werkzeuge und 100 Denken; T11 mit 200 Stücken ohne Fach; T3 mit 200 Fächern', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await s.oeffnen(T.T10);
     await s.gelesen();
     const titel = await s.titel();
@@ -249,7 +246,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   /* ── Filter ── */
 
   test('AK 4 · US-4: Vorgabe an/an/aus/aus, 13 Zeilen; Wechsel nur über das Attribut der Insel, je eine Ansage, keine Anfrage', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await s.oeffnen(T.T1);
     await s.gelesen();
     await expect(page.locator(`${ZEIGEN} legend`)).toHaveText('Zeigen');
@@ -282,13 +278,13 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   });
 
   test('AK 5 · US-3: T1 „nur Fehler“ — zwei Fehlerzeilen unter dem Bericht, Arten gesperrt mit ihrem Stand; T4 „Keine Fehler erkannt …“', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await s.oeffnen(T.T1);
     await s.gelesen();
     await page.evaluate(liveBeobachten);
     await s.kaestchen('nur Fehler').click();
     await expect(page.locator(STATUS)).toHaveText('2 von 14 Einträgen sichtbar.');
     expect(await s.sichtbar()).toEqual(['lv-s5', 'lv-s8']);
+    await expect(page.locator('#lauf .lv-ber'), 'der Bericht bleibt unter jedem Filter').toBeVisible();
     await expect(page.locator('#lv-s5 .eg')).toContainText('Exit code 1');
     await expect(page.locator('#lv-s8 .eg')).toContainText('<tool_use_error>');
     const lage = await page.evaluate(() => {
@@ -301,7 +297,8 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     await expect(s.kaestchen('nur Fehler')).not.toHaveAttribute('aria-disabled', 'true');
     expect(await s.stand()).toEqual({ Nachrichten: true, Werkzeuge: true, Systemhinweise: false, 'nur Fehler': true });
     await liveSeit(page);
-    await s.kaestchen('Werkzeuge').click();
+    // gesperrt (aria-disabled): Playwright klickt nur mit force — so wie ein Mensch, der trotzdem klickt
+    await s.kaestchen('Werkzeuge').click({ force: true });
     await s.kaestchen('Systemhinweise').focus();
     await page.keyboard.press('Space');
     expect(await s.stand()).toEqual({ Nachrichten: true, Werkzeuge: true, Systemhinweise: false, 'nur Fehler': true });
@@ -330,7 +327,6 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
   });
 
   test('AK 6 · US-4: „Zeigen“ unter „Längste Schritte“, bei T4 allein; Live lässt den Stand; Sprung schaltet die Filter für eine verborgene Zeile um', async ({ page }) => {
-    test.fail(ERWARTET_ROT, 'erwartet rot: rote Spezifikation vor dem Bau');
     await s.oeffnen(T.T4);
     await s.gelesen();
     await expect(page.locator(ZEIGEN)).toBeVisible();
@@ -411,7 +407,7 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     await s.gelesen();
     await page.evaluate(liveBeobachten);
     const vorher = await page.evaluate(() => location.hash);
-    await page.locator(NAECHSTER).click();
+    await page.locator(NAECHSTER).click({ force: true });
     expect(await page.evaluate(() => location.hash)).toBe(vorher);
     expect(await liveSeit(page)).toEqual([]);
     await s.oeffnen(T.T12, 2);
@@ -420,13 +416,23 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     await gesperrt(page, NAECHSTER, 'Nächster Lauf');
     await page.locator('#lv-h1').focus();
     expect(await perTabErreicht(page, page.locator(VORIGER)), 'gesperrt und mit Tab erreichbar').toBeGreaterThan(0);
-    // T5 (fehlt) über „‹ Voriger Lauf“ von T1: ohne Anfrage
+    // T5 (fehlt) über „‹ Voriger Lauf“ von T1: Bild 4 mit „Lauf 2 von 6“
+    await s.oeffnen(T.T1);
+    await s.gelesen();
+    await page.locator(VORIGER).click();
+    await expect(page.locator(STELLE)).toHaveText('Lauf 2 von 6');
+    await expect(page.locator('#lauf .lv-leer')).toContainText('Das Transkript liegt nicht auf diesem Rechner.');
+  });
+
+  test('AK 7: T5 (fehlt) über „‹ Voriger Lauf“ von T1 — „Lauf 2 von 6“, Bild 4 und keine Anfrage an …/transkripte/…', async ({ page }) => {
+    // Widerspruch (Bericht #253, Fragen): `a.transkripte` trägt keinen Zustand, und Server, OpenAPI und Format bleiben unverändert (R00239);
+    // ADR-0041 N1 Punkt 5: „der Zustand ist ohne GET …/transkripte nicht bekannt“. Bis zur Entscheidung bleibt die Probe rot.
+    test.fail(true, 'erwartet rot: „ohne Anfrage“ ist ohne Zustand in a.transkripte nicht baubar (ADR-0041 N1 Punkt 5)');
     await s.oeffnen(T.T1);
     await s.gelesen();
     const anfragen = [];
     page.on('request', r => { if (istTranskript(r.url())) anfragen.push(r.url()); });
     await page.locator(VORIGER).click();
-    await expect(page.locator(STELLE)).toHaveText('Lauf 2 von 6');
     await expect(page.locator('#lauf .lv-leer')).toContainText('Das Transkript liegt nicht auf diesem Rechner.');
     expect(anfragen).toEqual([]);
   });
@@ -472,7 +478,7 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     await expect(page.locator(STATUS)).toHaveText('Lauf 6 von 6, entwickler, letzter Lauf. Ende des Transkripts');
     expect(await page.evaluate(() => [document.activeElement.id, document.activeElement.getAttribute('aria-disabled')])).toEqual(['lv-nach', 'true']);
     await liveSeit(page);
-    await page.locator(NAECHSTER).click();
+    await page.locator(NAECHSTER).click({ force: true });
     expect(await liveSeit(page)).toEqual([]);
     // Filter beim Blättern (PO Z. 583)
     await s.laeufeVonEins();

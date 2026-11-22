@@ -215,7 +215,9 @@ const FAINT_ERLAUBT = ['.bk-name .bk-klapp', '.iz.aus', '.diagramm .fadenkreuz',
   '.ts-seg[aria-disabled="true"]>button,.ts-seg[aria-disabled="true"]>button:hover', '.ts-seg[aria-disabled="true"]>button[aria-checked="true"]',
   // gesperrtes „Erneut versuchen“ der Laufansicht in der Sperrform von PO Z. 484 S-A (R00221, PO Z. 491)
   '.cl-textknopf[aria-disabled="true"],.cl-textknopf[aria-disabled="true"]:hover',
-  '.cl-knopf[aria-disabled="true"],.cl-knopf[aria-disabled="true"]:hover'];
+  '.cl-knopf[aria-disabled="true"],.cl-knopf[aria-disabled="true"]:hover',
+  // R00239: gesperrte Arten-Kästchen unter „nur Fehler“ (PO Z. 588) in der Sperrform von Z. 216/484
+  '.lv-filt label:has(>input[aria-disabled="true"])', '.lv-filt input[aria-disabled="true"]'];
 /** Regeln mit --kd-faint außerhalb der Erlaubt-Liste, als `datei:zeile selektor`. */
 function faintStellen(datei, text) {
   return regeln(text).filter(regel => regel.rumpf.includes('var(--kd-faint)') && !FAINT_ERLAUBT.includes(regel.selektor)).map(regel => `${datei}:${regel.zeile} ${regel.selektor}`);

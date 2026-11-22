@@ -292,6 +292,8 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     await ablegen(k);
     await laufOeffnen(page, T.T1);
     await gelesen(page);
+    // R00239 FA 5: die Vorgabe „Systemhinweise“ aus verbirgt Nr 2 — vorher einschalten (einzige geänderte Erwartung)
+    await page.locator('#lauf fieldset.lv-filt input[data-filter="h"]').click();
     for (const [nr, wort] of [[1, 'Auftrag'], [2, 'Systemhinweis']]) {
       const d = zeileVon(page, nr).locator('details');
       await expect(d).not.toHaveAttribute('open', '');

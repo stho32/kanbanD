@@ -187,18 +187,29 @@
     return { neuAm: new Map(t.antworten.map(x => [x.nr, x.neu])), folge: t.folge };
   }
 
+  /** Die Art einer Zeile für den Filter „Zeigen“ (FA 5): `n` Nachricht, `w` Werkzeug, `h` Systemhinweis. Eine Denk- oder Wartezeile
+      hat die Art des Eintrags dahinter, denn ihre Lücke gehört ihm (ADR-0041 N1 Punkt 1). */
+  function zeileArt(eintrag, eingeklappt) {
+    if (!eintrag || eintrag.art !== 'nachricht') return eintrag ? 'w' : 'n';
+    return eingeklappt === 'systemhinweis' ? 'h' : 'n';
+  }
+
+  /** Die Art als Attribut der Zeile; Nachrichten sind die Grundart und tragen keins (das CSS kennt sie als Zeile ohne Art). */
+  const artAttribut = art => (art === 'n' ? '' : ` data-art="${art}"`);
+
   function zeileMitLueckeHtml(zeile, z) {
     const luecke = z.lueckeVor.get(zeile.nr);
-    return (luecke ? lueckeHtml(luecke, z.laengste) : '') + eintragHtml(zeile, z);
+    const art = artAttribut(zeileArt(zeile.eintrag, z.eingeklappt[zeile.nr]));
+    return (luecke ? lueckeHtml(luecke, z.laengste, art) : '') + eintragHtml(zeile, z);
   }
 
   const LUECKE_WORT = { denken: 'denkt', warten: 'wartet' };
   const LUECKE_KLASSE = { werkzeug: 'w', denken: 'd', warten: 't' };
 
   /** Denk- oder Wartezeile (FA 8): ein Listeneintrag, der sich mit seinem Text liest; Marke, Linie und Balken sind Schmuck. */
-  function lueckeHtml(l, laengste) {
+  function lueckeHtml(l, laengste, art) {
     const klasse = LUECKE_KLASSE[l.art];
-    return `<li id="lv-s${l.vorNr}-vor" tabindex="-1" class="lv-d ${klasse}"><span class="mk" aria-hidden="true"></span><span class="tx"><b>${dauerText(l.dauer)}</b> ${LUECKE_WORT[l.art]}</span><span class="ln" aria-hidden="true"></span><span class="du">${balkenHtml(l.dauer, laengste, klasse)}</span></li>`;
+    return `<li id="lv-s${l.vorNr}-vor" tabindex="-1" class="lv-d ${klasse}"${art}><span class="mk" aria-hidden="true"></span><span class="tx"><b>${dauerText(l.dauer)}</b> ${LUECKE_WORT[l.art]}</span><span class="ln" aria-hidden="true"></span><span class="du">${balkenHtml(l.dauer, laengste, klasse)}</span></li>`;
   }
 
   /** Balken der Dauer (FA 6): Anteil an der längsten Zeile von „Längste Schritte“, ganzzahlig, mindestens 2 %; ohne Maß keiner. */
@@ -268,7 +279,7 @@
     const zeit = uhrzeit === null ? '' : `<span class="zt">${uhrzeit}</span>`;
     const klasse = art === 'systemhinweis' ? 'lv-e sys' : 'lv-e';
     const summary = `<summary>${PFEIL}<span class="nm">${EINGEKLAPPT_WORT[art]}</span><span class="z1">${esc(sichtbarText(ersteZeileGekuerzt(e.text)))}</span>${zeit}</summary>`;
-    return `<li id="lv-s${nr}" tabindex="-1"><details class="${klasse}">${summary}<div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div></details></li>`;
+    return `<li id="lv-s${nr}" tabindex="-1"${artAttribut(zeileArt(e, art))}><details class="${klasse}">${summary}<div class="lv-text">${nachrichtTextHtml(e.text, esc, budget)}</div></details></li>`;
   }
 
   const PK_KLASSE = { agent: 'pk-a', mensch: 'pk-m', werkzeug: 'pk-0' };
@@ -299,7 +310,7 @@
     const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span>${angabe}</summary>`;
     const teil = (wort, b) => (b ? `<span class="k">${wort}</span><pre>${gebuchtHtml(b, t => zeilenHtml(t, esc), esc)}</pre>` : '');
     const klasse = `lv-s${s.fehler ? ' fehl' : ''}${s.absicht === null ? ' ohne-ab' : ''}`;
-    return `<li id="lv-s${s.nr}" tabindex="-1"><details class="${klasse}">${summary}<div class="lv-s-ganz">${tokensGanz}${teil('Aufruf', aufrufGebucht)}${teil('Ergebnis', ergebnisGebucht)}</div></details></li>`;
+    return `<li id="lv-s${s.nr}" tabindex="-1"${artAttribut('w')}${s.fehler ? ' data-fehler' : ''}><details class="${klasse}">${summary}<div class="lv-s-ganz">${tokensGanz}${teil('Aufruf', aufrufGebucht)}${teil('Ergebnis', ergebnisGebucht)}</div></details></li>`;
   }
 
   /** Dauer der Werkzeugzeile mit Balken; „–“ mit Lesetext: ohne Partner „kein Ergebnis“ bzw. „kein Aufruf“, sonst „Dauer unbekannt“. */
@@ -319,14 +330,55 @@
   const KEIN_BERICHT = 'Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile „Ergebnis:“.';
 
   /** Die Gliederung links: „Längste Schritte“ (R00234 FA 10) und darunter „Teuerste Schritte“ (R00238 FA 8), beide aus
-      `schrittListeHtml`. Ohne Dauer entfällt die erste, ohne `tokens` die zweite, ohne beide der Abschnitt. */
-  function laufTopHtml(a, esc) {
+      `schrittListeHtml`, darunter `zeigen` (R00239 FA 8). Ohne Dauer entfällt die erste, ohne `tokens` die zweite; ohne beide steht
+      `zeigen` allein, ohne alles entfällt der Abschnitt. */
+  function laufTopHtml(a, esc, zeigen = '') {
     const listen = [];
     if (a.top3.length) listen.push(laengsteListe(a.top3, esc));
     if (a.teuer3 && a.teuer3.length) listen.push(teuersteListe(a.teuer3, esc));
-    if (!listen.length) return '';
-    return `<section class="lv-gl" aria-labelledby="${listen.map(l => `${l.praefix}-t`).join(' ')}">${listen.map(schrittListeHtml).join('')}</section>`;
+    if (!listen.length) return zeigen ? `<section class="lv-gl">${zeigen}</section>` : '';
+    return `<section class="lv-gl" aria-labelledby="${listen.map(l => `${l.praefix}-t`).join(' ')}">${listen.map(schrittListeHtml).join('')}${zeigen}</section>`;
   }
+
+  /* ── Filter „Zeigen“ (R00239 FA 5–7, FA 9; PO Z. 520 (10), 587, 588): Stand `{n, w, h, f}`, gewirkt wird über ein Attribut ── */
+
+  /** Vorgabe beim Öffnen: Nachrichten und Werkzeuge an, Systemhinweise und „nur Fehler“ aus. */
+  const FILTER_VORGABE = Object.freeze({ n: true, w: true, h: false, f: false });
+  const FILTER_WORT = { n: 'Nachrichten', w: 'Werkzeuge', h: 'Systemhinweise', f: 'nur Fehler' };
+  const ARTEN_DER_ZEILEN = ['n', 'w', 'h'];
+
+  /** Das `fieldset` „Zeigen“: je Kästchen ein `data-act`; unter „nur Fehler“ sind die drei Arten gesperrt (Sperrform Z. 216,
+      fokussierbar, ohne `data-act`) und behalten ihren Stand (Z. 588). */
+  function laufFilterHtml(filter) {
+    const kaestchen = art => {
+      const gesperrt = filter.f && art !== 'f';
+      const wirkung = gesperrt ? ' aria-disabled="true"' : ` data-act="lauf-filter" data-arg="${art}"`;
+      return `<label><input type="checkbox" id="lv-f-${art}" data-filter="${art}"${wirkung}${filter[art] ? ' checked' : ''}>${FILTER_WORT[art]}</label>`;
+    };
+    return `<fieldset class="lv-filt"><legend>Zeigen</legend>${[...ARTEN_DER_ZEILEN, 'f'].map(kaestchen).join('')}</fieldset>`;
+  }
+
+  /** Wert des Attributs `data-zeigen` an der Insel: die eingeschalteten Arten, durch Leerzeichen getrennt. */
+  const laufZeigenWert = filter => ARTEN_DER_ZEILEN.filter(art => filter[art]).join(' ');
+
+  /** Ansage nach einem Wechsel (PO Z. 587) aus den Zahlen der Auswertung, nie aus dem DOM. */
+  function laufFilterAnsage(arten, filter) {
+    const gesamt = arten.n + arten.w + arten.h;
+    const sichtbar = filter.f ? arten.fehler : ARTEN_DER_ZEILEN.filter(art => filter[art]).reduce((summe, art) => summe + arten[art], 0);
+    if (sichtbar === 0) return filter.f ? 'Keine Fehler erkannt.' : 'Keine Einträge sichtbar.';
+    return `${sichtbar} von ${gesamt} ${gesamt === 1 ? 'Eintrag' : 'Einträgen'} sichtbar.`;
+  }
+
+  /** Vor dem Sprung in eine Zeile der Art `art` (FA 9): ist sie verborgen, erst „nur Fehler“ aus, dann ihre Art an; sonst bleibt der Stand. */
+  function laufSprungFilter(filter, art, fehler) {
+    const sichtbar = filter.f ? fehler : filter[art];
+    if (sichtbar) return filter;
+    return { ...filter, f: false, [art]: true };
+  }
+
+  const KEINE_FEHLER = 'Keine Fehler erkannt. Erkannt werden ein Exit-Code ungleich 0 und Fehler des Werkzeugs.';
+  /** An der Stelle der Einträge unter „nur Fehler“ ohne erkannten Fehler (FA 7, Bild 8): gedämpft, ohne Live-Rolle. */
+  const laufKeineFehlerHtml = (a, filter) => (filter.f && a.kennzahlen.fehler === 0 ? `<p class="lv-keinf">${KEINE_FEHLER}</p>` : '');
 
   /** Eine Liste der Gliederung: Überschrift, wahlweise ein Erklärsatz, auf den die Liste mit `aria-describedby` zeigt, und je Eintrag
       ein Knopf `<praefix>-<i>`, der über `act` zu seiner Zeile springt — nie `href="#…"`, der Hash ist die Adresse (ADR-0029). */
@@ -421,10 +473,11 @@
       `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. */
   function laufAuswerten(zeilen, grenze) {
     const summe = { werkzeug: 0, denken: 0, warten: 0 };
-    const luecken = [], schritte = [], offen = offeneAufrufe(), tokens = tokenZaehlung(), achse = zeitachseBeginnen();
+    const luecken = [], schritte = [], offen = offeneAufrufe(), tokens = tokenZaehlung(), achse = zeitachseBeginnen(), arten = artenBeginnen();
     let vorher = null, mitZeit = 0;
     for (const { nr, eintrag } of zeilen) {
-      if (!eintrag) { unlesbarZaehlen(tokens); continue; }
+      if (!eintrag) { unlesbarZaehlen(tokens); arten.unlesbar++; continue; }
+      if (eintrag.art === 'nachricht') arten.nachrichten++;
       const ms = zeitMs(eintrag.zeit);
       const schritt = eintrag.art === 'werkzeugaufruf' ? aufrufOeffnen(nr, eintrag, ms, offen) : null;
       if (schritt) schritte.push(schritt);
@@ -436,6 +489,7 @@
         const dauer = Math.max(0, ms - vorher), art = lueckenArt(eintrag);
         summe[art] += dauer;
         stueckAnhaengen(achse, art, dauer);
+        if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS && eintrag.art === 'nachricht') arten.vorNachricht.push(nr);
         if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS) luecken.push({ vorNr: nr, art, dauer, vor: schritt ? schrittText(schritt) : `Nachricht von ${eintrag.name || WER_WORT[eintrag.wer]}` });
         if (art === 'warten' && dauer >= DENKZEILE_AB_MS) tokens.wartenSeit = dauer;
       } else achse.erste = ms;
@@ -444,7 +498,23 @@
     const gesamt = summe.werkzeug + summe.denken + summe.warten, bekannt = mitZeit >= 2;
     const kennzahlen = { werkzeugaufrufe: schritte.filter(s => s.aufruf).length, fehler: schritte.filter(s => s.fehler).length };
     const top3 = bekannt ? laengsteSchritte(schritte, luecken) : [];
-    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt: eingeklapptFinden(zeilen), tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer), zeitachse: zeitachseAbschliessen(achse, bekannt) };
+    const eingeklappt = eingeklapptFinden(zeilen);
+    return { gesamt, ...summe, bekannt, grenze, luecken, schritte: schritte.map(s => schrittAbschliessen(s, offen.begonnen)), top3, kennzahlen, bericht: berichtFinden(zeilen), eingeklappt, tokens: tokensAbschliessen(tokens), teuer3: teuersteAbschliessen(tokens.teuer), zeitachse: zeitachseAbschliessen(achse, bekannt), zeilenArten: artenAbschliessen(arten, schritte.length, luecken.length, eingeklappt, kennzahlen.fehler) };
+  }
+
+  /* ── Arten der Zeilen (R00239 FA 5): wie viele Zeilen der Liste Nachrichten, Werkzeuge und Systemhinweise sind, für die Ansage ── */
+
+  function artenBeginnen() {
+    return { nachrichten: 0, unlesbar: 0, vorNachricht: [] };
+  }
+
+  /** Je Art die Zahl der Zeilen, wie `laufHtml` sie zeichnet (`zeileArt`): jeder Schritt und jede Denk- oder Wartezeile vor einem
+      Aufruf ist ein Werkzeug; eine Nachricht, eine unlesbare Zeile und eine Denk- oder Wartezeile vor einer Nachricht sind Nachrichten,
+      außer der Systemhinweis und die Zeile davor; `fehler` sind die Schrittzeilen mit Fehler. */
+  function artenAbschliessen({ nachrichten, unlesbar, vorNachricht }, schritte, luecken, eingeklappt, fehler) {
+    const hinweise = Object.values(eingeklappt).filter(art => art === 'systemhinweis').length;
+    const vorHinweis = vorNachricht.filter(nr => eingeklappt[nr] === 'systemhinweis').length;
+    return { n: nachrichten - hinweise + unlesbar + vorNachricht.length - vorHinweis, w: schritte + luecken - vorNachricht.length, h: hinweise + vorHinweis, fehler };
   }
 
   /* ── Zeitachse (R00239 FA 1, FA 2; ADR-0041 N1 Punkt 2): Stücke im selben Durchlauf, Fächer danach in O(Stücke + 200) ── */
@@ -852,6 +922,38 @@
     return String(bericht.commits);
   }
 
+  /* ── Zeitachse (R00239 FA 3, PO Z. 520 (9), 527, 528; Zeichnung D0009 `#laufansicht` Notiz „Zeitachse (B)“) ── */
+
+  const ACHSEN_WORT = { werkzeug: 'Werkzeuge', denken: 'Denken', warten: 'Warten' };
+  const LEGENDE = `<ul class="lv-leg" aria-hidden="true">${ACHSEN_ARTEN.map(art => `<li><i class="${LUECKE_KLASSE[art]}"></i>${ACHSEN_WORT[art]}</li>`).join('')}</ul>`;
+
+  /** Uhrzeit eines Zeitpunkts in ms als `hh:mm:ss` in Ortszeit, abgerundet auf die Sekunde. */
+  function uhrzeitAusMs(ms) {
+    const d = new Date(Math.floor(ms / 1000) * 1000);
+    return `${zwei(d.getHours())}:${zwei(d.getMinutes())}:${zwei(d.getSeconds())}`;
+  }
+
+  /** „Zeitachse: Werkzeuge <Dauer>, Denken <Dauer>, Warten <Dauer>“ — ein Teil mit 0 ms entfällt (PO Z. 527). */
+  function zeitachseLesetext(a) {
+    const teile = ACHSEN_ARTEN.filter(art => a[art] > 0).map(art => `${ACHSEN_WORT[art]} ${dauerText(a[art])}`);
+    return `Zeitachse: ${teile.join(', ')}`;
+  }
+
+  /** Ein Stück: Breite nach Anteil über `flex-grow`, mindestens 1 px; Trennlinie und Muster stehen im inneren Element (CSS). */
+  const stueckHtml = s => `<span class="${LUECKE_KLASSE[s.art]}" style="flex-grow:${s.dauer}" title="${ACHSEN_WORT[s.art]} ${dauerText(s.dauer)} ab ${uhrzeitAusMs(s.ab)}"><i></i></span>`;
+  const fachHtml = f => `<span class="${LUECKE_KLASSE[f.art]}" title="überwiegend ${ACHSEN_WORT[f.art]}, ${uhrzeitAusMs(f.ab)}–${uhrzeitAusMs(f.bis)}"><i></i></span>`;
+
+  /** Die Zeitachse aus der Auswertung (FA 3): Überschrift, Legende immer mit drei Arten, Balken als Bild mit Lesetext, darunter
+      erste und letzte Zeit. Ohne Zeitachse (FA 4) leer. Gerechnet wird hier nichts. */
+  function laufZeitachseHtml(a) {
+    const z = a ? a.zeitachse : null;
+    if (!z) return '';
+    const teile = z.faecher ? z.faecher.map(fachHtml) : z.stuecke.map(stueckHtml);
+    const balken = `<div class="lv-balken${z.faecher ? ' faecher' : ''}" role="img" aria-label="${zeitachseLesetext(a)}">${teile.join('')}</div>`;
+    const zeiten = `<div class="lv-za-zeit" aria-hidden="true"><span>${uhrzeitAusMs(z.erste)}</span><span>${uhrzeitAusMs(z.erste + z.gesamt)}</span></div>`;
+    return `<section class="lv-za" aria-labelledby="lv-za-t"><div class="lv-za-kopf"><h2 id="lv-za-t">Zeitachse</h2>${LEGENDE}</div>${balken}${zeiten}</section>`;
+  }
+
   /* ── Zustände der Seite (FA 7, FA 8, FA 11; Bilder 2, 4, 5): Meldungen, Ansage und Rumpf ── */
 
   const LIEST = 'Liest das Transkript …';
@@ -885,6 +987,7 @@
   function laufAnsage(v) {
     if (v.laedt) return LIEST;
     if (!v.ergebnis) return '';
+    if (v.ansage) return v.ansage;
     if (v.ergebnis.art === 'eintraege') return v.ergebnis.grenze ? GRENZE_ERREICHT : ENDE;
     if (v.ergebnis.art === 'fehlt') return FEHLT;
     return laufFehlerText(v.ergebnis.fehler);
@@ -907,5 +1010,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { tokenKurz, tokenLesetext, tokenVoll, tokenZahlHtml, neueTokensText, neueTokensHtml, laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { laufZeitachseHtml, FILTER_VORGABE, laufFilterHtml, laufZeigenWert, laufFilterAnsage, laufSprungFilter, laufKeineFehlerHtml, tokenKurz, tokenLesetext, tokenVoll, tokenZahlHtml, neueTokensText, neueTokensHtml, laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

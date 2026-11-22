@@ -2116,7 +2116,8 @@ function laufAnstossen() {
   if (!adresse.lauf || (v && v.adresse === hash)) return;
   if (v) laufAbbrechen(v);
   const l = adresse.lauf;
-  S.ui.lauf = { adresse: hash, nr: l.nummer, basis: l.basis, slug: adresse.slug, gesucht: l.kennung, laedt: false, ergebnis: null, anfrage: null, erneut: false, insel: null };
+  S.ui.lauf = { adresse: hash, nr: l.nummer, basis: l.basis, slug: adresse.slug, gesucht: l.kennung, laedt: false, ergebnis: null, anfrage: null, erneut: false, insel: null,
+    filter: FILTER_VORGABE, ansage: null };
   S.ui.fokus = '#lv-h1';
   laufLesen(S.ui.lauf);
 }
@@ -2132,6 +2133,7 @@ function laufAbbrechen(v) {
     erst im nächsten Schritt, damit der Statusbereich vorher stand und die Meldung genau einmal sagt (FA 11, UX N1). */
 async function laufLesen(v) {
   laufAbbrechen(v);
+  v.ansage = null;
   const anfrage = v.anfrage = { abbruch: new AbortController() };
   const treffer = laufTreffer(v);
   v.laedt = Boolean(treffer) || v.erneut;
@@ -2236,9 +2238,11 @@ function vLauf() {
   const e = v.ergebnis;
   let insel = '';
   // der Bericht steht vor der Insel, nicht in ihr: ein Filter der Einträge verbirgt ihn nie (R00234 FA 5)
-  if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${laufTopHtml(e.auswertung, esc)}<div class="lv-haupt">${e.bericht}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
+  // der Bericht steht im Dokument vor der Gliederung: unter 641 px liest er sich zuerst (PO Z. 590); daneben ordnet ihn das Raster
+  if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter))}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
   const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten }, esc);
-  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${kopf}${laufRumpfHtml(v, insel, esc)}</div>`;
+  const zeitachse = laufZeitachseHtml(e && e.art === 'eintraege' ? e.auswertung : null);
+  return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${kopf}${zeitachse}${laufRumpfHtml(v, insel, esc)}</div>`;
 }
 
 /** Zustand des Kopfs (R00234 FA 3, FA 4): Einträge gelesen, liest gerade (auch erneut) oder ohne Einträge (fehlt, Fehler). */
@@ -2263,8 +2267,17 @@ function laufInselNachher(gehalten, gehaltenGeblieben) {
   if (gehalten && !gehaltenGeblieben && e && e.art === 'eintraege') document.getElementById('lv-insel').outerHTML = laufInselText(e);
   const knoten = document.getElementById('lv-insel');
   v.insel = knoten ? { knoten, ergebnis: e } : null;
+  if (knoten) laufFilterAnInsel(knoten, v.filter);
   // eingesetzt: der Text fällt aus dem Zustand (ADR-0041 Punkt 5); muss die Insel neu entstehen, wird er aus den Einträgen gebaut
   if (knoten && e && e.art === 'eintraege') e.html = null;
+}
+
+/** Der Stand der Filter als Attribute an der Insel (R00239 FA 6): nach jedem Zeichnen gesetzt — nach frischem Aufbau, Live und Wechsel;
+    das CSS blendet die Zeilen aus, die Insel bleibt derselbe Knoten. */
+function laufFilterAnInsel(knoten, filter) {
+  const zeigen = laufZeigenWert(filter);
+  if (knoten.getAttribute('data-zeigen') !== zeigen) knoten.setAttribute('data-zeigen', zeigen);
+  if (knoten.hasAttribute('data-nur-fehler') !== filter.f) knoten.toggleAttribute('data-nur-fehler', filter.f);
 }
 
 /** Der Text der Einträge: einmal beim Lesen gebaut; nach dem Einsetzen nur noch aus den Einträgen, wenn die Insel neu entsteht. */
@@ -3663,10 +3676,23 @@ async function aktion(a, arg, wert) {
       case 'lauf-zurueck': laufZurueck(); return;
       case 'lauf-springe': {
         // der Fokus geht über die Rangfolge des Neuzeichnens (S.ui.fokus); gerollt wird danach, an die Zeile unter dem Seitenkopf
-        if (!document.getElementById(arg)) return;
+        const zeile = document.getElementById(arg);
+        if (!zeile) return;
+        // verbirgt ein Filter die Zeile, schaltet der Sprung ihn um — ohne Ansage (R00239 FA 9)
+        if (u.lauf) u.lauf.filter = laufSprungFilter(u.lauf.filter, zeile.dataset.art || 'n', zeile.hasAttribute('data-fehler'));
         u.fokus = '#' + CSS.escape(arg);
         render();
         laufZeileZeigen(arg);
+        return;
+      }
+      case 'lauf-filter': {
+        // ein Kästchen von „Zeigen“ (R00239 FA 5, FA 6): neuer Stand, eine Ansage aus der Auswertung; die Insel bleibt, gerechnet wird nichts
+        const v = u.lauf;
+        if (!v || !v.ergebnis || v.ergebnis.art !== 'eintraege') return;
+        v.filter = { ...v.filter, [arg]: !v.filter[arg] };
+        v.ansage = laufFilterAnsage(v.ergebnis.auswertung.zeilenArten, v.filter);
+        u.fokus = '#lv-f-' + arg;
+        render();
         return;
       }
       case 'lauf-erneut': {
@@ -4715,6 +4741,8 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('a[href^="vscode:"]')) return;
+  // ein gesperrtes Kästchen von „Zeigen“ (R00239 FA 5, PO Z. 588): Klick und Leertaste ändern weder Haken noch Liste
+  if (e.target.closest('#lauf input[data-filter][aria-disabled="true"]')) { e.preventDefault(); return; }
   // eine Nummer der neuen Seite springt nach VS Code an ihre Zeile; der Codetext daneben nie (R00236 FA 7)
   const sprungNummer = e.target.closest('td.ru-nk');
   if (sprungNummer) { vscodeFolgen(`${sprungNummer.closest('.df-sc').dataset.vsc}:${sprungNummer.textContent}`, sprungNummer); return; }

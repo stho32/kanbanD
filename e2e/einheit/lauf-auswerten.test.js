@@ -198,8 +198,8 @@ const ALTBESTAND_T1 = {
 };
 
 test('R00238 AK 2: Altbestand — T1 ohne tokens ergibt dieselbe Auswertung wie vor #263, bis auf tokens: null und eine leere Liste der teuersten', () => {
-  // R00239 ergänzt die Zeitachse (geprüft in lauf-zeitachse.test.js); jedes alte Feld bleibt gleich
-  const { zeitachse, ...alt } = laufAuswerten(T1_ZEILEN, false);
+  // R00239 ergänzt Zeitachse und Arten der Zeilen (geprüft in lauf-zeitachse.test.js, lauf-filter.test.js); jedes alte Feld bleibt gleich
+  const { zeitachse, zeilenArten, ...alt } = laufAuswerten(T1_ZEILEN, false);
   assert.deepStrictEqual(alt, { ...ALTBESTAND_T1, tokens: null, teuer3: [] });
 });
 
