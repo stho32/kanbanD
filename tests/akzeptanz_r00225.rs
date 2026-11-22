@@ -388,6 +388,8 @@ async fn ak08_readme_und_beschreibung_nennen_netto_unveraendert() {
     }
     let datei = abschnitt.split("\n- ").find(|s| s.starts_with("`&datei=<pfad>`")).unwrap();
     assert!(datei.contains("in keinem Kartencommit") && datei.contains("keine Änderung"), "beide 404-Fälle: {datei}");
+    // AK 8 Halbsatz zu N8.6 Punkt 4 (d), PO Z. 514: hinter dem Schnitt eigener Text mit Verweis auf commit= und datei=
+    assert!(datei.contains("auch mit `datei=` zu groß, um zu sagen, ob er im Gesamtbild eine Änderung hat") && datei.contains("auf `commit=` und `datei=` verweist"), "Halbsatz zu (d): {datei}");
     let l = Lage::neu();
     fall_f(&l);
     let lauf = l.starten();

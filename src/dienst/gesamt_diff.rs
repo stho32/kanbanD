@@ -212,9 +212,11 @@ impl Gesamtlauf<'_> {
             let vergleich = Vergleich { eltern: Some(&eltern), commit: &letzter };
             let karte_pfade: Vec<&[u8]> = e.karte.iter().map(Vec::as_slice).collect();
             let pfade: &[&[u8]] = if e.fremd.is_empty() { &[] } else { &karte_pfade };
-            let roh = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, pfade, GRENZE_DATEILISTE, frist)).map_err(repo_fehler)?;
+            // mit datei= bis 20 MB, dieselbe Pfadangabe, kein Prozess mehr (N8.6 Punkt 4 (a)); die Folge-Läufe behalten ihre Grenze
+            let grenze = if self.anfrage.datei.is_some() { self.k.grenze_netto_datei } else { GRENZE_DATEILISTE };
+            let roh = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, pfade, grenze, frist)).map_err(repo_fehler)?;
             let zahlen = match roh {
-                Some(_) => gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, pfade, GRENZE_DATEILISTE, frist)).map_err(repo_fehler)?,
+                Some(_) => gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, pfade, grenze, frist)).map_err(repo_fehler)?,
                 None => None,
             };
             match (roh, zahlen) {
@@ -328,9 +330,9 @@ impl Gesamtlauf<'_> {
         if let Some(name) = datei {
             dateien.retain(|d| d.name() == name);
             if dateien.is_empty() {
-                // in Kartencommits, aber ohne Eintrag: netto unverändert oder Zwischenname (N8.3 Punkt 4, PO Z. 509); hinter
-                // einer abgeschnittenen Liste ist das nicht sicher, dort bleibt der allgemeine Text
-                return Err(if abgeschnitten || !namen_vollstaendig { datei_fehlt(nr) } else { datei_ohne_aenderung(nr) });
+                // in Kartencommits, aber ohne Eintrag (N8.6 Punkt 4): ist kein Lauf abgeschnitten, netto unverändert oder
+                // Zwischenname (c, PO Z. 509); sonst lässt sich das nicht sagen (d, PO Z. 514)
+                return Err(if abgeschnitten || !namen_vollstaendig { datei_hinter_dem_schnitt(nr) } else { datei_ohne_aenderung(nr) });
             }
         } else {
             dateien.truncate(KAPPE_DATEIEN);
@@ -659,6 +661,13 @@ fn datei_ohne_aenderung(nr: u32) -> Fehler {
     Fehler::NichtGefunden(format!("die Datei steht in Kartencommits von #{nr}, hat im Gesamtbild aber keine Änderung (die Aufgabe nimmt sie selbst zurück oder benennt sie weiter) — die Schritte mit commit= und datei= laden"))
 }
 
+/// 404 für einen Pfad, der in Kartencommits steht und keinen Eintrag hat, wenn ein Lauf abgeschnitten ist — auch mit `datei=`
+/// (ADR-0032 N8.6 Punkt 4 (d), Wortlaut PO Z. 514).
+fn datei_hinter_dem_schnitt(nr: u32) -> Fehler {
+    Fehler::NichtGefunden(format!("die Datei steht in Kartencommits von #{nr}, die Liste der Änderungen ist aber zu groß, um zu sagen, ob sie im Gesamtbild eine Änderung hat — die Schritte mit commit= und datei= laden"))
+}
+
+/// 404 für einen Pfad, der in keinem Kartencommit steht (N8.6 Punkt 4 (b)).
 fn datei_fehlt(nr: u32) -> Fehler {
     Fehler::NichtGefunden(format!("die Datei steht in keinem Kartencommit von #{nr} — datei= nennt einen Pfad der Karte, buchstäblich"))
 }
@@ -838,6 +847,38 @@ mod tests {
         assert_eq!(zahlen[4].0, zahlen[5].0, "Folge: gleich bei 10 und 30 — {zahlen:?}");
         assert_eq!(zahlen.iter().map(|z| z.1).collect::<Vec<_>>(), [0, 0, 0, 0, 1, 1], "Folge nur in der zweiten Form (a.txt; bei einem Commit gibt es nichts dazwischen)");
         assert_eq!(zahlen[5].0, 15, "die zweite Form mit Netto und Folge erreicht die Obergrenze genau: {zahlen:?}");
+    }
+
+    // R00225 AK 6 D2 (ADR-0032 N8.6 Punkt 4 (d), PO Z. 514): auch mit datei= ist die Netto-Liste abgeschnitten (Grenze im Test
+    // verkleinert statt 20 MB) — ein Pfad aus Kartencommits ohne Eintrag ergibt 404 mit eigenem Text, der nicht „in keinem
+    // Kartencommit“ sagt und auf commit= verweist; ein Pfad in keinem Kartencommit behält seinen Text. Mutant m8 macht ihn rot
+    #[test]
+    fn datei_hinter_der_abgeschnittenen_liste_eigener_text() {
+        let mut s = Stand::neu();
+        std::fs::create_dir_all(s.r.join("v")).unwrap();
+        for i in 0..40 {
+            std::fs::write(s.r.join(format!("v/{i:03}.txt")), format!("{i}\n")).unwrap();
+        }
+        let k1 = s.commit(Some((2, "K1")), None, "K1 viele");
+        s.commit(Some((6, "FREMD-6")), None, "F");
+        let k2 = s.commit(Some((11, "K2")), None, "K2");
+        s.karte(2, &[k1, k2]);
+        let mut k = Kanban::neu(s.board.clone());
+        k.grenze_netto_datei = 300;
+        let fehler = |k: &Kanban, datei: &str| match k.diff_lesen(2, &anfrage(&[("datei", datei)], None), frist()) {
+            Err(Fehler::NichtGefunden(t)) => t,
+            anders => panic!("datei={datei}: kein 404: {anders:?}"),
+        };
+        let hinten = fehler(&k, "v/039.txt");
+        assert_eq!(hinten, "die Datei steht in Kartencommits von #2, die Liste der Änderungen ist aber zu groß, um zu sagen, ob sie im Gesamtbild eine Änderung hat — die Schritte mit commit= und datei= laden");
+        assert!(!hinten.contains("in keinem Kartencommit") && hinten.contains("commit="));
+        assert!(!hinten.replace("#2", "").chars().any(|c| c.is_ascii_digit()), "keine Zahl im Text: {hinten}");
+        assert_eq!(fehler(&k, "nicht/da.txt"), "die Datei steht in keinem Kartencommit von #2 — datei= nennt einen Pfad der Karte, buchstäblich");
+        // Gegenprobe: mit der Grenze für datei= (20 MB) steht der Eintrag da
+        k.grenze_netto_datei = crate::modell::GRENZE_DATEILISTE_EINZELN;
+        let (a, _) = lesen(&k, 2, &anfrage(&[("datei", "v/039.txt")], None));
+        let (d, _) = json(&a);
+        assert_eq!((d["dateien"][0]["neu"].as_str(), d["dateien"][0]["status"].as_str()), (Some("v/039.txt"), Some("A")), "{d}");
     }
 
     // Legacy-Review #234 Muss 1: die Einteilung hat sich mit ADR-0032 N8 geändert, ein ETag nach der Formel vor der Karte

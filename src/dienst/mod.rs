@@ -89,6 +89,9 @@ pub struct Kanban {
     antwortbudget: antwortbudget::Antwortbudget,
     /// Bytegrenze des Namenslaufs im Gesamt-Diff (R00208, ADR-0032 N6.8); Tests verkleinern sie (AK 4)
     grenze_namen: usize,
+    /// Bytegrenze von Netto-Liste und Netto-Zähler des Gesamt-Diffs mit `datei=` (ADR-0032 N8.6 Punkt 4 (a)); Tests
+    /// verkleinern sie (R00225 AK 6 D2)
+    grenze_netto_datei: usize,
     /// Testnaht (R00206 B1015): läuft einmal direkt nach dem Belegen des Antwortbudgets, mit der Zahl belegter Plätze der
     /// Lesegrenze
     #[cfg(test)]
@@ -148,7 +151,7 @@ impl Schritt {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN,
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN, grenze_netto_datei: crate::modell::GRENZE_DATEILISTE_EINZELN,
             #[cfg(test)]
             nach_dem_belegen: Mutex::default(),
             #[cfg(test)]
