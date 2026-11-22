@@ -1,6 +1,6 @@
 ---
 id: R00241
-status: Neu
+status: Erledigt
 datum: 2026-11-22
 ---
 
@@ -35,11 +35,11 @@ Wer in der Abnahme einen langen Lauf auf „nur Fehler“ eingrenzt, wartet heut
 
 **Ausgangslage:** wie R00239 „Ausgangslage“ (Board `fabrik` mit `record-transcripts: true`, Mensch `sh`, Chromium headless in `Europe/Berlin`, Läufe über `POST /api/aufgaben/<nr>/transkripte` mit `zlib`-gz-Dateien). Die Laufansicht von T1 aus R00234 mit „Nachrichten“, „Werkzeuge“ und „Systemhinweise“ angehakt.
 
-- [ ] **AK 1 (Stilprobe)** Gegeben T1 mit allen drei Arten sichtbar, wenn die Insel gezeichnet ist, dann ist `getComputedStyle(li).display` für kein `#lv-insel>li` `list-item` (Zähler 0), und jedes `#lv-insel>li.lv-n` und `#lv-insel>li.lv-d` hat `grid` (Zähler der Abweichler 0).
-- [ ] **AK 2 (Mutanten)** Gegeben AK 1 grün, wenn der Mutant „Regel entfernt“ eingesetzt wird, dann ist AK 1 rot (Zähler der `list-item` > 0); wenn der Mutant „`.lv-l>li{display:block}` ohne `:where`“ eingesetzt wird, dann ist AK 1 rot (`.lv-n` ist `block`); beide in einer eigenen Kopie, je vom benannten Test getötet.
-- [ ] **AK 3 (Rolle)** Gegeben T1 wie in AK 1, wenn der `ariaSnapshot` der Insel genommen wird, dann ist er gleich dem vor der Regel erfassten (dieselben `listitem` in der `list` „Einträge des Transkripts der Reihe nach“).
-- [ ] **AK 4 (Verhalten)** Gegeben die Spec von R00239 (`e2e/tests/r00239-laufansicht-zeitachse-filter-blaettern.spec.js`) ohne geänderte Erwartung, wenn sie läuft, dann ist sie grün — Ansage, Zählung, Sperrform, Sprung, Fokus und die Marke `el.__probe` an der Insel eingeschlossen.
-- [ ] **AK 5 (Messung, Beobachtung)** Gegeben ein Lauf mit 2.000 Einträgen (≈ 1.000 Zeilen) und T3, wenn je Kästchen fünfmal hin und zurück gewechselt wird, dann nennt der Bericht je Kästchen den Median vom Klick bis nach dem nächsten Bild und die Last nach `uptime` (gemessen bei Last ≤ 2, `nice -n 10`); erwartet ≤ 200 ms bzw. ≤ 500 ms (Messung der Architektur: ≤ 44 ms bzw. ≤ 377 ms bei Last 3, ADR-0041 N5). Eine Überschreitung ist kein Fehlschlag des Gates, sondern eine Frage an den architekt (Variante B, N5).
+- [x] **AK 1 (Stilprobe)** Gegeben T1 mit allen drei Arten sichtbar, wenn die Insel gezeichnet ist, dann ist `getComputedStyle(li).display` für kein `#lv-insel>li` `list-item` (Zähler 0), und jedes `#lv-insel>li.lv-n` und `#lv-insel>li.lv-d` hat `grid` (Zähler der Abweichler 0).
+- [x] **AK 2 (Mutanten)** Gegeben AK 1 grün, wenn der Mutant „Regel entfernt“ eingesetzt wird, dann ist AK 1 rot (Zähler der `list-item` > 0); wenn der Mutant „`.lv-l>li{display:block}` ohne `:where`“ eingesetzt wird, dann ist AK 1 rot (`.lv-n` ist `block`); beide in einer eigenen Kopie, je vom benannten Test getötet.
+- [x] **AK 3 (Rolle)** Gegeben T1 wie in AK 1, wenn der `ariaSnapshot` der Insel genommen wird, dann ist er gleich dem vor der Regel erfassten (dieselben `listitem` in der `list` „Einträge des Transkripts der Reihe nach“).
+- [x] **AK 4 (Verhalten)** Gegeben die Spec von R00239 (`e2e/tests/r00239-laufansicht-zeitachse-filter-blaettern.spec.js`) ohne geänderte Erwartung, wenn sie läuft, dann ist sie grün — Ansage, Zählung, Sperrform, Sprung, Fokus und die Marke `el.__probe` an der Insel eingeschlossen.
+- [x] **AK 5 (Messung, Beobachtung)** Gegeben ein Lauf mit 2.000 Einträgen (≈ 1.000 Zeilen) und T3, wenn je Kästchen fünfmal hin und zurück gewechselt wird, dann nennt der Bericht je Kästchen den Median vom Klick bis nach dem nächsten Bild und die Last nach `uptime` (gemessen bei Last ≤ 2, `nice -n 10`); erwartet ≤ 200 ms bzw. ≤ 500 ms (Messung der Architektur: ≤ 44 ms bzw. ≤ 377 ms bei Last 3, ADR-0041 N5). Eine Überschreitung ist kein Fehlschlag des Gates, sondern eine Frage an den architekt (Variante B, N5).
 
 Grenz- und Leerfälle: ein Lauf ohne Zeilen hat keine Zeile ohne `display: list-item` zu prüfen (Zähler 0 gilt trivial); Fehlerfall ist der Mutant aus AK 2.
 
