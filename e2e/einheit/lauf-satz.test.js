@@ -143,7 +143,7 @@ test('testzeileFinden: Formen und Ton', () => {
 test('testzeileFinden: „3 passed“ als erste von 21 Zeilen wird nicht gefunden, die letzte passende gewinnt, Satz ist keine Testzeile', () => {
   assert.strictEqual(testzeileFinden(['3 passed', ...zeilen(20)].join('\n')), null);
   assert.deepStrictEqual(testzeileFinden(['3 passed', ...zeilen(19)].join('\n')), { zeile: '3 passed', fehler: false });
-  assert.deepStrictEqual(testzeileFinden('1 failed\n5 passed'), { zeile: '5 passed', fehler: false });
+  assert.deepStrictEqual(testzeileFinden('5 passed\n6 passed'), { zeile: '6 passed', fehler: false });
   assert.strictEqual(testzeileFinden('Es sind 3 passed'), null);
 });
 
@@ -428,4 +428,31 @@ test('Muss 2: Varianten — verschachtelt, Backticks in "…", Klammern in $(…
   }
   assert.deepStrictEqual(shellUmbruch('echo $((1+2)); b').split('\n'), ['echo $((1+2));', ' b']);
   assert.deepStrictEqual(shellUmbruch('echo "$x;$(a)"; b').split('\n'), ['echo "$x;$(a)";', ' b']);
+});
+
+/* Muss 3: Testzeile nach PO Z. 619 — R00240 FA 7, AK 5 mit vier Proben wörtlich. */
+
+const tonUndLesetext = text => {
+  const m = /^<p class="lv-tz (ok|fehl)">[\s\S]*?<\/svg>([\s\S]*?)<\/p>/.exec(ergebnisSatz(text, esc).html);
+  if (m === null) return null;
+  return { ton: m[1], lesetext: ohneTags(m[2]) };
+};
+
+test('Muss 3: Playwright-Ausgabe mit „1 failed“ vor „2 passed (1.1s)“ ergibt den Fehler-Ton, die Zeile „1 failed“', () => {
+  assert.deepStrictEqual(tonUndLesetext('Exit code 1\n\n  1 failed\n    t/a.spec.js:3:1 › b\n  2 passed (1.1s)\n'), { ton: 'fehl', lesetext: 'Tests fehlgeschlagen: 1 failed' });
+});
+
+test('Muss 3: „  2 passed (1.1s)“ allein ergibt den Erfolg-Ton', () => {
+  assert.deepStrictEqual(tonUndLesetext('  2 passed (1.1s)\n'), { ton: 'ok', lesetext: 'Tests bestanden: 2 passed (1.1s)' });
+});
+
+test('Muss 3: „# pass 3⏎# fail 1“ ergibt den Fehler-Ton mit „# fail 1“, „# fail 0⏎# pass 3“ den Erfolg-Ton', () => {
+  assert.deepStrictEqual(tonUndLesetext('# pass 3\n# fail 1'), { ton: 'fehl', lesetext: 'Tests fehlgeschlagen: # fail 1' });
+  assert.deepStrictEqual(tonUndLesetext('# fail 0\n# pass 3'), { ton: 'ok', lesetext: 'Tests bestanden: # pass 3' });
+});
+
+test('Muss 3: die letzte Fehlschlagszeile gewinnt, auch vor späteren Erfolgszeilen; nie zusammengesetzt', () => {
+  assert.deepStrictEqual(testzeileFinden('2 failed\n1 failed\n5 passed'), { zeile: '1 failed', fehler: true });
+  assert.deepStrictEqual(testzeileFinden('test result: FAILED. 3 passed; 1 failed\n# pass 9'), { zeile: 'test result: FAILED. 3 passed; 1 failed', fehler: true });
+  assert.deepStrictEqual(testzeileFinden(['1 failed', ...zeilen(20)].join('\n')), null, 'außerhalb der letzten 20 Zeilen');
 });

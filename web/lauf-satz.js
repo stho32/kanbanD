@@ -478,15 +478,26 @@
     return Number(m[1]);
   }
 
-  /** Die letzte Zeile in einer der Testformen unter den letzten 20 Zeilen → `{zeile, fehler}`, sonst null. */
+  /** Unter den letzten 20 Zeilen alle in einer der Testformen (PO Z. 619): die letzte mit Fehlschlag → `{zeile, fehler: true}`, sonst
+      die letzte der Form → `{zeile, fehler: false}`, ohne eine null. */
   function testzeileFinden(text) {
-    const zeilen = textZeilen(text).slice(-OFFENE_ZEILEN);
-    for (let i = zeilen.length - 1; i >= 0; i--) {
-      const kern = zeilen[i].trim();
-      for (const form of TESTZEILE) {
-        const m = form.muster.exec(kern);
-        if (m !== null) return { zeile: zeilen[i], fehler: form.fehlschlaege(m) > 0 };
-      }
+    let letzte = null, letzterFehlschlag = null;
+    for (const zeile of textZeilen(text).slice(-OFFENE_ZEILEN)) {
+      const fehlschlaege = fehlschlaegeDerTestzeile(zeile.trim());
+      if (fehlschlaege === null) continue;
+      letzte = zeile;
+      if (fehlschlaege > 0) letzterFehlschlag = zeile;
+    }
+    if (letzterFehlschlag !== null) return { zeile: letzterFehlschlag, fehler: true };
+    if (letzte !== null) return { zeile: letzte, fehler: false };
+    return null;
+  }
+
+  /** Zahl der Fehlschläge einer Zeile in einer der Testformen, null für jede andere Zeile. */
+  function fehlschlaegeDerTestzeile(kern) {
+    for (const form of TESTZEILE) {
+      const m = form.muster.exec(kern);
+      if (m !== null) return form.fehlschlaege(m);
     }
     return null;
   }
@@ -494,11 +505,12 @@
   const HAKEN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
   const KREUZ = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
-  /** Die Testzeile über dem Ergebnis: Ton, Symbol (Schmuck) und unsichtbar das Urteil vor ihrem Text (PO Z. 613). */
+  /** Die Testzeile über dem Ergebnis: Ton, Symbol (Schmuck) und unsichtbar das Urteil vor ihrem Text ohne Einzug (PO Z. 613, 619). */
   function testzeileHtml(testzeile, zeile) {
     if (testzeile === null) return '';
-    if (testzeile.fehler) return `<p class="lv-tz fehl">${KREUZ}<span class="vh">Tests fehlgeschlagen: </span><span>${zeile(testzeile.zeile)}</span></p>`;
-    return `<p class="lv-tz ok">${HAKEN}<span class="vh">Tests bestanden: </span><span>${zeile(testzeile.zeile)}</span></p>`;
+    const text = zeile(testzeile.zeile.trim());
+    if (testzeile.fehler) return `<p class="lv-tz fehl">${KREUZ}<span class="vh">Tests fehlgeschlagen: </span><span>${text}</span></p>`;
+    return `<p class="lv-tz ok">${HAKEN}<span class="vh">Tests bestanden: </span><span>${text}</span></p>`;
   }
 
   /* ── Von Claude Code gekürzt (N4 Punkt 3, FA 8, PO Z. 594, 604) ── */
