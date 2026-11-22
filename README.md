@@ -167,7 +167,7 @@ GET /api/aufgaben/1/commits
 - Zustände: `auf_zweig` (ein lokaler oder entfernter Zweig erreicht den Commit; je Liste höchstens 10 Namen, der Rest steht in `zweige_weitere`), `verwaist` (der Commit existiert, aber kein Zweig erreicht ihn), `fehlt` (kein Commit-Objekt), `repository_fehlt` und `unlesbar` (mit `grund`), `anwendung_unbekannt`.
 - **`verwaist` heißt nach einem Rebase oder Squash: die Verweise sind nachzuziehen** — mit `POST /api/aufgaben/{nr}/commits/ersetzen` den alten Hash durch den neuen ersetzen; den neuen nennt `GET …/commits/{verweis}/nachfolger` (nächster Abschnitt).
 - Reihenfolge: älteste zuerst nach dem Commit-Datum, Einträge ohne Datum (`fehlt`, `unlesbar`, …) danach. `titel` ist die erste Zeile der Nachricht (höchstens 500 Zeichen), `autor` nur der Name, `plus`/`minus`/`dateien` zählen gegen den ersten Elternteil.
-- Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einer halben Liste; Schreibvorgänge an der Karte warten nie auf ihn.
+- Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einer halben Liste; Schreibvorgänge an der Karte warten nie auf ihn. Sind alle 4 Plätze der Lesegrenze bis zur Frist belegt, kommt ebenfalls 503; `fehler` beginnt mit „Lesegrenze“, Git ist nicht gestartet, und kanbanD wiederholt nicht selbst — die Liste später erneut lesen.
 
 ### Nachfolger eines verwaisten Commits suchen
 
@@ -190,7 +190,7 @@ curl -X POST http://localhost:7420/api/aufgaben/42/commits/ersetzen -H 'X-Kanban
 - Gesucht wird unter höchstens 1.000 Commits ab einem Tag vor dem Autordatum des verwaisten, Commit-Datum absteigend, dann Hash; höchstens 10 Kandidaten, der Rest steht in `kandidaten_weitere`. Kein Kandidat ist kein Fehler (`kandidaten: []`) — nach Squash oder einem anders gelösten Konflikt gibt es keinen.
 - `hinweise`: `suche_gekappt` (`durchsucht`, `grund`: `fenster`, `vorfilter` oder `patch` — ein Nachfolger kann fehlen), `merge` (für einen Merge-Commit wird nicht gesucht), `leer` (der Commit ändert keine Datei). Eine unbekannte `art` überspringen.
 - Die Antwort nennt nie Patch-Text, Dateinamen oder Zeilen; ein Kandidat ist kein Verweis der Karte — sein Diff bleibt gesperrt, bis er ersetzt ist.
-- Statuscodes: 200, 304 (`If-None-Match` gleich dem `ETag`), 400 (Form, mehrdeutiger Präfix), 404 (Aufgabe; Verweis nicht an der Karte `{fehler, verweis}`; Zustand nicht `verwaist` `{fehler, zustand, grund?}`), 423 (defekte Datei), 503 (Git über 10 s, nie eine Teilliste).
+- Statuscodes: 200, 304 (`If-None-Match` gleich dem `ETag`), 400 (Form, mehrdeutiger Präfix), 404 (Aufgabe; Verweis nicht an der Karte `{fehler, verweis}`; Zustand nicht `verwaist` `{fehler, zustand, grund?}`), 423 (defekte Datei), 503 (Git über 10 s, nie eine Teilliste). Sind alle 4 Plätze der Lesegrenze bis zur Frist belegt, kommt ebenfalls 503; `fehler` beginnt mit „Lesegrenze“, Git ist nicht gestartet, und kanbanD wiederholt nicht selbst — die Suche später erneut lesen.
 
 ### Diff eines Commits lesen
 
@@ -218,7 +218,7 @@ GET /api/aufgaben/1/diff?commit=kd:<X1>
 - `&format=patch` liefert dieselbe Auswahl als Text (`text/x-diff`) mit den Kopfzeilen von Git — zum Lesen, nicht für `git apply`.
 - **Antwortbudget**: alle Diff-Antworten, die gerade an Clients unterwegs sind, halten zusammen höchstens 64 MB; wer seine Antwort nicht binnen 60 s liest, verliert sie. Ist das Budget belegt, kommt sofort `503 {"fehler": "Antwortbudget von 64 MB belegt — Diff in einigen Sekunden erneut laden"}` — einige Sekunden warten und erneut laden.
 - Jede Antwort zu einem Verweis mit vollem Hash trägt einen `ETag`; mit `If-None-Match` kommt 304 ohne Git-Aufruf.
-- Kein Diff gibt es zu den Zuständen `fehlt`, `repository_fehlt`, `anwendung_unbekannt` und `unlesbar` (404 mit `zustand`). Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einem halben Diff. Aus dem Repository läuft dabei kein Programm (`diff.external`, `textconv`, Pager und Hooks bleiben aus).
+- Kein Diff gibt es zu den Zuständen `fehlt`, `repository_fehlt`, `anwendung_unbekannt` und `unlesbar` (404 mit `zustand`). Hängt Git, antwortet der Aufruf nach höchstens 15 s mit 503 — nie mit einem halben Diff. Sind alle 4 Plätze der Lesegrenze bis zur Frist belegt, kommt ebenfalls 503; `fehler` beginnt mit „Lesegrenze“, Git ist nicht gestartet, und kanbanD wiederholt nicht selbst — den Diff später erneut lesen. Aus dem Repository läuft dabei kein Programm (`diff.external`, `textconv`, Pager und Hooks bleiben aus).
 
 ### Alle Änderungen der Karte lesen
 

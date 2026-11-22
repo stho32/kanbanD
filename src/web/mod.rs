@@ -1188,7 +1188,7 @@ async fn kosteneintrag_loeschen(State(app): State<App>, Wer(wer): Wer, Pfad((nr,
     tag = "Aufgaben",
     description = endpunkte::COMMITS_LESEN,
     params(("nr" = u32, Path, description = "Nummer der Aufgabe")),
-    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Commitliste), (status = 400, description = "ungültige Nummer", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "Aufgabe nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git in den Arbeits-Repositories über der Gesamtgrenze von 10 s — keine Liste", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    responses((status = 200, description = "Erfolg", body = crate::web::openapi::Commitliste), (status = 400, description = "ungültige Nummer", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "Aufgabe nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git in den Arbeits-Repositories über der Gesamtgrenze von 10 s — keine Liste; oder alle 4 Plätze der Lesegrenze bis zur Frist belegt (fehler beginnt mit „Lesegrenze“, Git nicht gestartet)", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn commits_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Response, Fehler> {
     // die Gesamtgrenze zählt ab Eingang der Anfrage (ADR-0032 N3.1)
@@ -1203,7 +1203,7 @@ async fn commits_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Re
     tag = "Aufgaben",
     description = endpunkte::DIFF_LESEN,
     params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("commit" = Option<String>, Query, description = "ohne: Gesamt-Diff der Karte (R00208); sonst Commit-Verweis der Karte, wörtlich wie in der Datei (<kürzel>:<voller Hash>) oder mit einem an der Karte eindeutigen Hash-Präfix ab 7 Zeichen"), ("anwendung" = Option<String>, Query, description = "nur ohne commit: Kürzel der Anwendung des Gesamt-Diffs (leer = Standardanwendung); ohne die erste in der Reihenfolge der Verweise"), ("datei" = Option<String>, Query, description = "nur diese Datei: neu, bei gelöschten alt, buchstäblich (kein Muster); bis 8 MB Patch, ohne Grenze je Datei; ohne commit ein Pfad der Kartencommits, bei einer Folge alle Schritte"), ("format" = Option<String>, Query, description = "patch liefert dieselbe Auswahl als Text text/x-diff"), ("If-None-Match" = Option<String>, Header, description = "ETag einer früheren Antwort 200 — gleich → 304 ohne Git")),
-    responses((status = 200, description = "Diff des Commits {anwendung, commits, dateien, hinweise}; ohne commit der Gesamt-Diff {anwendung, spanne, commits, dateien, hinweise} (Schema Gesamtdiff) — mit format=patch als text/x-diff; charset=utf-8; ETag bei Verweisen mit vollem Hash", body = crate::dienst::diff::Diff), (status = 304, description = "unverändert zum ETag aus If-None-Match — ohne Rumpf, ohne Git"), (status = 400, description = "anwendung zusammen mit commit, format unbekannt, datei leer/mit NUL/über 4096 Byte, oder Form des Verweises falsch bzw. Präfix an der Karte mehrdeutig (Verweisfehler)", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden; ohne commit: keine Verweise der Anwendung oder datei nicht in den Kartencommits oder netto unverändert; Verweis nicht an der Karte (Verweisfehler); kein Diff zum Zustand des Verweises (Zustandsfehler: fehlt, repository_fehlt, anwendung_unbekannt, unlesbar); datei nicht in der Dateiliste (über 20 MB Dateiliste und auch ohne Pfadangabe nicht gefunden: „… Die Dateiliste des Commits ist zu groß …“)", body = crate::web::openapi::Zustandsfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git im Arbeits-Repository über der Gesamtgrenze von 10 s — kein Diff, keine Teilantwort; oder Antwortbudget von 64 MB belegt (fehler beginnt mit „Antwortbudget“) — sofort, Diff in einigen Sekunden erneut laden", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    responses((status = 200, description = "Diff des Commits {anwendung, commits, dateien, hinweise}; ohne commit der Gesamt-Diff {anwendung, spanne, commits, dateien, hinweise} (Schema Gesamtdiff) — mit format=patch als text/x-diff; charset=utf-8; ETag bei Verweisen mit vollem Hash", body = crate::dienst::diff::Diff), (status = 304, description = "unverändert zum ETag aus If-None-Match — ohne Rumpf, ohne Git"), (status = 400, description = "anwendung zusammen mit commit, format unbekannt, datei leer/mit NUL/über 4096 Byte, oder Form des Verweises falsch bzw. Präfix an der Karte mehrdeutig (Verweisfehler)", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden; ohne commit: keine Verweise der Anwendung oder datei nicht in den Kartencommits oder netto unverändert; Verweis nicht an der Karte (Verweisfehler); kein Diff zum Zustand des Verweises (Zustandsfehler: fehlt, repository_fehlt, anwendung_unbekannt, unlesbar); datei nicht in der Dateiliste (über 20 MB Dateiliste und auch ohne Pfadangabe nicht gefunden: „… Die Dateiliste des Commits ist zu groß …“)", body = crate::web::openapi::Zustandsfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git im Arbeits-Repository über der Gesamtgrenze von 10 s — kein Diff, keine Teilantwort; oder alle 4 Plätze der Lesegrenze bis zur Frist belegt (fehler beginnt mit „Lesegrenze“, Git nicht gestartet); oder Antwortbudget von 64 MB belegt (fehler beginnt mit „Antwortbudget“) — sofort, Diff in einigen Sekunden erneut laden", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn diff_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>, Abfrage(paare): Abfrage<Vec<(String, String)>>, kopf: axum::http::HeaderMap) -> Result<Response, Fehler> {
     use axum::http::header;
@@ -1279,7 +1279,7 @@ async fn commit_entfernen(State(app): State<App>, Wer(wer): Wer, Pfad((nr, verwe
     tag = "Aufgaben",
     description = endpunkte::NACHFOLGER_SUCHEN,
     params(("nr" = u32, Path, description = "Nummer der Aufgabe"), ("verweis" = String, Path, description = "Commit-Verweis der Karte <kürzel>:<hash> oder <hash>, voller Hash oder an der Karte eindeutiger Präfix ab 7 Zeichen; sein Zustand muss verwaist sein"), ("If-None-Match" = Option<String>, Header, description = "ETag einer früheren Antwort 200 — gleich → 304")),
-    responses((status = 200, description = "Kandidaten mit gleicher patch-id (auch keiner: kandidaten []); ETag bei Verweisen mit vollem Hash", body = crate::dienst::nachfolger::Nachfolger), (status = 304, description = "unverändert zum ETag aus If-None-Match — ohne Rumpf"), (status = 400, description = "Form des Verweises falsch oder Präfix an der Karte mehrdeutig (Verweisfehler)", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden; Verweis nicht an der Karte (Verweisfehler); Zustand nicht verwaist (Zustandsfehler: auf_zweig, fehlt, repository_fehlt, anwendung_unbekannt, unlesbar)", body = crate::web::openapi::Zustandsfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git im Arbeits-Repository über der Gesamtgrenze von 10 s — keine Kandidaten, nie eine Teilliste", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
+    responses((status = 200, description = "Kandidaten mit gleicher patch-id (auch keiner: kandidaten []); ETag bei Verweisen mit vollem Hash", body = crate::dienst::nachfolger::Nachfolger), (status = 304, description = "unverändert zum ETag aus If-None-Match — ohne Rumpf"), (status = 400, description = "Form des Verweises falsch oder Präfix an der Karte mehrdeutig (Verweisfehler)", body = crate::web::openapi::Verweisfehler), (status = 404, description = "Aufgabe nicht gefunden; Verweis nicht an der Karte (Verweisfehler); Zustand nicht verwaist (Zustandsfehler: auf_zweig, fehlt, repository_fehlt, anwendung_unbekannt, unlesbar)", body = crate::web::openapi::Zustandsfehler), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git im Arbeits-Repository über der Gesamtgrenze von 10 s — keine Kandidaten, nie eine Teilliste; oder alle 4 Plätze der Lesegrenze bis zur Frist belegt (fehler beginnt mit „Lesegrenze“, Git nicht gestartet)", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn nachfolger_suchen(State(app): State<App>, Pfad((nr, verweis)): Pfad<(u32, String)>, kopf: axum::http::HeaderMap) -> Result<Response, Fehler> {
     use axum::http::header;
@@ -1951,6 +1951,35 @@ mod tests {
             let (status, rumpf) = antwort(Fehler::Ausgelastet(wortlaut.clone())).await;
             assert_eq!((status, rumpf), (StatusCode::SERVICE_UNAVAILABLE, serde_json::json!({ "fehler": wortlaut }).to_string()), "{endung}");
         }
+    }
+
+    // R00226 AK 6 und AK 7: Endpunktliste, OpenAPI und README „Für Agenten“ nennen bei Liste, Diff und Nachfolger neben
+    // der Gesamtgrenze den zweiten 503-Fall — alle Plätze der Lesegrenze bis zur Frist belegt, `fehler` mit „Lesegrenze“
+    #[test]
+    fn api_beschreibung_nennt_die_belegte_lesegrenze() {
+        let zweiter_fall = |text: &str, wo: &str| {
+            assert!(text.contains("alle 4 Plätze der Lesegrenze bis zur Frist belegt") && text.contains("beginnt mit „Lesegrenze“"), "{wo}: {text}");
+            assert!(text.contains("10 s") || text.contains("Hängt Git"), "{wo}: der Fall der Zeitgrenze bleibt genannt");
+        };
+        for (pfad, zweck) in [("/api/aufgaben/{nr}/commits", endpunkte::COMMITS_LESEN), ("/api/aufgaben/{nr}/diff", endpunkte::DIFF_LESEN), ("/api/aufgaben/{nr}/commits/{verweis}/nachfolger", endpunkte::NACHFOLGER_SUCHEN)] {
+            zweiter_fall(zweck, pfad);
+            let e = endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "GET" && e.pfad == pfad).expect(pfad);
+            assert_eq!(e.zweck, zweck, "{pfad}: die Endpunktliste nimmt denselben Text");
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let _ = router(tmp.path().to_path_buf());
+        let api = serde_json::to_value(OPENAPI.get().expect("OpenAPI gebaut")).unwrap();
+        for pfad in ["/api/aufgaben/{nr}/commits", "/api/aufgaben/{nr}/diff", "/api/aufgaben/{nr}/commits/{verweis}/nachfolger"] {
+            zweiter_fall(api["paths"][pfad]["get"]["responses"]["503"]["description"].as_str().expect(pfad), &format!("OpenAPI 503 {pfad}"));
+        }
+        let readme = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
+        let abschnitt = |kopf: &str| readme.split(kopf).nth(1).expect(kopf).split("\n### ").next().unwrap().to_string();
+        for kopf in ["### Commits einer Karte lesen", "### Nachfolger eines verwaisten Commits suchen", "### Diff eines Commits lesen"] {
+            let a = abschnitt(kopf);
+            zweiter_fall(&a, kopf);
+            assert!(a.contains("Git ist nicht gestartet") && a.contains("wiederholt nicht selbst"), "{kopf}: {a}");
+        }
+        assert!(!abschnitt("### Alle Änderungen der Karte lesen").contains("Lesegrenze"), "der Abschnitt von #234 bleibt unverändert");
     }
 
     // R00096 / ADR-0003: Agenten lesen die Felder, nicht den Text; `fehler` bleibt das erste Feld

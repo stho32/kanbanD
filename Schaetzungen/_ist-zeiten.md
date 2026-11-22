@@ -1049,3 +1049,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #238 R00226 | B1178 Proben B (rot je Aufrufer, Gesamt-Diff im Testmodul von diff.rs), Z und O als Wächter | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #238 R00226 | B1179 Text der belegten Lesegrenze an einem Ort: `lesegrenze::belegt(endung)` → Ausgelastet aus LESEN_HOECHSTENS und GESAMTGRENZE | Standard | 0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-22 | Karte #238 R00226 | B1180 vier Aufrufer (Liste, Diff, Gesamt-Diff, Nachfolger) nutzen lesegrenze::belegt, Import in gesamt_diff.rs nachgezogen, HTTP-Probe 503 {fehler} | Standard | 0,5h | 0,3h | 0,3h | autonom |
+| 2026-11-22 | Karte #238 R00226 | B1181 Endpunktliste, OpenAPI-503 und README „Für Agenten“ nennen die belegte Lesegrenze, ein Modultest über alle drei Quellen | Standard | 0,5h | 0,4h | 0,4h | autonom |
