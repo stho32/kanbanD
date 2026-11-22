@@ -1047,3 +1047,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #234 R00225 | Nacharbeit 1, Legacy-Review Muss 1 (ohne eigene Bubble): eigene Versionskonstante der Einteilung im Gesamt-ETag, Probe gegen das Programm vor der Karte | Standard | — | 0,3h | 0,3h | autonom |
 | 2026-11-22 | Karte #234 R00225 | B1192 Nacharbeit 1: Mutanten m1–m9 (dazu m6b) in eigener Kopie, volles Gate im Worktree, R00225 abgeschlossen | Standard | 0,5-1h | 0,9h | 0,9h | autonom |
 | 2026-11-22 | Karte #238 R00226 | B1178 Proben B (rot je Aufrufer, Gesamt-Diff im Testmodul von diff.rs), Z und O als Wächter | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-22 | Karte #238 R00226 | B1179 Text der belegten Lesegrenze an einem Ort: `lesegrenze::belegt(endung)` → Ausgelastet aus LESEN_HOECHSTENS und GESAMTGRENZE | Standard | 0,5h | 0,2h | 0,2h | autonom |
