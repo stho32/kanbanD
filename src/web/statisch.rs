@@ -59,6 +59,7 @@ dateien! {
     "fonts/ibm-plex-sans-latin-600-normal.woff2" => "font/woff2",
     "fonts/ibm-plex-mono-latin-400-normal.woff2" => "font/woff2",
     "fonts/ibm-plex-mono-latin-500-normal.woff2" => "font/woff2",
+    "fonts/LICENSE-OFL.txt" => "text/plain; charset=utf-8",
 }
 
 fn liefern(name: &str) -> Response {

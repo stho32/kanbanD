@@ -1051,3 +1051,4 @@ Nie vom User erfragen.
 | 2026-11-22 | Karte #238 R00226 | B1180 vier Aufrufer (Liste, Diff, Gesamt-Diff, Nachfolger) nutzen lesegrenze::belegt, Import in gesamt_diff.rs nachgezogen, HTTP-Probe 503 {fehler} | Standard | 0,5h | 0,3h | 0,3h | autonom |
 | 2026-11-22 | Karte #238 R00226 | B1181 Endpunktliste, OpenAPI-503 und README „Für Agenten“ nennen die belegte Lesegrenze, ein Modultest über alle drei Quellen | Standard | 0,5h | 0,4h | 0,4h | autonom |
 | 2026-11-22 | Karte #238 R00226 | B1182 Mutanten m1–m6 (zehn Rust-Varianten in eigener Kopie, m6 in Kopie von web/) getötet, volles Gate, R00226 Erledigt | Standard | 0,5-1h | 0,8h | 0,8h | autonom |
+| 2026-11-22 | Karte #243 R00227 | B1183 Lizenz-Probe und Ordner-Abgleich rot (404), Zeile in `dateien!`, grün; Prism-Gegenprobe | Standard | 0,5h | 0,2h | 0,2h | autonom |
