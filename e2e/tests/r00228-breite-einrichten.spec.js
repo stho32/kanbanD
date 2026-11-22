@@ -1,6 +1,8 @@
 // R00228 (I0218, Karte #249): das Feld „Repository“ in Einrichten nutzt die Zeile, die Review-Seite hat eine eigene Klasse,
 // der erste Start scrollt nicht quer. AK 1, 1a, 2, 3 und die Mutanten m1–m6 (KD_MUTANTE, Pfade /web/…).
 // Schichten: Testfall (je AK) → Testsprache (`lage`, `ersterStart`, `stileDerReviewSeite`) → Treiber (Playwright).
+// Das Vorher-JSON (r00228-stile-vorher.json) ist der Stand von `main` vor der Karte; ändert sich ein Token (Farbe, Linie, Schrift) in
+// web/kd-app.css, wird es mit KD_STILE_AUS=<pfad-ohne-endung> auf einem Stand ohne die Karte neu aufgenommen (Nacharbeit 1: borderBottom, height).
 // Gemessen wird immer mit getBoundingClientRect in EINEM page.evaluate (ADR-0026 N3 Regel 8), nie mit innerText.
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
@@ -32,6 +34,7 @@ const lage = page => page.evaluate(() => {
   return {
     anw: von(anw.querySelector('input[aria-label="Repository kd"]'), anw.querySelector('.erreich'), anw),
     quellen: von(document.querySelector('input[aria-label="Repository"]'), quellen, quellen.closest('.felder')),
+    unterlinie: [anw.querySelector('.felder-repo>.w'), quellen.closest('.felder').querySelector('.w')].map(w => getComputedStyle(w).borderBottomWidth),
     fontWeight: getComputedStyle(anw).fontWeight, display: getComputedStyle(anw).display,
     quer: wurzel.scrollWidth - innerWidth,
     ziele: [...anw.querySelectorAll('input, button')].map(e => e.getBoundingClientRect().height),
@@ -66,7 +69,7 @@ const stileDerReviewSeite = page => page.evaluate(selektor => {
   const probe = document.createElement('section');
   probe.innerHTML = `<h2 class="${klasse}"><span class="mono">1 Commit</span> <span class="zw"><svg class="i" viewBox="0 0 12 12"></svg>wartet</span></h2><p class="rv-abs-zust"><svg class="i" viewBox="0 0 12 12"></svg>Wartet</p>`;
   document.querySelector('#rv-insel').append(probe);
-  const kopfNamen = ['display', 'flexWrap', 'alignItems', 'rowGap', 'columnGap', 'margin', 'fontSize', 'fontWeight'];
+  const kopfNamen = ['display', 'flexWrap', 'alignItems', 'rowGap', 'columnGap', 'margin', 'fontSize', 'fontWeight', 'height', 'borderBottomWidth', 'borderBottomStyle', 'borderBottomColor'];
   const ergebnis = {
     koepfe: koepfe.map(h => ({ kopf: nimm(h, kopfNamen), mono: [...h.querySelectorAll('.mono')].map(m => nimm(m, ['fontWeight', 'color'])) })),
     probe: {
@@ -117,6 +120,7 @@ test.describe('R00228 Repository-Feld und erster Start', () => {
           expect(x.ganzInZeile, `${breite} px ${ort}: Zustandswort ganz in der Zeile`).toBe(true);
           expect(x.unterFeld, `${breite} px ${ort}: erreich.top ${x.erreich.t} >= feld.bottom ${x.feld.b}`).toBe(true);
         }
+        expect(m.unterlinie, `${breite} px: Unterlinie der Feldzeile (Anwendung, Quellen), Hausform .felder-schmal`).toEqual(['1px', '1px']);
         expect(m.quer, `${breite} px: Querscrollen`).toBeLessThanOrEqual(0);
         expect(Math.min(...m.ziele), `${breite} px: kleinstes Ziel`).toBeGreaterThanOrEqual(m.ziel);
       }

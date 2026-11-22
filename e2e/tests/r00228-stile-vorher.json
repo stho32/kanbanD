@@ -10,7 +10,11 @@
      "columnGap": "12px",
      "margin": "0px",
      "fontSize": "14px",
-     "fontWeight": "600"
+     "fontWeight": "600",
+     "height": "20.5938px",
+     "borderBottomWidth": "1px",
+     "borderBottomStyle": "solid",
+     "borderBottomColor": "oklch(0.76 0.014 250)"
     },
     "mono": [
      {
@@ -28,7 +32,11 @@
      "columnGap": "12px",
      "margin": "0px",
      "fontSize": "14px",
-     "fontWeight": "600"
+     "fontWeight": "600",
+     "height": "20.5938px",
+     "borderBottomWidth": "1px",
+     "borderBottomStyle": "solid",
+     "borderBottomColor": "oklch(0.76 0.014 250)"
     },
     "mono": [
      {
@@ -46,7 +54,11 @@
      "columnGap": "12px",
      "margin": "0px",
      "fontSize": "14px",
-     "fontWeight": "600"
+     "fontWeight": "600",
+     "height": "20.5938px",
+     "borderBottomWidth": "1px",
+     "borderBottomStyle": "solid",
+     "borderBottomColor": "oklch(0.76 0.014 250)"
     },
     "mono": [
      {
@@ -65,7 +77,11 @@
     "columnGap": "12px",
     "margin": "0px",
     "fontSize": "14px",
-    "fontWeight": "600"
+    "fontWeight": "600",
+    "height": "19.2969px",
+    "borderBottomWidth": "1px",
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "oklch(0.76 0.014 250)"
    },
    "mono": {
     "fontWeight": "400",
@@ -98,7 +114,11 @@
      "columnGap": "12px",
      "margin": "0px",
      "fontSize": "14px",
-     "fontWeight": "600"
+     "fontWeight": "600",
+     "height": "20.5938px",
+     "borderBottomWidth": "1px",
+     "borderBottomStyle": "solid",
+     "borderBottomColor": "oklch(0.42 0.018 255)"
     },
     "mono": [
      {
@@ -116,7 +136,11 @@
      "columnGap": "12px",
      "margin": "0px",
      "fontSize": "14px",
-     "fontWeight": "600"
+     "fontWeight": "600",
+     "height": "20.5938px",
+     "borderBottomWidth": "1px",
+     "borderBottomStyle": "solid",
+     "borderBottomColor": "oklch(0.42 0.018 255)"
     },
     "mono": [
      {
@@ -134,7 +158,11 @@
      "columnGap": "12px",
      "margin": "0px",
      "fontSize": "14px",
-     "fontWeight": "600"
+     "fontWeight": "600",
+     "height": "20.5938px",
+     "borderBottomWidth": "1px",
+     "borderBottomStyle": "solid",
+     "borderBottomColor": "oklch(0.42 0.018 255)"
     },
     "mono": [
      {
@@ -153,7 +181,11 @@
     "columnGap": "12px",
     "margin": "0px",
     "fontSize": "14px",
-    "fontWeight": "600"
+    "fontWeight": "600",
+    "height": "19.2969px",
+    "borderBottomWidth": "1px",
+    "borderBottomStyle": "solid",
+    "borderBottomColor": "oklch(0.42 0.018 255)"
    },
    "mono": {
     "fontWeight": "400",
