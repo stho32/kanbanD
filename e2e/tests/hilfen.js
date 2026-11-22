@@ -401,4 +401,14 @@ function ansagenBeobachten() {
   };
 }
 
-module.exports = { ansagenZaehlen, mutanteEinsetzen, commitSteht, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+/** Lage und Größe eines Knotens in einem Zug (ADR-0026 N3 Regel 8, R00231): Suchen und Messen laufen in derselben Aufgabe der Seite,
+    ein Neuzeichnen kann den Knoten also nicht dazwischen aushängen (`locator.evaluate` löst erst auf und misst dann in einem zweiten Aufruf).
+    Fehlt der Knoten, ist das Ergebnis `null`, nie 0 — unter `expect.poll` fragt die Probe dann erneut. */
+const masse = (page, selektor) => page.evaluate(s => {
+  const el = document.querySelector(s);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, clientHeight: el.clientHeight };
+}, selektor);
+
+module.exports = { masse, ansagenZaehlen, mutanteEinsetzen, commitSteht, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };

@@ -2,7 +2,7 @@
 // Der Ansichtswechsel ist seit R00145 ein Menü am Fensterkopf (Karte #145); diese Probe prüft die Ansichten selbst:
 // welche es gibt, was jede zeigt, dass genau eine gezeichnet wird und dass Live und Rückfall sie erhalten.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen, reiter } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen, reiter, masse } = require('./hilfen');
 
 const EINSTELLUNGEN = `---
 people:
@@ -57,8 +57,8 @@ const GRUND = {
 const ANSICHTEN = ['Inhalt', 'Zeiten', 'Details', 'Datei', 'Verlauf'];
 const AUSLOESER = '#fenster [data-act="fenster-menue"][data-arg="ansicht"]';
 const ANSICHTSMENUE = '#fenster [role="menu"][data-art="ansicht"]';
-/** Lage und Größe in einem Zug in der Seite gelesen: `boundingBox()` fragt zweimal und meldet null, wenn ein Neuzeichnen den Knoten dazwischen ersetzt. */
-const rechteck = ort => ort.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
+/** Kleinste Seite eines gemessenen Knotens; fehlt der Knoten (`null`), ist sie `NaN` und besteht keine Schwelle. */
+const kleinsteSeite = m => (m ? Math.round(Math.min(m.width, m.height)) : NaN);
 const panel = (page, schluessel) => page.locator(`#fenster .mod-body[data-ansicht="${schluessel}"]`);
 
 test.describe('R00127 Kartendetails mit mehreren Ansichten', () => {
@@ -309,17 +309,16 @@ test.describe('R00127 schmale Breiten', () => {
       for (const thema of ['light', 'dark']) {
         await breiteSetzen(page, breite, 700);
         await page.evaluate(t => { document.documentElement.dataset.theme = t; }, thema);
-        const kopf = await page.locator('#fenster .mod-kopf').evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth, h: el.clientHeight, ziel: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kd-ziel')) || 0 }));
-        expect(kopf.sw, `${breite} px ${thema}: Kopf scrollt nicht quer`).toBeLessThanOrEqual(kopf.cw);
-        expect(kopf.h, `${breite} px ${thema}: einzeilig`).toBeLessThanOrEqual(Math.max(36, kopf.ziel) + 2);
+        const ziel = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kd-ziel')) || 0);
+        await expect.poll(async () => { const kopf = await masse(page, '#fenster .mod-kopf'); return kopf && kopf.scrollWidth <= kopf.clientWidth; }, { message: `${breite} px ${thema}: Kopf scrollt nicht quer` }).toBe(true);
+        await expect.poll(async () => { const kopf = await masse(page, '#fenster .mod-kopf'); return kopf && kopf.clientHeight <= Math.max(36, ziel) + 2; }, { message: `${breite} px ${thema}: einzeilig` }).toBe(true);
         const seite = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
         expect(seite.sw, `${breite} px ${thema}: die Seite scrollt nicht quer`).toBeLessThanOrEqual(seite.cw);
         await page.locator(AUSLOESER).click();
         // erst wenn das Menü steht: gleich nach dem Klick ist es noch nicht gezeichnet (ADR-0026 Regel 2)
         await expect(page.locator(ANSICHTSMENUE)).toBeVisible();
-        const box = await rechteck(page.locator(ANSICHTSMENUE));
-        expect(box.x, `${breite} px ${thema}: Menü links im Bild`).toBeGreaterThanOrEqual(0);
-        expect(box.x + box.width, `${breite} px ${thema}: Menü rechts im Bild`).toBeLessThanOrEqual(breite);
+        await expect.poll(async () => (await masse(page, ANSICHTSMENUE))?.x, { message: `${breite} px ${thema}: Menü links im Bild` }).toBeGreaterThanOrEqual(0);
+        await expect.poll(async () => { const m = await masse(page, ANSICHTSMENUE); return m && m.x + m.width; }, { message: `${breite} px ${thema}: Menü rechts im Bild` }).toBeLessThanOrEqual(breite);
         await page.keyboard.press('Escape');
         for (const n of ['Kosten', 'Details', 'Inhalt']) {
           await reiter(page, n);
@@ -338,8 +337,7 @@ test.describe('R00127 schmale Breiten', () => {
     // `kdTest.gezeichnet()` wird dort nie wahr) — ein Neuzeichnen kurz nach dem Öffnen ersetzt den Knoten
     await liveBereit(page);
     await expect(page.locator(AUSLOESER)).toBeVisible();
-    const box = await rechteck(page.locator(AUSLOESER));
-    expect(Math.round(Math.min(box.width, box.height))).toBeGreaterThanOrEqual(24);
+    await expect.poll(async () => kleinsteSeite(await masse(page, AUSLOESER)), { message: 'Auslöser ≥ 24 px' }).toBeGreaterThanOrEqual(24);
   });
 });
 
@@ -362,14 +360,26 @@ test.describe('R00127 schmale Breiten (Touch)', () => {
     // `kdTest.gezeichnet()` wird dort nie wahr) — ein Neuzeichnen kurz nach dem Öffnen ersetzt den Knoten
     await liveBereit(page);
     await expect(page.locator(AUSLOESER)).toBeVisible();
-    const box = await rechteck(page.locator(AUSLOESER));
-    expect(Math.round(Math.min(box.width, box.height))).toBeGreaterThanOrEqual(44);
+    await expect.poll(async () => kleinsteSeite(await masse(page, AUSLOESER)), { message: 'Auslöser ≥ 44 px' }).toBeGreaterThanOrEqual(44);
     await page.locator(AUSLOESER).click();
     for (const n of ['Inhalt', 'Zeiten', 'Details', 'Datei', 'Kosten', 'Verlauf']) {
       const eintrag = page.locator(ANSICHTSMENUE).getByRole('menuitemradio', { name: n, exact: true });
       await expect(eintrag).toBeVisible();
-      const hoehe = await eintrag.evaluate(el => el.getBoundingClientRect().height);
-      expect(hoehe, `${n}: ≥ 44`).toBeGreaterThanOrEqual(44);
+      // der Schlüssel des Eintrags steht in `data-arg`; gemessen wird über den Selektor, nicht über den aufgelösten Knoten
+      const wahl = `${ANSICHTSMENUE} [role="menuitemradio"][data-arg="${await eintrag.getAttribute('data-arg')}"]`;
+      await expect.poll(async () => (await masse(page, wahl))?.height, { message: `${n}: ≥ 44` }).toBeGreaterThanOrEqual(44);
     }
+  });
+
+  test('US-6: der Auslöser misst ≥ 44 × 44 px auch, wenn die Seite in jedem Frame neu zeichnet', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto(k.adresse);
+    await page.locator('.ka[data-id="1"] .id').click();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await liveBereit(page);
+    await expect(page.locator(AUSLOESER)).toBeVisible();
+    // jedes Neuzeichnen ersetzt den Auslöser (ADR-0007): eine Messung in zwei Schritten träfe den ausgehängten Knoten
+    await page.evaluate(() => { const los = () => { render(); requestAnimationFrame(los); }; requestAnimationFrame(los); });
+    await expect.poll(async () => kleinsteSeite(await masse(page, AUSLOESER)), { message: 'Auslöser ≥ 44 px' }).toBeGreaterThanOrEqual(44);
   });
 });
