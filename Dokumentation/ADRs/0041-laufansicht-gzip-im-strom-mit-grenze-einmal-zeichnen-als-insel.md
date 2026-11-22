@@ -223,3 +223,70 @@ Ergänzt nach den Reviews an #251 (architektur-reviewer, rechtschreib-reviewer).
 - **Zu Punkt 5, ohne Bericht:** Ohne Bericht steht an der Stelle der Karte die gedämpfte Zeile „Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile ‚Ergebnis:‘.“ (PO Z. 520 (7); `KEIN_BERICHT`, `web/lauf.js:248`). Der Satz „Ohne Bericht gibt es keine Karte“ oben ist damit so zu lesen: keine Karte „Bericht“, aber diese Zeile. Das Ergebnis im Kopf zeigt weiter „–“.
 - **Zu Punkt 6, einmal je Lesen (Fitness Function):** `grep -c "laufAuswerten(" web/app.js` ergibt genau 1 (heute `web/app.js:1999`). Ein Stolperstein ist der Standardwert in `laufHtml(zeilen, grenze, esc, auswertung = laufAuswerten(zeilen, grenze))` (`web/lauf.js:125`): Wer `laufHtml` ohne die vierte Angabe aufruft, rechnet die Auswertung still ein zweites Mal. Heute geben beide Aufrufer sie mit (`web/app.js:2000`, `:2091`). Der Review-Punkt des `architektur-reviewer` prüft deshalb auch, dass jeder Aufruf von `laufHtml` in `web/app.js` vier Angaben hat.
 - **Zu Punkt 1, Sprung aus „Längste Schritte“ (Muster):** In einer Liste mit `content-visibility: auto` tragen die Einträge vor dem Ziel bis zu ihrem ersten Zeichnen nur die geschätzte Höhe (`contain-intrinsic-size`). Werden sie beim Rollen gemessen, rückt das Ziel nach einem einzigen `scrollIntoView` wieder aus dem Blick. Deshalb gilt: Nach dem Sprung wird das Ziel nachgeführt. Ruht seine Lage zwei Bilder lang, wird ohne Animation erneut an das Ziel gerollt, bis es auch danach ruht, höchstens etwa 2 s lang. Ein neuer Sprung oder eine Eingabe des Menschen beendet das Nachführen, und die Insel bleibt, wie sie ist (`laufZeileNachfuehren`, `web/app.js:2123`; Befund Entwicklertest #251, Nacharbeit 2 `c39f4733`). Das gilt für jeden Sprung in eine solche Liste, also auch für die Review-Seite (ADR-0033 Punkt 5).
+
+## Nachtrag 2026-11-22 N2: Paaren über die Kennung des Aufrufs — Format um `id`, `zu` und `tokens` ergänzt, Warteschlange als Rückfall (Karte #262)
+
+**Status bleibt `Akzeptiert`.** Karte #262 (Vorrang, Auftrag des Betreibers): Kommen die Ergebnisse paralleler Aufrufe in anderer Reihenfolge zurück, zeigt die Ansicht ein Ergebnis beim falschen Aufruf, denn N1 Punkt 3 paart über die Warteschlange. N2 ersetzt N1 Punkt 3, erster Spiegelstrich, und den Satz „Auch die Paarung setzt voraus …“ unter „In Kauf genommen“. Alles andere aus N1 gilt weiter, Server und OpenAPI bleiben, wie sie sind.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #262, Lauf 262-architekt-1)
+**Erprobt durch**: Zählung über 400 Claude-Protokolle der Factory aus den letzten 7 Tagen (nur Zeilen `user`/`assistant`, wie der Umwandler sie liest) und eine Messprobe der heutigen `laufAuswerten` in Node 20 (Stand `c3e928c2`, Last 1,1, `nice -n 10`). Die Wegwerf-Skripte liegen in der Ablage der Factory `gemeinsam/scratchpad/arch-262/`.
+
+### Belegt
+
+- **Code**: `eintragPruefen` (`web/lauf.js:64–69`) übernimmt nur `art`, `wer`, `text`, `zeit`, `name`, unbekannte Schlüssel fallen weg (R00221, Zeile 41). Gepaart wird in `aufrufOeffnen`/`ergebnisZuordnen` (`:390–410`). Der Server liest die gz-Datei nie zeilenweise (`src/dienst/transkripte.rs`), das Format betrifft nur `web/lauf.js` und den Erzeuger.
+- **Erzeuger**: Der Umwandler der Factory schreibt seit Factory-Commit `89cb890` `id` an jeden Aufruf (`tool_use.id`), `zu` an jedes Ergebnis (`tool_result.tool_use_id`) und `tokens` `{ein, aus, cache_lesen, cache_schreiben}` (nur Werte über 0) an den ersten Eintrag einer Antwort des Agenten. opencode-Läufe legt die Factory heute nicht ab.
+- **Häufigkeit**: In 400 Protokollen mit 21.927 Aufrufen gibt es 1.164 Gruppen paralleler Aufrufe. In **130 Fällen** paart die Warteschlange falsch, und das trifft **109 von 400 Läufen (27 %)**. Keine Kennung fehlt, keine ist doppelt, kein Ergebnis zeigt auf einen unbekannten Aufruf.
+- **Altbestand**: Auf den Boards lagen bei der Zählung 49 Transkripte, alle vom 2026-11-22, und nur 2 davon tragen schon Kennungen. Die Rohprotokolle der übrigen liegen noch unter `~/.claude/projects/` (das älteste dort ist vom 2026-10-26, das passt zur Aufbewahrung von 30 Tagen, die Claude Code als Standard hat). Das Journal der Factory nennt den Pfad je Lauf.
+- **Messprobe**: Das Beispiel der Karte (A, B, Ergebnis B nach 2 s, Ergebnis A mit `Exit code 1` nach 10 s) ergibt heute A 3 s, B 9 s, und der Fehler steht bei B. Richtig wäre A 10 s mit dem Fehler, B 2 s. Gesamtdauer und Werkzeuganteil sind in beiden Fällen gleich. Mit 10.000 offenen Aufrufen, deren Ergebnisse danach folgen, braucht `laufAuswerten` schon heute 185–253 ms, bei 1.000 sind es 13–20 ms. Die Zeit wächst quadratisch, weil `aufrufOeffnen` bei jedem Aufruf alle offenen durchläuft (`:392`).
+
+### Optionen zum gemischten Transkript (Technikfrage 2)
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **G1 — jeder Eintrag nach seinen eigenen Feldern; ein Ergebnis ohne `zu` nimmt den ältesten offenen Aufruf ohne `id`, gibt es keinen, den ältesten offenen überhaupt** (gewählt) | ohne Felder genau das Verhalten von heute; mit Feldern immer richtig; eine Lücke an einzelnen Einträgen verdirbt nicht den Rest | zwei Warteschlangen statt einer; ein Ergebnis ohne `zu` kann im gemischten Fall einen Aufruf mit `id` belegen, dessen eigenes `zu` dann allein steht |
+| G2 — Schalter je Transkript: trägt irgendein Eintrag `id` oder `zu`, wird nur über Kennungen gepaart | eine Regel, leicht zu erklären | Ein Erzeuger, der `zu` nur manchmal schreibt, lässt jedes Ergebnis ohne `zu` allein stehen. Das ist schlechter als heute, und niemand sieht den Grund |
+| G3 — Kennung nur als Prüfung: gepaart wird weiter über die Warteschlange, ein Widerspruch zu `zu` wird markiert | kleinste Änderung | Die Ansicht bleibt falsch und sagt es nur. Die Abnahme der Karte („A zeigt das Ergebnis von A“) verfehlt sie |
+
+### Entscheidung
+
+1. **Format (Technikfrage 1)**: Der Formatnachtrag zu PO Z. 371 lautet `{zeit?, art, wer, name?, id?, zu?, tokens?, text}`. Alle drei Felder sind optional, alte Transkripte bleiben gültig. **Ein falsch geformtes neues Feld gilt als fehlend, der Eintrag bleibt lesbar.** Das ist anders als bei `zeit` und `name`, bei denen die Zeile dann unlesbar wird. Der Grund: Die neuen Felder sind Hilfsangaben, und ein Fehler des Erzeugers darin soll den Text des Aufrufs nicht verdecken.
+   - `id`: nur an `werkzeugaufruf`, ein Text mit 1–256 Zeichen (`length`). An anderen Arten fällt das Feld weg.
+   - `zu`: nur an `werkzeugergebnis`, dieselbe Form. Es nennt die `id` des Aufrufs, zu dem das Ergebnis gehört.
+   - Verglichen wird genau, Zeichen für Zeichen, ohne Trimmen und ohne Groß-/Kleinschreibung anzugleichen. Kennungen werden **nie gezeichnet** und nie Schlüssel eines einfachen Objekts. Die Zuordnung geht über eine `Map`, damit Kennungen wie `__proto__` nichts auslösen.
+   - `tokens`: nur an Einträgen von `agent`, ein Objekt mit den Schlüsseln `ein`, `aus`, `cache_lesen`, `cache_schreiben`. Jeder Wert ist eine ganze Zahl ≥ 0 (`Number.isSafeInteger`). Ein falscher Wert oder ein unbekannter Schlüssel fällt weg, und bleibt keiner übrig, fehlt das Feld. Die Regel steht hier, damit #263 nicht noch einmal ans Format muss. **Gebaut wird sie erst mit #263**, und dort entscheidet sich auch die Anzeige. #262 liest `tokens` nicht, das wäre tote Flexibilität.
+   - `eintragPruefen` liefert zusätzlich `id` und `zu` (sonst `null`). Unbekannte Schlüssel fallen weiter weg.
+2. **Paaren (Technikfrage 2)**: Variante G1, in einem Durchlauf.
+   - Ein **Aufruf mit `id`** wird unter seiner Kennung offen geführt. Hatte schon ein früherer Aufruf desselben Laufs diese `id` (**doppelte Kennung**), gilt die erste, und der spätere zählt als Aufruf ohne `id`.
+   - Ein **Ergebnis mit `zu`** gehört zu dem offenen Aufruf mit dieser `id`. Gibt es keinen, weil die Kennung unbekannt oder ihr Aufruf schon gepaart ist, **steht das Ergebnis allein**, mit „–“ und dem Lesetext „kein Aufruf“, wie heute. Es greift dann **keine** Warteschlange, denn wo der Erzeuger eine Kennung nennt, wird nicht geraten.
+   - Ein **Ergebnis ohne `zu`** gehört zum ältesten offenen Aufruf ohne `id`. Gibt es keinen, gehört es zum ältesten offenen Aufruf überhaupt. Ohne Felder ist das genau die Warteschlange von N1.
+   - Ein Aufruf ohne Ergebnis steht allein, wie heute.
+   - **„parallel“** bleibt, wie N1 es festlegt: Ein Aufruf ist parallel, wenn bei seinem Beginn ein anderer offen war oder vor seinem Ende ein anderer begann. Die Marke hängt nur an der Zahl der offenen Aufrufe und nicht daran, wer mit wem gepaart wird.
+   - **Aufwand**: Gerechnet wird in O(n), auch im ungünstigsten Fall. Offene Aufrufe stehen in zwei Warteschlangen (alle und ohne `id`) mit Kopfzeiger und einer Marke „gepaart“, dazu eine `Map` von Kennung auf Aufruf. Nichts wird aus der Mitte einer Liste entfernt. Die Marke „parallel“ geht über einen Zähler der begonnenen Aufrufe statt über `offen.forEach` (`:392`) und beseitigt so den heutigen quadratischen Anteil.
+3. **Folgen für die Auswertung (Technikfrage 3)**:
+   - Gesamtdauer, Werkzeug, Denken, Warten, die Denk- und Wartezeilen und die Zeitachse ändern sich **nicht**. Eine Lücke gehört dem späteren Eintrag und hängt an keiner Paarung (N1 Punkt 1).
+   - Was sich ändert, ist die **Dauer einer Schrittzeile**, weiter `zeit(Ergebnis) − zeit(Aufruf)`, jetzt mit dem richtigen Ergebnis. Im Beispiel oben werden aus A 3 s und B 9 s nun A 10 s und B 2 s. Damit ändern sich auch die Balken und **„Längste Schritte“**.
+   - Die **Marke „Fehler“** wandert zum richtigen Aufruf, mit roter Zeile und Kürzel des Ergebnisses. Die **Zahl der Fehler** im Kopf bleibt gleich, denn jedes Ergebnis zählt genau einmal, gepaart oder allein. Auch die Zahl der Werkzeugaufrufe und der Bericht bleiben gleich.
+   - Die Auswertung läuft weiter einmal je Lesen (N1 Punkt 6).
+4. **Altbestand (Technikfrage 4)**:
+   - Der Rückfall auf die Warteschlange reicht für kanbanD und **muss** bleiben. Andere Erzeuger und alte Dateien tragen keine Kennung, und das Format bleibt neutral (PO Z. 371).
+   - Die Ansicht kennzeichnet einen Lauf ohne Kennungen nicht eigens. Eine Marke „nach Reihenfolge gepaart“ wäre ein neuer Zustand mit eigenem Wortlaut, und der Altbestand ist klein und ersetzbar. Ob die Ansicht ihn trotzdem kennzeichnet, entscheidet der PO.
+   - Die alten Transkripte ohne Kennung (bei der Zählung 47) kann die Factory **neu ablegen**: Rohprotokoll aus dem Journal, `transkript.py`, dann `DELETE` und `POST` unter derselben Kennung (ADR-0036 Regel 5). Das sind je Lauf zwei Commits am Board. Es ist ein Werkzeug des Directors und **kein Teil von kanbanD**. Es geht nur, solange Claude Code die Rohprotokolle aufbewahrt, also bis etwa 2026-12-20.
+
+**In Kauf genommen**: In einem gemischten Transkript kann ein Ergebnis ohne `zu` einen Aufruf mit `id` belegen, wenn kein Aufruf ohne `id` offen ist. Dessen eigenes Ergebnis steht dann allein. Das ist nie schlechter als die Warteschlange von heute, und mit dem Umwandler der Factory kommt es nicht vor, denn dort sind alle Einträge gekennzeichnet. Ein Erzeuger, der falsche Kennungen schreibt, paart falsch, ohne dass die Ansicht es merkt.
+
+### Durchsetzung
+
+- Node-Tests `laufAuswerten`/`eintragPruefen` (`e2e/einheit/`):
+  - Abnahme der Karte: A, B mit `id`, Ergebnisse B, A mit `zu`. A zeigt das Ergebnis von A samt Fehler, B das von B, und die Dauern sind A 10 s und B 2 s. Dieselben Zeilen ohne Felder liefern genau das Ergebnis von heute (`deepEqual` gegen die alte Auswertung).
+  - `zu` unbekannt, `zu` eines schon gepaarten Aufrufs, doppelte `id`, gemischt (A mit `id`, B ohne, Ergebnis B ohne `zu`, Ergebnis A mit `zu`), Ergebnis ohne `zu`, während nur Aufrufe mit `id` offen sind.
+  - Falsche Form: `id` als Zahl, leer, mit 257 Zeichen, an einer Nachricht, `zu` an einem Aufruf. Der Eintrag bleibt lesbar, und das Feld ist `null`.
+  - `id: "__proto__"` und `id: "constructor"` paaren wie jede andere Kennung.
+  - Gesamtdauer, Anteile und Fehlerzahl sind mit und ohne Felder gleich.
+- Messprobe als Beobachtung im Bericht, nicht im Gate: 10.000 offene Aufrufe, Ergebnisse danach in umgekehrter Reihenfolge mit `zu`, Ziel unter 100 ms. Heute sind es 185–253 ms bei derselben Zahl ohne `zu`.
+- Review-Punkt `code-reviewer`: keine Entnahme aus der Mitte einer Liste, keine Kennung als Schlüssel eines einfachen Objekts und nie als HTML.
+- Review-Punkt `legacy-reviewer`: Für jedes abgelegte Transkript ohne Kennung ist die Auswertung vor und nach der Karte gleich (Kopie der Boards, nur lesen). Ein Transkript mit Kennungen öffnet auch der Stand vor der Karte, denn unbekannte Schlüssel fallen weg.
+
+### Folgeaufgaben
+
+- [ ] Planer: eine Scheibe „Paaren über die Kennung“ (Punkte 1 ohne `tokens`, 2, 3) als Bug-Anforderung mit eigener Interaction unter D2 „Laufansicht“. Die Regel zu `tokens` steht in der Anforderung von #263.
+- [ ] PO: den Formatnachtrag zu Z. 371 (`id?`, `zu?`, `tokens?`) ins Protokoll; entscheiden, ob ein Lauf ohne Kennungen eine Marke bekommt (Empfehlung: nein).
+- [ ] Director/Factory: entscheiden, ob die alten Transkripte neu abgelegt werden (Punkt 4), solange die Rohprotokolle noch liegen, also bis etwa 2026-12-20.
