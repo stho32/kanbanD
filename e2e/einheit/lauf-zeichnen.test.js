@@ -516,3 +516,116 @@ test('R00238 FA 8: ohne tokens keine Liste (T1 unverändert); ohne Dauer nur „
   const fremd = teuerKnoepfe(laufTopHtml({ ...t8, top3: [], teuer3: [{ nr: 4, neu: 1, was: 'Read <b>x</b>', nach: 'nach Bash <i>' }] }, esc));
   assert.deepStrictEqual(fremd, [{ id: 'lv-teu-1', ziel: 'lv-s4', name: 'Read &lt;b&gt;x&lt;/b&gt;, 1 neues Token, nach Bash &lt;i&gt;', was: 'Read &lt;b&gt;x&lt;/b&gt;', nach: 'nach Bash &lt;i&gt;', wert: '1 neues Token' }]);
 });
+
+/* ── R00240 (Karte #261, C1 „Satz“): der gesetzte Schritt an T13 — Aufruf abgesetzt, Ergebnis darunter, Zusammenfassung ── */
+
+const lauf240 = require('../../web/lauf.js');
+const t13 = require('../tests/laufansicht-t13.js');
+const t13Zeilen = (liste = t13.T13) => liste.map((eintrag, i) => ({ nr: i + 1, eintrag: lauf240.eintragPruefen(eintrag) }));
+const zeileVon = (html, nr) => eintraegeVon(html).find(li => li.startsWith(`<li id="lv-s${nr}"`));
+const lesbar = html => ohneTags(html).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+
+test('R00240 AK 1: Nr 2 — Block „Aufruf“ mit dem Wort als erstem Kind, Shell-Block, timeout, darunter „Ergebnis“ mit der Testzeile', () => {
+  const li = zeileVon(laufHtml(t13Zeilen(), false, esc), 2);
+  assert.match(li, /<div class="lv-s-ganz"><div class="lv-auf"><span class="k">Aufruf<\/span><pre class="lv-sh">cd \/w\/demo &amp;&amp;\n npm test;\n echo/);
+  assert.match(li, /<dl class="lv-kv"><dt>timeout:<\/dt><dd>120000<\/dd><\/dl><\/div><div class="lv-erg"><span class="k">Ergebnis<\/span><p class="lv-tz fehl">/);
+  assert.doesNotMatch(/<div class="lv-auf">[\s\S]*?<\/div><div class="lv-erg">/.exec(li)[0], /Tests fahren/);
+});
+
+test('R00240 AK 1: ohne Ergebnis gedämpft „Kein Ergebnis im Transkript.“, Ergebnis "" und " \\n " je „Leeres Ergebnis.“', () => {
+  const aufruf = e(1, 'werkzeugaufruf', 'agent', '{"command":"ls"}', { name: 'Bash' });
+  assert.match(laufHtml([aufruf], false, esc), /<\/div><p class="lv-gedaempft">Kein Ergebnis im Transkript\.<\/p><\/div><\/details>/);
+  for (const text of ['', ' \n ']) {
+    const html = laufHtml([aufruf, e(2, 'werkzeugergebnis', 'werkzeug', text)], false, esc);
+    assert.match(html, /<div class="lv-erg"><span class="k">Ergebnis<\/span><p class="lv-gedaempft">Leeres Ergebnis\.<\/p><\/div>/, JSON.stringify(text));
+  }
+  assert.doesNotMatch(laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', 'x')], false, esc), /lv-auf|Kein Ergebnis/, 'ein Ergebnis ohne Aufruf hat keinen Block „Aufruf“');
+});
+
+test('R00240 AK 9: Rückfall auf pre über 64 KiB, über 2.000 Zeilen und über dem Zeichenbudget — erstes Kind ist „Aufruf“, kein <a', () => {
+  const gross = JSON.stringify({ query: 'q'.repeat(65536) });
+  const lang = '{\n' + Array.from({ length: 2000 }, (_, i) => `"k${i}":1,`).join('\n') + '\n"e":1}';
+  const budget = JSON.stringify({ query: '‮'.repeat(1001) });
+  for (const text of [gross, lang, budget]) {
+    const html = laufHtml([e(1, 'werkzeugaufruf', 'agent', text, { name: 'X' })], false, esc);
+    assert.match(html, /<div class="lv-auf"><span class="k">Aufruf<\/span><pre>/, text.slice(0, 30));
+    assert.doesNotMatch(html, /lv-kv|lv-json/);
+  }
+  assert.doesNotMatch(laufHtml(t13Zeilen(), false, esc), /<a[\s>]/);
+});
+
+test('R00240 AK 6, AK 9: Nr 5 — Zusammenfassung „Von Claude Code gekürzt“ mit Symbol ohne Größe, nirgends <persisted-output>, Fehlerform, Kopf 1 Fehler', () => {
+  const a = lauf240.laufAuswerten(t13Zeilen(), false);
+  const li = zeileVon(laufHtml(t13Zeilen(), false, esc, a), 4);
+  const summary = /<summary>[\s\S]*?<\/summary>/.exec(li)[0];
+  assert.match(summary, /<span class="eg"><svg[\s\S]*?<\/svg><span class="vh">Fehler: <\/span><span class="lv-cck"><svg[^>]*aria-hidden="true"[\s\S]*?<\/svg>Von Claude Code gekürzt<\/span><\/span>/);
+  assert.doesNotMatch(summary, /69,9/);
+  assert.doesNotMatch(li, /persisted-output/);
+  assert.match(li, /class="lv-s fehl/);
+  assert.strictEqual(a.kennzahlen.fehler, 1);
+  assert.strictEqual(lauf240.fehlerErkennen(t13.ERGEBNIS_5), true);
+  assert.strictEqual(lauf240.fehlerErkennen(t13.ERGEBNIS_5.replace('Exit code 1', 'Exit code 0')), false);
+});
+
+test('R00240 AK 8: Nr 4 — der Befehl endet nach 200 Zeichen auf ein eigenes „…“ mit Tooltip und Lesetext; ein „…“ im Text bleibt Text', () => {
+  const li = zeileVon(laufHtml(t13Zeilen(), false, esc), 4);
+  const ell = '<span class="lv-ell" title="Von kanbanD gekürzt, vollständig im aufgeklappten Schritt"><span aria-hidden="true">…</span><span class="vh">Von kanbanD gekürzt, vollständig im aufgeklappten Schritt</span></span>';
+  assert.ok(li.includes(`<span class="bf">echo ${'a'.repeat(195)}${ell}</span>`), 'Befehl mit dem „…“ von kanbanD');
+  const imText = laufHtml([e(1, 'werkzeugaufruf', 'agent', '{"command":"echo …"}', { name: 'Bash' })], false, esc);
+  assert.match(imText, /<span class="bf">echo …<\/span>/);
+  const ersteZeile = laufHtml([e(1, 'werkzeugergebnis', 'werkzeug', 'r'.repeat(250))], false, esc);
+  assert.ok(ersteZeile.includes(`<span class="eg">${'r'.repeat(200)}${ell}</span>`), 'erste Zeile des Ergebnisses');
+});
+
+test('R00240 AK 7: Nr 10 — Zusammenfassung gedämpft „Systemhinweis“; Nr 12 trägt den Hinweis eingebettet in der Nachricht', () => {
+  const html = laufHtml(t13Zeilen(), false, esc);
+  assert.match(/<summary>[\s\S]*?<\/summary>/.exec(zeileVon(html, 10))[0], /<span class="eg"><span class="lv-syseg">Systemhinweis<\/span><\/span>/);
+  const n12 = zeileVon(html, 12);
+  assert.match(n12, /<p>Bitte weiter\.<\/p>[\s\S]*<details class="lv-e sys lv-ein"><summary>[\s\S]*Systemhinweis[\s\S]*<pre>&lt;system-reminder&gt;\nTodo-Liste leer\.\n&lt;\/system-reminder&gt;<\/pre><\/details>/);
+  assert.match(zeileVon(html, 6), /<pre>Datei geändert\.<\/pre><details class="lv-e sys lv-ein">/);
+});
+
+test('R00240 FA 10 Ansage: nach „Systemhinweise“ die eingebetteten in den sichtbaren Zeilen; e = 1 Einzahl, e = 0 und andere Kästchen ohne Zusatz', () => {
+  const arten = lauf240.laufAuswerten(t13Zeilen(), false).zeilenArten;
+  const f = (n, w, h, nurF) => ({ n, w, h, f: nurF });
+  const satzAn = lauf240.laufFilterAnsage(arten, f(true, true, true, false), 'h');
+  const satzAus = lauf240.laufFilterAnsage(arten, f(true, true, false, false), 'h');
+  assert.strictEqual(satzAn, `${lauf240.laufFilterAnsage(arten, f(true, true, true, false))}`.replace(/\.$/, ', 3 eingebettete Systemhinweise sichtbar.'));
+  assert.match(satzAn, /^\d+ von \d+ Einträgen sichtbar, 3 eingebettete Systemhinweise sichtbar\.$/);
+  assert.match(satzAus, /^\d+ von \d+ Einträgen sichtbar, 3 eingebettete Systemhinweise ausgeblendet\.$/);
+  assert.match(lauf240.laufFilterAnsage(arten, f(false, true, true, false), 'h'), /, 2 eingebettete Systemhinweise sichtbar\.$/, 'nur die Werkzeugzeilen Nr 6 und Nr 10');
+  assert.match(lauf240.laufFilterAnsage(arten, f(true, false, true, false), 'h'), /, 1 eingebetteter Systemhinweis sichtbar\.$/);
+  assert.strictEqual(lauf240.laufFilterAnsage(arten, f(true, true, true, false), 'n'), lauf240.laufFilterAnsage(arten, f(true, true, true, false)));
+  const ohne = lauf240.laufAuswerten(G, false).zeilenArten;
+  assert.strictEqual(lauf240.laufFilterAnsage(ohne, f(true, true, true, false), 'h'), lauf240.laufFilterAnsage(ohne, f(true, true, true, false)));
+  assert.strictEqual(lauf240.laufFilterAnsage(arten, f(false, false, true, false), 'h'), 'Keine Einträge sichtbar.');
+  const fehlerZeilen = lauf240.laufAuswerten(t13Zeilen(t13.T13F), false).zeilenArten;
+  assert.strictEqual(fehlerZeilen.ein.fehler, 1);
+});
+
+test('R00240 AK 8: „Längste Schritte“ mit der Absicht als Titel und dem Befehl gedämpft darunter, ohne Absicht der Befehl allein', () => {
+  const a = lauf240.laufAuswerten(t13Zeilen(), false);
+  const html = lauf240.laufTopHtml(a, esc);
+  const knoepfe = /<ol class="lv-top">([\s\S]*?)<\/ol>/.exec(html)[1].split('</li>').filter(Boolean);
+  assert.strictEqual(knoepfe.length, 3);
+  assert.match(knoepfe[0], /<span class="was zw"><span class="wt">Tests fahren<\/span><span class="bf2">Bash cd \/w\/demo &amp;&amp; npm test; echo/);
+  assert.match(knoepfe[0], /<span class="d">40 s<\/span>/);
+  assert.match(knoepfe[1], /<span class="wt">Protokoll lesen<\/span><span class="bf2">Bash echo a+<span class="lv-ell"/);
+  assert.match(knoepfe[1], /<span class="d">30 s<\/span>/);
+  assert.match(knoepfe[2], /<span class="was">Write \/w\/demo\/b\.txt<\/span><span class="d">20 s<\/span>/);
+  assert.doesNotMatch(knoepfe[2], /bf2/);
+});
+
+test('R00240 AK 8: „Teuerste Schritte“ beschriftet mit der Absicht und nennt in „nach <Schritt>“ die Absicht des Schritts davor', () => {
+  const tk = { ein: 1, aus: 1, cache_lesen: 0, cache_schreiben: 1 };
+  const zeilen = [
+    e(1, 'werkzeugaufruf', 'agent', '{"command":"ls","description":"Ordner ansehen"}', { name: 'Bash', tokens: tk }),
+    e(2, 'werkzeugergebnis', 'werkzeug', 'a'),
+    e(3, 'werkzeugaufruf', 'agent', '{"command":"cat a","description":"Datei lesen"}', { name: 'Bash', tokens: { ...tk, aus: 5 } }),
+    e(4, 'werkzeugergebnis', 'werkzeug', 'b'),
+  ];
+  const html = lauf240.laufTopHtml(lauf240.laufAuswerten(zeilen, false), esc);
+  const teuer = /<ol class="lv-teu"[^>]*>([\s\S]*?)<\/ol>/.exec(html)[1];
+  assert.match(teuer, /<span class="was zw"><span class="wt">Datei lesen<\/span><span class="bf2">Bash cat a<\/span><\/span><span class="nach">nach Ordner ansehen<\/span>/);
+  assert.match(teuer, /<span class="vh" id="lv-teu-1-n">Datei lesen, [^<]*, nach Ordner ansehen<\/span>/);
+});
