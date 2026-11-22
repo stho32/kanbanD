@@ -59,13 +59,29 @@
   const WER = ['mensch', 'agent', 'werkzeug'];
   const textOderFehlt = (o, schluessel) => !(schluessel in o) || typeof o[schluessel] === 'string';
 
+  const KENNUNG_LAENGE = { min: 1, max: 256 };
+
+  /** Die Kennung `schluessel` eines Eintrags der Art `art` (`id` am Aufruf, `zu` am Ergebnis): ein Text von 1 bis 256 Zeichen
+      (`length`), sonst null — ein falsch geformtes Feld gilt als fehlend, der Eintrag bleibt lesbar (ADR-0041 N2). */
+  function kennungLesen(o, art, schluessel) {
+    if (o.art !== art) return null;
+    const wert = o[schluessel];
+    if (typeof wert !== 'string') return null;
+    if (wert.length < KENNUNG_LAENGE.min || wert.length > KENNUNG_LAENGE.max) return null;
+    return wert;
+  }
+
   /** Ein Eintrag nach dem Format (PO Z. 371) oder null: `art` und `wer` aus den festen Mengen, `text` als Text; `zeit` und `name`
-      sind, wenn vorhanden, Text. Unbekannte Schlüssel fallen weg. */
+      sind, wenn vorhanden, Text; `id` (nur am Aufruf) und `zu` (nur am Ergebnis) sind Kennungen oder null. Unbekannte Schlüssel
+      fallen weg. */
   function eintragPruefen(o) {
     const objekt = typeof o === 'object' && o !== null && !Array.isArray(o);
     if (!objekt || !ARTEN.includes(o.art) || !WER.includes(o.wer) || typeof o.text !== 'string') return null;
     if (!textOderFehlt(o, 'zeit') || !textOderFehlt(o, 'name')) return null;
-    return { art: o.art, wer: o.wer, text: o.text, zeit: 'zeit' in o ? o.zeit : null, name: 'name' in o ? o.name : null };
+    return {
+      art: o.art, wer: o.wer, text: o.text, zeit: 'zeit' in o ? o.zeit : null, name: 'name' in o ? o.name : null,
+      id: kennungLesen(o, 'werkzeugaufruf', 'id'), zu: kennungLesen(o, 'werkzeugergebnis', 'zu'),
+    };
   }
 
   /* ── Zeichnen (FA 6, FA 10, Zeichnung D0009 `#laufansicht`): HTML-Text der Einträge, einmal je erfolgreichem Lesen. ── */

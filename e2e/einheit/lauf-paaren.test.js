@@ -80,7 +80,7 @@ test('AK 7: ein Text aus genau 256 Zeichen paart wie toolu_A', ERWARTET_ROT, () 
   assert.strictEqual(text(auswerten([{ ...T6[0], id: k }, T6[1], T6[2], { ...T6[3], zu: k }])), '1→4:10! 2→3:2');
 });
 
-test('AK 7: id an einer Nachricht und zu an einem Aufruf fallen weg', ERWARTET_ROT, () => {
+test('AK 7: id an einer Nachricht und zu an einem Aufruf fallen weg', () => {
   assert.strictEqual(eintragPruefen({ art: 'nachricht', wer: 'agent', text: 'x', id: 'a' }).id, null);
   assert.strictEqual(eintragPruefen({ art: 'werkzeugaufruf', wer: 'agent', text: 'x', zu: 'a' }).zu, null);
   assert.strictEqual(eintragPruefen({ art: 'werkzeugergebnis', wer: 'werkzeug', text: 'x', id: 'a' }).id, null);
@@ -99,7 +99,7 @@ test('AK 7: __proto__ und constructor paaren wie jede Kennung, ein zu constructo
   }
 });
 
-test('AK 7: eine Zeile mit falsch geformtem id ist lesbar — keine Meldung „nicht lesbar“, eintragPruefen liefert id null', ERWARTET_ROT, async () => {
+test('AK 7: eine Zeile mit falsch geformtem id ist lesbar — keine Meldung „nicht lesbar“, eintragPruefen liefert id null', async () => {
   const zeile = id => JSON.stringify({ ...T6[0], id });
   for (const id of [7, '', 'x'.repeat(257), null, {}]) {
     const eintraege = [];
@@ -109,7 +109,7 @@ test('AK 7: eine Zeile mit falsch geformtem id ist lesbar — keine Meldung „n
   }
 });
 
-test('B1233: eintragPruefen liefert id nur an einem Aufruf und zu nur an einem Ergebnis, sonst null; tokens fällt weg', ERWARTET_ROT, () => {
+test('B1233: eintragPruefen liefert id nur an einem Aufruf und zu nur an einem Ergebnis, sonst null; tokens fällt weg', () => {
   assert.deepStrictEqual(eintragPruefen({ art: 'werkzeugaufruf', wer: 'agent', text: 'x', id: 'toolu_A', tokens: 12 }), { art: 'werkzeugaufruf', wer: 'agent', text: 'x', zeit: null, name: null, id: 'toolu_A', zu: null });
   assert.deepStrictEqual(eintragPruefen({ art: 'werkzeugergebnis', wer: 'werkzeug', text: 'x', zu: 'toolu_A' }), { art: 'werkzeugergebnis', wer: 'werkzeug', text: 'x', zeit: null, name: null, id: null, zu: 'toolu_A' });
 });

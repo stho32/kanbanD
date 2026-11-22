@@ -28,11 +28,11 @@ const G = [
 ].join('\n') + '\n';
 
 const ERWARTET_G = [
-  { nr: 1, eintrag: { art: 'nachricht', wer: 'agent', name: 'entwickler', zeit: '2026-11-20T10:00:41+01:00', text: 'Ich lese zuerst **die Anforderung**.' } },
-  { nr: 2, eintrag: { art: 'werkzeugaufruf', wer: 'agent', name: 'Read', zeit: '2026-11-20T10:00:42+01:00', text: 'Anforderungen/R00219.md' } },
+  { nr: 1, eintrag: { art: 'nachricht', wer: 'agent', name: 'entwickler', zeit: '2026-11-20T10:00:41+01:00', text: 'Ich lese zuerst **die Anforderung**.', id: null, zu: null } },
+  { nr: 2, eintrag: { art: 'werkzeugaufruf', wer: 'agent', name: 'Read', zeit: '2026-11-20T10:00:42+01:00', text: 'Anforderungen/R00219.md', id: null, zu: null } },
   { nr: 4, eintrag: null },
-  { nr: 5, eintrag: { art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Read', zeit: '2026-11-20T09:00:43Z', text: '---\nid: R00219\nstatus: Neu' } },
-  { nr: 6, eintrag: { art: 'nachricht', wer: 'mensch', name: null, zeit: 'gestern', text: 'Passt.' } },
+  { nr: 5, eintrag: { art: 'werkzeugergebnis', wer: 'werkzeug', name: 'Read', zeit: '2026-11-20T09:00:43Z', text: '---\nid: R00219\nstatus: Neu', id: null, zu: null } },
+  { nr: 6, eintrag: { art: 'nachricht', wer: 'mensch', name: null, zeit: 'gestern', text: 'Passt.', id: null, zu: null } },
 ];
 
 test('AK 2: Datei G ergibt fünf Einträge in Reihenfolge, Zeile 3 zählt mit, Zeile 4 defekt', async () => {
@@ -73,7 +73,7 @@ test('AK 2: falsche art, fehlendes wer, text als Zahl → je defekt; ein unbekan
   assert.strictEqual(eintragPruefen({ ...gut, zeit: 5 }), null, 'zeit vorhanden, aber kein Text');
   assert.strictEqual(eintragPruefen({ ...gut, name: null }), null, 'name vorhanden, aber kein Text');
   for (const kein of [null, [], 'nachricht', 7, true]) assert.strictEqual(eintragPruefen(kein), null, JSON.stringify(kein));
-  assert.deepStrictEqual(eintragPruefen({ ...gut, tokens: 12, art: 'werkzeugaufruf' }), { art: 'werkzeugaufruf', wer: 'agent', text: 'x', zeit: null, name: null });
+  assert.deepStrictEqual(eintragPruefen({ ...gut, tokens: 12, art: 'werkzeugaufruf' }), { art: 'werkzeugaufruf', wer: 'agent', text: 'x', zeit: null, name: null, id: null, zu: null });
   for (const art of ['nachricht', 'werkzeugaufruf', 'werkzeugergebnis']) for (const wer of ['mensch', 'agent', 'werkzeug']) assert.ok(eintragPruefen({ art, wer, text: '' }), `${art}/${wer}`);
 });
 
