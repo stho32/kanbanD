@@ -1894,3 +1894,17 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 - **Director:** Seit 06:45 fehlen die Kosten mehrerer Läufe, weil die Aufträge den Auftragskopf mit „#<Karte>“ nicht mehr wörtlich trugen. Seither steht der Kopf wieder im Auftrag.
 | 2026-11-22 | #245 | Erledigt | director | Retrospektive | – | 1 Lehre (Fehler echt herstellen) |
 | 2026-11-22 | #249 | Erledigt | director | Retrospektive | – | 2 Lehren (Stilvergleich vollständig, Kopf wörtlich für Kostenmessung) |
+| 2026-11-22 | #240 | Entwicklung | entwickler | bestanden | 50 min | Gate cargo 1225, node 1528, PW 2403/0 · claude · sonnet · Lauf 240-entwickler-1 |
+| 2026-11-22 | #240 | Auto-Reviews | code-reviewer | bestanden | 2 min | kein Muss · claude · sonnet · Lauf 240-code-reviewer-1 · 0,25 $ · Karte gesamt 4,71 $ |
+| 2026-11-22 | #240 | Entwicklertest | entwicklertester | bestanden | 5 min | S1–S3 · claude · sonnet · Lauf 240-entwicklertester-1 · 0,31 $ · Karte gesamt 5,02 $ |
+| 2026-11-22 | #252 | Detailplanung | gestalter | bestanden | 12 min | D0009 #review-uebersicht, 92493baf; 320 px noch zu breit · claude · sonnet · Lauf 252-gestalter-1 · 4,46 $ · Karte gesamt 6,50 $ |
+| 2026-11-22 | #252 | Detailplanung | product-owner | bestanden | 2 min | Artboard frei mit Änderung, Z. 539–546 · claude · opus · Lauf 252-product-owner-2 · 1,05 $ · Karte gesamt 7,55 $ |
+| 2026-11-22 | #252 | Detailplanung | planer | bestanden | 8 min | R00235, I0225 B1214–B1221 · claude · opus · Lauf 252-planer-1 · 3,16 $ · Karte gesamt 10,71 $ |
+| 2026-11-22 | #252 | Detailplanung | ux-reviewer | bestanden | 3 min | kein Muss, 5 Sollte, Lücken AK 5/7/9, 4 Fragen · claude · sonnet · Lauf 252-ux-reviewer-1 · 0,69 $ · Karte gesamt 11,40 $ |
+| 2026-11-22 | #252 | Detailplanung | product-owner | bestanden | 2 min | Z. 547–554 · claude · opus · Lauf 252-product-owner-3 · 0,91 $ · Karte gesamt 12,31 $ |
+
+**Retrospektive #240** (Wackler r00127 misst Höhe 0, R00231, ADR-0026 N3 Regel 8; 2026-11-22; Gate auf bf81f5d5 grün bis auf den bekannten Wackler r00223:308 (#246), allein 3/3 grün; ausgeliefert. Karte gesamt rund 5 $, die Entwicklung ist nicht gemessen.)
+- **Gut:** Die Ursache lag im Test (zwei Aufrufe zwischen Suchen und Messen), belegt durch eine Variante, die jedes Frame neu zeichnet: 10/10 rot gegen 10/10 grün. Unter Last 210/210 grün.
+- **Härtung offen:** Die Bauart-Probe über toString ist eine Schwarzliste; eine Verhaltensprobe würde sie verlässlich machen. 47 weitere Lesungen über locator.evaluate in 23 Specs.
+- **Director:** Beim Rebase erzeugte die Union eine Doppelzeile in Gelerntes, weil der entwickler eine Zeile nachträglich geändert hatte. Nach der Union nach doppelten Zeilen derselben Karte suchen.
+| 2026-11-22 | #240 | Erledigt | director | Retrospektive | – | 1 Lehre (Union: nach Doppelzeilen derselben Karte suchen) |
