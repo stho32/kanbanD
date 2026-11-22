@@ -2139,7 +2139,7 @@ function vLauf() {
   const e = v.ergebnis;
   let insel = '';
   // der Bericht steht vor der Insel, nicht in ihr: ein Filter der Einträge verbirgt ihn nie (R00234 FA 5)
-  if (e && e.art === 'eintraege') insel = `<div class="lv-haupt">${e.bericht}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div>`;
+  if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${laufTopHtml(e.auswertung, esc)}<div class="lv-haupt">${e.bericht}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
   const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten }, esc);
   return `<div class="lv" id="lauf">${zeile ? laeufeLeisteHtml(zeile, esc, groesse) : ''}${kopf}${laufRumpfHtml(v, insel, esc)}</div>`;
 }
@@ -2182,6 +2182,16 @@ function laufOeffnen(kennung) {
   const basis = u.view === 'aufgaben' ? 'aufgaben' : 'board';
   history.pushState(LAUF_AUS_DER_LISTE, '', laufAdresseBilden({ basis, slug: u.slug, nummer: u.offen, kennung }));
   adresseGewechselt();
+}
+
+/** „Längste Schritte“ (R00234 FA 10): die Zeile unter den Seitenkopf holen und ihr den Fokus geben, ohne die Adresse zu ändern und
+    ohne Ansage; bei `prefers-reduced-motion: reduce` ohne Animation. */
+function laufSpringen(id) {
+  const zeile = document.getElementById(id);
+  if (!zeile) return;
+  const ohneBewegung = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  zeile.scrollIntoView({ block: 'start', behavior: ohneBewegung ? 'instant' : 'smooth' });
+  zeile.focus({ preventScroll: true });
 }
 
 /** Zurück ins Aufgabenfenster mit der Ansicht „Läufe“ (FA 3): über „Ansehen“ geöffnet ein Schritt zurück, sonst ersetzt. */
@@ -3521,6 +3531,7 @@ async function aktion(a, arg, wert) {
       case 'review-oeffnen': reviewOeffnen(arg); return;
       case 'lauf-oeffnen': laufOeffnen(arg); return;
       case 'lauf-zurueck': laufZurueck(); return;
+      case 'lauf-springe': laufSpringen(arg); return;
       case 'lauf-erneut': {
         // „Erneut versuchen“ (FA 8): derselbe Knoten, gesperrt bis zum Ergebnis; ein Klick in dieser Zeit liest nicht noch einmal
         const v = u.lauf;

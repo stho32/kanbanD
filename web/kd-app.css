@@ -1791,6 +1791,23 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 /* Sprungziele (FA 10): unter dem Seitenkopf, mit eigenem Fokusring — ein Fokus per Skript löst :focus-visible nicht immer aus */
 .lv-l>li[id]{scroll-margin-block-start:var(--kd-head-h)}
 .lv-l>li[tabindex="-1"]:focus{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
+/* „Längste Schritte“ links, Bericht und Einträge rechts (FA 10; ohne Scheibe B steht die Liste allein in der linken Spalte) */
+.lv-rumpf2{display:grid;grid-template-columns:232px minmax(0,1fr);gap:var(--kd-s4);align-items:start;width:100%;max-width:1136px;min-width:0}
+.lv-rumpf2:not(:has(.lv-gl)){display:flex;justify-content:center}
+.lv-gl{position:sticky;top:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.lv-gl h2{margin:0;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted);text-transform:uppercase}
+.lv-top{list-style:none;margin:0;padding:0;border:1px solid var(--kd-line);background:var(--kd-surface)}
+.lv-top li+li{border-top:1px solid var(--kd-line)}
+.lv-top button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px;width:100%;min-block-size:max(28px,var(--kd-ziel));padding:2px var(--kd-s3);border:0;background:none;text-align:left;font:inherit;font-size:12.5px;cursor:pointer;color:var(--kd-text)}
+.lv-top button:hover{background:var(--kd-accent-weak)}
+.lv-top button:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:-2px}
+.lv-top .was{overflow-wrap:anywhere;min-width:0}
+.lv-top .d{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:980px){
+  .lv-rumpf2{display:flex;flex-direction:column;align-items:stretch}
+  .lv-gl{position:static}
+  .lv-haupt{max-width:none}
+}
 /* Bericht zuerst (FA 5) */
 .lv-haupt{display:flex;flex-direction:column;gap:var(--kd-s3);width:100%;max-width:880px;min-width:0}
 .lv-ber{background:var(--kd-surface);border:1px solid var(--kd-line);border-left:3px solid var(--kd-status-ok);padding:var(--kd-s3) var(--kd-s4);min-width:0}

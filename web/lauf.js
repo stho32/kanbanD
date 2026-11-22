@@ -247,6 +247,15 @@
   }
   const KEIN_BERICHT = 'Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile „Ergebnis:“.';
 
+  /** „Längste Schritte“ (FA 10): je Zeile ein Knopf, der über `act` zu ihr springt — nie `href="#…"`, der Hash ist die Adresse
+      (ADR-0029). Ohne Dauer gibt es keine Liste. */
+  function laufTopHtml(a, esc) {
+    if (!a.top3.length) return '';
+    const ziel = t => (t.schritt ? `lv-s${t.nr}` : `lv-s${t.nr}-vor`);
+    const knoepfe = a.top3.map((t, i) => `<li><button type="button" id="lv-top-${i + 1}" data-act="lauf-springe" data-arg="${ziel(t)}"><span class="was">${esc(sichtbarText(t.was))}</span><span class="d">${dauerText(t.dauer)}</span></button></li>`);
+    return `<section class="lv-gl" aria-labelledby="lv-top-t"><h2 id="lv-top-t">Längste Schritte</h2><ol class="lv-top">${knoepfe.join('')}</ol></section>`;
+  }
+
   /** Die erste Zeile eingeklappt, gekürzt auf 200 Zeichen, aus dem gebuchten Text; endet sie am Budget, folgt die Zusammenfassung.
       Ihre Zeichen sind schon im aufgeklappten Text als Marke gezählt: hier stehen sie nur als Text der Marke (`⟨U+202E⟩`), ohne
       eigenes Markenelement — so bleibt es bei höchstens 1.000 Marken je Text. */
@@ -304,14 +313,15 @@
     for (const { nr, eintrag } of zeilen) {
       if (!eintrag) continue;
       const ms = zeitMs(eintrag.zeit);
-      if (eintrag.art === 'werkzeugaufruf') schritte.push(aufrufOeffnen(nr, eintrag, ms, offen));
+      const schritt = eintrag.art === 'werkzeugaufruf' ? aufrufOeffnen(nr, eintrag, ms, offen) : null;
+      if (schritt) schritte.push(schritt);
       if (eintrag.art === 'werkzeugergebnis') ergebnisZuordnen(nr, eintrag, ms, offen, schritte);
       if (ms === null) continue;
       mitZeit++;
       if (vorher !== null) {
         const dauer = Math.max(0, ms - vorher), art = lueckenArt(eintrag);
         summe[art] += dauer;
-        if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS) luecken.push({ vorNr: nr, art, dauer });
+        if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS) luecken.push({ vorNr: nr, art, dauer, vor: schritt ? schrittText(schritt) : `Nachricht von ${eintrag.name || WER_WORT[eintrag.wer]}` });
       }
       vorher = ms;
     }
@@ -325,12 +335,15 @@
       oder Wartezeile steht vor dem Eintrag `nr`, ein Schritt an seiner Stelle. */
   function laengsteSchritte(schritte, luecken) {
     const zeilen = [
-      ...luecken.map(l => ({ art: l.art, nr: l.vorNr, schritt: false, dauer: l.dauer, stelle: l.vorNr - 0.5 })),
-      ...schritte.filter(s => s.dauer !== null).map(s => ({ art: 'werkzeug', nr: s.nr, schritt: true, dauer: s.dauer, stelle: s.nr })),
+      ...luecken.map(l => ({ art: l.art, nr: l.vorNr, schritt: false, dauer: l.dauer, was: `${LUECKE_WORT[l.art]} · vor ${l.vor}`, stelle: l.vorNr - 0.5 })),
+      ...schritte.filter(s => s.dauer !== null).map(s => ({ art: 'werkzeug', nr: s.nr, schritt: true, dauer: s.dauer, was: schrittText(s), stelle: s.nr })),
     ];
     zeilen.sort((a, b) => b.dauer - a.dauer || a.stelle - b.stelle);
     return zeilen.slice(0, 3).map(({ stelle, ...zeile }) => zeile);
   }
+
+  /** Ein Schritt in Worten: Werkzeug und Kurzbefehl, etwa „Bash ls Anforderungen“. */
+  const schrittText = s => [s.name, s.befehl].filter(Boolean).join(' ');
 
   const ERGEBNIS_ZEILE = /^Ergebnis: (bestanden|befund|blockiert)/m;
 
@@ -539,5 +552,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { laufKopfHtml, laufBerichtHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

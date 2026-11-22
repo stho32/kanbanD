@@ -298,4 +298,110 @@ test.describe('R00234 Laufansicht: Ergebnis und Dauer', () => {
     await expect(zeileVon(page, 13).locator('details')).toHaveCount(0);
     await expect(zeileVon(page, 13)).toContainText('Bitte weiter.');
   });
+  /* ── AK 9 Längste Schritte, AK 10 Live ── */
+
+  /** Zählt Änderungen im Statusbereich und in jeder aria-live-Region ab jetzt. */
+  const ansagenBeobachten = page => page.evaluate(() => {
+    window.kdAenderungen = 0;
+    const LIVE = '[role=status],[role=alert],[aria-live]';
+    new MutationObserver(eintraege => {
+      for (const e of eintraege) {
+        const ort = e.target.nodeType === 3 ? e.target.parentElement : e.target;
+        if (ort && ort.closest && ort.closest(LIVE)) window.kdAenderungen++;
+      }
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+  const aenderungen = async page => {
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    return page.evaluate(() => window.kdAenderungen);
+  };
+
+  test('AK 9 · US-3: T1 — Längste Schritte 1 min 5 s, 38 s, 21 s mit „wartet · vor …“ und „denkt · vor …“; T3 Zeilen 1, 3, 5 je 1 s', async ({ page }) => {
+    await ablegen(k);
+    await laufOeffnen(page, T.T1);
+    await gelesen(page);
+    await expect(page.locator(TOP)).toHaveText([/^wartet · vor .*1 min 5 s$/, /^denkt · vor .*38 s$/, /^denkt · vor .*21 s$/]);
+    expect(await page.locator(TOP).evaluateAll(bs => bs.map(b => b.dataset.arg))).toEqual(['lv-s13-vor', 'lv-s15-vor', 'lv-s3-vor']);
+    await expect(page.locator('#lauf .lv-gl h2')).toHaveText('Längste Schritte');
+    await laufOeffnen(page, T.T3);
+    await expect(page.locator(STATUS)).toHaveText(/^Grenze erreicht/);
+    expect(await page.locator(TOP).evaluateAll(bs => bs.map(b => [b.dataset.arg, b.querySelector('.d').textContent]))).toEqual([['lv-s1', '1 s'], ['lv-s3', '1 s'], ['lv-s5', '1 s']]);
+  });
+
+  for (const wie of ['Klick', 'Enter', 'Leertaste']) {
+    test(`AK 9 · US-3: ${wie} auf den ersten Eintrag — Fokus auf der Wartezeile vor Nr 13 unter dem Seitenkopf bei 320, 641, 1280 px; Adresse, Verlauf und Statusbereich bleiben`, async ({ page }) => {
+      await ablegen(k);
+      for (const breite of [320, 641, 1280]) {
+        await breiteSetzen(page, breite);
+        await laufOeffnen(page, T.T1);
+        await gelesen(page);
+        await ansagenBeobachten(page);
+        const vorher = await page.evaluate(() => [location.hash, history.length]);
+        const knopf = page.locator(TOP).first();
+        if (wie === 'Klick') await knopf.click();
+        else { await knopf.focus(); await page.keyboard.press(wie === 'Enter' ? 'Enter' : 'Space'); }
+        await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('lv-s13-vor');
+        await expect.poll(() => page.evaluate(() => {
+          const kopf = document.querySelector('#kopf header').getBoundingClientRect().bottom;
+          const oben = document.activeElement.getBoundingClientRect().top;
+          return kopf <= oben && oben < innerHeight;
+        }), `${breite} px`).toBe(true);
+        expect(await page.evaluate(() => [location.hash, history.length])).toEqual(vorher);
+        expect(await aenderungen(page)).toBe(0);
+        if (wie === 'Klick') {
+          const ring = await page.evaluate(() => { const st = getComputedStyle(document.activeElement); return [st.outlineStyle, parseFloat(st.outlineWidth)]; });
+          expect(ring[0]).not.toBe('none');
+          expect(ring[1]).toBeGreaterThanOrEqual(2);
+        }
+      }
+    });
+  }
+
+  test('AK 9: unter prefers-reduced-motion springt die Seite ohne Animation — scrollY bzw. scrollTop hat im ersten Bild den Endwert', async ({ page }) => {
+    await ablegen(k);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await breiteSetzen(page, 320);
+    await laufOeffnen(page, T.T1);
+    await gelesen(page);
+    const ausserhalb = await page.evaluate(() => document.getElementById('lv-s13-vor').getBoundingClientRect().top > innerHeight);
+    expect(ausserhalb, 'das Ziel liegt vor dem Sprung außerhalb des Fensters').toBe(true);
+    const stand = await page.evaluate(() => new Promise(fertig => {
+      const seite = document.getElementById('lauf');
+      document.querySelector('#lauf .lv-top button').click();
+      requestAnimationFrame(() => {
+        const erstes = [scrollY, seite.scrollTop];
+        setTimeout(() => fertig({ erstes, ende: [scrollY, seite.scrollTop] }), 600);
+      });
+    }));
+    expect(stand.erstes).toEqual(stand.ende);
+    expect(stand.ende[0] + stand.ende[1]).toBeGreaterThan(0);
+  });
+
+  test('AK 10 · US-6: T4 offen — ein Kosteneintrag zeigt „0,51 $“ ohne neues Lesen; Insel und Fokus bleiben, laufAuswerten lief einmal, keine Ansage', async ({ page }) => {
+    await ablegen(k);
+    let lesen = 0;
+    page.on('request', r => { if (r.method() === 'GET' && istTranskript(r.url())) lesen++; });
+    await page.goto(`${k.adresse}#/board/fabrik`);
+    await liveBereit(page);
+    await page.evaluate(() => {
+      window.kdAuswertungen = 0;
+      const echt = window.laufAuswerten;
+      window.laufAuswerten = (...a) => { window.kdAuswertungen++; return echt(...a); };
+    });
+    await page.evaluate(h => { location.hash = h; }, `#/board/fabrik/aufgabe/1/lauf?kennung=${encodeURIComponent(T.T4)}`);
+    await gelesen(page);
+    await expect(page.locator(`${KENNZAHLEN} > div:has(dt:text-is("Kosten")) dd`)).toHaveText(/^–kein Kosteneintrag$/);
+    await page.locator(INSEL).evaluate(el => { el.__probe = 1; });
+    await summaryVon(page, 1).click();
+    await summaryVon(page, 1).focus();
+    await ansagenBeobachten(page);
+    await lv.buchen(k.adresse, 1, T.T4, 'Entwicklung', 0.51);
+    await expect(page.locator(`${KENNZAHLEN} > div:has(dt:text-is("Kosten")) dd`)).toHaveText(/^0,51\s\$$/);
+    expect(await page.locator(INSEL).evaluate(el => el.__probe)).toBe(1);
+    await expect(zeileVon(page, 1).locator('details')).toHaveAttribute('open', '');
+    expect(await page.evaluate(() => window.kdAuswertungen)).toBe(1);
+    expect(lesen).toBe(1);
+    expect(await aenderungen(page)).toBe(0);
+    expect(await page.evaluate(() => document.activeElement.closest('#lv-s1') !== null && document.activeElement.tagName)).toBe('SUMMARY');
+  });
 });

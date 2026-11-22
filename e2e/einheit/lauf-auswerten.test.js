@@ -53,7 +53,7 @@ test('FA 1, offene Frage 1: Nachricht von werkzeug zählt als Werkzeug, Aufruf v
 test('AK 7: Denk- und Wartezeilen ab genau 5.000 ms — T1 vor Nr 3, 7, 13, 15', () => {
   assert.strictEqual(DENKZEILE_AB_MS, 5000);
   const a = laufAuswerten(T1_ZEILEN, false);
-  assert.deepStrictEqual(a.luecken, [{ vorNr: 3, art: 'denken', dauer: 21000 }, { vorNr: 7, art: 'denken', dauer: 5000 }, { vorNr: 13, art: 'warten', dauer: 65000 }, { vorNr: 15, art: 'denken', dauer: 38000 }]);
+  assert.deepStrictEqual(a.luecken.map(({ vorNr, art, dauer }) => ({ vorNr, art, dauer })), [{ vorNr: 3, art: 'denken', dauer: 21000 }, { vorNr: 7, art: 'denken', dauer: 5000 }, { vorNr: 13, art: 'warten', dauer: 65000 }, { vorNr: 15, art: 'denken', dauer: 38000 }]);
   const knapp = laufAuswerten([e(1, 'nachricht', 'mensch', um(0)), { nr: 2, eintrag: { art: 'nachricht', wer: 'agent', text: 'x', zeit: '2026-11-21T08:00:04.999+01:00', name: null } }], false);
   assert.deepStrictEqual(knapp.luecken, [], '4.999 ms ergibt keine');
   const werkzeug = laufAuswerten([e(1, 'werkzeugaufruf', 'agent', um(0)), e(2, 'werkzeugergebnis', 'werkzeug', um(30))], false);
@@ -136,7 +136,11 @@ test('AK 3: Kennzahlen von T1 — 6 Werkzeugaufrufe, 2 Fehler', () => {
 
 test('AK 9: Längste Schritte von T1 — Wartezeile vor 13, Denkzeilen vor 15 und vor 3', () => {
   assert.deepStrictEqual(laufAuswerten(T1_ZEILEN, false).top3, [
-    { art: 'warten', nr: 13, schritt: false, dauer: 65000 }, { art: 'denken', nr: 15, schritt: false, dauer: 38000 }, { art: 'denken', nr: 3, schritt: false, dauer: 21000 }]);
+    { art: 'warten', nr: 13, schritt: false, dauer: 65000, was: 'wartet · vor Nachricht von Mensch' },
+    { art: 'denken', nr: 15, schritt: false, dauer: 38000, was: 'denkt · vor SubagentHandback R00229 angelegt.' },
+    { art: 'denken', nr: 3, schritt: false, dauer: 21000, was: 'denkt · vor Bash ls Anforderungen | tail -2' }]);
+  const schritt = laufAuswerten([e(1, 'werkzeugaufruf', 'agent', um(0), '{"file_path":"a.md"}', 'Read'), e(2, 'werkzeugergebnis', 'werkzeug', um(3))], false).top3;
+  assert.deepStrictEqual(schritt, [{ art: 'werkzeug', nr: 1, schritt: true, dauer: 3000, was: 'Read a.md' }]);
 });
 
 test('AK 9: Gleichstand — die frühere Zeile zuerst; eine Denkzeile vor Nr k liegt vor dem Schritt Nr k; ohne Dauer keine Liste', () => {

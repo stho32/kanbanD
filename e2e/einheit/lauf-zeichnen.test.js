@@ -358,3 +358,21 @@ test('FA 6: ohne Dauer („Dauer unbekannt“) gibt es keinen Balken, und die Ze
   assert.doesNotMatch(html, /<i class="w"/);
   assert.match(html, /<span class="vh">Dauer unbekannt<\/span>/);
 });
+
+// R00234 B1211: „Längste Schritte“ als Knöpfe mit data-act, die zur Zeile springen — nie ein Verweis auf den Hash (ADR-0029).
+const { laufTopHtml } = require('../../web/lauf.js');
+
+test('AK 9: Längste Schritte von T1 — drei Knöpfe der Reihe nach, je mit Ziel lv-s…, ohne href; ohne Dauer keine Liste', () => {
+  const html = laufTopHtml(t1, esc);
+  assert.match(html, /^<section class="lv-gl" aria-labelledby="lv-top-t"><h2 id="lv-top-t">Längste Schritte<\/h2><ol class="lv-top">/);
+  const knoepfe = [...html.matchAll(/<button type="button" id="(lv-top-\d)" data-act="lauf-springe" data-arg="([^"]+)"><span class="was">([^<]*)<\/span><span class="d">([^<]*)<\/span><\/button>/g)].map(m => m.slice(1));
+  assert.deepStrictEqual(knoepfe, [
+    ['lv-top-1', 'lv-s13-vor', 'wartet · vor Nachricht von Mensch', '1 min 5 s'],
+    ['lv-top-2', 'lv-s15-vor', 'denkt · vor SubagentHandback R00229 angelegt.', '38 s'],
+    ['lv-top-3', 'lv-s3-vor', 'denkt · vor Bash ls Anforderungen | tail -2', '21 s'],
+  ]);
+  assert.doesNotMatch(html, /href/);
+  assert.strictEqual(laufTopHtml({ ...t1, top3: [] }, esc), '');
+  const schritt = laufTopHtml({ ...t1, top3: [{ art: 'werkzeug', nr: 7, schritt: true, dauer: 2500, was: 'Read <a.md>' }] }, esc);
+  assert.match(schritt, /data-arg="lv-s7"><span class="was">Read &lt;a.md&gt;<\/span><span class="d">2 s<\/span>/);
+});
