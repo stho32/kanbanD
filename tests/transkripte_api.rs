@@ -6,6 +6,7 @@ mod gemeinsam;
 use gemeinsam::{git, lies};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// gzip von `{"art":"nachricht","wer":"agent","text":"hallo"}` mit Zeilenumbruch (mtime 0).
 const G1: [u8; 63] = [
@@ -116,6 +117,84 @@ async fn hochladen(adresse: &str, nr: u32, role: &str, at: &str, datei: Vec<u8>)
     hochladen_mit(adresse, nr, "entwickler", &[("at", at), ("role", role), ("column", "Entwicklung")], Some(datei)).await
 }
 
+/// Wie weit der rohe Upload die Datei schreibt (ADR-0026 N4 Regel 10).
+#[derive(Clone, Copy)]
+enum Schreiben {
+    /// Kopf, die Felder und höchstens das erste Stück der Datei — für „Antwort vor dem Körper“ (409).
+    ErstesStueck,
+    /// Die ganze Datei ohne Pause, bis der Server schließt — für 413 und den „langsamen Leser“.
+    BisZumSchliessen,
+}
+
+const STUECK: usize = 64 * 1024;
+const LESEFRIST: Duration = Duration::from_secs(5);
+
+/// Multipart-Upload über einen rohen `TcpStream` mit `Content-Length` für eine Datei von `laenge` Byte (Inhalt wie
+/// `gross`), die Felder vor der Datei. Ein Schreibfehler — der Server hat geantwortet und geschlossen — ist kein
+/// Ergebnis: nach `pause` liest die Hilfe Statuszeile und JSON mit einer Lesefrist von 5 s ab dem Ende des Schreibens.
+fn roh_senden(adresse: &str, nr: u32, felder: &[(&str, &str)], laenge: usize, wie: Schreiben, pause: Duration) -> (u16, Value) {
+    let ziel = adresse.trim_start_matches("http://").trim_end_matches('/');
+    let mut s = std::net::TcpStream::connect(ziel).unwrap();
+    s.set_write_timeout(Some(LESEFRIST)).unwrap();
+    if let Err(f) = koerper_schreiben(&mut s, ziel, nr, felder, laenge, wie) {
+        let abgebrochen = matches!(f.kind(), std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted | std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut);
+        assert!(abgebrochen, "Schreiben: {f}");
+    }
+    std::thread::sleep(pause);
+    s.set_read_timeout(Some(LESEFRIST)).unwrap();
+    antwort_lesen(&mut s)
+}
+
+fn koerper_schreiben(s: &mut std::net::TcpStream, ziel: &str, nr: u32, felder: &[(&str, &str)], laenge: usize, wie: Schreiben) -> std::io::Result<()> {
+    use std::io::Write;
+    let grenze = "kanbanD-roh-0246";
+    let mut vorn = String::new();
+    for (k, v) in felder {
+        vorn.push_str(&format!("--{grenze}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n"));
+    }
+    vorn.push_str(&format!("--{grenze}\r\nContent-Disposition: form-data; name=\"datei\"; filename=\"lauf.jsonl.gz\"\r\nContent-Type: application/octet-stream\r\n\r\n"));
+    let hinten = format!("\r\n--{grenze}--\r\n");
+    let gesamt = vorn.len() + laenge + hinten.len();
+    s.write_all(format!("POST /api/aufgaben/{nr}/transkripte HTTP/1.1\r\nHost: {ziel}\r\nX-KanbanD-Wer: entwickler\r\nContent-Type: multipart/form-data; boundary={grenze}\r\nContent-Length: {gesamt}\r\n\r\n{vorn}").as_bytes())?;
+    let mut rest = match wie {
+        Schreiben::ErstesStueck => laenge.min(STUECK),
+        Schreiben::BisZumSchliessen => laenge,
+    };
+    let mut stueck = gross(STUECK);
+    while rest > 0 {
+        let n = rest.min(STUECK);
+        s.write_all(&stueck[..n])?;
+        stueck[..3].fill(0x5a);
+        rest -= n;
+    }
+    match wie {
+        Schreiben::ErstesStueck => Ok(()),
+        Schreiben::BisZumSchliessen => s.write_all(hinten.as_bytes()),
+    }
+}
+
+/// Statuszeile und JSON-Rumpf (`Content-Length`) einer Antwort; scheitert benannt an der Lesefrist.
+fn antwort_lesen(s: &mut std::net::TcpStream) -> (u16, Value) {
+    use std::io::Read;
+    let gescheitert = |f: std::io::Error| -> ! {
+        let frist_um = matches!(f.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut);
+        assert!(!frist_um, "Lesefrist 5 s: keine Antwort — der Server liest den Körper ({f})");
+        panic!("Lesen der Antwort: {f}");
+    };
+    let mut kopf = vec![];
+    let mut b = [0u8; 1];
+    while !kopf.ends_with(b"\r\n\r\n") {
+        s.read_exact(&mut b).unwrap_or_else(|f| gescheitert(f));
+        kopf.push(b[0]);
+    }
+    let kopf = String::from_utf8(kopf).unwrap().to_ascii_lowercase();
+    let status = kopf.split_whitespace().nth(1).unwrap().parse().unwrap();
+    let laenge: usize = kopf.lines().find_map(|z| z.strip_prefix("content-length:")).map_or(0, |l| l.trim().parse().unwrap());
+    let mut rumpf = vec![0u8; laenge];
+    s.read_exact(&mut rumpf).unwrap_or_else(|f| gescheitert(f));
+    (status, serde_json::from_slice(&rumpf).unwrap_or(Value::Null))
+}
+
 async fn holen(adresse: &str, pfad: &str) -> (u16, Value) {
     let r = reqwest::get(format!("{adresse}{pfad}")).await.unwrap();
     (r.status().as_u16(), r.json().await.unwrap_or(Value::Null))
@@ -181,8 +260,9 @@ async fn ak03_wirksamer_schalter() {
                 assert!(e["fehler"].is_string());
                 assert_eq!(o.commits(), n, "Zeile {}", i + 1);
                 assert!(!o.pfad.join("transkripte").exists(), "Zeile {}: nichts unter transkripte/", i + 1);
-                let (s, e) = hochladen_mit(o.adresse(), nr, "entwickler", &[("at", AT), ("role", "entwickler"), ("column", spalte)], Some(gross(ZEHN_MB + 1))).await;
-                assert_eq!(s, 409, "Zeile {}: 409 vor dem Körper, nicht 413: {e}", i + 1);
+                let (s, e) = roh_senden(o.adresse(), nr, &[("at", AT), ("role", "entwickler"), ("column", spalte)], ZEHN_MB + 1, Schreiben::ErstesStueck, Duration::ZERO);
+                assert_eq!((s, &e["erfassung"]), (409, &json!("aus")), "Zeile {}: 409 vor dem Körper, nicht 413: {e}", i + 1);
+                assert_eq!(o.commits(), n, "Zeile {}", i + 1);
                 assert!(!o.pfad.join("transkripte").exists());
             }
         }
@@ -206,14 +286,36 @@ async fn ak06_groesse() {
     let (s, e) = hochladen(o.adresse(), 1, "entwickler", AT, gross(ZEHN_MB)).await;
     assert_eq!((s, &e["bytes"]), (201, &json!(ZEHN_MB)), "{e}");
     let vorher = stand(&o);
-    let (s, e) = hochladen(o.adresse(), 1, "entwickler", "2026-11-13 10:35+01:00", gross(ZEHN_MB + 1)).await;
+    let felder = |at| [("at", at), ("role", "entwickler"), ("column", "Entwicklung")];
+    let (s, e) = roh_senden(o.adresse(), 1, &felder("2026-11-13 10:35+01:00"), ZEHN_MB + 1, Schreiben::BisZumSchliessen, Duration::ZERO);
     assert_eq!(s, 413, "{e}");
     assert!(e["fehler"].is_string(), "{e}");
     nichts_geschrieben(&o, &vorher, "G10+1");
-    let (s, e) = hochladen(o.adresse(), 1, "entwickler", "2026-11-13 10:36+01:00", gross(60 * 1024 * 1024)).await;
+    let (s, e) = roh_senden(o.adresse(), 1, &felder("2026-11-13 10:36+01:00"), 60 * 1024 * 1024, Schreiben::BisZumSchliessen, Duration::ZERO);
     assert_eq!(s, 413, "{e}");
+    assert!(e["fehler"].is_string(), "{e}");
     nichts_geschrieben(&o, &vorher, "60 MB");
     assert_eq!(o.transkriptdateien(), ["transkripte/.gitignore", N]);
+}
+
+// R00232 AK 4 (ADR-0026 N4, Abnahme-Probe „langsamer Leser“): der volle Körper ohne Pause, gelesen erst 0, 50 und
+// 300 ms nach dem Schreibfehler — die Antwort des Servers zählt, nicht welches Ereignis der Client zuerst sieht.
+#[tokio::test]
+async fn r00232_langsamer_leser_liest_409_und_413_nach_dem_schreibfehler() {
+    let felder = [("at", AT), ("role", "entwickler"), ("column", "Entwicklung")];
+    let aus = ausgangslage("", "", "");
+    let o = an();
+    let vorher = stand(&o);
+    for ms in [0, 50, 300] {
+        let pause = Duration::from_millis(ms);
+        let (s, e) = roh_senden(aus.adresse(), 1, &felder, ZEHN_MB + 1, Schreiben::BisZumSchliessen, pause);
+        assert_eq!((s, &e["erfassung"]), (409, &json!("aus")), "aus, {ms} ms: {e}");
+        assert!(!aus.pfad.join("transkripte").exists(), "aus, {ms} ms: nichts unter transkripte/");
+        let (s, e) = roh_senden(o.adresse(), 1, &felder, ZEHN_MB + 1, Schreiben::BisZumSchliessen, pause);
+        assert_eq!(s, 413, "an, {ms} ms: {e}");
+        assert!(e["fehler"].is_string(), "an, {ms} ms: {e}");
+        nichts_geschrieben(&o, &vorher, &format!("an, {ms} ms"));
+    }
 }
 
 /// Ein Fall der Probe AK 7: Name, Felder, Datei.
