@@ -31,7 +31,8 @@ test('AK 1: T6 — vertauschte Ergebnisse gehören zu ihrem Aufruf, Dauer, Fehle
 });
 
 /** R00239 ergänzt die Auswertung um Zeitachse und Arten der Zeilen; geprüft in lauf-zeitachse.test.js und lauf-filter.test.js, hier bleibt jedes alte Feld gleich. */
-const ohneNeueFelder = ({ zeitachse, zeilenArten, eingebettet, top3, teuer3, ...alt }) => ({ ...alt, top3: top3.map(({ beschriftung, ...t }) => t), teuer3: teuer3.map(({ beschriftung, ...t }) => t) });
+// R00242 ergänzt die Wurzeln der Pfad-Marken (geprüft in lauf-pfade.test.js)
+const ohneNeueFelder = ({ zeitachse, zeilenArten, eingebettet, wurzeln, top3, teuer3, ...alt }) => ({ ...alt, top3: top3.map(({ beschriftung, ...t }) => t), teuer3: teuer3.map(({ beschriftung, ...t }) => t) });
 
 test('AK 2: T6o ohne Felder ist deepStrictEqual zum Literal vor dem Fix (Nr 1 mit 3 s, Nr 2 mit 9 s und Fehler)', () => {
   const a = auswerten(ohneFelder(T6));
