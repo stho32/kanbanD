@@ -102,7 +102,8 @@ Die Hilfe für den rohen Upload (A) ist für sich prüfbar: dieselbe Hilfe liefe
 
 ### Für beide Teile
 
-- [ ] **AK 13 Bug-Vorlage:** Kein Produktivcode geändert (`git diff --stat main...` nur unter `tests/` und `e2e/tests/`). Keine Erwartung abgeschwächt, kein Timeout pauschal erhöht, keine `retries`, kein neues `waitForTimeout` (die Verzögerung der Varianten sitzt im Routen-Handler). Alle Tests aller Ebenen grün.
+- [ ] **AK 13 Bug-Vorlage:** Kein Produktivcode geändert — außer AK 14 (`git diff --stat main...` nur unter `tests/` und `e2e/tests/`). Keine Erwartung abgeschwächt, kein Timeout pauschal erhöht, keine `retries`, kein neues `waitForTimeout` (die Verzögerung der Varianten sitzt im Routen-Handler). Alle Tests aller Ebenen grün.
+- [ ] **AK 14 Scroll-Rahmen der Prognose-Tabelle (Ausnahme von AK 13):** Die Tabellenansicht von „Wie lange noch“ liegt wie die Tabellen von Burndown und Kumulativem Fluss in einem benannten, per Tastatur erreichbaren Rahmen `.bericht-rahmen` (Beschriftung „Prognose je Tag“). Bei geöffneter Tabellenansicht gilt bei 375, 641, 768 und 980 px auf `entwicklung` und `breit` für Dokument und `.body.bericht` `scrollWidth ≤ clientWidth`; quer rollt nur der Rahmen. Der Test zu R00223 AK 13 (`r00223-ohne-phasen.spec.js:326`) ist ohne Änderung grün, am Stand vor dem Fix rot (743/759 px bei 375/641 px). Das ist die einzige Änderung am Produktivcode (`git diff --stat main...` außer `tests/`, `e2e/tests/` nur `web/ansicht.js`).
 
 ## Nicht-Ziele
 
