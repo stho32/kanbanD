@@ -423,17 +423,17 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     await expect(page.locator('#lauf .lv-leer')).toContainText('Das Transkript liegt nicht auf diesem Rechner.');
   });
 
-  test('AK 7: T5 (fehlt) über „‹ Voriger Lauf“ von T1 — „Lauf 2 von 6“, Bild 4 und keine Anfrage an …/transkripte/…', async ({ page }) => {
-    // Widerspruch (Bericht #253, Fragen): `a.transkripte` trägt keinen Zustand, und Server, OpenAPI und Format bleiben unverändert (R00239);
-    // ADR-0041 N1 Punkt 5: „der Zustand ist ohne GET …/transkripte nicht bekannt“. Bis zur Entscheidung bleibt die Probe rot.
-    test.fail(true, 'erwartet rot: „ohne Anfrage“ ist ohne Zustand in a.transkripte nicht baubar (ADR-0041 N1 Punkt 5)');
+  test('AK 7: T5 (fehlt) über „‹ Voriger Lauf“ von T1 — Bild 4 mit „Lauf 2 von 6“, ohne „Erneut versuchen“, genau zwei Ansagen ab dem Klick', async ({ page }) => {
+    // PO Z. 614: die Anfrage ist erlaubt (ADR-0041 N1 Punkt 5, `a.transkripte` trägt keinen Zustand)
     await s.oeffnen(T.T1);
     await s.gelesen();
-    const anfragen = [];
-    page.on('request', r => { if (istTranskript(r.url())) anfragen.push(r.url()); });
+    await page.evaluate(liveBeobachten);
     await page.locator(VORIGER).click();
+    await expect(page.locator(STATUS)).toHaveText('Lauf 2 von 6, code-reviewer. Das Transkript liegt nicht auf diesem Rechner.');
     await expect(page.locator('#lauf .lv-leer')).toContainText('Das Transkript liegt nicht auf diesem Rechner.');
-    expect(anfragen).toEqual([]);
+    await expect(page.locator(STELLE)).toHaveText('Lauf 2 von 6');
+    await expect(page.locator('#lv-erneut')).toHaveCount(0);
+    expect(await liveSeit(page)).toEqual(['Liest das Transkript …', 'Lauf 2 von 6, code-reviewer. Das Transkript liegt nicht auf diesem Rechner.']);
   });
 
   test('AK 8 · US-5: Wechsel mit replaceState — Abbruch der gehaltenen Anfrage, Ansagen je Wechsel, Fokus auf dem Link, Rückweg zu „Läufe“', async ({ page }) => {
