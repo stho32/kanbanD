@@ -498,3 +498,60 @@ Der PO hat in `AI-Team/po-entscheidungen.md` Z. 602–607 zwei Punkte entschiede
 
 1. **Punkt 3, „Systemhinweise mitten im Text“ (Frage 1)**: `systemhinweiseTrennen` erkennt nur einen **vollständigen Block**, dessen `<system-reminder>` **am Zeilenanfang** beginnt und mit `</system-reminder>` schließt. Der Satz „Ein Block ohne Ende reicht bis zum Ende des Texts“ **entfällt**. Ein Tag mitten in einer Zeile und ein Block ohne Ende bleiben Text und stehen vollständig lesbar da. Grund: Fast jedes Vorkommen in Ergebnissen ist eine bloße Erwähnung (Doku, Code), die Zählung des gestalter belegt es; die alte Regel hätte Lesetext weggeklappt, ein stiller Verlust. Eine verpasste Erwähnung schadet nicht. Durchsetzung: der Test „ein Block ohne Ende“ in `systemhinweiseTrennen` erwartet jetzt unveränderten Text; neu: ein Tag mitten in der Zeile bleibt Text, ein Block am Zeilenanfang wird `details` „Systemhinweis“. Ein Ergebnis, das nur aus einem solchen Block besteht, zeigt in der Zusammenfassung gedämpft „Systemhinweis“ (PO Z. 604).
 2. **Punkt 3, Kürzung „weitere <n> Zeilen“ (Frage 4)**: Die Kürzung auf 20 Zeilen gilt **auch für den Shell-Block und den Wert-Block** des Aufrufs (Punkt 2), mit derselben Grenze und demselben Wortlaut wie bei Ergebnis und Diff. **Gezählt werden Zeilen des Textes**, nicht umbrochene Bildschirmzeilen. Ein langer Heredoc steht also ab Zeile 21 hinter „weitere <n> Zeilen“; ein langer, umbrochener Einzeiler bleibt ungekürzt. Der Inhalt bleibt im DOM und für Strg+F auffindbar (E1). Die Grenzen aus Punkt 7 bleiben unberührt. Gezählt wird nach `shellUmbruch`: die dort eingefügten `\n` sind echte Zeilen des gesetzten Textes (Annahme des architekt, vom PO nicht ausdrücklich entschieden; der Bau meldet es, falls die Zeichnung etwas anderes zeigt). Durchsetzung: Node-Test mit einem Befehl von 21 Zeilen (Kürzung mit „weitere 1 Zeilen“), einem Wert-Block von 25 Zeilen und einem Einzeiler von 500 Zeichen (keine Kürzung).
+
+## Nachtrag 2026-11-22 N5: Filterwechsel ohne Einfrieren — die Zeilen der Insel sind keine Listenelemente im Sinne der Darstellung (`display:block` statt `list-item`) (Karte #265)
+
+**Status bleibt `Akzeptiert`.** Die Filter aus N1 Punkt 2 und R00239 FA 6 bleiben, wie sie sind: Attribute an der Wurzel der Insel, Wirkung nur über CSS, derselbe Knoten. Neu ist nur **eine Regel im CSS**. Punkte 1–7 und N1–N4 gelten weiter.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #265, Lauf 265-architekt-1)
+**Erprobt durch**: Messprobe 2026-11-22 19:17–19:25 Uhr, Last 2,3–3,5 bei 8 Kernen (über der Messbedingung ≤ 2 des Kriteriums, die Zahlen sind also eher zu hoch), `nice -n 10`, Chromium headless aus `e2e/node_modules` (Playwright 1.65.1), Fenster 1280 × 900. Die Insel ist mit dem echten `laufHtml` (`web/lauf.js:162`, Stand `3867b80e`) gebaut und mit `web/kd-app.css` als statische Seite geladen. Gemessen wird vom Setzen des Attributs bis nach dem nächsten Bild (`requestAnimationFrame`, dann `setTimeout 0`), Median aus 3 bzw. 5 Wechseln. Wegwerf-Skripte liegen in der Ablage der Factory `gemeinsam/scratchpad/arch-265/` (`gen.js`, `mess.js`, `mess2.js`, `stil.js`, `a11y.js`).
+
+### Belegt
+
+- **Ursache ist die Nummerierung der Listenelemente, nicht `content-visibility`, nicht Flexbox und nicht die Selektoren.** Jede Zeile `#lv-insel>li` ohne eigene `display`-Regel hat `display: list-item` (Vorgabe des Browsers für `li`, gemessen an 942 von 1.102 Zeilen). Wird ein Listenelement verborgen, zählt Chromium die Ordnungszahlen der folgenden Elemente derselben Liste neu. Das kostet O(n) je verborgener Zeile, beim Verbergen von k Zeilen also O(n·k). `list-style: none` ändert daran nichts, `counter-reset: none` auch nicht. Das Wiederanzeigen ist billiger, weil es nur einmal je Liste neu nummeriert.
+- Gegenproben an 1.003 Zeilen, „Werkzeuge“ aus:
+
+  | Variante | Verbergen | Wiederanzeigen |
+  |---|---|---|
+  | Ist (`list-item`, `content-visibility: auto`, Flex-Spalte) | 450 ms | 79 ms |
+  | ohne `content-visibility` | 427 ms | 165 ms |
+  | `contain-intrinsic-size` ohne `auto` | 428 ms | 70 ms |
+  | Liste als Block statt Flex | 327 ms | 58 ms |
+  | `counter-reset`/`counter-increment: none` | 378 ms | 83 ms |
+  | **Zeilen `display: block`** | **7 ms** | **42 ms** |
+
+- Ist-Verlauf (quadratisch): 503 Zeilen 105 ms, 1.003 Zeilen 450 ms, 2.003 Zeilen 1.769 ms, 5.000 Zeilen 58 s (Code-Review #253 A1).
+- Eine Regel `.lv-l>li{display:block}` (Spezifität 0,1,1) **überschreibt** `.lv-n{display:grid}` und `.lv-d{display:grid}` und zerstört so die Nachrichten- und Denkzeilen (gemessen: 158 `lv-n` von `grid` zu `block`). Mit `:where(.lv-l)>li` (Spezifität 0,0,1) bleiben sie `grid`. Die Regel des Autors schlägt die des Browsers trotzdem, weil die Herkunft vor der Spezifität entscheidet.
+- Der Baum der Hilfstechnik ändert sich nicht: Chromium leitet die Rolle `listitem` aus dem Element ab, nicht aus `display` (Schnappschuss mit und ohne Regel gleich, 7 von 7 `listitem` in `list` „Einträge des Transkripts der Reihe nach“).
+
+### Optionen
+
+Gemessen an der Insel mit 1.003 Zeilen (1.000er-Lauf des Kriteriums) und mit 10.003 Zeilen (T3: 20.000 Einträge an der Zeilengrenze), „Werkzeuge“ aus und wieder an:
+
+| Variante | 1.003 Zeilen | 10.003 Zeilen (T3) | Stärke | Schwäche |
+|---|---|---|---|---|
+| **A — Zeilen `display: block` über `:where(.lv-l)>li`** (gewählt) | 7–12 / 35–44 ms | 57–92 / 298–377 ms | eine Zeile CSS; Insel, Knoten, `details`-Zustand, Strg+F, Sprung, Fokus und Rolle `listitem` bleiben; linear | beruht auf einem Verhalten von Chromium, das kein Standard festschreibt; ein späteres `li` mit eigener Klasse ohne `display` ist ohne Durchsetzung wieder `list-item` |
+| B — Verbergen in Blöcken (je 200 Zeilen ein Block mit `content-visibility: auto`, Klasse je Zeile) | 34 / 65 ms | 53 / 91 ms | auch das Wiederanzeigen schnell, weil verdeckte Blöcke nicht gezeichnet werden | ein `div` in `ol` ist kein gültiges HTML, sonst eine verschachtelte Liste (andere Ansage); Selektoren nur noch über Klassen je Zeile (O(n) im Skript); Sprung in einen Block mit geschätzter Höhe trifft das Nachführen aus N1 „Nach dem Bau“ härter; ohne `content-visibility` am Block bleibt es quadratisch (gemessen 407 ms) |
+| C — Klasse je Zeile statt Attribut am Container | 303 / 66 ms | — | Zustand an jeder Zeile sichtbar | bleibt quadratisch, weil die Ursache das Verbergen eines `list-item` ist, nicht der Selektor |
+| D — Neuaufbau der sichtbaren Liste aus dem Text (`innerHTML`) | 23 / 85 ms | 1.497 / 2.091 ms | keine verborgenen Knoten | verfehlt 500 ms auf T3; bricht „einmal zeichnen“ (Punkt 5) und klappt aufgeklappte Aufrufe zu (Q4) |
+| E — Virtualisierung | nicht gemessen | — | konstante Zahl an Knoten | Strg+F, Textauswahl und Bildschirmleser verlieren Einträge; verworfen wie in Punkt 5 (Z3) und ADR-0039 N1 (C) |
+
+### Entscheidung
+
+1. **Gewählt: A.** In `web/kd-app.css` bei der Regel für `.lv-l>li` (`:1758`) steht `:where(.lv-l)>li{display:block}` mit einem Kommentar zum Grund (Nummerierung je verborgenem `list-item`, O(n·k), dieser Nachtrag). Filter, Selektoren (`:1864–1867`), `laufFilterAnInsel` (`web/app.js:2325`) und die Insel bleiben unverändert. Ansage, Zählung, Sperrform, Sprung und Fokus aus R00239 bleiben damit unberührt.
+2. **Regel für jede lange Liste, deren Zeilen über CSS massenhaft verborgen werden**: Die Zeilen dürfen nicht `display: list-item` sein. Das gilt auch für spätere Inseln. Heute betrifft es nur `#lv-insel`.
+3. **Messung** wie das Kriterium (PO Z. 615): 1.000 Zeilen der Liste ≤ 200 ms, T3 an der Grenze ≤ 500 ms, Median aus fünf Wechseln je Kästchen hin und zurück. Gemessen sind höchstens 44 ms bzw. 377 ms bei Last 3. Die Wanduhr ist Beobachtung im Bericht, kein Gate (`gemeinsam/gelerntes.md`, „Grenzen, die Arbeit begrenzen“). Das Gate trägt die Stilprobe in der Durchsetzung.
+
+**In Kauf genommen**: Die Lösung beruht auf beobachtetem Verhalten von Chromium, nicht auf einer Zusage der Spezifikation. Ändert ein Browser die Nummerierung, kann die Zeit zurückkommen, ohne dass sich unser Code ändert. Das Wiederanzeigen auf T3 bleibt mit etwa 0,3–0,4 s nah an der Grenze, weil Chromium dann bis zu 10.000 Zeilen wieder in den Layoutbaum nimmt. Reicht das unter Last ≤ 2 nicht, ist B der nächste Schritt (neuer Nachtrag).
+
+### Durchsetzung
+
+- **E2E, Stilprobe (Gate)**: Auf T1 mit allen drei Arten sichtbar gilt für jedes `#lv-insel>li`, dass `getComputedStyle(li).display !== 'list-item'` (Zähler = 0), und jedes `#lv-insel>li.lv-n` und `.lv-d` hat weiter `display: grid`. Mutant „Regel entfernt“ ist rot (Zähler > 0), Mutant „`.lv-l>li{display:block}` statt `:where(…)`“ ist rot (`lv-n` wird `block`).
+- **E2E, Rolle**: `ariaSnapshot` der Insel zeigt dieselben `listitem` wie vorher.
+- **E2E, Verhalten**: die bestehende Spec von R00239 (Ansage, Zählung, Sperrform, Sprung, Fokus, Marke `el.__probe` an der Insel) bleibt unverändert grün.
+- **Messprobe im Bericht des Baus (Beobachtung)**: ein Lauf mit 2.000 Einträgen (≈ 1.000 Zeilen) und T3. Je Kästchen fünfmal hin und zurück, Zeit vom Klick bis nach dem nächsten Bild, Median, mit Last nach `uptime`. Erwartet ≤ 200 ms bzw. ≤ 500 ms.
+- **Review-Punkt `architektur-reviewer`**: Eine neue Zeilenart der Insel mit eigener Klasse setzt `display` selbst oder bleibt bei der `:where`-Regel. Sie wird nie `list-item`.
+
+### Folgeaufgaben
+
+- [ ] Entwickler (Karte #265): Regel nach Punkt 1, Stilprobe mit beiden Mutanten, Messprobe als Beobachtung. Keine Änderung an `web/lauf.js` oder `web/app.js`.
+- [ ] Merge: Dieser Nachtrag steht auf `karte/265`, abgeleitet von `karte/253`. Auf `main` steht schon N4 (#261). Beim Zusammenführen kommt N5 hinter N4.
