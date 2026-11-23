@@ -1,6 +1,6 @@
 ---
 id: R00252
-status: Neu
+status: Erledigt
 datum: 2026-11-23
 ursprung: Bug-Report
 ursprungslauf: R00236
@@ -81,10 +81,10 @@ Abnahme des architekt, wörtlich (Kommentar an Karte #273):
 
 ### Bug behoben
 
-- [ ] **AK 1:** `npx playwright test r00236-review-pfad-vscode-patch.spec.js -g "Touch" --repeat-each=10 --workers=1` auf main 10/10 grün
-- [ ] **AK 2:** im vollen Gate r00236 grün
-- [ ] **AK 3:** die Spec tippt erst nach bestätigter Trefferprobe (`td.n`)
-- [ ] **AK 4:** ohne Fix heute 5/5 rot
+- [x] **AK 1:** `npx playwright test r00236-review-pfad-vscode-patch.spec.js -g "Touch" --repeat-each=10 --workers=1` auf main 10/10 grün
+- [x] **AK 2:** im vollen Gate r00236 grün
+- [x] **AK 3:** die Spec tippt erst nach bestätigter Trefferprobe (`td.n`)
+- [x] **AK 4:** ohne Fix heute 5/5 rot
 
 **Prüfbarkeit:**
 
