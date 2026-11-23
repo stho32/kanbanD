@@ -2205,3 +2205,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-23 | #248 | Nacharbeit | product-owner | bestanden | 1 min | Wortlaute Statuszeile, 4xx-Fehler · claude · opus · Lauf 248-product-owner-3 · 0,65 $ · Karte gesamt 18,37 $ |
 | 2026-11-23 | #269 | Detailplanung | planer | bestanden | 6 min | UX-Befunde eingearbeitet, Zeitachse als Ausbaustufe 2 · claude · opus · Lauf 269-planer-2 · 2,02 $ · Karte gesamt 9,68 $ |
 | 2026-11-23 | #269 | Detailplanung | product-owner | bestanden | 1 min | Commit im Link, Zeitachse eigene Karte · claude · opus · Lauf 269-product-owner-5 · 0,59 $ · Karte gesamt 10,27 $ |
+| 2026-11-23 | #269 | Detailplanung | ux-reviewer | bestanden | 2 min | Nachprüfung bestanden, 4 Sollte Text · claude · sonnet · Lauf 269-ux-reviewer-2 · 0,39 $ · Karte gesamt 10,66 $ |
+| 2026-11-23 | #233 | Architektur | architekt | bestanden | 43 min | ADR-0032 N10 · claude · opus · Lauf 233-architekt-1 · 4,46 $ · Karte gesamt 4,46 $ |
+| 2026-11-23 | #259 | Nacharbeit | entwickler | bestanden | 1 h 5 min | Sprung 0 px, Touch 40×22, r00236 Touch rot offen · claude · sonnet · Lauf 259-entwickler-2 · 1,93 $ · Karte gesamt 14,39 $ |
+| 2026-11-23 | #233 | Architektur | product-owner | bestanden | 1 min | 3 Fragen wie empfohlen · claude · opus · Lauf 233-product-owner-1 · 0,73 $ · Karte gesamt 5,19 $ |
