@@ -2214,3 +2214,7 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-23 | #259 | Nacharbeit | code-reviewer | bestanden | 12 min | kein Muss; r00236 Touch rot auch auf main · claude · sonnet · Lauf 259-code-reviewer-2 · 0,67 $ · Karte gesamt 15,06 $ |
 | 2026-11-23 | #248 | Nacharbeit | entwickler | bestanden | 3 h 54 min | Vorschau-Trockenlauf + 4 Punkte, B1330–B1336 · claude · Lauf 248-entwickler-2 · 15,17 $ · Karte gesamt 33,54 $ |
 | 2026-11-23 | #235 | Architektur | architekt | bestanden | 3 h 45 min | ADR-0035 N1 · claude · opus · Lauf 235-architekt-1 · 1,64 $ · Karte gesamt 1,64 $ |
+| 2026-11-23 | #235 | Architektur | product-owner | bestanden | 1 min | fehlt als gleicher Chip, auch letzte Spalte · claude · opus · Lauf 235-product-owner-1 · 0,82 $ · Karte gesamt 2,46 $ |
+| 2026-11-23 | #273 | Architektur | architekt | bestanden | 7 min | Fehler im Test, ADR-0033 N2 · claude · opus · Lauf 273-architekt-1 · 1,49 $ · Karte gesamt 1,49 $ |
+| 2026-11-23 | #273 | Detailplanung | planer | bestanden | 2 min | R00252, I0242, B1337–B1338 · claude · opus · Lauf 273-planer-1 · 0,86 $ · Karte gesamt 2,35 $ |
+| 2026-11-23 | #259 | Entwicklertest | entwicklertester | bestanden | 4 h 1 min | Szenarien 1–6 bestanden · claude · sonnet · Lauf 259-entwicklertester-1 · 1,32 $ · Karte gesamt 16,38 $ |
