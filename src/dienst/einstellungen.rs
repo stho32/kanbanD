@@ -1,6 +1,7 @@
 use super::{Kanban, Schritt};
 use super::zugregeln::personen_pruefen;
 use crate::fehler::Fehler;
+use std::sync::MutexGuard;
 use crate::format::einstellungen;
 use crate::modell::{Anwendung, Art, Einstellungen, Klasse, Person, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
 
@@ -136,6 +137,15 @@ impl PersonAenderung {
     }
 }
 
+/// Antwort von `POST /api/einstellungen/vorschau` (R00250, ADR-0043 N1.1): `text` ist genau die Datei `kanbanD.md`, die
+/// `PUT /api/einstellungen` mit demselben Rumpf jetzt schreiben würde (BOM und Zeilenenden der Datei), ohne Änderung die
+/// heutige; `geaendert` = `PUT` würde committen.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, utoipa::ToSchema)]
+pub struct Einstellungsvorschau {
+    pub text: String,
+    pub geaendert: bool,
+}
+
 /// Bezeichnungen und Pfade ohne Rand, Register nach Kürzel — die Normalform, in der verglichen und geschrieben wird.
 fn normalisieren(neu: &mut Einstellungen) {
     for p in &mut neu.personen {
@@ -166,39 +176,70 @@ enum Altform {
     Stehenlassen,
 }
 
+/// Was ein Schreibweg der Einstellungen schreiben würde (ADR-0043 N1.3, Regel 8): `datei` ist der neue Text von
+/// `kanbanD.md` (`None` = keine Änderung), `text` der bisherige.
+struct Entwurf<T> {
+    datei: Option<String>,
+    text: String,
+    nachricht: String,
+    ergebnis: T,
+}
+
+/// Die Änderung des `PUT /api/einstellungen`, für Speichern und Vorschau dieselbe (ADR-0043 N1.3): der Schalter steht
+/// nicht im Rumpf und bleibt, wie er in der Datei steht (R00216 AK 5, ADR-0036 Regel 4), alles andere kommt aus dem Rumpf.
+fn rumpf_uebernehmen(e: &mut Einstellungen, neu: Einstellungen) -> Result<(String, ()), Fehler> {
+    *e = Einstellungen { transkripte_erfassen: e.transkripte_erfassen, ..neu };
+    Ok(("Einstellungen geändert".into(), ()))
+}
+
 impl Kanban {
-    /// Der eine Schreibweg der Einstellungen: unter der Sperre lesen, `aendern` anwenden, normalisieren, prüfen und
-    /// nur bei einer Änderung committen — zeilengenau, nur die geänderten Abschnitte (R00250, ADR-0043). `aendern` liefert die Commit-Nachricht und ein Ergebnis.
-    fn einstellungen_aendern<T>(&self, wer: &Person, altform: Altform, aendern: impl FnOnce(&mut Einstellungen) -> Result<(String, T), Fehler>) -> Result<(bool, T), Fehler> {
-        let _sperre = self.gesperrt();
+    /// Der eine Schreibweg der Einstellungen bis vor das Schreiben (ADR-0043 Regel 8): lesen, `aendern` anwenden,
+    /// normalisieren, prüfen und — zeilengenau, nur die geänderten Abschnitte (Regeln 3–6) — den neuen Text bilden. Schreibt
+    /// nichts, merkt nichts vor, kein Commit; die Sperre ist Parameter, damit er nur unter ihr läuft.
+    fn einstellungen_entwerfen<T>(&self, _sperre: &MutexGuard<'_, ()>, art: Art, altform: Altform, aendern: impl FnOnce(&mut Einstellungen) -> Result<(String, T), Fehler>) -> Result<Entwurf<T>, Fehler> {
         let alt = self.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))?;
         let mut neu = alt.clone();
         let (nachricht, ergebnis) = aendern(&mut neu)?;
         normalisieren(&mut neu);
         einstellungen_pruefen(&alt, &neu)?;
-        personen_pruefen(wer.art, &alt.personen, &neu.personen)?;
+        personen_pruefen(art, &alt.personen, &neu.personen)?;
         let mut vergleich = alt.clone();
         if altform == Altform::Stehenlassen {
             vergleich.repository_ergaenzen();
         }
-        if neu == vergleich {
-            return Ok((false, ergebnis));
-        }
-        // nur die geänderten Abschnitte im vorhandenen Text, gelesen unter derselben Sperre; von Hand gestaltet oder
-        // nicht rücklesbar → 409 ohne Commit (ADR-0043 Regeln 3–6)
+        // der Text unter derselben Sperre wie das Modell
         let text = self.ordner().lies(einstellungen::DATEI)?.unwrap_or_default();
+        if neu == vergleich {
+            return Ok(Entwurf { datei: None, text, nachricht, ergebnis });
+        }
+        // von Hand gestaltet oder nicht rücklesbar → 409 (ADR-0043 Regeln 5–6)
         let datei = einstellungen::abschnitte_schreiben(&text, &alt, &vergleich, &neu).map_err(Fehler::handform)?;
+        Ok(Entwurf { datei: Some(datei), text, nachricht, ergebnis })
+    }
+
+    /// Der eine Schreibweg der Einstellungen: der Entwurf und, bei einer Änderung, genau ein Commit (R00250, ADR-0043).
+    /// `aendern` liefert die Commit-Nachricht und ein Ergebnis.
+    fn einstellungen_aendern<T>(&self, wer: &Person, altform: Altform, aendern: impl FnOnce(&mut Einstellungen) -> Result<(String, T), Fehler>) -> Result<(bool, T), Fehler> {
+        let sperre = self.gesperrt();
+        let Entwurf { datei, nachricht, ergebnis, .. } = self.einstellungen_entwerfen(&sperre, wer.art, altform, aendern)?;
+        let Some(datei) = datei else { return Ok((false, ergebnis)) };
         self.aktion(wer, &nachricht, &[Schritt::schreiben(einstellungen::DATEI, datei)])?;
         Ok((true, ergebnis))
     }
 
     pub fn einstellungen_setzen(&self, wer: &Person, neu: Einstellungen) -> Result<bool, Fehler> {
-        self.einstellungen_aendern(wer, Altform::Umstellen, |e| {
-            // der Schalter steht nicht im Rumpf und bleibt, wie er in der Datei steht (R00216 AK 5, ADR-0036 Regel 4)
-            *e = Einstellungen { transkripte_erfassen: e.transkripte_erfassen, ..neu };
-            Ok(("Einstellungen geändert".into(), ()))
-        })
-        .map(|(geaendert, ())| geaendert)
+        self.einstellungen_aendern(wer, Altform::Umstellen, |e| rumpf_uebernehmen(e, neu)).map(|(geaendert, ())| geaendert)
+    }
+
+    /// Trockenlauf von `einstellungen_setzen` mit demselben Rumpf (ADR-0043 N1.3): der Text, den `PUT` jetzt schreiben
+    /// würde, und dieselben Fehler; schreibt nichts. Die Sperre gilt nur für Lesen und Rechnen.
+    pub fn einstellungen_vorschau(&self, art: Art, neu: Einstellungen) -> Result<Einstellungsvorschau, Fehler> {
+        let entwurf = {
+            let sperre = self.gesperrt();
+            self.einstellungen_entwerfen(&sperre, art, Altform::Umstellen, |e| rumpf_uebernehmen(e, neu))?
+        };
+        let geaendert = entwurf.datei.is_some();
+        Ok(Einstellungsvorschau { text: entwurf.datei.unwrap_or(entwurf.text), geaendert })
     }
 
     /// Eine Person anlegen (R00091); ein vorhandenes Kürzel ist ein Konflikt, die Regeln prüft `einstellungen_pruefen`.

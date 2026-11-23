@@ -62,7 +62,7 @@ pub use board_verwalten::BoardVerwalten;
 pub use einrichten::{Einrichtung, NeuePerson};
 pub use schalter::{Schalterantwort, nur_menschen_schalten};
 pub use erledigen::{Erledigt, Erledigung, Erledigungsergebnis};
-pub use einstellungen::{PALETTE, PersonAenderung, Personenangabe, farbe_gueltig};
+pub use einstellungen::{Einstellungsvorschau, PALETTE, PersonAenderung, Personenangabe, farbe_gueltig};
 
 use crate::ablage::{DefekteDatei, Ordner};
 use crate::fehler::Fehler;
