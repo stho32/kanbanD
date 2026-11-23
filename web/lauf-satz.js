@@ -379,9 +379,10 @@
   /** Text eines Ergebnisses → `{html, kurz, fehlerText, hinweise}`: `kurz` ist die Kurzform der Zusammenfassung (`gekuerzt`,
       `systemhinweis` oder null), `fehlerText` der Text, an dessen Anfang `fehlerErkennen` prüft, `hinweise` die Zahl der eingebetteten.
       Eine von Claude Code gekürzte Ausgabe trägt die Marke, darunter die Vorschau, gesetzt wie ein Ergebnis. Die Farbfolgen werden
-      übersetzt (`farbZeilen`), ein Zustand je Ergebnis. */
-  function ergebnisSatz(text, zeile, pfade = null) {
-    const farben = farbZeilen(text, zeile);
+      übersetzt (`farbZeilen`), ein Zustand je Ergebnis; `farbig` ist das Urteil von `farbenErlaubt`, das der Aufrufer schon für das
+      Budget gefällt hat — so läuft es einmal je Schritt. */
+  function ergebnisSatz(text, zeile, pfade = null, farbig = farbenErlaubt(text)) {
+    const farben = farbZeilen(zeile, farbig);
     const gekuerzt = gekuerztErkennen(text);
     if (gekuerzt === null) return { ...ergebnisKoerper(text, zeile, farben), fehlerText: text };
     let inhalt = text;
@@ -392,9 +393,9 @@
 
   /** Die Zeilen eines Ergebnisses mit übersetzten Farbfolgen (N6 Punkt 1–5): `fortlaufend` setzt Zeile um Zeile in der Folge des
       Satzes, der Zustand läuft von Zeile zu Zeile weiter; `ohneFarbe` setzt eine Zeile, die anderswo schon steht (Testzeile, erste
-      Zeile eines Hinweises, Pfad), ohne Spanne und ohne den Zustand zu ändern. Über `farbenErlaubt` hinaus beide wie `zeile`. */
-  function farbZeilen(text, zeile) {
-    if (!farbenErlaubt(text)) return { fortlaufend: zeile, ohneFarbe: zeile };
+      Zeile eines Hinweises, Pfad), ohne Spanne und ohne den Zustand zu ändern. Ohne `farbig` beide wie `zeile`. */
+  function farbZeilen(zeile, farbig) {
+    if (!farbig) return { fortlaufend: zeile, ohneFarbe: zeile };
     let zustand = GRUNDSCHRIFT;
     return {
       fortlaufend: z => {

@@ -688,6 +688,15 @@ test('ergebnisSatz: jedes Ergebnis beginnt in Grundschrift; JSON-Ergebnis und le
   assert.strictEqual(ergebnisSatz(' \n ', sichtbar).html, '<p class="lv-gedaempft">Leeres Ergebnis.</p>');
 });
 
+test('ergebnisSatz übernimmt das Urteil `farbig` des Aufrufers (farbenErlaubt läuft einmal je Schritt); ohne Angabe urteilt es selbst', () => {
+  const rot = `${E}[31mrot${E}[0m`;
+  const ohne = ergebnisSatz(rot, sichtbar, null, false).html;
+  assert.deepStrictEqual(spannen(ohne), []);
+  assert.strictEqual(markenIm(ohne), 2);
+  assert.deepStrictEqual(spannen(ergebnisSatz(rot, sichtbar, null, true).html), [['sgr31', 'rot']]);
+  assert.strictEqual(ergebnisSatz(rot, sichtbar).html, ergebnisSatz(rot, sichtbar, null, satz.farbenErlaubt(rot)).html);
+});
+
 test('ergebnisSatz: über 2.000 Spannen steht das Ergebnis ganz ohne Übersetzung, jedes ESC eine Marke; 1.200 gedämpfte ohne Marke', () => {
   const flut = ergebnisSatz(`${E}[31mx${E}[0m`.repeat(3000), sichtbar).html;
   assert.deepStrictEqual(spannen(flut), []);

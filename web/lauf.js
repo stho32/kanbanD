@@ -346,7 +346,7 @@
     const ergebnisGebucht = ergebnis ? zeichenBuchen(ergebnis.text, budget, farbig) : null;
     const zeile = t => zeileHtml(t, esc);
     let ergebnisGesetzt = null;
-    if (ergebnisGebucht && !ergebnisGebucht.rest) ergebnisGesetzt = satz.ergebnisSatz(ergebnis.text, zeile, { wurzeln: z.wurzeln });
+    if (ergebnisGebucht && !ergebnisGebucht.rest) ergebnisGesetzt = satz.ergebnisSatz(ergebnis.text, zeile, { wurzeln: z.wurzeln }, farbig);
     const befehl = aufruf ? `<span class="bf">${kurzTextHtml(s.befehl || '', esc, z.wurzeln)}</span>` : '';
     const absicht = s.absicht === null ? '' : `<span class="ab">${kurzTextHtml(s.absicht, esc, z.wurzeln)}</span>`;
     const fehler = s.fehler ? `${ACHTUNG}<span class="vh">Fehler: </span>` : '';
