@@ -332,4 +332,135 @@ function pfadVorbereiten(h) {
   };
 }
 
-module.exports = { reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, BOESE, ZWEIG_60 };
+/* ── Ausgangslage von R00245 (Commit-Leiste und verdichteter Commit-Kopf): `kd` mit K-Leiste, K-Rand, 30 Commits, `wb` mit W1 ── */
+
+/** Ein Commit auf `eltern` (losgelöst ausgecheckt), Dateien wie `aenderungsCommit`; Datum mit `+01:00`. */
+function leisteCommit(r, eltern, titel, datum, aenderungen) {
+  gitAls(r, ADA, datum, 'checkout', '-q', '--detach', eltern);
+  for (const [pfad, inhalt] of Object.entries(aenderungen)) fs.writeFileSync(path.join(r, pfad), inhalt);
+  gitAls(r, ADA, datum, 'add', '-A');
+  gitAls(r, ADA, datum, 'commit', '-q', '--allow-empty', '-m', titel);
+  return gitAls(r, ADA, datum, 'rev-parse', 'HEAD');
+}
+
+/** Ein Merge-Commit (nicht an einer Aufgabe) mit den Eltern `eltern`: hält Commits auf einem Zweig, ohne sie zu Vorfahren zu machen. */
+function zusammen(r, eltern) {
+  return gitAls(r, ADA, '2026-11-22T06:00:00+01:00', 'commit-tree', `${eltern[0]}^{tree}`, ...eltern.flatMap(e => ['-p', e]), '-m', 'zusammen');
+}
+
+const LANGER_TITEL = '[R00229] B1188: ' + 'Mutanten getötet und Zeilen gezählt, '.repeat(3).slice(0, 104);
+const KENNUNG_40 = '[' + 'A'.repeat(40) + ']';
+const BIDI_ZWEIG = 'bidi-‮-zweig';
+
+/** Jeder Commit hängt an B0, damit „+<k> Zweige“ nur die Zweige zählt, die ihn wirklich enthalten (Merges halten ihn auf `main`). */
+function leisteBauen(basis) {
+  const r = path.join(basis, 'KD'), s = path.join(basis, 'WB');
+  for (const ort of [r, s]) {
+    fs.mkdirSync(path.join(ort, 'Dokumentation/Planung'), { recursive: true });
+    fs.writeFileSync(path.join(ort, 'Dokumentation/Planung/app.md'), '# App\n');
+    gitAls(ort, ADA, '2026-11-20T08:00:00+01:00', 'init', '-q', '-b', 'main');
+  }
+  const h = { r, s };
+  fs.writeFileSync(path.join(r, 'c1.txt'), reihe(7, 'alt c1'));
+  fs.writeFileSync(path.join(r, 'c2.txt'), reihe(12, 'alt c2'));
+  fs.writeFileSync(path.join(r, 'c3.txt'), reihe(1, 'alt c3'));
+  gitAls(r, ADA, '2026-11-20T09:00:00+01:00', 'add', '-A');
+  gitAls(r, ADA, '2026-11-20T09:00:00+01:00', 'commit', '-q', '-m', 'B0 Vorgänger');
+  const b0 = h.b0 = gitAls(r, ADA, '2026-11-20T09:00:00+01:00', 'rev-parse', 'HEAD');
+  const c = (titel, datum, aenderungen) => leisteCommit(r, b0, titel, `2026-11-22T${datum}:00+01:00`, aenderungen);
+  h.c1 = c('[R00229] B1187: Sperrform je Komponente', '03:19', { 'c1.txt': reihe(302, 'neu c1') });
+  h.c2 = c('[R00229] B1188: Mutanten m1–m7 getötet, R00229 Erledigt, WBS und Ist-Zeiten', '03:31', { 'c2.txt': reihe(14, 'neu c2') });
+  h.c3 = c('[DOC] R00229 AK 5: Fokusring je Ansicht', '04:34', { 'c3.txt': reihe(2, 'neu c3') });
+  h.c2lang = c(LANGER_TITEL, '03:32', { 'c2.txt': reihe(14, 'lang c2') });
+  h.c3a = c(KENNUNG_40, '04:35', { 'c3.txt': reihe(2, 'a c3') });
+  h.c4 = c('Ohne Form', '05:01', { 'c4.txt': 'c4\n' });
+  h.c5 = c('[Factory] director: Text', '05:02', { 'c5.txt': 'c5\n' });
+  h.c6 = c('[R00229]', '05:03', { 'c6.txt': 'c6\n' });
+  h.c7 = c(BOESE, '05:04', { 'c7.txt': 'c7\n' });
+  h.c8 = c('[R00230] B1200: nur auf master', '05:05', { 'c8.txt': 'c8\n' });
+  h.c9 = c('[R00231] B1201: viele Zweige', '05:06', { 'c9.txt': 'c9\n' });
+  h.c10 = c('[R00232] B1202: tausend', '05:07', { 'c10.txt': reihe(1240, 'tausend') });
+  h.v = c('[R00229] B1189: verwaist', '03:40', { 'v.txt': 'v\n' });
+  h.a12 = c('[R00233] B1203: main nicht genannt', '05:08', { 'a12.txt': 'a12\n' });
+  // 30 Commits in einer Kette (C1' bis C30'), je eine neue Datei
+  h.dreissig = [];
+  let spitze = b0;
+  for (let i = 1; i <= 30; i++) {
+    spitze = leisteCommit(r, spitze, `[R00245] B${1300 + i}: Schritt ${i}`, `2026-11-21T10:${String(i).padStart(2, '0')}:00+01:00`, { [`d${i}.txt`]: `d${i}\n` });
+    h.dreissig.push(spitze);
+  }
+  const zweig = (name, ziel) => gitAls(r, ADA, '2026-11-22T06:00:00+01:00', 'branch', '-f', name, ziel);
+  zweig('main', zusammen(r, [h.c1, h.c3, h.c4, h.c5, h.c6, h.c9, h.a12]));
+  zweig('karte/247', zusammen(r, [h.c1, h.c2]));
+  for (const z of ['a', 'b', 'c', 'd']) zweig(`karte/${z}`, h.c1);
+  gitAls(r, ADA, '2026-11-22T06:00:00+01:00', 'update-ref', 'refs/remotes/origin/main', h.c3);
+  gitAls(r, ADA, '2026-11-22T06:00:00+01:00', 'update-ref', 'refs/remotes/origin/karte/247', h.c2);
+  zweig('karte/lang', zusammen(r, [h.c2lang, h.c3a]));
+  zweig(BIDI_ZWEIG, h.c7);
+  zweig('master', h.c8);
+  zweig('x', h.c8);
+  for (let i = 1; i <= 11; i++) zweig(`zz${String(i).padStart(2, '0')}`, h.c9);
+  for (let i = 1; i <= 12; i++) zweig(`a${String(i).padStart(2, '0')}`, h.a12);
+  zweig('c10', h.c10);
+  zweig('karte/dreissig', spitze);
+  // V ist verwaist: sein Zweig ist gelöscht, das Objekt bleibt
+  zweig('weg', h.v);
+  gitAls(r, ADA, '2026-11-22T06:00:00+01:00', 'branch', '-D', 'weg');
+  gitAls(r, ADA, '2026-11-22T06:00:00+01:00', 'checkout', '-q', 'main');
+  fs.writeFileSync(path.join(s, 'w.txt'), 'w\n');
+  gitAls(s, ADA, '2026-11-20T09:00:00+01:00', 'add', '-A');
+  gitAls(s, ADA, '2026-11-20T09:00:00+01:00', 'commit', '-q', '-m', 'W0 Vorgänger');
+  h.w1 = aenderungsCommitAm(s, '[R00245] B1290: Werkbank', '2026-11-21T10:01:30+01:00', { 'w.txt': 'w\nneu\n' });
+  return h;
+}
+
+/** Wie `aenderungsCommit`, mit festem Datum. */
+function aenderungsCommitAm(r, titel, datum, aenderungen) {
+  for (const [pfad, inhalt] of Object.entries(aenderungen)) fs.writeFileSync(path.join(r, pfad), inhalt);
+  gitAls(r, ADA, datum, 'add', '-A');
+  gitAls(r, ADA, datum, 'commit', '-q', '-m', titel);
+  return gitAls(r, ADA, datum, 'rev-parse', 'HEAD');
+}
+
+let leiste = null;
+/** Ein Satz Repositories je Prozess, am Prozessende entfernt (kanbanD liest sie nur). */
+function leisteRepository() {
+  if (!leiste) {
+    const basis = basisAnlegen();
+    leiste = leisteBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return leiste;
+}
+
+/** Ein Verweis ohne Commit-Objekt (Zustand `fehlt`). */
+const FEHLT = 'kd:' + 'd'.repeat(40);
+
+/** Aufgaben: #5 K-Leiste, #6 C10, #7 C1, C2, V und ein fehlender Verweis, #8 C1', C2' in kd und W1 in wb, #9 C1, C2-lang, C3-AAAA,
+    #10 C4–C9 und A12, #11 30 Commits, #12 sieben, #13 acht, #14 nur fehlend. Register `kd`, `wb`. */
+function leisteVorbereiten(h) {
+  const kd = x => `kd:${x}`;
+  const aufgaben = {
+    5: [kd(h.c1), kd(h.c2), kd(h.c3)], 6: [kd(h.c10)], 7: [kd(h.c1), kd(h.c2), kd(h.v), FEHLT],
+    8: [kd(h.dreissig[0]), `wb:${h.w1}`, kd(h.dreissig[1])], 9: [kd(h.c1), kd(h.c2lang), kd(h.c3a)],
+    10: [kd(h.c4), kd(h.c5), kd(h.c6), kd(h.c7), kd(h.c8), kd(h.c9), kd(h.a12)],
+    11: h.dreissig.map(kd), 12: h.dreissig.slice(0, 7).map(kd), 13: h.dreissig.slice(0, 8).map(kd), 14: [FEHLT],
+  };
+  const register = EINSTELLUNGEN_KOPF
+    + `    kd: {name: KD, wbs: ${h.r}/Dokumentation/Planung/app.md, requirements: ""}\n`
+    + `    wb: {name: WB, wbs: ${h.s}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
+  const dateien = { 'kanbanD.md': register };
+  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/${String(nr).padStart(4, '0')}-aufgabe-${nr}.md`] = aufgabeDatei(nr, `Aufgabe ${nr}`, verweise);
+  dateien['boards/entwicklung.md'] = `# Entwicklung\n\n## Zu erledigen\n\n${Object.keys(aufgaben).map(n => `- #${n}`).join('\n')}\n\n## In Arbeit\n\n## Erledigt\n`;
+  return ordner => {
+    for (const [rel, inhalt] of Object.entries(dateien)) {
+      fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
+      fs.writeFileSync(path.join(ordner, rel), inhalt);
+    }
+    execFileSync('git', ['-C', ordner, 'init', '-q']);
+    execFileSync('git', ['-C', ordner, 'add', '-A']);
+    execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-m', 'eingerichtet']);
+  };
+}
+
+module.exports = { reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
