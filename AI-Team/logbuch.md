@@ -2200,3 +2200,6 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-23 | #248 | Auto-Reviews | product-owner | bestanden | 2 min | Nacharbeit: Vorschau per Trockenlauf + 4 Punkte · claude · opus · Lauf 248-product-owner-2 · 0,78 $ · Karte gesamt 16,07 $ |
 | 2026-11-23 | #269 | Detailplanung | planer | bestanden | 7 min | R00251, I0241, B1322–B1329 · claude · opus · Lauf 269-planer-1 · 2,95 $ · Karte gesamt 6,64 $ |
 | 2026-11-23 | #269 | Detailplanung | product-owner | bestanden | 1 min | Wortlaut 1.000 Marker, Legende nur mit Strich · claude · opus · Lauf 269-product-owner-4 · 0,61 $ · Karte gesamt 7,25 $ |
+| 2026-11-23 | #269 | Detailplanung | ux-reviewer | befund | 2 min | M1 Abstand/Verdichtung, M2 Strich außerhalb role=img · claude · sonnet · Lauf 269-ux-reviewer-1 · 0,41 $ · Karte gesamt 7,66 $ |
+| 2026-11-23 | #248 | Nacharbeit | architekt | bestanden | 4 min | ADR-0043 N1 Vorschau-Trockenlauf · claude · opus · Lauf 248-architekt-3 · 1,65 $ · Karte gesamt 17,72 $ |
+| 2026-11-23 | #248 | Nacharbeit | product-owner | bestanden | 1 min | Wortlaute Statuszeile, 4xx-Fehler · claude · opus · Lauf 248-product-owner-3 · 0,65 $ · Karte gesamt 18,37 $ |
