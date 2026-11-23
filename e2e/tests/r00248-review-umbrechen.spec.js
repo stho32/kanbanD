@@ -213,6 +213,39 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
     });
   }
 
+  /* ── AK 8 (Erweiterung, PO Z. 681): bei grobem Zeiger bleibt der Schalter, wie er gezeichnet ist ── */
+
+  test.describe('grober Zeiger', () => {
+    test.use({ hasTouch: true });
+    for (const breite of [375, 320]) {
+      test(`AK 8: Touch bei ${breite} px — das Eingabefeld misst 40×22 px (±1), das Label ist mindestens 48 px hoch, an und aus unterscheiden sich in der Form`, async ({ page }) => {
+        const s = seite(page);
+        await breiteSetzen(page, breite, 800);
+        expect(await page.evaluate(() => matchMedia('(pointer:coarse)').matches), 'der Kontext hat einen groben Zeiger').toBe(true);
+        await s.commitOeffnen(k, 9, umbrechenRepository().u1);
+        const messen = () => s.schalter.evaluate(l => {
+          const e = l.querySelector('input'), r = e.getBoundingClientRect(), st = getComputedStyle(e);
+          return { breite: r.width, hoehe: r.height, label: l.getBoundingClientRect().height, form: st.backgroundPosition, farbe: st.backgroundColor };
+        });
+        await expect.poll(async () => (await messen()).farbe, 'der Schalter ist gezeichnet').not.toBe('');
+        const aus = await messen();
+        await s.eingabe.evaluate(e => e.click());
+        await expect(s.eingabe).toBeChecked();
+        await zweiBilder(page);
+        const an = await messen();
+        for (const m of [aus, an]) {
+          expect(m.breite, `Breite ${JSON.stringify(m)}`).toBeGreaterThanOrEqual(39);
+          expect(m.breite, `Breite ${JSON.stringify(m)}`).toBeLessThanOrEqual(41);
+          expect(m.hoehe, `Höhe ${JSON.stringify(m)}`).toBeGreaterThanOrEqual(21);
+          expect(m.hoehe, `Höhe ${JSON.stringify(m)}`).toBeLessThanOrEqual(23);
+          expect(m.label, 'Zielfläche des Labels').toBeGreaterThanOrEqual(48);
+        }
+        expect(an.form, 'Lage des Daumens').not.toBe(aus.form);
+        expect(an.farbe, 'gefüllte Fläche').not.toBe(aus.farbe);
+      });
+    }
+  });
+
   /* ── AK 2 Wirkung (US-2) ── */
 
   test('AK 2: bei „aus“ scrollt der Code quer und Fall (a) ist eine Zeile hoch; bei „an“ nicht, Höhe = Textzeilen × 18 px, Nummer und Zeichen oben', async ({ page }) => {

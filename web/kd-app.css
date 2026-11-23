@@ -1595,7 +1595,8 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .ru-sch input{appearance:none;flex:none;box-sizing:border-box;inline-size:32px;block-size:18px;margin:0;border:2px solid var(--kd-muted);border-radius:9px;background:radial-gradient(circle,var(--kd-muted) 0 5px,transparent 5.5px) 1px 50%/14px 14px no-repeat var(--kd-surface);cursor:pointer}
 .ru-sch input:checked{border-color:var(--kd-accent);background:radial-gradient(circle,var(--kd-on-accent) 0 5px,transparent 5.5px) calc(100% - 1px) 50%/14px 14px no-repeat var(--kd-accent)}
 .ru-sch input:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
-.touch .ru-sch input{inline-size:40px;block-size:22px;border-radius:11px}
+/* grober Zeiger (PO Z. 681): die Zielfläche trägt das Label (≥ --kd-ziel), das Feld bleibt der gezeichnete Schalter; die allgemeine Mindestgröße (kd-base.css) gilt hier nicht */
+@media (pointer:coarse){.ru-sch input{inline-size:40px;block-size:22px;min-inline-size:0;min-block-size:0;border-radius:11px}}
 @media (forced-colors:active){.ru-sch input{border-color:CanvasText;background-color:Canvas}.ru-sch input:checked{border-color:Highlight;background-color:Highlight}}
 /* Umbrechen an (R00248, ADR-0042 N5.2): die Klasse `umbr` liegt an `#review`; `inline-size:100%` trägt die Wirkung, `anywhere` zählt für die
    kleinste Spaltenbreite; Nummer und Zeichen bleiben oben (`td{vertical-align:top}`), die Marke bricht mit und trägt ihre Kante auf jedem Fragment */
