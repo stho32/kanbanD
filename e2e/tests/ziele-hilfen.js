@@ -94,14 +94,16 @@ function imBrowserMessen({ mass, kreisAusnahme, ansicht, ZIELE }) {
   function name(el) {
     return (el.getAttribute('aria-label') || el.textContent || el.title || el.value || '').trim().slice(0, 40);
   }
-  function messen(el) {
+  function messen(feld) {
+    // Schalter „Umbrechen“ (R00248, PO Z. 652 und 681): das Feld bleibt der gezeichnete Schalter (40×22 px), die Zielfläche trägt das Label
+    const el = feld.matches('label.ru-sch > input') ? feld.closest('label') : feld;
     el.scrollIntoView({ block: 'center', inline: 'center' });
     const r = el.getBoundingClientRect();
     const flaeche = vereinigt(r, hofRechteck(el, r));
     const breite = Math.round((flaeche.right - flaeche.left) * 10) / 10;
     const hoehe = Math.round((flaeche.bottom - flaeche.top) * 10) / 10;
     const mitte = { x: (flaeche.left + flaeche.right) / 2, y: (flaeche.top + flaeche.bottom) / 2 };
-    return { el, flaeche, breite, hoehe, mitte, trifft: trifftUeberall(el, flaeche) };
+    return { el: feld, flaeche, breite, hoehe, mitte, trifft: trifftUeberall(el, flaeche) };
   }
   function abstandZuRechteck(p, f) {
     const dx = Math.max(f.left - p.x, 0, p.x - f.right);
