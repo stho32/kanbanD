@@ -314,3 +314,140 @@ fn ak10_einstellungen_schreiben_nur_aus_einrichten() {
     }
     assert_eq!(aufrufer, vec!["dienst/einrichten.rs".to_string()], "ADR-0043 Durchsetzung");
 }
+
+// ---- Nacharbeit (ADR-0043 N1): POST /api/einstellungen/vorschau im gestarteten Programm ----
+
+fn crlf_bom(t: &str) -> String {
+    format!("\u{feff}{}", t.replace('\n', "\r\n"))
+}
+
+impl Lage {
+    /// `GET /api/einstellungen` → `aendern` → der Rumpf.
+    async fn rumpf(&self, aendern: impl FnOnce(&mut Value)) -> Value {
+        let (_, mut e) = self.anfrage(Method::GET, "api/einstellungen", "sh", Value::Null).await;
+        aendern(&mut e);
+        e
+    }
+
+    async fn vorschau(&self, wer: Option<&str>, rumpf: &Value) -> (u16, Value) {
+        let mut anfrage = reqwest::Client::new().post(format!("{}api/einstellungen/vorschau", self.lauf.adresse)).json(rumpf);
+        if let Some(wer) = wer {
+            anfrage = anfrage.header("X-KanbanD-Wer", wer);
+        }
+        let r = anfrage.send().await.unwrap();
+        let status = r.status().as_u16();
+        assert!(r.headers()["content-type"].to_str().unwrap().starts_with("application/json"), "JSON wie alle Antworten");
+        (status, serde_json::from_str(&r.text().await.unwrap()).unwrap_or(Value::Null))
+    }
+
+    /// V5 über HTTP: `vorschau`, dann `PUT` mit demselben Rumpf — 200: `text` byte-gleich mit der Datei danach;
+    /// sonst gleicher Status und gleiches `fehler`, nichts geschrieben.
+    async fn gleichlauf(&self, fall: &str, wer: &str, rumpf: Value) -> (u16, Value) {
+        let (head, vorher) = (self.head(), self.datei());
+        let (s, v) = self.vorschau(Some(wer), &rumpf).await;
+        assert_eq!((self.head(), self.datei()), (head.clone(), vorher.clone()), "{fall}: Vorschau schreibt nichts");
+        let (ps, pv) = self.anfrage(Method::PUT, "api/einstellungen", wer, rumpf).await;
+        if s == 200 {
+            assert_eq!((ps, &pv["geaendert"]), (200, &v["geaendert"]), "{fall}: geaendert wie PUT");
+            assert_eq!(v["text"].as_str().unwrap(), self.datei(), "{fall}: text byte-gleich mit der Datei nach PUT");
+        } else {
+            assert_eq!((ps, &pv), (s, &v), "{fall}: gleicher Status und gleiches fehler wie PUT");
+            assert_eq!((self.head(), self.datei()), (head, vorher), "{fall}: nichts geschrieben");
+        }
+        (s, v)
+    }
+}
+
+/// V1/V2 über HTTP (Abnahme des PO): H und H in CRLF mit BOM, `sh` umbenannt → `text` = Datei nach `PUT`, BOM und CRLF.
+#[tokio::test]
+async fn n1_v2_vorschau_gleich_der_datei_nach_put() {
+    for text in [h(), crlf_bom(&h())] {
+        let l = lage(&text);
+        let rumpf = l.rumpf(umbenennen).await;
+        let (s, v) = l.gleichlauf("H", "sh", rumpf).await;
+        assert_eq!((s, &v["geaendert"]), (200, &json!(true)));
+        let t = v["text"].as_str().unwrap();
+        assert!(t.contains("# von Hand") && t.contains("eigener-schluessel: 1") && t.contains("# Klassen folgen") && t.contains("# Unser Ordner") && !t.contains("# kanbanD"), "{t}");
+        assert_eq!(t.starts_with('\u{feff}'), text.starts_with('\u{feff}'), "BOM wie die Datei");
+    }
+}
+
+/// V4/V5 über HTTP: Handform → 409 mit dem Wortlaut, Kürzel doppelt → 400, beide wie `PUT`; ohne Änderung → `geaendert: false`.
+#[tokio::test]
+async fn n1_v5_gleichlauf_fehler_und_ohne_aenderung() {
+    let hand = h().replace(SH, &format!("{SH}  # Vertretung\n"));
+    let l = lage(&hand);
+    let rumpf = l.rumpf(umbenennen).await;
+    assert_eq!(l.gleichlauf("Handform", "sh", rumpf).await, (409, json!({"fehler": wortlaut("people")})));
+    let l = lage(&h());
+    let rumpf = l.rumpf(|e| e["personen"].as_array_mut().unwrap().push(json!({"kuerzel": "sh", "name": "Zweiter", "art": "human", "aktiv": true}))).await;
+    let (s, v) = l.gleichlauf("Kürzel doppelt", "sh", rumpf).await;
+    assert_eq!(s, 400, "{v}");
+    let rumpf = l.rumpf(|_| {}).await;
+    assert_eq!(l.vorschau(Some("sh"), &rumpf).await, (200, json!({"text": h(), "geaendert": false})), "V6");
+    let l = lage(&bestand("bestand-b"));
+    let rumpf = l.rumpf(|_| {}).await;
+    assert_eq!(l.gleichlauf("bestand-b unverändert", "sh", rumpf).await.1["geaendert"], json!(true), "Registerumstellung wie PUT");
+}
+
+/// V7 über HTTP: 20 Vorschauen (Änderung, Handform, ungültig) — kein Commit, Arbeitsbaum sauber, Bytes und mtime gleich.
+#[tokio::test]
+async fn n1_v7_vorschau_schreibt_nichts() {
+    let text = h().replace(SH, &format!("{SH}  # Vertretung\n"));
+    let l = lage(&text);
+    let mtime = || std::fs::metadata(l.pfad.join("kanbanD.md")).unwrap().modified().unwrap();
+    let (head, vorher) = (l.head(), mtime());
+    let rumpfe = [l.rumpf(umbenennen).await, l.rumpf(signal_warten).await, json!({"personen": "kein Satz"})];
+    let mut status = vec![];
+    for i in 0..20 {
+        status.push(l.vorschau(Some("sh"), &rumpfe[i % 3]).await.0);
+    }
+    assert_eq!((status[0], status[1]), (409, 200), "Handform, Signal");
+    assert!((400..500).contains(&status[2]), "ungültiger Rumpf: {}", status[2]);
+    assert_eq!(l.head(), head, "kein Commit");
+    assert_eq!(git(&l.pfad, &["status", "--porcelain"]), "", "Arbeitsbaum sauber");
+    assert_eq!((l.datei(), mtime()), (text, vorher), "Bytes und mtime gleich");
+}
+
+/// V8: Rechte wie `PUT` — Agent legt einen Menschen still → 403 `{fehler, kuerzel}`; ohne Header gerechnet wie ein
+/// Mensch → 200; unbekannte Person → 400.
+#[tokio::test]
+async fn n1_v8_rechte_wie_put() {
+    let l = lage(&h());
+    let still = l.rumpf(|e| e["personen"][0]["aktiv"] = json!(false)).await;
+    let (s, v) = l.gleichlauf("Agent", "ag", still.clone()).await;
+    assert_eq!((s, &v["kuerzel"]), (403, &json!("sh")), "{v}");
+    assert_eq!(l.vorschau(None, &still).await.0, 200, "ohne Header wie ein Mensch");
+    let (s, v) = l.gleichlauf("unbekannt", "xx", still).await;
+    assert_eq!(s, 400, "{v}");
+}
+
+/// V9: Pfade im Rumpf sind nur Text — `/etc`, `../../x` und ein FIFO im Ordner werden nicht geöffnet (ein Öffnen des FIFO
+/// bliebe hängen); die Antwort kommt in normaler Zeit.
+#[tokio::test]
+async fn n1_v9_pfade_werden_nicht_geoeffnet() {
+    let l = lage(&h());
+    let fifo = l.pfad.join("fifo");
+    assert!(std::process::Command::new("mkfifo").arg(&fifo).status().unwrap().success());
+    for pfad in ["/etc", "../../x", fifo.to_str().unwrap()] {
+        let rumpf = l.rumpf(|e| e["quellen"]["repository"] = json!(pfad)).await;
+        let antwort = tokio::time::timeout(std::time::Duration::from_secs(5), l.vorschau(Some("sh"), &rumpf)).await.expect("Antwort in normaler Zeit");
+        assert_eq!(antwort.0, 200, "{pfad}: {}", antwort.1);
+        assert!(antwort.1["text"].as_str().unwrap().contains(pfad), "{pfad}: {}", antwort.1["text"]);
+    }
+}
+
+/// V14: OpenAPI und Endpunktliste nennen den Trockenlauf; `wer: false`.
+#[tokio::test]
+async fn n1_v14_openapi_und_endpunkte() {
+    let l = lage(&h());
+    let (_, d) = l.anfrage(Method::GET, "api/openapi.json", "sh", Value::Null).await;
+    let post = &d["paths"]["/api/einstellungen/vorschau"]["post"];
+    assert_eq!(post["requestBody"]["content"]["application/json"]["schema"]["$ref"], json!("#/components/schemas/Einstellungen"), "{post}");
+    assert_eq!(post["responses"]["200"]["content"]["application/json"]["schema"]["$ref"], json!("#/components/schemas/Einstellungsvorschau"));
+    assert!(d["components"]["schemas"]["Einstellungsvorschau"]["properties"]["text"].is_object());
+    assert!(post["description"].as_str().unwrap().contains("Trockenlauf von PUT /api/einstellungen"));
+    let e = kanband::web::endpunkte::ENDPUNKTE.iter().find(|e| e.methode == "POST" && e.pfad == "/api/einstellungen/vorschau").expect("in der Endpunktliste");
+    assert!(!e.wer, "X-KanbanD-Wer optional");
+    assert_eq!(e.zweck, post["description"].as_str().unwrap(), "derselbe Text");
+}

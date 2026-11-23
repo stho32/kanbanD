@@ -87,6 +87,7 @@ pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) 
         .routes(routes!(fieber_cache, fieber_ergaenzen, fieber_verwerfen))
         .routes(routes!(wer))
         .routes(routes!(einstellungen_lesen, einstellungen_setzen))
+        .routes(routes!(einstellungen_vorschau))
         .routes(routes!(vorgabe_transkripte_setzen))
         .routes(routes!(personen, person_anlegen))
         .routes(routes!(person_aendern, person_stilllegen))
@@ -848,6 +849,29 @@ async fn einstellungen_setzen(State(app): State<App>, Wer(wer): Wer, JsonKoerper
     })
     .await?;
     Ok(Json(json!({ "geaendert": geaendert })).into_response())
+}
+
+/// Trockenlauf des `PUT` (R00250, ADR-0043 N1): ohne Header gerechnet wie für einen Menschen — „Einrichten“ speichert ohnehin
+/// nur als Mensch; mit Header gelten die Rechte dieser Person wie beim `PUT`.
+#[utoipa::path(
+    post,
+    path = "/api/einstellungen/vorschau",
+    tag = "Ordner",
+    description = "Trockenlauf von PUT /api/einstellungen mit demselben Rumpf: {text, geaendert} — text ist genau die Datei kanbanD.md, die PUT jetzt schreiben würde (BOM und Zeilenenden der Datei), ohne Änderung die heutige; dieselben Fehler wie PUT (400, 403, 409 mit dem Wortlaut der Handform, 423); schreibt nichts, kein Commit; X-KanbanD-Wer optional (ohne: gerechnet wie für einen Menschen) (R00250, ADR-0043 N1)",
+    params(("X-KanbanD-Wer" = Option<String>, Header, description = "Kürzel der handelnden Person aus kanbanD.md; optional")),
+    request_body = crate::modell::Einstellungen,
+    responses((status = 200, description = "Erfolg", body = crate::dienst::Einstellungsvorschau), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "die Art einer Person und den Zustand eines Menschen ändern nur Menschen", body = crate::web::openapi::PersonenartVerboten), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; Handform mit dem Wortlaut", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Dateisystem", body = crate::web::openapi::Fehlerantwort))
+)]
+async fn einstellungen_vorschau(State(app): State<App>, Wer(wer): Wer, JsonKoerper(neu): JsonKoerper<Einstellungen>) -> Result<Response, Fehler> {
+    let vorschau = blockierend(&app, move |k| {
+        let art = match wer.as_deref() {
+            Some(w) => k.handelnder(Some(w))?.art,
+            None => crate::modell::Art::Mensch,
+        };
+        k.einstellungen_vorschau(art, neu)
+    })
+    .await?;
+    Ok(Json(vorschau).into_response())
 }
 
 #[utoipa::path(

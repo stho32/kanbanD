@@ -262,7 +262,8 @@ async fn personenart_verboten_ist_eine_eigene_403_form() {
         .map(|(wo, _)| wo)
         .collect();
     mit_schema.sort();
-    assert_eq!(mit_schema, ["delete /api/personen/{kuerzel}", "patch /api/personen/{kuerzel}", "post /api/personen", "put /api/einstellungen"], "403 PersonenartVerboten nur an den Wegen, die art und aktiv schreiben");
+    // dazu der Trockenlauf des PUT, der dieselbe 403 rechnet, ohne zu schreiben (R00250, ADR-0043 N1.1)
+    assert_eq!(mit_schema, ["delete /api/personen/{kuerzel}", "patch /api/personen/{kuerzel}", "post /api/einstellungen/vorschau", "post /api/personen", "put /api/einstellungen"], "403 PersonenartVerboten nur an den Wegen, die art und aktiv schreiben, und am Trockenlauf des PUT");
 }
 
 /// R00009 Karte #22: die Beschreibung von PUT …/spalten nennt die `alt`-Semantik samt Verhalten ohne `alt`.
