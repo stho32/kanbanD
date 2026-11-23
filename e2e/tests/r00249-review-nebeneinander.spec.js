@@ -478,6 +478,7 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
       for (const breite of [320, 414, 980, 1280]) {
         await breiteSetzen(page, breite, 800);
         await s.commitOeffnen(k, 9, N().n1);
+        await farbeAbwarten(page, s.bereich('src/n.rs'));
         await expect(s.schalter).toBeVisible();
         await expect(s.eingabe).not.toBeChecked();
         await expect(s.eingabe).toBeEnabled();
@@ -545,8 +546,10 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
       const s = seite(page);
       await breiteSetzen(page, 320, 800);
       await s.commitOeffnen(k, 9, N().n1);
-      const m = await s.schalter.evaluate(l => { const r = l.getBoundingClientRect(); return { hoehe: r.height, rechts: r.right, breite: innerWidth }; });
-      expect(m.hoehe).toBeGreaterThanOrEqual(48);
+      await expect(s.schalter).toBeVisible();
+      const messen = () => s.schalter.evaluate(l => { const r = l.getBoundingClientRect(); return { hoehe: r.height, rechts: r.right, breite: innerWidth }; });
+      await expect.poll(async () => (await messen()).hoehe, 'Zielfläche des Labels').toBeGreaterThanOrEqual(48);
+      const m = await messen();
       expect(m.rechts).toBeLessThanOrEqual(m.breite);
       expect(await seitenQuer(page)).toBe(true);
     });

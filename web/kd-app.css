@@ -1608,6 +1608,21 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .umbr .dz{table-layout:auto;inline-size:100%}
 .umbr .dz .c,.umbr .dz tr.hk>td{white-space:pre-wrap;overflow-wrap:anywhere}
 .umbr mark.wm{-webkit-box-decoration-break:clone;box-decoration-break:clone}
+/* Nebeneinander (R00249, D0009 Bild 8 `.ru-nb`, ADR-0042 N6): eine echte Tabelle (die Regel `.dz` des Fensters „Defekte Dateien“ macht
+   sie sonst zur Flexbox), feste Spalten: Nummern 58 px (≤ 640 px: 34 px), beide Code-Spalten teilen den Rest gleich. Bei „Umbrechen“ aus
+   ist die Tabelle so breit wie `--bb` (2 × längste Zeile beider Seiten), mindestens der Bereich; der Code scrollt quer, nichts wird
+   abgeschnitten (PO Z. 653, 657). Die leere Seite ist eine Fläche `--kd-sunken` aus Nummer und Code ohne Rand dazwischen */
+.dz.ru-nb{display:table;padding:0;border-bottom:0;table-layout:fixed;inline-size:var(--bb)}
+.umbr .dz.ru-nb{table-layout:fixed;inline-size:100%}
+.ru-nb col.cn{inline-size:58px}
+.ru-nb thead th{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.ru-nb td.n{inline-size:auto;min-inline-size:0}
+.ru-nb td.c+td.n{border-left:1px solid var(--kd-line-strong)}
+.ru-nb td.del{background:var(--kd-c-red)}.ru-nb td.add{background:var(--kd-c-green)}
+.ru-nb td.lz{background:var(--kd-sunken)}
+.ru-nb td.del mark.wm{background:color-mix(in oklch,var(--kd-c-red) 85%,var(--kd-c-red-line));box-shadow:inset 0 -2px 0 var(--kd-c-red-line)}
+.ru-nb td.add mark.wm{background:color-mix(in oklch,var(--kd-c-green) 85%,var(--kd-c-green-line));box-shadow:inset 0 -2px 0 var(--kd-c-green-line)}
+.ru-nb td.del mark.wm .mk-z::after{background:var(--kd-c-red-line)}.ru-nb td.add mark.wm .mk-z::after{background:var(--kd-c-green-line)}
 /* Wortmarke (R00247, D0009 S5): Fläche aus den Tokens gemischt, 2 px Unterkante in der Linienfarbe; inline, ohne Maß und ohne Seitenrand */
 mark.wm{color:inherit;padding:0;background:none}
 .dz tr.del mark.wm{background:color-mix(in oklch,var(--kd-c-red) 85%,var(--kd-c-red-line));box-shadow:inset 0 -2px 0 var(--kd-c-red-line)}
@@ -1716,6 +1731,7 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .rv .sum{margin-left:0}
   .rv-haupt{padding:var(--kd-s3)}
   .dz .n{min-inline-size:34px;inline-size:34px;padding:0 4px}
+  .ru-nb col.cn{inline-size:34px}
   .rv-meld{margin:var(--kd-s4)}
 }
 /* Übersicht der Review-Seite (R00235, ADR-0042 Punkte 1, 3, 9; D0009 #review-uebersicht Bild 3, 7): Gruppen Code, Tests, Doku und
