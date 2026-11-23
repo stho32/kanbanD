@@ -543,6 +543,44 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     expect(fehler).toEqual([]);
   });
 
+  test('Nacharbeit S2/FA 10: das Schreiben scheitert immer — der Haken steht nach dem Blättern zu einem anderen Commit und zurück', async ({ page }) => {
+    const s = seite(page);
+    await page.addInitScript(() => { Storage.prototype.setItem = function () { throw new DOMException('voll', 'QuotaExceededError'); }; });
+    await commitOeffnen(page, k, 1, h.kArt);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    await page.locator('#rv-vor').click();
+    await expect(page.locator('#rv-pos')).toHaveText(/^2 von 2/);
+    await page.locator('#rv-zurueck').click();
+    await expect(page.locator('#rv-pos')).toHaveText(/^1 von 2/);
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    await expect(s.kaestchen('web/kd-app.css')).toBeChecked();
+    expect(await s.offen('web/kd-app.css')).toBe(false);
+    await s.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    await page.locator('#rv-vor').click();
+    await page.locator('#rv-zurueck').click();
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    expect(fehler).toEqual([]);
+  });
+
+  test('Nacharbeit S2/FA 10: das Schreiben scheitert immer — in „Alle Änderungen“ bleibt der Haken beim Nachladen eines Abschnitts', async ({ page }) => {
+    const s = seite(page);
+    await page.addInitScript(() => { Storage.prototype.setItem = function () { throw new DOMException('voll', 'QuotaExceededError'); }; });
+    const wb = url => url.pathname === '/api/aufgaben/7/diff' && url.searchParams.get('anwendung') === 'wb' && !url.searchParams.has('datei');
+    await page.route(wb, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ fehler: 'Zeitgrenze' }) }));
+    await alleOeffnen(page, k, 7);
+    await expect(page.locator('#rv-a1 .rv-abs-f')).toBeVisible();
+    await s.kaestchen('src/k5-2.rs').click();
+    await expect(s.ganzeZeile()).toHaveText('1 von 5 gesehen · 1 Abschnitt nicht geladen');
+    await page.unroute(wb);
+    await page.locator('#rv-a1').getByRole('button', { name: 'Erneut versuchen' }).click();
+    await expect(s.ganzeZeile()).toHaveText('1 von 8 gesehen');
+    await expect(s.kaestchen('src/k5-2.rs')).toBeChecked();
+    expect(fehler.filter(f => !f.includes('503'))).toEqual([]);
+  });
+
   test('AK 7: der Satz ist gedämpft, nicht im Fehlerrot, ≥ 4,5:1 in Hell und Dunkel und bricht bei 320 px um', async ({ page }) => {
     const s = seite(page);
     await page.addInitScript(speicherGesperrt);
