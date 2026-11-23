@@ -1,6 +1,6 @@
 # ADR-0042: Review-Seite übersichtlicher — Art der Datei aus festen Pfadregeln, „Gesehen“ nur in der Sitzung, Wortmarke über Präfix und Suffix, Pfad und VS Code über `vscode://file` mit der Wurzel aus der Diff-Antwort, „Diff in VS Code“ ohne Serveraufruf durch „Patch herunterladen“ ersetzt
 
-**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt. Nachtrag N2 (2026-11-22, Akzeptiert): Punkt 6 ergänzt (`ETag` von „Ein Commit“ mit dem Startordner, ohne Git, kein eigener Versionsteil), Wortlaute an Punkt 3 nach N1.2. Nachtrag N3 (2026-11-23, Akzeptiert): Fingerabdruck von N1.4 ohne `patch`.
+**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt. Nachtrag N2 (2026-11-22, Akzeptiert): Punkt 6 ergänzt (`ETag` von „Ein Commit“ mit dem Startordner, ohne Git, kein eigener Versionsteil), Wortlaute an Punkt 3 nach N1.2. Nachtrag N3 (2026-11-23, Akzeptiert): Fingerabdruck von N1.4 ohne `patch`. Nachtrag N4 (2026-11-23, Akzeptiert): Meldung bei nicht speicherbarem „Gesehen“ ersetzt „ohne Meldung“ (Punkt 2, N1.4, N3).
 **Datum**: 2026-11-22
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #252, Lauf 252-architekt-1)
 **Kontext-Anforderung**: — (Karte #252, Auftrag des Betreibers vom 2026-11-22 nach dem Entwurf „Review ‚Ein Commit‘ – Vorschlag“; die Anforderungen schreibt der planer). Bezug: R00207, R00210, R00217, R00224; ADR-0030 Punkt 4, ADR-0032 (N2.4, N4 S2, N5.1, N6.9), ADR-0033 (Punkte 5 und 8, N1), ADR-0040; Artboard D0009
@@ -253,4 +253,30 @@ Einheit (Node, rein, `web/review-uebersicht.js`): derselbe Fingerabdruck für di
 
 - Positiv: Der Haken überlebt Nachladen, den Wechsel offen/zu und jedes Neuzeichnen. Kein Eingriff in die Antwort, kein neuer Endpunkt.
 - Inkauf: Die Lücke aus N3.3, bis eine Karte `blob` einführt.
-- R00246 FA 7 ist damit gedeckt (Frage 3 beantwortet). Nicht aufgenommen: die Meldung bei nicht speicherbarem „Gesehen“ (Frage 2 an den product-owner). Dazu liegt keine Entscheidung vor, N1.4 („ohne Meldung“) gilt bis dahin.
+- R00246 FA 7 ist damit gedeckt (Frage 3 beantwortet). Nicht aufgenommen: die Meldung bei nicht speicherbarem „Gesehen“ (Frage 2 an den product-owner). Dazu liegt keine Entscheidung vor, N1.4 („ohne Meldung“) gilt bis dahin. **Überholt durch N4**: die Entscheidung liegt vor, die Meldung gilt.
+
+## Nachtrag 2026-11-23 N4: Meldung, wenn „Gesehen“ nicht gespeichert werden kann (ersetzt „ohne Meldung“ in Punkt 2 und N1.4; Frage 2 des planers zu R00246, Karte #257)
+
+**Status `Akzeptiert`.** Der product-owner hat Frage 2 entschieden (`AI-Team/po-entscheidungen.md`, Eintrag 2026-11-23 zu #257, Frage 2; nicht richtungsweisend, umkehrbar). Der Text der Punkte 1–9 und von N1 bis N3 bleibt stehen. Wo er abweicht, gilt dieser Nachtrag.
+
+### N4.1 Entscheidung
+
+Der Fehlerpfad „Fehlt `localStorage` oder wirft es (Kontingent, privates Fenster, gesperrt), gilt „Gesehen“ nur bis zum Neuzeichnen, ohne Meldung“ (Punkt 2, N1.4) gilt **mit Meldung**:
+
+- **Wortlaut, verbindlich**: „Gesehen wird in diesem Browser nicht gespeichert und gilt nur bis zum Neuladen.“
+- **Ort und Art**: ein Satz in derselben Zeile wie „<k> von <n> gesehen“, als Statusmeldung (`role="status"`), im gedämpften Ton; kein Fehlerrot, keine Schaltfläche, kein Eintrag in der Konsole.
+- **Wann**: sie erscheint, sobald ein Zugriff auf den Speicher fehlschlägt, beim Lesen oder beim Schreiben. Sie verschwindet, wenn ein späteres Schreiben gelingt oder die Seite neu lädt.
+- **Wirkung**: Der Haken wirkt in der Seite weiter (Einklappen, Fortschritt zählen); nur der Speicher fehlt. Nichts geht an den Server, nichts an die Karte.
+
+### N4.2 Begründung
+
+Ohne Meldung verlöre, wer im privaten Fenster 30 Dateien abhakt und neu lädt, seine Arbeit, ohne es zu wissen („kein stiller Verlust“). Der Satz ist ehrliche Auskunft ohne Alarm.
+
+### N4.3 Durchsetzung
+
+Einheit: wirft `localStorage` beim Lesen oder Schreiben, steht die Meldung mit dem Wortlaut aus N4.1; gelingt ein späteres Schreiben, steht sie nicht mehr; es entsteht kein Konsolenfehler. E2E: bei gesperrtem Speicher erscheint der Satz im Statusbereich neben „<k> von <n> gesehen“, und der Haken klappt die Datei weiter ein (R00246 FA 10, AK 7, Mutant m12).
+
+### N4 Konsequenzen
+
+- Positiv: Die Dauer von „Gesehen“ ist für den Menschen erkennbar.
+- Inkauf: ein zusätzliches Element in der Fortschrittszeile, nur im Fehlerfall sichtbar.
