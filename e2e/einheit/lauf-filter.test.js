@@ -74,15 +74,19 @@ test('FA 9: Sprung in eine verborgene Zeile schaltet zuerst „nur Fehler“ aus
   assert.strictEqual(laufSprungFilter(FILTER_VORGABE, 'n', false), FILTER_VORGABE);
 });
 
-test('FA 8, AK 6: „Zeigen“ steht unter „Längste Schritte“ und „Teuerste Schritte“ aus der Listenfunktion; ohne Listen allein', () => {
+test('FA 8, AK 6 (abgelöst durch R00243 AK 4): ab 641 px steht „Zeigen“ vor „Längste Schritte“ und „Teuerste Schritte“, bis 640 px dahinter; ohne Listen allein', () => {
   const { T8 } = require('../tests/laufansicht-t8.js');
   const zeilen = T8.map((o, i) => ({ nr: i + 1, eintrag: lauf.eintragPruefen(JSON.parse(JSON.stringify(o))) }));
   const a = laufAuswerten(zeilen, false);
   assert.ok(a.top3.length && a.teuer3.length, 'beide Listen');
   const zeigen = laufFilterHtml(FILTER_VORGABE);
-  const html = laufTopHtml(a, esc, zeigen);
-  const stelle = s => html.indexOf(s);
-  assert.ok(stelle('Längste Schritte') < stelle('Teuerste Schritte') && stelle('Teuerste Schritte') < stelle('<fieldset class="lv-filt">'));
-  assert.strictEqual(html, laufTopHtml(a, esc).replace(/<\/section>$/, `${zeigen}</section>`), 'die Listen unverändert, „Zeigen“ dahinter');
-  assert.strictEqual(laufTopHtml({ ...a, top3: [], teuer3: [] }, esc, zeigen), `<section class="lv-gl">${zeigen}</section>`);
+  const stelle = (html, s) => html.indexOf(s);
+  const breit = laufTopHtml(a, esc, zeigen), ausdruecklichBreit = laufTopHtml(a, esc, zeigen, true);
+  assert.strictEqual(breit, ausdruecklichBreit, 'ohne Angabe gilt die Reihenfolge ab 641 px');
+  assert.ok(stelle(breit, '<fieldset class="lv-filt">') < stelle(breit, 'Längste Schritte') && stelle(breit, 'Längste Schritte') < stelle(breit, 'Teuerste Schritte'));
+  assert.ok(breit.startsWith(`<section class="lv-gl" aria-labelledby="lv-top-t lv-teu-t">${zeigen}`), '„Zeigen“ als erstes Kind des Seitenfelds');
+  const schmal = laufTopHtml(a, esc, zeigen, false);
+  assert.ok(stelle(schmal, 'Längste Schritte') < stelle(schmal, 'Teuerste Schritte') && stelle(schmal, 'Teuerste Schritte') < stelle(schmal, '<fieldset class="lv-filt">'));
+  assert.strictEqual(schmal, laufTopHtml(a, esc).replace(zeigen, '').replace(/<\/section>$/, `${zeigen}</section>`), 'die Listen unverändert, „Zeigen“ dahinter');
+  for (const zuerst of [true, false]) assert.strictEqual(laufTopHtml({ ...a, top3: [], teuer3: [] }, esc, zeigen, zuerst), `<section class="lv-gl">${zeigen}</section>`);
 });

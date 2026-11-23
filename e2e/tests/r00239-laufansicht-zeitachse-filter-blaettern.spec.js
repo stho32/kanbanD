@@ -353,7 +353,7 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     expect(await page.locator(KEINE_FEHLER).evaluate(p => p.hasAttribute('role') || p.hasAttribute('aria-live') || Boolean(p.closest('[role=status],[role=alert],[aria-live]')))).toBe(false);
   });
 
-  test('AK 6 · US-4: „Zeigen“ unter „Längste Schritte“, bei T4 allein; Live lässt den Stand; Sprung schaltet die Filter für eine verborgene Zeile um', async ({ page }) => {
+  test('AK 6 · US-4 (Reihenfolge abgelöst durch R00243 AK 4): „Zeigen“ über „Längste Schritte“ ab 641 px, bei T4 allein; Live lässt den Stand; Sprung schaltet die Filter für eine verborgene Zeile um', async ({ page }) => {
     await s.oeffnen(T.T4);
     await s.gelesen();
     await expect(page.locator(ZEIGEN)).toBeVisible();
@@ -362,7 +362,7 @@ test.describe('R00239 Laufansicht: Zeitachse, Filter, Blättern', () => {
     await s.gelesen();
     expect(await page.evaluate(() => {
       const gl = document.querySelector('#lauf .lv-gl'), top = document.querySelector('#lauf .lv-top'), zeigen = document.querySelector('#lauf fieldset.lv-filt');
-      return gl.contains(zeigen) && zeigen.getBoundingClientRect().top >= top.getBoundingClientRect().bottom && Boolean(top.compareDocumentPosition(zeigen) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return gl.contains(zeigen) && zeigen.getBoundingClientRect().bottom <= top.getBoundingClientRect().top && Boolean(top.compareDocumentPosition(zeigen) & Node.DOCUMENT_POSITION_PRECEDING);
     })).toBe(true);
     await s.kaestchen('Werkzeuge').click();
     await s.kaestchen('nur Fehler').click();
