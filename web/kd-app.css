@@ -1632,8 +1632,10 @@ mark.wm{color:inherit;padding:0;background:none}
 .rv-randb p,.rv-lfehl p{margin:0;flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
 .rv-lfehl{color:var(--kd-status-error-ink)}
 /* Alle Änderungen der Aufgabe (R00210, D0009 #alle-aenderungen, #alle-raender): Umschalter, Abschnitte je Anwendung, Folge-Dateien.
-   Die Leseposition führt die Seite selbst nach (reviewLesepositionHalten), darum ohne Scroll-Anker des Browsers. */
+   Die Leseposition führt die Seite selbst nach (reviewLesepositionHalten), darum ohne Scroll-Anker des Browsers, außer bei Umbrechen an:
+   dort gleicht er das Wachsen erstmals gezeichneter Blöcke über dem Bild aus (ADR-0042 N7, PO Z. 679). */
 .rv{overflow-anchor:none}
+.rv.umbr{overflow-anchor:auto}
 /* Commit-Leiste (R00245, D0009 `#review-uebersicht` .ru-cl/.ru-chip): höchstens 40 % der Fensterhöhe, rollt in sich; der Fokusring
    liegt im Innenabstand (2 px Linie + 2 px Abstand ≤ 4 px), `scroll-margin` hält ihn beim Rollen mit der Tastatur im Blick */
 .rv-ls{position:relative;max-block-size:40vh;max-block-size:40dvh;overflow-y:auto;padding:var(--kd-s2) var(--kd-s5);background:var(--kd-surface);border-bottom:1px solid var(--kd-line)}

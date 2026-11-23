@@ -528,6 +528,58 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
     expect(Math.max(nachUmschalten, beimScrollen, zurueck), 'Long Task').toBeLessThanOrEqual(150);
   });
 
+  /* ── AK 7 (Erweiterung, PO Z. 679, ADR-0042 N7.4 P1/P2): Hinaufrollen nach frischem Laden springt nicht ── */
+
+  for (const [breite, an] of [[980, true], [320, true], [980, false], [320, false]]) {
+    test(`AK 7: K-Last frisch geladen mit „${an ? 'an' : 'aus'}“ bei ${breite} px — ans Ende gesprungen, dann in 400-px-Schritten hinauf: größter Sprung der Zeile in der Fenstermitte ≤ 36 px, Scroll-Anker ${an ? 'auto' : 'none'}`, async ({ page }) => {
+      test.setTimeout(240000);
+      const s = seite(page);
+      await breiteSetzen(page, breite, 800);
+      await page.addInitScript(wert => localStorage.setItem('kanbanD.umbrechen', wert), an ? '1' : '0');
+      await s.commitOeffnen(k, 10, umbrechenRepository().u3);
+      if (an) await expect(s.eingabe).toBeChecked(); else await expect(s.eingabe).not.toBeChecked();
+      await s.datei('src/gross.rs').getByRole('button', { name: 'Änderungen anzeigen' }).click();
+      await expect(s.bereich('src/gross.rs').locator('tr.add')).toHaveCount(5000);
+      await farbeAbwarten(page, s.bereich('src/gross.rs'));
+      await zweiBilder(page);
+      // Ein Sprung ans Ende (kein schrittweises Rollen: das ließe jeden Block seine Höhe merken, der Test wäre auch ohne die Regel grün)
+      await page.evaluate(async () => {
+        const r = document.getElementById('review');
+        const bild = () => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig)));
+        r.scrollTop = r.scrollHeight; await bild();
+        r.scrollTop = r.scrollHeight; await bild();
+      });
+      const m = await page.evaluate(async () => {
+        const r = document.getElementById('review');
+        const bild = () => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig)));
+        const mitte = () => {
+          const q = r.getBoundingClientRect();
+          const z = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+          const tr = z && z.closest('#rv-insel tr');
+          return tr ? { tr, top: tr.getBoundingClientRect().top - q.top } : null;
+        };
+        let groesster = 0, schritte = 0, gemessen = 0;
+        while (schritte < 450 && r.scrollTop > 400) {
+          const vorher = mitte();
+          const st = r.scrollTop;
+          r.scrollTop = st - 400;
+          await bild();
+          schritte++;
+          if (!vorher) continue;
+          const nachher = vorher.tr.getBoundingClientRect().top - r.getBoundingClientRect().top;
+          gemessen++;
+          groesster = Math.max(groesster, Math.abs(nachher - vorher.top - 400));
+        }
+        return { groesster: Math.round(groesster), schritte, gemessen, anker: getComputedStyle(r).overflowAnchor };
+      });
+      test.info().annotations.push({ type: 'AK 7 Hinaufrollen', description: JSON.stringify({ breite, an, ...m }) });
+      console.log(`AK 7 Hinaufrollen ${JSON.stringify({ breite, an, ...m })}`);
+      expect(m.gemessen, 'genug Schritte mit Zeuge').toBeGreaterThanOrEqual(300);
+      expect(m.groesster, 'größter Sprung der Zeile in der Fenstermitte').toBeLessThanOrEqual(36);
+      expect(m.anker, 'Scroll-Anker des Browsers').toBe(an ? 'auto' : 'none');
+    });
+  }
+
   /* ── AK 9 Leseposition bleibt (US-6) ── */
 
   for (const breite of [980, 320]) {
