@@ -60,6 +60,12 @@ async function neuLaden(page) {
   await page.locator('#rv-insel .rv-gk').first().waitFor();
 }
 
+/** Hängt K3b über die API an Aufgabe #3 (wie ein Agent, der einen Commit hinterlegt). */
+async function k3bAnhaengen(page, k, h) {
+  const antwort = await page.request.post(`${k.adresse}api/aufgaben/3/commits`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { commits: [`kd:${h.k3b}`] } });
+  expect(antwort.ok()).toBe(true);
+}
+
 /** Zählt Textänderungen an der Live-Region `#rv-gesehen` (der Knoten muss derselbe bleiben). */
 async function liveZaehlen(page) {
   await page.evaluate(() => {
@@ -133,4 +139,154 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
     expect(fehler).toEqual([]);
   });
+
+  /* ── AK 2 Dauerhaft im Browser, nichts zum Server (US-2) ── */
+
+  test('AK 2/US-2: zwei Haken überleben Neuladen und neuen Tab, nicht einen neuen Kontext; ein Schlüssel je Board und Karte; nur GET', async ({ page, context, browser }) => {
+    const s = seite(page), board = '#/board/entwicklung';
+    const methoden = [];
+    page.on('request', anfrage => { if (anfrage.url().startsWith(k.adresse)) methoden.push(anfrage.method()); });
+    const commitsVorher = k.git('rev-list', '--count', 'HEAD');
+    await commitOeffnen(page, k, 1, h.kArt, board);
+    await s.kaestchen('web/kd-app.css').click();
+    await s.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    for (const pfad of ['web/kd-app.css', 'e2e/einheit/kontrast.test.js']) {
+      expect(await s.offen(pfad), pfad).toBe(false);
+      await expect(s.kaestchen(pfad)).toBeChecked();
+    }
+    expect(await s.offen('e2e/einheit/sperrform.test.js')).toBe(true);
+
+    const gespeichert = await s.speicher();
+    expect(Object.keys(gespeichert)).toEqual(['kanbanD.gesehen.entwicklung.1']);
+    const wert = JSON.parse(gespeichert['kanbanD.gesehen.entwicklung.1']);
+    expect(typeof wert.zeit).toBe('number');
+    expect(wert.gesehen.sort()).toEqual([`${h.kArt}\u0000e2e/einheit/kontrast.test.js`, `${h.kArt}\u0000web/kd-app.css`]);
+
+    const tab = await context.newPage();
+    await commitOeffnen(tab, k, 1, h.kArt, board);
+    await expect(seite(tab).zeileText()).toHaveText('2 von 8 gesehen');
+    await commitOeffnen(tab, k, 1, h.kArt, '#/board/zweites');
+    await expect(seite(tab).zeileText()).toHaveText('0 von 8 gesehen');
+    await commitOeffnen(tab, k, 201, h.kArt, board);
+    await expect(seite(tab).zeileText()).toHaveText('0 von 8 gesehen');
+    await tab.close();
+
+    const fremd = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const andere = await fremd.newPage();
+    await alsPerson(andere, 'sh');
+    await commitOeffnen(andere, k, 1, h.kArt, board);
+    await expect(seite(andere).zeileText()).toHaveText('0 von 8 gesehen');
+    await fremd.close();
+
+    expect(methoden.filter(m => m !== 'GET')).toEqual([]);
+    expect(k.git('rev-list', '--count', 'HEAD')).toBe(commitsVorher);
+    expect(fehler).toEqual([]);
+  });
+
+  test('AK 2/FA 8: ein anderer Commit derselben Datei — src/a.rs gesehen in K3, ungesehen in K3b', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 3, h.k3);
+    await s.kaestchen('src/a.rs').click();
+    await expect(s.zeileText()).toHaveText('1 von 3 gesehen');
+    await k3bAnhaengen(page, k, h);
+    await commitOeffnen(page, k, 3, h.k3b);
+    await expect(s.kaestchen('src/a.rs')).not.toBeChecked();
+    await expect(s.zeileText()).toHaveText('0 von 1 gesehen');
+    expect(await s.offen('src/a.rs')).toBe(true);
+  });
+
+  /* ── AK 3 Gesehene zählen nicht ins Zeichenbudget (US-3) ── */
+
+  test('AK 3/US-3: K-Budget — ohne Haken b, e, f, c offen; b und e gesehen und neu geladen: f, c und g offen (7.501), b und e zu', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 4, h.kBudget);
+    const offen = async () => Object.fromEntries(await Promise.all(['src/b.rs', 'src/d.rs', 'src/e.rs', 'src/f.rs', 'tests/c.rs', 'tests/g.rs'].map(async p => [p, await s.offen(p)])));
+    expect(await offen()).toEqual({ 'src/b.rs': true, 'src/d.rs': false, 'src/e.rs': true, 'src/f.rs': true, 'tests/c.rs': true, 'tests/g.rs': false });
+    await s.kaestchen('src/b.rs').click();
+    await s.kaestchen('src/e.rs').click();
+    await expect(s.zeileText()).toHaveText('2 von 7 gesehen');
+    await neuLaden(page);
+    expect(await offen()).toEqual({ 'src/b.rs': false, 'src/d.rs': false, 'src/e.rs': false, 'src/f.rs': true, 'tests/c.rs': true, 'tests/g.rs': true });
+    await expect(s.datei('tests/g.rs').locator('.df-zu')).toHaveCount(0);
+    await s.gruppenkopf('doku').click();
+    expect(await s.offen('Dokumentation/a.md')).toBe(true);
+  });
+
+  /* ── AK 4 „Alle aufklappen“, Dateiliste, Entfernen (US-4) ── */
+
+  test('AK 4/US-4: K-Art mit zwei Haken — „Alle aufklappen“ öffnet auch gesehene, Haken bleiben; Klappknopf, Neuladen, Klick in der Liste', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    await s.kaestchen('web/kd-app.css').click();
+    await s.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await neuLaden(page);
+    await expect(s.alleKnopf()).toHaveText('Alle einklappen');
+    await s.alleKnopf().click();
+    await expect(s.alleKnopf()).toHaveText('Alle aufklappen');
+    await s.alleKnopf().click();
+    for (const pfad of K_ART_DATEIEN) expect(await s.offen(pfad), pfad).toBe(true);
+    for (const art of ['code', 'test', 'doku']) await expect(s.gruppenkopf(art)).toHaveAttribute('aria-expanded', 'true');
+    await expect(s.kaestchen('web/kd-app.css')).toBeChecked();
+    await expect(s.kaestchen('e2e/einheit/kontrast.test.js')).toBeChecked();
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    await s.alleKnopf().click();
+    for (const pfad of K_ART_DATEIEN) expect(await s.offen(pfad), pfad).toBe(false);
+    for (const art of ['code', 'test', 'doku']) await expect(s.gruppenkopf(art)).toHaveAttribute('aria-expanded', 'true');
+
+    await s.zeile('e2e/einheit/kontrast.test.js').click();
+    expect(await s.offen('e2e/einheit/kontrast.test.js')).toBe(true);
+    await expect(s.klappe('e2e/einheit/kontrast.test.js')).toBeFocused();
+    await expect(s.klappe('e2e/einheit/kontrast.test.js')).toBeInViewport();
+    await expect(s.kaestchen('e2e/einheit/kontrast.test.js')).toBeChecked();
+
+    await s.klappe('web/kd-app.css').click();
+    expect(await s.offen('web/kd-app.css')).toBe(true);
+    await s.klappe('web/kd-app.css').click();
+    expect(await s.offen('web/kd-app.css')).toBe(false);
+    await s.klappe('web/kd-app.css').click();
+    await expect(s.kaestchen('web/kd-app.css')).toBeChecked();
+    await neuLaden(page);
+    expect(await s.offen('web/kd-app.css')).toBe(false);
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    expect(fehler).toEqual([]);
+  });
+
+  test('AK 4/FA 4: K-Rand — genau-501.json angehakt und wieder entfernt bleibt zu mit ihrem Satz; eine Datei mit Code öffnet wieder', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 2, h.kRand);
+    const g501 = 'tests/fixtures/genau-501.json';
+    await s.kaestchen(g501).click();
+    await s.kaestchen(g501).click();
+    await expect(s.kaestchen(g501)).not.toBeChecked();
+    expect(await s.offen(g501)).toBe(false);
+    await expect(s.datei(g501).locator('.df-zu p')).toHaveText('Neue Datei mit 501 Zeilen, beginnt eingeklappt.');
+    await s.kaestchen('tests/fixtures/genau-500.json').click();
+    expect(await s.offen('tests/fixtures/genau-500.json')).toBe(false);
+    await s.kaestchen('tests/fixtures/genau-500.json').click();
+    expect(await s.offen('tests/fixtures/genau-500.json')).toBe(true);
+  });
+
+  /* ── AK 8 Zwei Tabs ── */
+
+  test('AK 8: zwei Tabs eines Kontexts — Haken in A, dann in B: B überschreibt A nicht; nach dem Neuladen beider „2 von 8“', async ({ page, context }) => {
+    const a = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    const tabB = await context.newPage();
+    const b = seite(tabB);
+    await commitOeffnen(tabB, k, 1, h.kArt);
+    await a.kaestchen('web/kd-app.css').click();
+    await expect(a.zeileText()).toHaveText('1 von 8 gesehen');
+    await expect(b.kaestchen('web/kd-app.css')).not.toBeChecked();
+    await expect(b.zeileText()).toHaveText('0 von 8 gesehen');
+    await b.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await neuLaden(page);
+    await neuLaden(tabB);
+    await expect(a.zeileText()).toHaveText('2 von 8 gesehen');
+    await expect(b.zeileText()).toHaveText('2 von 8 gesehen');
+    await tabB.close();
+  });
+
 });

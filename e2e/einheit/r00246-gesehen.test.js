@@ -194,3 +194,35 @@ test('Fingerabdruck einer Folge: plus, minus, binaer und die Verweise der Schrit
   assert.notStrictEqual(fingerabdruck({ ...zwei, binaer: true }), grund);
   assert.strictEqual(fingerabdruck(folge([schritt('a', { patch: null, nachladen: true }), schritt('b', { patch: 'x' })])), grund);
 });
+
+/* ── B1291 Plan beim Laden mit gesehenen Dateien (FA 5, AK 3, m4) ── */
+
+const { aufklappPlanSeite, BUDGET_ZEILEN } = require('../../web/diff.js');
+const patchMit = n => '@@ -0,0 +1 @@\n' + '+x\n'.repeat(n - 1);
+const mitZeilen = (pfad, n, zusatz = {}) => datei({ alt: pfad, neu: pfad, plus: n - 1, minus: 0, patch: patchMit(n), ...zusatz });
+const voll = () => ({ rest: BUDGET_ZEILEN, gesperrt: false, erste: true });
+
+test('Plan K-Budget: ohne Haken b, e, f, c offen (10.000), g zu; mit b und e gesehen f, c und g offen (7.501), b und e zu', () => {
+  const dateien = [mitZeilen('src/b.rs', 2500), mitZeilen('src/d.rs', 601, { status: 'A' }), mitZeilen('src/e.rs', 2500), mitZeilen('src/f.rs', 2500), mitZeilen('tests/c.rs', 2500), mitZeilen('tests/g.rs', 2501), mitZeilen('Dokumentation/a.md', 2500)];
+  const ohne = aufklappPlanSeite(dateien, [], voll());
+  assert.deepStrictEqual(ohne.offen, [true, false, true, true, true, false, false]);
+  const gesehen = [true, false, true, false, false, false, false];
+  const mit = aufklappPlanSeite(dateien, [], voll(), gesehen);
+  assert.deepStrictEqual(mit.offen, [false, false, false, true, true, true, false]);
+  assert.deepStrictEqual(mit.budgetZu, [false, false, false, false, false, false, false], 'gesehene sind nicht wegen des Budgets zu');
+  assert.strictEqual(mit.stand.rest, BUDGET_ZEILEN - 7501);
+});
+
+test('Plan: zwei Dateien zu je 12.000 Zeilen, die erste gesehen — die zweite öffnet als erste, die öffnen darf (AK 3)', () => {
+  const dateien = [mitZeilen('src/x.rs', 12000), mitZeilen('src/y.rs', 12000)];
+  assert.deepStrictEqual(aufklappPlanSeite(dateien, [], voll()).offen, [true, false]);
+  const mit = aufklappPlanSeite(dateien, [], voll(), [true, false]);
+  assert.deepStrictEqual(mit.offen, [false, true]);
+  assert.strictEqual(mit.stand.erste, false);
+});
+
+test('Plan seitenweit: eine gesehene Datei unterbricht die Folge über Abschnitte nicht und trägt „erste“ weiter', () => {
+  const kd = aufklappPlanSeite([mitZeilen('src/x.rs', 12000)], [], voll(), [true]);
+  assert.deepStrictEqual(kd.stand, voll());
+  assert.deepStrictEqual(aufklappPlanSeite([mitZeilen('src/y.rs', 12000)], [], kd.stand).offen, [true]);
+});

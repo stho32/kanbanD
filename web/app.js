@@ -1366,9 +1366,15 @@ function reviewDateienAufbauen(r, antwort) {
   r.dateien = antwort.dateien.slice();
   r.hinweise = (antwort.hinweise || []).slice();
   reviewGesehenLesen(r);
-  const plan = aufklappPlanSeite(r.dateien, r.hinweise, { rest: BUDGET_ZEILEN, gesperrt: false, erste: true });
+  const gesehen = r.dateien.map(d => r.gesehen.has(commitDateiSchluessel(hash, d)));
+  const plan = aufklappPlanSeite(r.dateien, r.hinweise, { rest: BUDGET_ZEILEN, gesperrt: false, erste: true }, gesehen);
   const gemerkt = r.klappenJe[hash];
-  r.staende = r.dateien.map((d, i) => ({ offen: gemerkt ? gemerkt[i] : (plan.offen[i] || (d.status !== 'D' && dateiZustand(d, r.hinweise) !== 'patch')), budgetZu: plan.budgetZu[i], laden: null, fehler: null, gesehen: r.gesehen.has(commitDateiSchluessel(hash, d)) }));
+  r.staende = r.dateien.map((d, i) => {
+    // gesehene beginnen zu (R00246 FA 5); ohne Haken steht eine Datei ohne Code offen mit ihrem Satz
+    let offen = plan.offen[i] || (!gesehen[i] && d.status !== 'D' && dateiZustand(d, r.hinweise) !== 'patch');
+    if (gemerkt) offen = gemerkt[i];
+    return { offen, budgetZu: plan.budgetZu[i], laden: null, fehler: null, gesehen: gesehen[i] };
+  });
   r.gruppenOffen = gruppenAnfang();
   r.gesehenFuer = hash;
   r.gesehenAnsage = '';

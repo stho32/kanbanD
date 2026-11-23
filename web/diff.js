@@ -148,12 +148,14 @@
   }
 
   /** Der Plan über die ganze Seite (ADR-0033 N1.4): `stand` trägt Restbudget, „gesperrt“ (nach der ersten Datei, die nicht passt)
-      und „erste“ (die erste Datei der Seite öffnet immer) von Abschnitt zu Abschnitt weiter. Eine Folge-Datei öffnet ganz oder gar nicht. */
-  function aufklappPlanSeite(dateien, hinweise, stand) {
+      und „erste“ (die erste Datei der Seite öffnet immer) von Abschnitt zu Abschnitt weiter. Eine Folge-Datei öffnet ganz oder gar nicht.
+      Gesehene Dateien (`gesehen` je Index, R00246 FA 5) sind zu, zählen nicht und unterbrechen nicht. */
+  function aufklappPlanSeite(dateien, hinweise, stand, gesehen = []) {
     let { rest, gesperrt, erste } = stand;
     const offen = dateien.map(() => false);
     const budgetZu = dateien.map(() => false);
     gruppierteFolge(dateien).forEach(i => {
+      if (gesehen[i]) return;
       const zeilen = planZeilen(dateien[i], hinweise);
       if (zeilen === null) return;
       const passt = !gesperrt && (erste || zeilen <= rest);
