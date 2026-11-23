@@ -38,6 +38,8 @@ async function speichern(page) {
 
 /** AK 11: der Text der Vorschau vor dem Speichern ist nach dem Speichern genau kanbanD.md. */
 async function speichernUndVorschauPruefen(page, k) {
+  // V15 (R00250, ADR-0043 N1.5): die Vorschau kommt vom Server — erst prüfen, wenn sie aktuell ist
+  await expect(page.locator('#einr-vorschau')).toHaveAttribute('data-stand', 'aktuell');
   const vorschau = await page.locator('#einr-vorschau').textContent();
   const vorher = +k.git('rev-list', '--count', 'HEAD');
   await speichern(page);
@@ -160,6 +162,7 @@ test.describe('R00209 Einrichten mit Repository', () => {
     await page.goto(k.adresse + '#/einrichten');
     await page.getByLabel('Repository kd', { exact: true }).fill(`  ${r}/Documentation  `);
     await expect(page.locator('#einr-vorschau')).toContainText(`kd: {name: kanbanD, repository: ${r}/Documentation}`);
+    await expect(page.locator('#einr-vorschau')).toHaveAttribute('data-stand', 'aktuell');
     await expect(page.locator('#einr-vorschau')).not.toContainText('wbs');
     await speichernUndVorschauPruefen(page, k);
     await page.getByLabel('Repository kd', { exact: true }).fill('');

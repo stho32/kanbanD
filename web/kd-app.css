@@ -580,6 +580,10 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .seg.art>span{height:22px;font-size:11px;padding:0 6px}
 .yaml{margin:0;padding:var(--kd-s3) var(--kd-s4);font:11px/1.55 var(--kd-mono);color:var(--kd-text);background:var(--kd-bg);white-space:pre-wrap;flex:1}
 .yaml .neu{background:var(--kd-c-green)}
+/* Vorschau in „Einrichten“ nicht aktuell (R00250, ADR-0043 N1.2): gedämpft, kein Fehlerrot; die Statuszeile darunter sagt warum */
+.yaml.gedaempft{color:var(--kd-muted)}
+#einr-vorschau-stand:empty{padding:0}
+#einr-vorschau-stand{padding:var(--kd-s2) var(--kd-s4)}
 /* Personen und Berichte */
 .leiste b{font-weight:600}
 /* „‹ Datum › Heute“ der Personenseite (R00199, D0005 #tagesleiste-blaettern): bricht nur als Ganzes um, das Datum in --kd-text */

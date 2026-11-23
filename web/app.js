@@ -123,6 +123,35 @@ async function api(methode, pfad, daten) {
   return json;
 }
 
+/* ── Vorschau in „Einrichten“ (R00250, ADR-0043 N1): Trockenlauf des Servers mit dem Rumpf, den „Speichern“ senden würde ── */
+const VORSCHAU_ENTPRELLT_MS = 250;
+const VORSCHAU_GEDAEMPFT_MS = 400;
+/** Der Rumpf von `PUT /api/einstellungen` aus dem Entwurf — derselbe für „Speichern“ und die Vorschau. */
+function einrichtenRumpf(einr) {
+  const { fehler, gespeichert, ...entwurf } = einr;
+  return { ...entwurf, klassen: ungestrichen(entwurf.klassen) };
+}
+const einrVorschau = vorschauTakt({
+  // läuft nicht durch die Schlange: sie schreibt nicht und darf „Speichern“ nicht aufhalten (N1.2 Punkt 2)
+  anfrage: () => api('POST', '/api/einstellungen/vorschau', einrichtenRumpf(S.ui.einr)).then(daten => ({ status: 200, daten }), f => ({ status: f.status || 0, daten: f.daten, meldung: f.message })),
+  zeigen: z => { S.ui.vorschau = z; vorschauZeigen(); },
+  uhr: { setTimeout: (f, ms) => setTimeout(f, ms), clearTimeout: w => clearTimeout(w) },
+  entprellMs: VORSCHAU_ENTPRELLT_MS,
+  daempfMs: VORSCHAU_GEDAEMPFT_MS,
+});
+/** Den Stand der Vorschau ohne Neuzeichnen setzen — der Fokus bleibt im Feld. */
+function vorschauZeigen() {
+  const pre = $('#einr-vorschau'), zeile = $('#einr-vorschau-stand'), z = S.ui.vorschau;
+  if (!pre || !zeile || !z) return;
+  pre.textContent = z.text;
+  pre.dataset.stand = z.stand;
+  pre.setAttribute('aria-busy', String(z.stand === 'wartet'));
+  pre.classList.toggle('gedaempft', z.gedaempft);
+  zeile.textContent = z.meldung;
+}
+/** Fingerabdruck des Entwurfs: ändert ihn eine Aktion, fragt die Vorschau sofort (N1.2 Punkt 1). */
+const einrFingerabdruck = () => (S.ui.einr ? JSON.stringify(einrichtenRumpf(S.ui.einr)) : null);
+
 /** Zugeklappte Spalten des Boards (R00074): je Betrachter und Board im Browser-Speicher, keine Datei ändert sich. */
 function spaltenZu() {
   const slug = S.ui.slug || '';
@@ -307,8 +336,12 @@ async function sichtFolgen({ view, slug, hash, fbFehler }, start) {
   const vorher = S.ui.view;
   S.ui.view = view;
   if (view !== vorher && S.ui.vollbild) vollbildSetzen(false);
-  if (view !== 'einrichten') { S.ui.einr = null; S.ui.ts = null; }
-  else if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
+  if (view !== 'einrichten') { S.ui.einr = null; S.ui.ts = null; einrVorschau.schliessen(); S.ui.vorschau = null; }
+  else {
+    if (!S.ui.einr) S.ui.einr = kopie(S.zustand.einstellungen);
+    // beim Öffnen und nach jedem Nachladen: eine fremde Änderung an kanbanD.md ändert den Trockenlauf (N1.2 Punkt 1)
+    einrVorschau.anstossen(true);
+  }
   if (view === 'einrichten' && S.ui.zuTranskripten) { S.ui.zuTranskripten = false; S.ui.fokus = '#transkripte-kopf'; }
   S.ui.slug = slug;
   try { if (slug) localStorage.setItem('kanbanD.board', slug); } catch (_) { }
@@ -961,7 +994,7 @@ function schalterUmstellen(slug, wahl) {
   const tsVorher = S.ui.ts = S.ui.ts || {};
   tsVorher[schluessel] = { ...(tsVorher[schluessel] || {}), laeuft: wahl };
   durchDieSchlange(() => api('PUT', pfad, schalterRumpf(slug, wahl))).then(antwort => {
-    if (slug === null) S.transkripteVorgabe = antwort.erfassen;
+    if (slug === null) { S.transkripteVorgabe = antwort.erfassen; if (S.ui.einr) einrVorschau.anstossen(true); }
     else (S.boards || []).filter(b => b.slug === slug).forEach(b => { b.transkripte_erfassen = antwort.erfassen; });
     return { art: 'ok', text: schalterErfolgsSatz(titel, antwort.wirksam) };
   }, f => ({ art: 'fehler', text: schalterFehlerSatz({ status: f.status || 0, fehler: f.message }), erneut: f.status ? null : wahl })).then(satz => {
@@ -3766,9 +3799,12 @@ async function act(a, arg, wert, el, detail) {
   namen.forEach(sperre.starten);
   sperrenMarkieren();
   sperrformNachFrist(laufender);
+  const entwurfVorher = einrFingerabdruck();
   try {
     await aktion(a, arg, wert);
   } finally {
+    // eine Aktion, die den Entwurf ändert, und jedes beendete „Speichern“ fragen die Vorschau sofort (N1.2 Punkt 1)
+    if (S.ui.einr && (a === 'einr-ok' || einrFingerabdruck() !== entwurfVorher)) einrVorschau.anstossen(true);
     laufenderAusloeser = voriger;
     // Eine Aktion ohne Anfrage endet mit dem Klick; hat sie eine, endet die Sperre mit deren Antwort (ADR-0025 Regel 2).
     if (!laufender.anfrage) sperreFreigeben(laufender);
@@ -4726,8 +4762,7 @@ async function aktion(a, arg, wert) {
       case 'einr-weg': u.einr = kopie(S.zustand.einstellungen); u.palFuer = null; u.sPalFuer = null; break;
       case 'einr-ok': {
         if (ichNoetig()) break;
-        const { fehler, gespeichert, ...entwurf } = u.einr;
-        const daten = { ...entwurf, klassen: ungestrichen(entwurf.klassen) };
+        const daten = einrichtenRumpf(u.einr);
         const gesendet = einstellungenText(u.einr), standVorher = S.zustand;
         try {
           await durchDieSchlange(() => api('PUT', '/api/einstellungen', daten));
@@ -5129,7 +5164,7 @@ document.addEventListener('input', e => {
     if (['repo', 'arepo'].includes(ef)) e.target.title = v;
     if (ef === 'repo') repositoryZustandZeigen($('#quellen-repo'), v, S.quellenStand || undefined);
     if (ef === 'arepo') repositoryZustandZeigen($(`#anw-repo-${i}`), v, gespeichertesRepository(d.quellen.anwendungen[i].kuerzel));
-    $('#einr-vorschau').textContent = einstellungenText(d);
+    einrVorschau.anstossen(false);
     return;
   }
   const fr = e.target.dataset && e.target.dataset.fr;

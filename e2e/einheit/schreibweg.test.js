@@ -51,6 +51,9 @@ function rumpfBereiche(code, name) {
   return bereiche;
 }
 
+/** Der eine POST, der nicht schreibt — genau dieser Pfad, kein anderer (ADR-0043 N1.4: kein Commit, keine Datei). */
+const TROCKENLAUF = "api('POST', '/api/einstellungen/vorschau'";
+
 /** Schreibende Netzaufrufe außerhalb der einen Stelle, als `datei:zeile`. */
 function schreibwegeVorbei(quellen) {
   return quellen.flatMap(({ datei, text }) => {
@@ -62,6 +65,8 @@ function schreibwegeVorbei(quellen) {
     for (const m of code.matchAll(/(?<![\w.])api\(/g)) {
       if (code.slice(Math.max(0, m.index - 9), m.index) === 'function ') continue;
       if (text.startsWith("api('GET'", m.index)) continue;
+      // der Trockenlauf der Einstellungen schreibt nichts und darf „Speichern“ nicht aufhalten (R00250, ADR-0043 N1.1/N1.2 Punkt 2)
+      if (text.startsWith(TROCKENLAUF, m.index)) continue;
       if (!drin(m.index)) funde.push(m.index);
     }
     for (const m of code.matchAll(/(?<![\w.])fetch\(/g)) {
@@ -86,6 +91,9 @@ test('Wächter erkennt einen Schreibaufruf am Schreibweg vorbei — api mit Meth
     "function d() { return durchDieSchlange(() => api('PUT', '/ok', { t: '(' })); }",
     "function e() { return api('GET', '/lesen'); }",
     "async function f() { await fetch('/lesen'); }",
+    "function g() { return api('POST', '/api/einstellungen/vorschau', {}); }",
+    "function h() { return api('PUT', '/api/einstellungen/vorschau', {}); }",
+    "function i() { return api('POST', '/api/einstellungen', {}); }",
   ].join('\n');
-  assert.deepStrictEqual(schreibwegeVorbei([{ datei: 'probe.js', text }]), ['probe.js:1', 'probe.js:2', 'probe.js:3']);
+  assert.deepStrictEqual(schreibwegeVorbei([{ datei: 'probe.js', text }]), ['probe.js:1', 'probe.js:2', 'probe.js:8', 'probe.js:9', 'probe.js:3'], 'api-Funde vor fetch-Funden');
 });

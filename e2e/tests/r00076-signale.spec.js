@@ -89,6 +89,8 @@ test.describe('R00076', () => {
     await expect(page.getByText('gespeichert')).toBeVisible();
     expect(k.lies('kanbanD.md')).toMatch(/\n  fertig: \{label: Agent ist fertig, color: [a-z]+\}\n/);
     await page.getByLabel('Signal fertig entfernen').click();
+    // V15 (R00250, ADR-0043 N1.5): die Vorschau kommt vom Server — erst prüfen, wenn sie aktuell ist
+    await expect(page.locator('#einr-vorschau')).toHaveAttribute('data-stand', 'aktuell');
     await expect(page.locator('#einr-vorschau')).not.toContainText('fertig');
   });
 });

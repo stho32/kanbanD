@@ -526,6 +526,8 @@ test.describe('R00195', () => {
     await expect(zuruecknehmen(page, 'eol')).toBeFocused();
     await expect(hinweisAn(editor, 'eol')).toHaveText('1 Karte zeigt die Klasse danach als Text ohne Farbe.');
     await expect(hinweisAn(editor, 'eol')).toHaveAttribute('role', 'status');
+    // V15 (R00250, ADR-0043 N1.5): die Vorschau kommt vom Server — erst prüfen, wenn sie aktuell ist
+    await expect(page.locator('#einr-vorschau')).toHaveAttribute('data-stand', 'aktuell');
     await expect(page.locator('#einr-vorschau')).not.toContainText('eol:');
     await streichen(page, 'sicherheit');
     await expect(hinweisAn(editor, 'sicherheit')).toHaveText('2 Karten zeigen die Klasse danach als Text ohne Farbe.');

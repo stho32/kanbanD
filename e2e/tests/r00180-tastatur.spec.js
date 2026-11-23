@@ -12,6 +12,8 @@ const WBS = wbsText([
   zeile('D0001', 'Dialog', 'A0001', 'Board', 'rot', { fertig: 'alle Interactions gruen' }),
   zeile('I0001', 'Interaction', 'D0001', 'Ansehen', 'rot', { fertig: 'US-1' }),
 ]);
+// Register in der Form, die kanbanD schreibt (ohne eigene Anführung): sonst ist sources von Hand gestaltet, „Speichern“ verweigert
+// den Abschnitt (R00250 Regel 6), und die Vorschau aus dem Server zeigt genau das (ADR-0043 N1)
 const einstellungen = arbeit => `---
 people:
   st: {name: Stefan, kind: human}
@@ -24,7 +26,7 @@ sources:
   wbs: ""
   requirements: ""
   applications:
-    kd: {name: kanbanD, wbs: "${arbeit.wbs}", requirements: "${arbeit.wurzel}/Anforderungen"}
+    kd: {name: kanbanD, wbs: ${arbeit.wbs}, requirements: ${arbeit.wurzel}/Anforderungen}
 ---
 `;
 const zweistellig = zahl => String(zahl).padStart(2, '0');

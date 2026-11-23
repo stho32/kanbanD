@@ -229,6 +229,8 @@ test.describe('R00222 ohne WBS', () => {
     await expect(page.locator('.einr-kopf:has-text("ANWENDUNGEN") + .hin')).toHaveText(HINWEIS_ANWENDUNGEN);
     const vorschau = page.locator('#einr-vorschau');
     await expect(vorschau).toContainText(`kd: {name: KD, repository: ${planung}}`);
+    // V15 (R00250, ADR-0043 N1.5): die Vorschau kommt vom Server — erst prüfen, wenn sie aktuell ist
+    await expect(vorschau).toHaveAttribute('data-stand', 'aktuell');
     await expect(vorschau).not.toContainText('wbs');
     const vorher = +k.git('rev-list', '--count', 'HEAD');
     const text = await vorschau.textContent();

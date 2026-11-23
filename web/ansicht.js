@@ -17,14 +17,13 @@ function yamlSkalar(s) {
 function klassenText(klassen) {
   return 'classes:' + (klassen.length ? '' : ' {}') + klassen.map(k => `\n  ${yamlSkalar(k.schluessel)}: {label: ${yamlSkalar(k.bezeichnung)}, color: ${yamlSkalar(k.farbe)}}`).join('');
 }
-/** `schalter`: `record-transcripts`, wie er in kanbanD.md geschrieben ist (R00220 FA 9) — nie aus dem Entwurf, der ihn nicht kennt;
-    `null`/fehlend heißt: keine Zeile. Die Stelle folgt src/format/einstellungen.rs `schreiben` (hinter `signals`, vor `sources`). */
-function einstellungenText(e, schalter = null) {
+/** `kanbanD.md` aus einem Entwurf, wie `einrichten` sie neu schreibt (src/format/einstellungen.rs `schreiben`): nur für die
+    Vorschau „Erster Start“ und als Fingerabdruck des Entwurfs. Die Vorschau in „Einrichten“ kommt vom Server (R00250, ADR-0043 N1.2). */
+function einstellungenText(e) {
   let s = '---\npeople:' + (e.personen.length ? '' : ' {}');
   for (const p of e.personen) s += `\n  ${yamlSkalar(p.kuerzel)}: {name: ${yamlSkalar(p.name)}, kind: ${p.art === 'agent' ? 'agent' : 'human'}${p.aktiv === false ? ', active: false' : ''}}`;
   s += '\n' + klassenText(ungestrichen(e.klassen));
   if ((e.signale || []).length) s += '\nsignals:' + e.signale.map(g => `\n  ${yamlSkalar(g.schluessel)}: {label: ${yamlSkalar(g.bezeichnung)}, color: ${yamlSkalar(g.farbe)}}`).join('');
-  if (typeof schalter === 'boolean') s += `\nrecord-transcripts: ${schalter}`;
   const pfade = q => pfadeZurDatei(q).map(([schluessel, wert]) => `${schluessel}: ${yamlSkalar(wert)}`);
   s += '\nsources:' + pfade(e.quellen).map(zeile => `\n  ${zeile}`).join('');
   const register = [...(e.quellen.anwendungen || [])].sort((a, b) => (a.kuerzel < b.kuerzel ? -1 : a.kuerzel > b.kuerzel ? 1 : 0));
@@ -2208,7 +2207,13 @@ ${vSignaleEinrichten(d)}
 <h2 class="einr-kopf">QUELLEN <span class="mono">sources:</span></h2>${vQuellen(d)}
 <h2 class="einr-kopf">ANWENDUNGEN <span class="mono">sources.applications:</span></h2><div class="hin">Je Anwendung ein Kürzel und der Pfad ihres Repositorys; ein Ordner darin genügt. Daraus liest kanbanD die Commits zu Verweisen wie <span class="mono">kd:&lt;hash&gt;</span>. Aufgaben nennen ihre Herkunft als <span class="mono">kd:I0007</span>; Boards binden mit <span class="mono">applications: [kd]</span>.</div>${vRegister(d)}
 ${d.fehler ? `<div class="warnh" id="einr-fehler" role="alert" tabindex="-1">${esc(d.fehler)}</div>` : ''}<div class="zeile-knoepfe"><button class="btn btn-haupt" data-act="einr-ok">Speichern</button><button class="btn" data-act="einr-weg">Verwerfen</button>${d.gespeichert ? '<span class="muted" id="einr-gespeichert">gespeichert</span>' : ''}</div>${vTranskripte()}</div>
-<aside class="einr"><h2 class="einr-kopf">KANBAND.MD <span class="mono">Vorschau</span></h2><pre class="yaml" id="einr-vorschau">${esc(einstellungenText(d, S.transkripteVorgabe))}</pre></aside></div>`;
+<aside class="einr"><h2 class="einr-kopf">KANBAND.MD <span class="mono">Vorschau</span></h2>${vEinrVorschau(S.ui.vorschau)}</aside></div>`;
+}
+/** Die Vorschau in „Einrichten“ (R00250, ADR-0043 N1.2): der Text vom Server mit `data-stand` (aktuell, wartet, verweigert,
+    fehler), gedämpft, wenn er nicht aktuell ist; darunter die Statuszeile. Das `pre` ist keine Live-Region. */
+function vEinrVorschau(z) {
+  const v = z || { stand: 'wartet', text: '', meldung: '', gedaempft: false };
+  return `<pre class="yaml${v.gedaempft ? ' gedaempft' : ''}" id="einr-vorschau" data-stand="${v.stand}" aria-busy="${v.stand === 'wartet'}">${esc(v.text)}</pre><div class="muted" id="einr-vorschau-stand" role="status">${esc(v.meldung)}</div>`;
 }
 
 /* ── Transkripte erfassen (R00220, D0009 #transkripte-schalter): nicht Teil des Entwurfs, jeder Klick schreibt sofort ── */

@@ -156,6 +156,8 @@ test('AK 6 · US-4: „an“ bei zweit — genau ein PUT, nur diese Gruppe gespe
   await page.waitForFunction(() => window.kdTest.gezeichnet());
   expect(anfragen).toEqual([{ pfad: '/api/boards/zweit/transkripte', rumpf: { erfassen: true } }]);
   expect(h.gehalten()).toBe(1);
+  // V15 (R00250, ADR-0043 N1.5): die Vorschau kommt vom Server — erst prüfen, wenn sie aktuell ist
+  await expect(vorschau(page)).toHaveAttribute('data-stand', 'aktuell');
   await expect(vorschau(page)).not.toContainText('record-transcripts');
 
   await h.freigeben();
@@ -240,6 +242,7 @@ test('AK 8 · US-6: offener Entwurf bleibt nach dem Live-Ereignis; Vorschau erst
   const h = await anhalten(page);
   await wahl(page, null, 'an').click();
   await expect(wirkung(page, LANGER_NAME)).toHaveText('erfasst nicht');
+  await expect(vorschau(page)).toHaveAttribute('data-stand', 'aktuell');
   await expect(vorschau(page)).not.toContainText('record-transcripts: true');
   await h.freigeben();
   await expect(vorschau(page)).toContainText('record-transcripts: true');
