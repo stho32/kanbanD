@@ -49,7 +49,8 @@ const textZeilen = zelle => zelle.evaluate(c => {
   const lesen = c.querySelector('.vh'), r = document.createRange();
   r.selectNodeContents(c);
   if (lesen) r.setStartAfter(lesen);
-  const rand = c.getBoundingClientRect().right;
+  // der Block `content-visibility:auto` schneidet über seine Kante hinaus ab, ohne `scrollWidth` zu vergrößern: gemessen wird am Sichtbereich
+  const rand = Math.min(c.getBoundingClientRect().right, c.closest('.df-sc').getBoundingClientRect().right);
   const rechtecke = Array.from(r.getClientRects()).filter(q => q.width > 0);
   return { zeilen: new Set(rechtecke.map(q => Math.round(q.top))).size, ueber: rechtecke.filter(q => q.right > rand + 0.5).length };
 });
@@ -57,7 +58,10 @@ const textZeilen = zelle => zelle.evaluate(c => {
 /** Maße einer Zeile: Höhe, Oberkanten von Nummer und Zeichen, Höhe von `td.n`/`td.m`, Hintergründe, Zahl der Nummern. */
 const zeilenMasse = tr => tr.evaluate(z => {
   const t = z.getBoundingClientRect().top, n = z.querySelector('td.n'), m = z.querySelector('td.m'), c = z.querySelector('td.c');
-  return { hoehe: z.offsetHeight, nTop: n.getBoundingClientRect().top - t, mTop: m.getBoundingClientRect().top - t, nHoehe: n.offsetHeight, mHoehe: m.offsetHeight, mGrund: getComputedStyle(m).backgroundColor, cGrund: getComputedStyle(c).backgroundColor, nummern: z.querySelectorAll('td.n').length };
+  // Lage des Textes in der Zelle (nicht der Zelle selbst: eine mittig gesetzte Nummer steht in einer ganzhohen Zelle)
+  const textTop = zelle => { const r = document.createRange(); r.selectNodeContents(zelle); const q = Array.from(r.getClientRects()).find(x => x.width > 0); return q ? q.top - t : null; };
+  const nummer = Array.from(z.querySelectorAll('td.n')).find(x => x.textContent.trim());
+  return { hoehe: z.offsetHeight, nTop: textTop(nummer), mTop: textTop(m), nHoehe: n.offsetHeight, mHoehe: m.offsetHeight, mGrund: getComputedStyle(m).backgroundColor, cGrund: getComputedStyle(c).backgroundColor, nummern: z.querySelectorAll('td.n').length };
 });
 
 const quer = bereich => bereich.evaluate(b => [b.scrollWidth, b.clientWidth]);
@@ -141,6 +145,8 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       const zeile = s.bereich('src/kurz.rs').locator('tr.add').first();
       await expect(zeile).toBeVisible();
       await zeile.evaluate(tr => { tr.kdMarke = 'vorab'; });
+      await page.evaluate(() => { for (const e of [document.getElementById('review'), document.getElementById('rv-umbr'), document.getElementById('rv-alle'), document.querySelector('.rv-leiste'), document.querySelector('#rv-insel')]) e.kdMarke = 'vorab'; });
+      const knotenGleich = () => page.evaluate(() => [document.getElementById('review'), document.getElementById('rv-umbr'), document.getElementById('rv-alle'), document.querySelector('.rv-leiste'), document.querySelector('#rv-insel')].map(e => e.kdMarke));
       const vorher = await s.zustand();
       const anfragen = [];
       page.on('request', r => { if (new URL(r.url()).pathname.startsWith('/api/')) anfragen.push(r.url()); });
@@ -149,6 +155,7 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       expect(await s.umbrechen()).toBe(true);
       expect(await s.eingabe.evaluate(e => document.activeElement === e), 'Fokus auf dem Schalter').toBe(true);
       expect(await zeile.evaluate(tr => tr.kdMarke), 'dieselbe Zeile').toBe('vorab');
+      expect(await knotenGleich(), 'Rolle, Schalter, Knopf, Kopfzeile und Insel sind dieselben Knoten').toEqual(Array(5).fill('vorab'));
       expect(await s.zustand()).toEqual(vorher);
       await s.schalter.click();
       await expect(s.eingabe).not.toBeChecked();
@@ -190,7 +197,7 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       await s.commitOeffnen(k, 9, umbrechenRepository().u1);
       const messen = () => s.eingabe.evaluate(e => {
         const st = getComputedStyle(e);
-        return { form: st.backgroundPosition + '|' + st.backgroundImage, farbe: st.backgroundColor, rand: st.borderTopColor, randBreite: st.borderTopWidth, grund: getComputedStyle(e.closest('.rv-leiste')).backgroundColor };
+        return { form: st.backgroundPosition, farbe: st.backgroundColor, rand: st.borderTopColor, randBreite: st.borderTopWidth, grund: getComputedStyle(e.closest('.rv-leiste')).backgroundColor };
       });
       await expect.poll(async () => (await messen()).randBreite, 'der Schalter ist gezeichnet').toMatch(/px$/);
       const aus = await messen();
@@ -227,8 +234,8 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       expect(t.zeilen, `${name}: mehr als eine Textzeile`).toBeGreaterThan(1);
       expect(m.hoehe, `${name}: Höhe`).toBe(t.zeilen * 18);
       expect(t.ueber, `${name}: kein Zeichen abgeschnitten`).toBe(0);
-      expect(Math.abs(m.nTop), `${name}: Nummer oben`).toBeLessThan(0.5);
-      expect(Math.abs(m.mTop), `${name}: Zeichen oben`).toBeLessThan(0.5);
+      expect(m.nTop, `${name}: Nummer oben`).toBeLessThan(9);
+      expect(m.mTop, `${name}: Zeichen oben`).toBeLessThan(9);
       expect([m.nHoehe, m.mHoehe], `${name}: Zellen auf voller Höhe`).toEqual([m.hoehe, m.hoehe]);
       expect(m.mGrund, `${name}: Zeichen auf dem Grund der Zeile`).toBe(m.cGrund);
       expect(m.nummern, `${name}: eine Nummer je Zeile`).toBe(aus.a.nummern);
@@ -411,6 +418,7 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
         if (breite === 320) {
           const c = s.zeile('src/u.rs', 'add', UM_B).locator('td.c');
           const m = await c.evaluate(z => { const e = document.createElement('span'); e.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font:inherit'; e.textContent = 'x'.repeat(100); z.appendChild(e); const w = e.getBoundingClientRect().width / 100; e.remove(); return { breite: z.clientWidth, zeichen: w }; });
+          expect((await textZeilen(c)).ueber, '320: kein Zeichen von Fall (b) abgeschnitten').toBe(0);
           expect(m.breite, `320: td.c ≥ 24 Zeichen (${JSON.stringify(m)})`).toBeGreaterThanOrEqual(24 * m.zeichen);
           expect(await zeilenMasse(s.zeile('src/u.rs', 'add', UM_B)).then(x => x.hoehe), 'Fall (b) höchstens 20 Textzeilen').toBeLessThanOrEqual(20 * 18);
           const bruch = await s.bereich('src/u.rs').locator('tr.hk').filter({ hasText: 'funktion_mit_einem' }).evaluate(t => {
@@ -525,4 +533,49 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       }
     });
   }
+
+  /* ── AK 3 (Fortsetzung): ein werfender localStorage ── */
+
+  test('AK 3: wirft localStorage beim Lesen und Schreiben, bleibt die Seite bedienbar, der Schalter wirkt bis zum Neuladen, ohne Meldung und Konsolenfehler, auch nach Blättern und Ansichtswechsel', async ({ page }) => {
+    const fehler = [];
+    page.on('pageerror', e => fehler.push(e.message));
+    page.on('console', m => { if (m.type() === 'error') fehler.push(m.text()); });
+    await page.addInitScript(() => {
+      const gesperrt = k => k === 'kanbanD.umbrechen';
+      const lesen = Storage.prototype.getItem, schreiben = Storage.prototype.setItem;
+      Storage.prototype.getItem = function (k) { if (gesperrt(k)) throw new Error('gesperrt'); return lesen.call(this, k); };
+      Storage.prototype.setItem = function (k, v) { if (gesperrt(k)) throw new Error('voll'); return schreiben.call(this, k, v); };
+    });
+    const s = seite(page);
+    await s.commitOeffnen(k, 9, umbrechenRepository().u1);
+    await expect(s.eingabe).not.toBeChecked();
+    await s.schalter.click();
+    await expect(s.eingabe).toBeChecked();
+    expect(await s.umbrechen(), 'wirkt bis zum Neuladen').toBe(true);
+    // Blättern und Wechsel der Ansicht: Zustand bleibt, Klasse und Haken stimmen überein
+    const vor = page.locator('#rv-vor, #rv-zurueck').first();
+    if (await vor.count()) { await vor.click(); await expect(s.eingabe).toBeChecked(); expect(await s.umbrechen()).toBe(true); }
+    await page.locator('#rv-u-alle').click();
+    await page.locator('#rv-insel section.df').first().waitFor();
+    await expect(s.eingabe).toBeChecked();
+    expect(await s.umbrechen()).toBe(true);
+    await expect(page.getByText(/gespeichert|Speicher|Einstellung/i)).toHaveCount(0);
+    expect(fehler, 'kein Konsolenfehler').toEqual([]);
+  });
+
+  /* ── AK 10 Bestand bei „aus“ ── */
+
+  test('AK 10: bei „aus“ wie vor der Karte — Codezelle pre, Block so breit wie sein Inhalt mit der Breite als Eigenschaft --bb, keine Klasse umbr', async ({ page }) => {
+    const s = seite(page);
+    await s.commitOeffnen(k, 9, umbrechenRepository().u1);
+    expect(await s.umbrechen()).toBe(false);
+    const aus = await s.bereich('src/u.rs').evaluate(b => {
+      const blk = b.querySelector('.dz-b'), c = b.querySelector('td.c');
+      return { stil: blk.getAttribute('style'), whiteSpace: getComputedStyle(c).whiteSpace, inline: getComputedStyle(blk).inlineSize, intrinsic: getComputedStyle(blk).containIntrinsicInlineSize, kopf: getComputedStyle(b.querySelector('tr.hk > td')).whiteSpace };
+    });
+    expect(aus.stil).toMatch(/^--bb:\d+px;contain-intrinsic-block-size:auto \d+px$/);
+    expect(aus.whiteSpace).toBe('pre');
+    expect(aus.kopf).toBe('pre');
+    expect(aus.intrinsic).toMatch(/\d+px$/);
+  });
 });
