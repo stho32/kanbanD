@@ -147,6 +147,24 @@ fn v5_gleichlauf_sechs_bestaende() {
     }
 }
 
+/// V5 mit dem Modell, wie es aus der Datei kommt (Lese-Rückfall `wbs`/`requirements` gefüllt, ohne JSON-Rundlauf): `PUT`
+/// stellt die alte Registerform um, auch wenn sonst nichts geändert ist (ADR-0034 N2 Regel 2, `Altform::Umstellen`) — die
+/// Vorschau rechnet dasselbe. Über HTTP fällt der Lese-Rückfall beim Lesen des Rumpfs weg; hier hängt der Gleichlauf an der
+/// Altform selbst (Mutant „Vorschau mit `Altform::Stehenlassen`“).
+#[test]
+fn v5_gleichlauf_altform_mit_lese_rueckfall() {
+    for name in ["bestand-b", "bestand-e"] {
+        let l = lage(&bestand(name));
+        let modell = l.k.zustand().unwrap().einstellungen.unwrap();
+        assert!(!modell.quellen.anwendungen[0].wbs.is_empty(), "{name}: Lese-Rückfall gefüllt");
+        let wer = mensch(&erste_person(&bestand(name)));
+        let v = l.k.einstellungen_vorschau(wer.art, modell.clone()).unwrap();
+        assert!(v.geaendert, "{name}: die Vorschau stellt um wie PUT");
+        assert_eq!(l.k.einstellungen_setzen(&wer, modell), Ok(true), "{name}");
+        assert_eq!(v.text, l.datei(), "{name}: text byte-gleich mit der Datei nach PUT");
+    }
+}
+
 /// V6: ohne Änderung → `geaendert: false`, `text` = Datei byte-gleich (auch mit BOM und CRLF).
 #[test]
 fn v6_ohne_aenderung_die_heutige_datei() {
