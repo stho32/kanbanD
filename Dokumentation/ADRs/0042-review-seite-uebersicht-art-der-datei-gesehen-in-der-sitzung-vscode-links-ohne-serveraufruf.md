@@ -1,6 +1,6 @@
 # ADR-0042: Review-Seite übersichtlicher — Art der Datei aus festen Pfadregeln, „Gesehen“ nur in der Sitzung, Wortmarke über Präfix und Suffix, Pfad und VS Code über `vscode://file` mit der Wurzel aus der Diff-Antwort, „Diff in VS Code“ ohne Serveraufruf durch „Patch herunterladen“ ersetzt
 
-**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt. Nachtrag N2 (2026-11-22, Akzeptiert): Punkt 6 ergänzt (`ETag` von „Ein Commit“ mit dem Startordner, ohne Git, kein eigener Versionsteil), Wortlaute an Punkt 3 nach N1.2.
+**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt. Nachtrag N2 (2026-11-22, Akzeptiert): Punkt 6 ergänzt (`ETag` von „Ein Commit“ mit dem Startordner, ohne Git, kein eigener Versionsteil), Wortlaute an Punkt 3 nach N1.2. Nachtrag N3 (2026-11-23, Akzeptiert): Fingerabdruck von N1.4 ohne `patch`.
 **Datum**: 2026-11-22
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #252, Lauf 252-architekt-1)
 **Kontext-Anforderung**: — (Karte #252, Auftrag des Betreibers vom 2026-11-22 nach dem Entwurf „Review ‚Ein Commit‘ – Vorschlag“; die Anforderungen schreibt der planer). Bezug: R00207, R00210, R00217, R00224; ADR-0030 Punkt 4, ADR-0032 (N2.4, N4 S2, N5.1, N6.9), ADR-0033 (Punkte 5 und 8, N1), ADR-0040; Artboard D0009
@@ -216,3 +216,41 @@ Die Hinweise lauten nach N1.2 und po-entscheidungen Z. 537 „bestehender Test g
 
 - Positiv: Ein 304 bestätigt nach einer Änderung des Registers weder eine alte Wurzel noch Inhalt aus dem alten Repository. Das 304 bleibt in „Ein Commit“ ohne Git.
 - Inkauf: Der Fall aus S1 (Startordner gleich, Wurzel anders) bestätigt die alte Wurzel per 304. Das ist harmlos wie die bekannte Grenze in Punkt 6, denn die Datei öffnet dann eben nicht. Ein unnötiges 200 kommt, wenn sich nur der Startordner ändert. Nach dem Update kommt einmal je gespeicherte Antwort ein 200, auch für `format=patch`.
+
+## Nachtrag 2026-11-23 N3: Fingerabdruck der Datei ohne `patch` (präzisiert N1.4 und Punkt 2; Frage 3 des planers zu R00246, Karte #257)
+
+**Status `Akzeptiert`.** Der Nachtrag beantwortet Frage 3 des planers zu R00246 FA 7. Der Text der Punkte 1–9, von N1 und N2 bleibt stehen. Wo er abweicht, gilt dieser Nachtrag.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #257, Lauf 257-architekt-1)
+**Erprobt durch**: Prüfung am Code von main (unten, „Belegt“). Nichts gebaut.
+
+### N3.1 Entscheidung
+
+Der Fingerabdruck (N1.4, Punkt 2) bildet sich **nie über `patch`**. Er läuft über Felder, die in jeder Antwort stehen:
+
+- Datei: `status`, `alt`, `neu`, `plus`, `minus`, `binaer`.
+- Folge-Datei: `plus`, `minus`, `binaer` und die Verweise der Schritte.
+
+Der Wortlaut „und, falls geladen, `patch`“ in Punkt 2 und N1.4 („bleiben wie in Punkt 2“) entfällt. Die Absicht bleibt: Eine geänderte Datei gilt wieder als ungesehen.
+
+### N3.2 Belegt (Code von main)
+
+- `patch` fehlt je nach Zustand: `Diffdatei.patch` ist `Option<String>` mit `skip_serializing_if` und nur gesetzt, wenn die Datei Hunks hat und weder binär noch `gross` noch `nachladen` ist (`src/modell/commit_diff.rs:51–53`). `dateiZustand` unterscheidet `zu_gross`, `gross`, `nachladen`, `binaer`, `patch`, `ohne` (`web/diff.js:122–130`). Die Tests halten `nachladen: true` mit `patch: null` fest (`src/dienst/diff.rs:509`, `src/dienst/gesamt_diff.rs:986`). Nach dem Nachladen kommt `patch` hinzu, der Fingerabdruck würde sich ändern und der Haken verschwinden.
+- Eine stabile Kennung steht **nicht** in der Antwort: Die Blob-Hashes (`Diffdatei.blobs`, aus `--raw`) sind `#[serde(skip)]` (`src/modell/commit_diff.rs:61–62`). Sie dienen nur als Schlüssel der Stücke für `format=patch` (ADR-0032 N5.2). Weitere Hashes oder Kennungen je Datei gibt es nicht.
+
+### N3.3 Preis (in Kauf genommen)
+
+In „Alle Änderungen“ bleibt eine Änderung unerkannt, die `plus`, `minus`, `status` und Pfade gleich lässt (eine Zeile ersetzt). Die Datei gilt dann weiter als gesehen. In „Ein Commit“ wirkt der Preis nicht, dort trägt der volle Hash. Für eine Folge-Datei fängt der Verweis der Schritte jeden neuen Commit an der Datei. Betroffen ist also nur der Fall „derselbe Verweis, anderer Inhalt“, den ein Commit-Verweis nicht hervorbringt. Die Grenze trifft damit im Wesentlichen eine Datei ohne Folge, die im Arbeitsstand der Aufgabe in Zeilenzahl gleich umgeschrieben wird.
+
+### N3.4 Stufe, falls der Preis nicht reicht
+
+Will der Betreiber die Lücke schließen: ein neues Feld `blob` (Blob-Hash nachher, bei `D` der vorherige) je Datei und Schritt in der Diff-Antwort, im Fingerabdruck an Stelle von `plus`/`minus`. Das ist ein neues Antwortfeld ohne neuen Endpunkt, mit Änderung an `Diffdatei` (`#[serde(skip)]` fällt für das Feld weg), an der OpenAPI-Beschreibung und am `ETag`-Test, und eine eigene Karte. Bis dahin gilt N3.1. Die Antwort würde größer um etwa 40 Zeichen je Datei.
+
+### N3.5 Durchsetzung
+
+Einheit (Node, rein, `web/review-uebersicht.js`): derselbe Fingerabdruck für dieselbe Datei mit und ohne `patch`, mit und ohne `nachladen`; anderer Fingerabdruck bei anderem `plus`, `minus`, `status`, `alt`, `neu`, `binaer` und bei anderem Verweis eines Schritts. Ein Mutant, der `patch` einrechnet, wird im Nachladen-Test rot (R00246 m7).
+
+### N3 Konsequenzen
+
+- Positiv: Der Haken überlebt Nachladen, den Wechsel offen/zu und jedes Neuzeichnen. Kein Eingriff in die Antwort, kein neuer Endpunkt.
+- Inkauf: Die Lücke aus N3.3, bis eine Karte `blob` einführt.
+- R00246 FA 7 ist damit gedeckt (Frage 3 beantwortet). Nicht aufgenommen: die Meldung bei nicht speicherbarem „Gesehen“ (Frage 2 an den product-owner). Dazu liegt keine Entscheidung vor, N1.4 („ohne Meldung“) gilt bis dahin.
