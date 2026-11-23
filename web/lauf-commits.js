@@ -150,14 +150,45 @@
 
   /* ── Text-Marker aus der Belegzeile (N7 Punkt 3) ── */
 
-  function textMarker() {
-    return [];
+  const BELEG_MIT_ZWEIG = /^\[[^\]]* (\S{7,40})\] (.+)$/;
+  const BELEG_EINZEILER = /^(\S{7,12}) (.+)$/;
+  const HASH_DER_BELEGZEILE = /^[0-9a-f]{7,40}$/;
+
+  /** Ein Schritt ohne Commit der Karte, dessen Befehl `commit` sagt: je Zeile `[<zweig> <hash>] <titel>` oder `<hash> <titel>` im
+      Ergebnis ein Text-Marker, wenn der Titel mindestens 12 Zeichen hat und im Befehl steht. Der Hash ist der des Worktrees: er wird nur
+      gezeigt, und nur als Hex. */
+  function textMarker(k) {
+    if (!k.commitWort || !k.ergebnis) return [];
+    const marker = [], gesehen = new Set();
+    for (const zeile of k.ergebnis.text.split('\n')) {
+      const beleg = belegzeileLesen(zeile.replace(/\r$/, ''));
+      if (!beleg || gesehen.has(zeile) || Array.from(beleg.titel).length < COMMIT_GRENZEN.belegTitel || !k.befehl.includes(beleg.titel)) continue;
+      gesehen.add(zeile);
+      let kurzhash = null;
+      if (HASH_DER_BELEGZEILE.test(beleg.hash)) kurzhash = beleg.hash.slice(0, 7);
+      marker.push({ art: 'text', kurzhash, titel: beleg.titel });
+    }
+    return marker;
   }
 
-  /* ── Grenze der Marker (N7 Punkt 8) ── */
+  function belegzeileLesen(zeile) {
+    const treffer = BELEG_MIT_ZWEIG.exec(zeile) || BELEG_EINZEILER.exec(zeile);
+    if (!treffer) return null;
+    return { hash: treffer[1], titel: treffer[2] };
+  }
+
+  /* ── Grenze der Marker (N7 Punkt 8): die ersten 1.000 in der Reihenfolge des Laufs ── */
 
   function begrenzt(marker) {
-    return { marker, mehrAlsGrenze: false };
+    const gekappt = new Map();
+    let frei = COMMIT_GRENZEN.marker, mehrAlsGrenze = false;
+    for (const nr of [...marker.keys()].sort((a, b) => a - b)) {
+      const liste = marker.get(nr);
+      if (liste.length > frei) mehrAlsGrenze = true;
+      if (frei > 0) gekappt.set(nr, liste.slice(0, frei));
+      frei = Math.max(0, frei - liste.length);
+    }
+    return { marker: gekappt, mehrAlsGrenze };
   }
 
   Object.assign(ziel, { commitMarker, COMMIT_GRENZEN });

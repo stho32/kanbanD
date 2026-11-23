@@ -188,3 +188,75 @@ test('AK 10: 5.000 Bash-Schritte × 500 Commits, je Schritt höchstens 2 im Fens
   const r2 = rechnen(riesig, [karteneintrag('Titel im Befehl', EPOCH_11 + 11)]);
   assert.deepStrictEqual([r2.titelpruefungen, uebersicht(r2)], [0, {}]);
 });
+
+/* ── B1324: Text-Marker aus der Belegzeile (N7 Punkt 3) und Grenze der Marker (N7 Punkt 8) ── */
+
+test('AK 5: T17 — Schritt 8/9 bekommt den Text-Marker „e5f6a7b [DOC] Anforderung angelegt“, sonst keiner', () => {
+  const r = rechnen(T17, T17_KARTE);
+  assert.deepStrictEqual(r.marker.get(8), [{ art: 'text', kurzhash: 'e5f6a7b', titel: '[DOC] Anforderung angelegt' }]);
+  assert.deepStrictEqual(Object.keys(uebersicht(r)), ['2', '6', '8', '12', '14']);
+});
+
+test('AK 5/AK 6: ohne Commits der Karte (Fehler, Frist, Repository fehlt) steht nur der Text-Marker zu C4', () => {
+  for (const karte of [null, [], T17_KARTE.map(e => ({ verweis: e.verweis, hash: e.hash, zustand: 'repository_fehlt' }))]) {
+    assert.deepStrictEqual(uebersicht(rechnen(T17, karte)), { 8: ['[DOC] Anforderung angelegt (Text)'] }, JSON.stringify(karte && karte[0]));
+  }
+});
+
+test('AK 5: Belegzeile [zweig hash] titel und hash titel; Titel unter 12 Zeichen oder nicht im Befehl ergibt keinen Marker', () => {
+  const schritt = (befehl, text) => paar([aufruf(T(10), befehl), ergebnis(T(12), text)], { 1: 0 });
+  const mit = (befehl, text) => rechnen(schritt(befehl, text), []).marker.get(1);
+  assert.deepStrictEqual(mit('git commit -m "Zähler zeichnen jetzt"', '[karte/7 3f2a9c1] Zähler zeichnen jetzt\n 1 file changed'), [{ art: 'text', kurzhash: '3f2a9c1', titel: 'Zähler zeichnen jetzt' }]);
+  assert.deepStrictEqual(mit('git commit -m "Zähler zeichnen jetzt"', '[main (root-commit) 3f2a9c1e0b7d] Zähler zeichnen jetzt'), [{ art: 'text', kurzhash: '3f2a9c1', titel: 'Zähler zeichnen jetzt' }]);
+  assert.deepStrictEqual(mit('git commit -qm "Zähler zeichnen jetzt" && git log --oneline -1', '3f2a9c1e Zähler zeichnen jetzt'), [{ art: 'text', kurzhash: '3f2a9c1', titel: 'Zähler zeichnen jetzt' }]);
+  assert.strictEqual(mit('git commit -qm "kurz" && git log --oneline -1', 'abc1234 kurz'), undefined, 'Titel unter 12 Zeichen');
+  assert.strictEqual(mit('git commit -qm "B0001: anders" && git log --oneline -1', 'abc1234 B0001: ganz etwas anderes'), undefined, 'Titel nicht im Befehl');
+  assert.strictEqual(mit('cat log.txt # Zähler zeichnen jetzt', 'abc1234 Zähler zeichnen jetzt'), undefined, 'nur Bash-Aufrufe mit „commit“ im Befehl');
+});
+
+test('AK 9: Hash der Belegzeile nur bei ^[0-9a-f]{7,40}$ — Großbuchstaben, Nicht-Hex und < ergeben einen Text-Marker ohne Hash', () => {
+  const befehl = 'git commit -q -m "[DOC] Anforderung angelegt" && git log --oneline -1';
+  for (const zeile of ['ABC1234X [DOC] Anforderung angelegt', 'ABC1234 [DOC] Anforderung angelegt', 'abc<123 [DOC] Anforderung angelegt', '[main ABC1234X] [DOC] Anforderung angelegt']) {
+    const r = rechnen(paar([aufruf(T(10), befehl), ergebnis(T(12), zeile)], { 1: 0 }), []);
+    assert.deepStrictEqual(r.marker.get(1), [{ art: 'text', kurzhash: null, titel: '[DOC] Anforderung angelegt' }], zeile);
+  }
+});
+
+test('AK 9: ein Schritt mit Commit der Karte bekommt keinen Text-Marker; Hash und Titel kommen aus der Karte, nie aus dem Transkript', () => {
+  const befehl = 'git commit -q -m "[R00999] B0002: Zähler zeichnen" && git log --oneline -1';
+  const lauf = paar([aufruf(T(10), befehl), ergebnis(T(12), 'e5f6a7b [R00999] B0002: Zähler zeichnen')], { 1: 0 });
+  const karte = [karteneintrag('[R00999] B0002: Zähler zeichnen', EPOCH_11 + 11, { name: 'C2' })];
+  assert.deepStrictEqual(rechnen(lauf, karte).marker.get(1), [{ art: 'link', verweis: karte[0].verweis, kurzhash: karte[0].hash.slice(0, 7), titel: karte[0].titel }]);
+});
+
+/** Lauf mit `anzahl` Commit-Schritten: die ersten `text` mit Belegzeile, die übrigen mit je einem Commit der Karte im Fenster. */
+function grosserLauf(anzahl, text) {
+  const lauf = [], karte = [];
+  for (let i = 0; i < anzahl; i++) {
+    const titel = `Commit Nummer ${String(i).padStart(4, '0')}`;
+    const beginn = EPOCH_11 + i * 10;
+    lauf.push(aufruf(new Date(beginn * 1000).toISOString(), `git commit -q -m "${titel}" && git log --oneline -1`));
+    lauf.push(ergebnis(new Date((beginn + 2) * 1000).toISOString(), i < text ? `abc1234 ${titel}` : ''));
+    if (i >= text) karte.push(karteneintrag(titel, beginn + 1, { name: `g${i}` }));
+  }
+  return rechnen(paar(lauf, Object.fromEntries(lauf.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1))), karte);
+}
+
+test('AK 10: 1.200 zuordenbare Commit-Schritte (500 der Karte, 700 Belegzeilen) → genau 1.000 Marker, die ersten des Laufs, und der Satz', () => {
+  const r = grosserLauf(1200, 700);
+  const alle = [...r.marker.entries()].flatMap(([nr, liste]) => liste.map(m => ({ nr, art: m.art })));
+  assert.strictEqual(alle.length, COMMIT_GRENZEN.marker);
+  assert.deepStrictEqual([alle.filter(m => m.art === 'text').length, alle.filter(m => m.art === 'link').length], [700, 300]);
+  assert.strictEqual(alle[999].nr, 999 * 2 + 1, 'der 1.000. Commit-Schritt ist der letzte mit Marker');
+  assert.strictEqual(r.mehrAlsGrenze, true);
+  const genau = grosserLauf(1000, 500);
+  assert.deepStrictEqual([[...genau.marker.values()].flat().length, genau.mehrAlsGrenze], [1000, false], 'genau 1.000: kein Satz');
+});
+
+test('Grenze: höchstens 500 Commits der Karte werden gelesen', () => {
+  const lauf = paar([aufruf(T(10), 'git commit -q -m "Der fünfhundertunderste"'), ergebnis(T(12))], { 1: 0 });
+  const karte = Array.from({ length: 500 }, (_, i) => karteneintrag(`fremd ${i}`, EPOCH_11 - 1000, { name: `f${i}` }));
+  karte.push(karteneintrag('Der fünfhundertunderste', EPOCH_11 + 11));
+  assert.deepStrictEqual(uebersicht(rechnen(lauf, karte)), {});
+  assert.deepStrictEqual(uebersicht(rechnen(lauf, karte.slice(1))), { 1: ['Der fünfhundertunderste'] });
+});
