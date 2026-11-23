@@ -94,6 +94,12 @@ impl Fehler {
     pub fn schalter_verboten() -> Fehler {
         Fehler::SchalterVerboten { meldung: "Den Schalter „Transkripte erfassen“ stellen nur Menschen um".into() }
     }
+
+    /// Ein Abschnitt von `kanbanD.md` lässt sich nicht zeilengenau ändern (R00250, ADR-0043 Regeln 5–7): der eine Ort für
+    /// den Wortlaut nach PO Z. 667, gleich für alle Schreibwege; `schluessel` wie in der Datei.
+    pub fn handform(schluessel: &str) -> Fehler {
+        Fehler::Konflikt(format!("Nicht gespeichert: Der Abschnitt „{schluessel}“ in kanbanD.md ist von Hand gestaltet und lässt sich nicht zeilengenau ändern. Bitte die Änderung direkt in kanbanD.md eintragen."))
+    }
 }
 
 impl From<std::io::Error> for Fehler {

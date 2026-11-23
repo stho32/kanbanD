@@ -336,10 +336,11 @@ async fn altregister_von_202c743b_oeffnet_ohne_commit_und_bytegleich() {
     assert_eq!(lauf.auffaellige_zeilen(), Vec::<String>::new());
 }
 
-/// Code S1 (Review #225): eine Personenaktion mit Änderung an einem Altregister schreibt das Register in neuer Form mit
-/// (`repository` ergänzt; seit R00222 ohne `wbs`/`requirements`) — in genau einem Commit; ohne Änderung entsteht keiner.
+/// Code S1 (Review #225), seit R00250 AK 4 (ADR-0043 Regel 3, 4): eine Personenaktion mit Änderung an einem Altregister
+/// ändert nur die Zeile der Person — das Register bleibt in alter Form stehen, in genau einem Commit; ohne Änderung
+/// entsteht keiner. Umgestellt wird es nur über `PUT /api/einstellungen` (AK 9).
 #[tokio::test]
-async fn personenaktion_mit_aenderung_schreibt_repository_mit_ein_commit() {
+async fn personenaktion_mit_aenderung_laesst_das_altregister_stehen_ein_commit() {
     let l = Lage::neu();
     l.register(&format!("kd: {{name: kanbanD, wbs: {}, requirements: {}}}", l.wbs(), l.anf()));
     l.committen();
@@ -352,8 +353,9 @@ async fn personenaktion_mit_aenderung_schreibt_repository_mit_ein_commit() {
     let (s, _) = gemeinsam::senden(reqwest::Method::PATCH, lauf.adresse(), "api/personen/entw1", "sh", json!({"name": "Entwicklerin"})).await;
     assert_eq!(s, 200);
     assert_eq!(l.commits_zahl(), (zahl + 1).to_string(), "genau ein Commit");
-    assert_eq!(zeile_von(&l.datei(), "kd").trim(), format!("kd: {{name: kanbanD, repository: {}/Dokumentation/Planung}}", l.r.display()));
+    assert_eq!(zeile_von(&l.datei(), "kd").trim(), format!("kd: {{name: kanbanD, wbs: {}, requirements: {}}}", l.wbs(), l.anf()), "R00250 AK 4: Altform bleibt");
     assert!(l.datei().contains("entw1: {name: Entwicklerin, kind: agent}"));
+    assert_eq!(gemeinsam::git(&l.k, &["diff", "--numstat", "HEAD~1", "HEAD", "--", "kanbanD.md"]), "1\t1\tkanbanD.md", "nur die Zeile der Person");
 }
 
 // ---- AK 10 (API-Teil): Quellen mit Repository ------------------------------------------------------------------------

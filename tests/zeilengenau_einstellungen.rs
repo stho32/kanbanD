@@ -239,7 +239,6 @@ fn ak5_schalter_hinter_sources_bleibt_letzte_zeile() {
 // ---- AK 6: Handform im geänderten Abschnitt wird verweigert ----
 
 #[test]
-#[ignore = "erwartet rot bis B1319"]
 fn ak6_eingerueckter_kommentar_in_people_put_patch_stilllegen() {
     let text = h().replace(SH, &format!("{SH}  # Vertretung\n"));
     let l = lage(&text);
@@ -253,7 +252,6 @@ fn ak6_eingerueckter_kommentar_in_people_put_patch_stilllegen() {
 }
 
 #[test]
-#[ignore = "erwartet rot bis B1319"]
 fn ak6_formen_von_people() {
     for (fall, text) in [
         ("Blockform", h().replace(SH, "  sh:\n    {name: Sven, kind: human}\n")),
@@ -268,7 +266,6 @@ fn ak6_formen_von_people() {
 }
 
 #[test]
-#[ignore = "erwartet rot bis B1319"]
 fn ak6_reihenfolge_classes_vor_sources() {
     let text = h().replace(KLASSEN, "classes:\n  bug: {label: Fehler, color: red}\n  # Farbe abgestimmt\n").replace(QUELLEN, "sources:\n  repository: \"\"  # leer\n");
     let l = lage(&text);
@@ -295,7 +292,6 @@ fn ak7_handform_in_classes_bleibt_beim_umbenennen() {
 // ---- AK 8: Rücklese-Sicherung ----
 
 #[test]
-#[ignore = "erwartet rot bis B1319"]
 fn ak8_people_zitiert() {
     let text = h().replace("people:", "\"people\":");
     let l = lage(&text);
@@ -306,7 +302,6 @@ fn ak8_people_zitiert() {
 
 /// Die Mutante „Rücklese-Prüfung entfernt“ (m2) macht genau diesen Fall rot: ohne Rücklesen stünde `signals` doppelt da.
 #[test]
-#[ignore = "erwartet rot bis B1319"]
 fn ak8_signals_zitiert_und_leer_scheitert_beim_ruecklesen() {
     let text = h().replace(QUELLEN, &format!("\"signals\": {{}}\n{QUELLEN}"));
     let l = lage(&text);

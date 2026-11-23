@@ -159,6 +159,41 @@ pub(crate) fn quellen_altform_schreiben(q: &Quellen) -> String {
     s
 }
 
+/// Ob `block` der Abschnitt `sources` in einer Registerform früherer Versionen ist (R00209 schrieb `repository` immer,
+/// `wbs`/`requirements` nur gefüllt; Register mit Lese-Rückfall, R00222 AK 8/9): Flussform je Anwendung, Schlüssel in der
+/// Reihenfolge `repository`, `wbs`, `requirements`, jeder darf fehlen, Anwendungen nach Kürzel. Welche Schlüssel stehen,
+/// liest der Vergleich aus dem Block; erst der zeichengleiche Vergleich mit der so geschriebenen Form entscheidet — eine
+/// falsch erkannte Auswahl macht ihn ungleich, also im Zweifel Handform.
+fn quellen_fruehere_form(block: &str, q: &Quellen) -> bool {
+    const SCHLUESSEL: [&str; 3] = ["repository", "wbs", "requirements"];
+    let werte = |r: &str, w: &str, a: &str| [r.to_string(), w.to_string(), a.to_string()];
+    let zeilen: Vec<&str> = block.lines().collect();
+    let mut s = String::from("sources:");
+    let oben = werte(&q.repository, &q.wbs, &q.anforderungen);
+    for (k, w) in SCHLUESSEL.iter().zip(&oben) {
+        if zeilen.iter().any(|z| z.starts_with(&format!("  {k}:"))) {
+            s.push_str(&format!("\n  {k}: {}", yaml::skalar(w)));
+        }
+    }
+    if !q.anwendungen.is_empty() {
+        s.push_str("\n  applications:");
+    }
+    let mut sortiert: Vec<&Anwendung> = q.anwendungen.iter().collect();
+    sortiert.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
+    for a in sortiert {
+        let kopf = format!("    {}: ", yaml::skalar(&a.kuerzel));
+        let zeile = zeilen.iter().find(|z| z.starts_with(&kopf)).copied().unwrap_or_default();
+        s.push_str(&format!("\n{kopf}{{name: {}", yaml::skalar(&a.name)));
+        for (k, w) in SCHLUESSEL.iter().zip(werte(&a.repository, &a.wbs, &a.anforderungen)) {
+            if zeile.contains(&format!(", {k}: ")) {
+                s.push_str(&format!(", {k}: {}", yaml::skalar(&w)));
+            }
+        }
+        s.push('}');
+    }
+    s == block
+}
+
 /// Die Abschnitte von `kanbanD.md`, die ein Schreibweg ändert, in der festen Reihenfolge (ADR-0043 Regel 3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Abschnitt {
@@ -207,24 +242,41 @@ impl Abschnitt {
 }
 
 /// Ob der Abschnitt im Text der Normalform seines bisherigen Werts entspricht (ADR-0043 Regel 6, PO Z. 666): verglichen
-/// ohne Zeilenende; bei `sources` gilt auch die alte Registerform; ein fehlender Abschnitt nur, wenn sein Wert leer ist.
+/// ohne Zeilenende; bei `sources` gelten auch die alte Registerform der Bestände und die Registerformen früherer Versionen;
+/// ein fehlender Abschnitt nur, wenn sein Wert leer ist.
 /// Alles andere (eingerückter Kommentar, Block- statt Flussform, eigene Anführung, Leerzeile) ist von Hand gestaltet.
 pub(crate) fn in_normalform(text: &str, abschnitt: Abschnitt, bisher: &Einstellungen) -> bool {
     let Some(steht) = frontmatter::abschnitt_lesen(text, abschnitt.schluessel()) else {
         return abschnitt.leer(bisher);
     };
-    abschnitt.block(bisher).as_ref() == Some(&steht) || (abschnitt == Abschnitt::Quellen && steht == quellen_altform_schreiben(&bisher.quellen))
+    let fruehere_form = |q: &Quellen| steht == quellen_altform_schreiben(q) || quellen_fruehere_form(&steht, q);
+    abschnitt.block(bisher).as_ref() == Some(&steht) || (abschnitt == Abschnitt::Quellen && fruehere_form(&bisher.quellen))
 }
 
-/// Der Text von `kanbanD.md` nach einem Schreibweg (ADR-0043 Regel 3, 4): nur die Abschnitte, deren Wert sich zwischen
+/// Der Text von `kanbanD.md` nach einem Schreibweg (ADR-0043 Regeln 3–6): nur die Abschnitte, deren Wert sich zwischen
 /// `vergleich` und `neu` unterscheidet, werden in der festen Reihenfolge an Ort und Stelle ersetzt; Textkörper, fremde
-/// Schlüssel, Kommentare außerhalb und die Reihenfolge bleiben zeichengleich.
-pub fn abschnitte_schreiben(text: &str, vergleich: &Einstellungen, neu: &Einstellungen) -> String {
+/// Schlüssel, Kommentare außerhalb und die Reihenfolge bleiben zeichengleich. `bisher` ist der Wert, aus dem `text`
+/// gelesen wurde. `Err` nennt den Schlüssel des ersten Abschnitts, der sich nicht zeilengenau ändern lässt: einer, der von
+/// Hand gestaltet ist (Regel 6, vor jedem Schreiben geprüft), oder einer, der sich danach anders liest (Regel 5).
+pub fn abschnitte_schreiben(text: &str, bisher: &Einstellungen, vergleich: &Einstellungen, neu: &Einstellungen) -> Result<String, &'static str> {
+    let geaendert: Vec<Abschnitt> = Abschnitt::ALLE.into_iter().filter(|a| !a.gleich(vergleich, neu)).collect();
+    if let Some(a) = geaendert.iter().find(|a| !in_normalform(text, **a, bisher)) {
+        return Err(a.schluessel());
+    }
     let mut datei = text.to_string();
-    for a in Abschnitt::ALLE.into_iter().filter(|a| !a.gleich(vergleich, neu)) {
+    for a in &geaendert {
         datei = frontmatter::abschnitt_im_text(&datei, a.schluessel(), a.block(neu).as_deref());
     }
-    datei
+    let erster = geaendert.first().copied().unwrap_or(Abschnitt::Personen).schluessel();
+    let gelesen = lesen(&datei).map_err(|_| erster)?;
+    let soll = |a: &Abschnitt| if geaendert.contains(a) { neu } else { bisher };
+    if let Some(a) = Abschnitt::ALLE.iter().find(|a| a.block(&gelesen) != a.block(soll(a))) {
+        return Err(a.schluessel());
+    }
+    if gelesen.transkripte_erfassen != bisher.transkripte_erfassen {
+        return Err(erster);
+    }
+    Ok(datei)
 }
 
 /// Setzt `kanbanD.md` aus den Abschnitten neu zusammen — nur für eine neue Datei (`einrichten`, ADR-0043 Regel 2);
@@ -339,6 +391,36 @@ mod tests {
         assert!(in_normalform(&t, Abschnitt::Signale, &e), "signals fehlt, keine Signale");
         assert!(!in_normalform("---\nx: 1\n---\n", Abschnitt::Personen, &e), "fehlt, obwohl Personen da sind");
         assert!(!in_normalform(&t.replace("people:", "\"people\":"), Abschnitt::Personen, &e), "zitierter Schlüssel fehlt als Abschnitt");
+    }
+
+    /// Registerformen früherer Versionen und der Lese-Rückfälle (R00209, R00222 AK 8/9): Flussform, Schlüssel in der
+    /// Reihenfolge `repository`, `wbs`, `requirements`, jeder darf fehlen — sie werden umgestellt, nicht verweigert.
+    #[test]
+    fn registerformen_frueherer_versionen_sind_keine_handform() {
+        for block in [
+            "sources:\n  applications:\n    kd: {name: KD, repository: /r, wbs: /r/D/kd.md, requirements: /r/A}",
+            "sources:\n  applications:\n    kd: {name: KD, wbs: /r/D/kd.md}",
+            "sources:\n  applications:\n    kd: {name: KD, requirements: /r/A}",
+            "sources:\n  repository: /r\n  wbs: x.md\n  applications:\n    ka: {name: A, repository: /a}\n    kd: {name: KD, repository: /r, requirements: /r/A}",
+            "sources:\n  wbs: plan/wbs.md\n  requirements: anf/",
+        ] {
+            let text = format!("---\n{block}\n---\n");
+            let e = lesen(&text).unwrap();
+            assert!(in_normalform(&text, Abschnitt::Quellen, &e), "{block}");
+        }
+        for block in [
+            "sources:\n  applications:\n    kd: {name: KD, wbs: /r/D/kd.md, repository: /r}",
+            "sources:\n  applications:\n    kd: {name: KD, wbs: /r/D/kd.md}  # alt",
+            "sources:\n  applications:\n    kd: {wbs: /r/D/kd.md}",
+            "sources:\n  applications:\n    kd:\n      {name: KD, wbs: /r/D/kd.md}",
+            "sources:\n  applications:\n    kd: {name: KD, wbs: '/r/D/kd.md'}",
+            "sources:\n  applications:\n    kd: {name: KD, wbs: /r/D/kd.md}\n    ka: {name: A, wbs: /a.md}",
+            "sources:\n  wbs: x.md\n  repository: /r",
+        ] {
+            let text = format!("---\n{block}\n---\n");
+            let e = lesen(&text).unwrap();
+            assert!(!in_normalform(&text, Abschnitt::Quellen, &e), "{block}");
+        }
     }
 
     /// R00250 AK 6 (Formen): Handform im Abschnitt ist keine Normalform.

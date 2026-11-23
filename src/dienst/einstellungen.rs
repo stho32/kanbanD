@@ -156,8 +156,8 @@ fn normalisieren(neu: &mut Einstellungen) {
 
 /// Ob das ergänzte `repository` allein schon eine Änderung ist (ADR-0034 N2 Regel 2): `PUT /api/einstellungen` stellt ein
 /// Register in alter Form um, auch wenn sonst nichts geändert ist (die eine Änderung beim ersten Mal, R00209 AK 9). Eine
-/// Aktion an einer Person committet ohne eigene Änderung nichts und lässt die alte Form dann stehen (R00091); ändert sie
-/// etwas, schreibt sie das Register wie jeder Schreibweg in neuer Form mit, im selben Commit.
+/// Aktion an einer Person committet ohne eigene Änderung nichts (R00091) und lässt die alte Form immer stehen: geschrieben
+/// werden nur die geänderten Abschnitte (R00250 AK 4, ADR-0043 Regel 3).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Altform {
     /// das ergänzte `repository` zählt als Änderung (PUT)
@@ -184,9 +184,10 @@ impl Kanban {
         if neu == vergleich {
             return Ok((false, ergebnis));
         }
-        // nur die geänderten Abschnitte im vorhandenen Text (ADR-0043 Regel 3, 4), gelesen unter derselben Sperre
+        // nur die geänderten Abschnitte im vorhandenen Text, gelesen unter derselben Sperre; von Hand gestaltet oder
+        // nicht rücklesbar → 409 ohne Commit (ADR-0043 Regeln 3–6)
         let text = self.ordner().lies(einstellungen::DATEI)?.unwrap_or_default();
-        let datei = einstellungen::abschnitte_schreiben(&text, &vergleich, &neu);
+        let datei = einstellungen::abschnitte_schreiben(&text, &alt, &vergleich, &neu).map_err(Fehler::handform)?;
         self.aktion(wer, &nachricht, &[Schritt::schreiben(einstellungen::DATEI, datei)])?;
         Ok((true, ergebnis))
     }

@@ -136,7 +136,10 @@ async fn unveraendertes_aktiv_ist_keine_aenderung() {
     // `st` ist aktiv: `aktiv: true` ist unverändert, andere Felder bleiben erlaubt.
     let (s, p) = senden(Method::PATCH, a, "api/personen/st", "cl", json!({"aktiv": true, "name": "Stefan H."})).await;
     assert_eq!((s, p["aktiv"].as_bool(), p["name"].as_str()), (200, Some(true), Some("Stefan H.")), "nur der Name ändert sich: {p}");
-    // Der ganze Satz unverändert über PUT ist keine Änderung.
+    // Der ganze Satz unverändert über PUT ist keine Änderung. Das Register steht noch in alter Form (die Personenaktion
+    // lässt es stehen, R00250 AK 4); das erste PUT stellt es um (R00209 AK 9), erst das zweite ist unverändert.
+    let (s, _) = senden(Method::PUT, a, "api/einstellungen", "cl", einstellungen(a).await).await;
+    assert_eq!(s, 200);
     let vorher = stand(tmp.path());
     let (s, e) = senden(Method::PUT, a, "api/einstellungen", "cl", einstellungen(a).await).await;
     assert_eq!((s, e["geaendert"].as_bool()), (200, Some(false)), "unveränderte Einstellungen: {e}");
