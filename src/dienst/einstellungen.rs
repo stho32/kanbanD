@@ -168,7 +168,7 @@ enum Altform {
 
 impl Kanban {
     /// Der eine Schreibweg der Einstellungen: unter der Sperre lesen, `aendern` anwenden, normalisieren, prüfen und
-    /// nur bei einer Änderung committen. `aendern` liefert die Commit-Nachricht und ein Ergebnis.
+    /// nur bei einer Änderung committen — zeilengenau, nur die geänderten Abschnitte (R00250, ADR-0043). `aendern` liefert die Commit-Nachricht und ein Ergebnis.
     fn einstellungen_aendern<T>(&self, wer: &Person, altform: Altform, aendern: impl FnOnce(&mut Einstellungen) -> Result<(String, T), Fehler>) -> Result<(bool, T), Fehler> {
         let _sperre = self.gesperrt();
         let alt = self.ordner().einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))?;
@@ -184,7 +184,10 @@ impl Kanban {
         if neu == vergleich {
             return Ok((false, ergebnis));
         }
-        self.aktion(wer, &nachricht, &[Schritt::schreiben(einstellungen::DATEI, einstellungen::schreiben(&neu))])?;
+        // nur die geänderten Abschnitte im vorhandenen Text (ADR-0043 Regel 3, 4), gelesen unter derselben Sperre
+        let text = self.ordner().lies(einstellungen::DATEI)?.unwrap_or_default();
+        let datei = einstellungen::abschnitte_schreiben(&text, &vergleich, &neu);
+        self.aktion(wer, &nachricht, &[Schritt::schreiben(einstellungen::DATEI, datei)])?;
         Ok((true, ergebnis))
     }
 

@@ -216,6 +216,17 @@ pub(crate) fn in_normalform(text: &str, abschnitt: Abschnitt, bisher: &Einstellu
     abschnitt.block(bisher).as_ref() == Some(&steht) || (abschnitt == Abschnitt::Quellen && steht == quellen_altform_schreiben(&bisher.quellen))
 }
 
+/// Der Text von `kanbanD.md` nach einem Schreibweg (ADR-0043 Regel 3, 4): nur die Abschnitte, deren Wert sich zwischen
+/// `vergleich` und `neu` unterscheidet, werden in der festen Reihenfolge an Ort und Stelle ersetzt; Textkörper, fremde
+/// Schlüssel, Kommentare außerhalb und die Reihenfolge bleiben zeichengleich.
+pub fn abschnitte_schreiben(text: &str, vergleich: &Einstellungen, neu: &Einstellungen) -> String {
+    let mut datei = text.to_string();
+    for a in Abschnitt::ALLE.into_iter().filter(|a| !a.gleich(vergleich, neu)) {
+        datei = frontmatter::abschnitt_im_text(&datei, a.schluessel(), a.block(neu).as_deref());
+    }
+    datei
+}
+
 /// Setzt `kanbanD.md` aus den Abschnitten neu zusammen — nur für eine neue Datei (`einrichten`, ADR-0043 Regel 2);
 /// jeder andere Schreibweg ändert nur die geänderten Abschnitte im vorhandenen Text.
 pub fn schreiben(e: &Einstellungen) -> String {
