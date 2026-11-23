@@ -515,4 +515,130 @@ function gesehenVorbereiten(h) {
   };
 }
 
-module.exports = { gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
+/* ── Ausgangslage von R00247 (Wortmarke): K-Wort, K-Rand, Farben und Breite in W1, K-Block in W2, Last in WL und WLF (`kd`), K-Zwei mit W3
+   (`wb`). Jeder Fall steht durch eine eigene unveränderte Zeile von den anderen getrennt ── */
+
+/** Fälle → [alter Inhalt, neuer Inhalt]; je Fall `[alte Zeilen, neue Zeilen]`, dazwischen je eine eindeutige Trennzeile. */
+function faelleDatei(faelle, name) {
+  const alt = [], neu = [];
+  faelle.forEach(([a, n], i) => {
+    alt.push(`// ${name} trenner ${i}`, ...a);
+    neu.push(`// ${name} trenner ${i}`, ...n);
+  });
+  alt.push(`// ${name} ende`);
+  neu.push(`// ${name} ende`);
+  return [alt.join('\n') + '\n', neu.join('\n') + '\n'];
+}
+
+const WM_ZEILE_1000 = ende => '//' + 'a'.repeat(997) + ende;
+/** Fall (a) auf 120 Zeichen verlängert, die Änderung ab Spalte 60 in einem Wort aus 50 Zeichen, das ganz markiert wird und bei 320 px
+    über einen Umbruch läuft (AK 8). */
+const WM_BREIT = ziffer => ('// ' + 'wort '.repeat(11) + 'a ' + 'b'.repeat(25) + ziffer + 'b'.repeat(24) + ' ' + 'wort '.repeat(12)).slice(0, 120);
+
+const WM_FAELLE = {
+  wort: {
+    a: [['let a = 1;'], ['let a = 2;']],
+    b: [['fn alt_name(x) {}'], ['fn alt_namen(x) {}']],
+    c: [['a = 1'], ['a = 2']],
+    d: [['a=1;'], ['a=2;']],
+    e: [['a = 1; b = 2;'], ['a = 9; b = 8;']],
+    f: [['let s = "alt";'], ['let s = "neu";']],
+    g: [['p = 10;', 'q = 20;'], ['p = 11;', 'q = 21;', 'r = 31;']],
+    h: [[], ['neu_nur = 1;']],
+    i: [['x = 1;', 'mitte();'], ['mitte();', 'x = 2;']],
+    p: [['foo(1, 2)'], ['foo(1, 3, 2)']],
+  },
+  rand: {
+    j: [['let s = "😀";'], ['let s = "😁";']],
+    k: [['v = "1‮2"'], ['v = "3‮4"']],
+    l: [['let t = "a‮b";'], ['let t = "a‮c";']],
+    m: [['let h = "<img src=x onerror=window.pwn=1>";'], ['let h = "<img src=y onerror=window.pwn=1>";']],
+    n: [[WM_ZEILE_1000('1')], [WM_ZEILE_1000('2')]],
+    o: [['a' + WM_ZEILE_1000('1')], ['a' + WM_ZEILE_1000('2')]],
+  },
+  /** Je Syntaxfarbe eine Zeile, deren Marke diese Farbe trägt (AK 7); Zahl und Zeichenkette stehen in K-Wort (a) und (f). */
+  farben: {
+    keyword: [['    if a { b() }'], ['    while a { b() }']],
+    type: [['    let v: Alt = w;'], ['    let v: Neu = w;']],
+    function: [['    rechne_alt(1);'], ['    rechne_neu(1);']],
+    macro: [['    println!("x");'], ['    eprintln!("x");']],
+    comment: [['let a = 1; // alt'], ['let a = 1; // neu']],
+    number: [['let a = 1;'], ['let a = 2;']],
+    string: [['let s = "alt";'], ['let s = "neu";']],
+  },
+};
+
+/** K-Block: ein Hunk, in dem die Blockgrenze (Index 500 der Zeilenliste) zwischen der zweiten und dritten gelöschten Zeile liegt:
+    Kopf (0), 248 × (Kontext, hinzugefügt) (1–496), Kontext (497), gelöscht 498–500, hinzugefügt 501–503. */
+function blockDatei() {
+  const alt = [], neu = [];
+  for (let i = 1; i <= 249; i++) { alt.push(`c${i}`); neu.push(`c${i}`); if (i < 249) neu.push(`n${i}`); }
+  alt.push('d1 = 1;', 'd2 = 1;', 'd3 = 1;', 'z');
+  neu.push('d1 = 2;', 'd2 = 2;', 'd3 = 2;', 'z');
+  return [alt.join('\n') + '\n', neu.join('\n') + '\n'];
+}
+
+/** Last: `n` Zeilen ganz ersetzt, ein Lauf zu `n` gelöschten und `n` hinzugefügten Zeilen gleicher Länge. */
+function lastDatei(n, zeile) {
+  const alle = ziffer => Array.from({ length: n }, (_, i) => zeile(i, ziffer)).join('\n') + '\n';
+  return [alle('1'), alle('2')];
+}
+const LAST_80 = (i, ziffer) => `let zeile_${String(i).padStart(5, '0')} = "${'w'.repeat(48)}"; // wert ${ziffer}`;
+const LAST_KURZ = (i, ziffer) => `let k${i} = ${ziffer};`;
+
+function wortmarkeBauen(basis) {
+  const r = path.join(basis, 'KD'), s = path.join(basis, 'WB');
+  for (const ort of [r, s]) {
+    fs.mkdirSync(path.join(ort, 'Dokumentation/Planung'), { recursive: true });
+    fs.writeFileSync(path.join(ort, 'Dokumentation/Planung/app.md'), '# App\n');
+    gitAls(ort, ADA, '2026-06-01T08:00:00+00:00', 'init', '-q', '-b', 'main');
+  }
+  const wort = faelleDatei(Object.values(WM_FAELLE.wort), 'wort');
+  const rand = faelleDatei(Object.values(WM_FAELLE.rand), 'rand');
+  const farben = faelleDatei(Object.values(WM_FAELLE.farben), 'farben');
+  const ohne = faelleDatei([WM_FAELLE.wort.f, WM_FAELLE.wort.a], 'ohne');
+  const breit = faelleDatei([[[WM_BREIT('1')], [WM_BREIT('2')]]], 'breit');
+  const block = blockDatei(), last = lastDatei(5000, LAST_80), kurz = lastDatei(5000, LAST_KURZ);
+  const h = { r, s };
+  aenderungsCommit(r, 'W0 Vorgänger', { 'src/w.rs': wort[0], 'src/r.rs': rand[0], 'src/farben.rs': farben[0], 'w.xyz': ohne[0], 'src/breit.rs': breit[0], 'src/g.rs': block[0], 'src/last.rs': last[0], 'src/kurz.rs': kurz[0] });
+  h.w1 = aenderungsCommit(r, 'W1 Wortmarke', { 'src/w.rs': wort[1], 'src/r.rs': rand[1], 'src/farben.rs': farben[1], 'w.xyz': ohne[1], 'src/breit.rs': breit[1] });
+  h.w2 = aenderungsCommit(r, 'W2 Blockgrenze', { 'src/g.rs': block[1] });
+  h.wl = aenderungsCommit(r, 'WL Last mit 80 Zeichen', { 'src/last.rs': last[1] });
+  h.wlf = aenderungsCommit(r, 'WLF Last gefärbt', { 'src/kurz.rs': kurz[1] });
+  aenderungsCommit(s, 'W3 Vorgänger', { 'docs/n.md': '# n\n\nlet a = 1;\n\nEnde\n' });
+  h.w3 = aenderungsCommit(s, 'W3', { 'docs/n.md': '# n\n\nlet a = 2;\n\nEnde\n' });
+  return h;
+}
+
+let wortmarkeGeteilt = null;
+/** Ein Satz Repositories je Prozess für R00247, am Prozessende entfernt. */
+function wortmarkeRepository() {
+  if (!wortmarkeGeteilt) {
+    const basis = basisAnlegen();
+    wortmarkeGeteilt = wortmarkeBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return wortmarkeGeteilt;
+}
+
+/** Aufgaben: #9 W1 und W3 (K-Zwei), #10 W2 (K-Block), #11 WL, #12 WLF; Register `kd`, `wb`. */
+function wortmarkeVorbereiten(h) {
+  const aufgaben = { 9: [`kd:${h.w1}`, `wb:${h.w3}`], 10: [`kd:${h.w2}`], 11: [`kd:${h.wl}`], 12: [`kd:${h.wlf}`] };
+  const register = EINSTELLUNGEN_KOPF
+    + `    kd: {name: KD, wbs: ${h.r}/Dokumentation/Planung/app.md, requirements: ""}\n`
+    + `    wb: {name: WB, wbs: ${h.s}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
+  const dateien = { 'kanbanD.md': register };
+  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/${String(nr).padStart(4, '0')}-aufgabe-${nr}.md`] = aufgabeDatei(nr, `Aufgabe ${nr}`, verweise);
+  dateien['boards/entwicklung.md'] = `# Entwicklung\n\n## Zu erledigen\n\n${Object.keys(aufgaben).map(n => `- #${n}`).join('\n')}\n\n## Erledigt\n`;
+  return ordner => {
+    for (const [rel, inhalt] of Object.entries(dateien)) {
+      fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
+      fs.writeFileSync(path.join(ordner, rel), inhalt);
+    }
+    execFileSync('git', ['-C', ordner, 'init', '-q']);
+    execFileSync('git', ['-C', ordner, 'add', '-A']);
+    execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-m', 'eingerichtet']);
+  };
+}
+
+module.exports = { wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
