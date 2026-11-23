@@ -1,6 +1,6 @@
 # ADR-0033: Review-Seite eines Commits — Adresse hinter `/aufgabe/<nr>/review?commit=`, Diff als stehende Insel, gestaffeltes Zeichnen, Nachladen einzeln und ohne Selbstwiederholung
 
-**Status**: Akzeptiert (Punkte 1–9; Punkt 9 entschieden vom product-owner am 2026-11-20, po-entscheidungen Z. 411, mit der Bedingung „Blättern“; Nachtrag N1 für B3 #215 akzeptiert, N1.5 und N1.9 vom product-owner bestätigt, po-entscheidungen Z. 437–441)
+**Status**: Akzeptiert (Punkte 1–9; Punkt 9 entschieden vom product-owner am 2026-11-20, po-entscheidungen Z. 411, mit der Bedingung „Blättern“; Nachtrag N1 für B3 #215 akzeptiert, N1.5 und N1.9 vom product-owner bestätigt, po-entscheidungen Z. 437–441; Nachtrag N2 für E2E-Proben an Zielen im Code-Bereich akzeptiert, Karte #273)
 **Datum**: 2026-11-20
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #209, Lauf 209-architekt-1)
 **Kontext-Anforderung**: — (Karte #209, nach Feinschnitt nur Scheibe B2 „Diff-Ansicht eines Commits“; die Anforderung schreibt der planer). Bezug: ADR-0007, ADR-0014, ADR-0029, ADR-0030, ADR-0032 (Punkte 6 und 8, N4, N5 auf `karte/213`), R00205 (B1), R00206 (A3), Artboard D0009 `#diff-fenster`, `#diff-raender`
@@ -285,6 +285,20 @@ Pre-Mortem:
   - Die Rückkehr zu „Alle Änderungen“ kostet eine (meist bedingte) Anfrage.
   - Neue Verweise erscheinen erst nach Umschalten oder Neuladen.
   - Die Zeichnung muss in zehn Punkten nachgezogen werden.
+
+## Nachtrag 2026-11-23 N2: Zeigeraktionen auf Ziele im Code-Bereich erst nach der Trefferprobe (Karte #273)
+
+**Anlass**: `r00236 mit Touch › Tippen auf die Nummer 13` war auf `main` (Code unverändert seit 173dca44) mit 1 Worker 5/5 rot, im Gate von #258 grün.
+
+**Gemessen** (Chromium aus `e2e/node_modules`, 414 × 900, Touch, je 3–5 Läufe, Messprobe im Bericht der Karte #273):
+- Ein Block, der noch nicht gezeichnet ist, hat die geschätzte Höhe aus Punkt 5 (`Zeilen × 18 px`) und wächst beim ersten Zeichnen um rund 19 px (Ränder der Tabelle): 36 → 55, 162 → 181, 90 → 109.
+- `tap()` ohne vorheriges Scrollen: Playwright rollt `.rv`, bis die Nummer am unteren Rand liegt (y 833–851, Rand 851). `touchstart` trifft `td.n`. Im nächsten Bild wächst ein Block darüber, die Nummer rückt auf y 852 und liegt aus dem Bild. Der aus dem Tippen erzeugte `click` trifft die Zeile darüber (`td.n` ohne Link). Kein Sprung, 3/3 rot.
+- Direkt nach `scrollIntoView` liefert `elementFromPoint` an der Nummer `DIV.dz-b`, weil der Block noch übersprungen wird. Ein Bild später liefert er `td.n` (alle Lagen, 12/12).
+- Mit 4- bzw. 8-facher CPU-Drosselung ist derselbe Test 4/5 bzw. 5/5 grün, denn die Blöcke sind vor dem Tippen gezeichnet. Ob er grün wird, hängt also an der Rechnerlast, nicht an einem Commit.
+
+**Entscheidung**: Das ist ein Fehler des Tests, nicht der Seite. Ein Mensch sieht nur gezeichnete Bilder, und in jedem gezeichneten Bild trifft der Punkt an der sichtbaren Nummer `td.n`. Punkt 5 bleibt, wie er ist. Als Regel für E2E-Proben gilt: Eine Zeigeraktion (`tap`, `click`, `hover`) auf ein Ziel in einem Block mit `content-visibility: auto` braucht zuerst `scrollIntoViewIfNeeded()`. Danach wartet die Probe am beobachtbaren Urteil, bis `elementFromPoint` an der Mitte des Ziels das Ziel selbst liefert, und erst dann kommt die Aktion. Eine feste Wartezeit genügt nicht (2 s: 2/5).
+
+**Inkauf**: Jede neue Probe an Nummern oder Codezeilen braucht diesen Schritt. Gebündelt gehört er in den Treiber der Spec, nicht in die einzelnen Fälle.
 
 ## Quellen / Bezüge
 
