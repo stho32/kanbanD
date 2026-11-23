@@ -163,6 +163,112 @@
     return 'datei.patch';
   }
 
+  /* ── Commit-Leiste und Commit-Kopf (R00245, ADR-0042 Punkt 5): Chips aus dem Titel, Zweigverdichtung, Folge der Leiste ── */
+
+  const CHIP_ANFORDERUNG = /^\[([A-Z]+\d*)\]/;
+  const CHIP_SCHRITT = /^\s*(B\d+):/;
+
+  /** Titel → Chips und Rest (FA 8): ein erster Chip aus `[R00229]`, `[DOC]`, danach höchstens ein `B1187:` unmittelbar dahinter.
+      Ein Titel ohne diese Form, oder einer, von dem nichts übrig bliebe, erscheint unverändert ohne Chips. */
+  function commitChips(titel) {
+    const text = String(titel);
+    const anforderung = CHIP_ANFORDERUNG.exec(text);
+    if (!anforderung) return { chips: [], rest: text };
+    const chips = [anforderung[1]];
+    let rest = text.slice(anforderung[0].length);
+    const schritt = CHIP_SCHRITT.exec(rest);
+    if (schritt) {
+      chips.push(schritt[1]);
+      rest = rest.slice(schritt[0].length);
+    }
+    rest = rest.replace(/^\s+/, '');
+    if (!rest.trim()) return { chips: [], rest: text };
+    return { chips, rest };
+  }
+
+  /** Ein Chip ist höchstens 16 Zeichen breit, das „…“ eingerechnet (FA 8). */
+  const CHIP_HOECHSTENS = 16;
+  function chipText(kennung) {
+    if (kennung.length <= CHIP_HOECHSTENS) return kennung;
+    return kennung.slice(0, CHIP_HOECHSTENS - 1) + '…';
+  }
+
+  /** Zweige eines Eintrags der Liste verdichtet (FA 9): steht `main` (sonst `master`) unter den lokalen Zweigen, dieser Name und die Zahl
+      aller übrigen Namen (lokale, entfernte, `zweige_weitere`); sonst null — dann gilt die Liste aller Namen. */
+  function zweigVerdichtung(e) {
+    const lokal = e.zweige || [];
+    const name = ['main', 'master'].find(n => lokal.includes(n));
+    if (!name) return null;
+    const alle = lokal.length + (e.entfernte_zweige || []).length + (e.zweige_weitere || 0);
+    return { name, weitere: alle - 1 };
+  }
+
+  function zweigeWort(k) {
+    if (k === 1) return '+1 Zweig';
+    return `+${diffModul().tausender(k)} Zweige`;
+  }
+
+  function commitsWort(n) {
+    if (n === 1) return '1 Commit';
+    return `${diffModul().tausender(n)} Commits`;
+  }
+
+  /** Zustände der Liste, zu denen es einen Diff gibt (ADR-0033 Punkt 2): die Folge von Blättern und Leiste. */
+  const MIT_DIFF = ['auf_zweig', 'verwaist'];
+  const mitDiff = eintraege => eintraege.filter(e => MIT_DIFF.includes(e.zustand) && e.hash);
+
+  const zwei = n => String(n).padStart(2, '0');
+
+  /** `TT.MM. hh:mm` in Ortszeit (FA 4); was kein Zeitpunkt ist, bleibt wörtlich. */
+  function zeitKurz(iso) {
+    const ms = Date.parse(iso);
+    if (Number.isNaN(ms)) return iso;
+    const d = new Date(ms);
+    return `${zwei(d.getDate())}.${zwei(d.getMonth() + 1)}. ${zwei(d.getHours())}:${zwei(d.getMinutes())}`;
+  }
+
+  /** Einträge der Liste → Folge der Leiste (FA 2, 3): je Commit mit Diff ein Eintrag in der Reihenfolge der Liste; `n`, `plus`, `minus`
+      zählen die Commits auf einem Zweig (brutto), ein verwaister steht darin, zählt aber nicht (PO Z. 636, 637). */
+  function leistenFolge(eintraege) {
+    const commits = mitDiff(eintraege).map(e => {
+      const { chips, rest } = commitChips(e.titel);
+      const kurz = (e.anwendung ? `${e.anwendung}:` : '') + e.hash.slice(0, 7);
+      return { verweis: e.verweis, hash: e.hash, kurz, titel: e.titel, chips, rest, zeit: zeitKurz(e.datum), plus: e.plus, minus: e.minus, verwaist: e.zustand === 'verwaist' };
+    });
+    const gezaehlt = commits.filter(c => !c.verwaist);
+    const summe = feld => gezaehlt.reduce((n, c) => n + c[feld], 0);
+    return { commits, n: gezaehlt.length, plus: summe('plus'), minus: summe('minus') };
+  }
+
+  /** Zeilen in Worten für die Namen (FA 12): das Minuszeichen läse ein Bildschirmleser verschieden. */
+  function zeilenWorte(plus, minus) {
+    const { tausender } = diffModul();
+    const hinzu = plus === 1 ? '1 Zeile hinzugefügt' : `${tausender(plus)} Zeilen hinzugefügt`;
+    return `${hinzu}, ${tausender(minus)} entfernt`;
+  }
+
+  /** Name des ersten Eintrags (FA 12): „Alle Änderungen, 3 Commits, 318 Zeilen hinzugefügt, 20 entfernt“. */
+  function leistenAlleName(f) {
+    return `Alle Änderungen, ${commitsWort(f.n)}, ${zeilenWorte(f.plus, f.minus)}`;
+  }
+
+  /** Name eines Commit-Eintrags (FA 3, 12): enthält jeden sichtbaren Text des Eintrags (Titel ohne Chips, Zeit, Kurz-Hash). */
+  function leistenEintragName(c) {
+    const name = `Commit ${c.kurz}, ${c.titel}, ${c.zeit}, ${zeilenWorte(c.plus, c.minus)}`;
+    if (c.verwaist) return `${name}, auf keinem Zweig, zählt nicht in den Zahlen von Alle Änderungen`;
+    return name;
+  }
+
+  /** Rollstand der Leiste, damit der gezeigte Eintrag samt `rand` (Fokusring) ganz im sichtbaren Teil liegt (FA 13): `stand` und `hoehe`
+      des sichtbaren Teils, `oben` und `unten` des Eintrags im Inhalt der Leiste. Liegt er schon darin, bleibt der Stand. */
+  function leistenRollstand({ stand, hoehe, oben, unten }, rand) {
+    if (oben - rand < stand) return Math.max(0, oben - rand);
+    if (unten + rand > stand + hoehe) return Math.min(oben - rand, unten + rand - hoehe);
+    return stand;
+  }
+
+  Object.assign(ziel, { commitChips, chipText, zweigVerdichtung, zweigeWort, commitsWort, mitDiff, zeitKurz, leistenFolge, leistenRollstand, leistenAlleName, leistenEintragName });
+
   Object.assign(ziel, { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, testHinweis, grosseNeueDatei, groessteSumme, balkenTeile });
   Object.assign(ziel, { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, kopierPfad, patchAdresse, patchName });
 })(typeof module !== 'undefined' ? module.exports : window);
