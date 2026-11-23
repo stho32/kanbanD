@@ -15,7 +15,7 @@ const plus = text => ({ art: 'plus', alt: null, neu: 1, text });
 test('zelleHtml: ohne Stücke genau der Inhalt der Codezelle von heute (Lesetext + sichtbar gemacht)', () => {
   const z = plus('fn main() {}');
   assert.strictEqual(d.zelleHtml(z, esc), `<span class="vh">hinzugefügt: </span>${d.sichtbarHtml(z.text, esc)}`);
-  assert.ok(d.codeHtml('@@ -0,0 +1 @@\n+fn main() {}\n', 'a.txt', esc).includes(`<td class="c">${d.zelleHtml(z, esc)}</td>`));
+  assert.ok(d.codeHtml('@@ -0,0 +1 @@\n+fn main() {}\n', 'a.txt', esc).includes(`<td class="c" data-z="1">${d.zelleHtml(z, esc)}</td>`));
 });
 
 test('zelleHtml: Stücke werden zu tk-Spans an ihren Versätzen, der Rest bleibt Text', () => {
@@ -64,7 +64,7 @@ test('codeHtml: liegengebliebene Aufträge sind begrenzt — der älteste fällt
   assert.strictEqual(d.farbAuftragHolen(erste), null);
 });
 
-/* ── Auflage blockweise ── */
+/* ── Auflage blockweise; `zellen[z]` ist eine Liste von einer oder zwei Zellen (R00249 FA 4, ADR-0042 N6.1) ── */
 
 function fakeZellen(n) {
   return Array.from({ length: n }, () => ({ gesetzt: 0, _html: 'alt', set innerHTML(v) { this._html = v; this.gesetzt++; }, get innerHTML() { return this._html; } }));
@@ -73,11 +73,12 @@ function fakeZellen(n) {
 test('auflegen: 10.000 Zeilen in 20 Aufgaben zu je höchstens 500 Zeilen, „fertig“ erst nach der letzten', () => {
   const zeilen = Array.from({ length: 10000 }, () => plus('let a = 1;'));
   const zellen = fakeZellen(10000);
+  const jeZeile = zellen.map(z => [z]);
   const st = [];
   for (let i = 0; i < 10000; i++) st.push(i, 0, 3, 0);
   const aufgaben = [];
   let fertig = 0;
-  auflegen({ zellen, zeilen, stuecke: Int32Array.from(st), esc, planen: f => aufgaben.push(f), aktuell: () => true, fertig: () => fertig++ });
+  auflegen({ zellen: jeZeile, zeilen, stuecke: Int32Array.from(st), esc, planen: f => aufgaben.push(f), aktuell: () => true, fertig: () => fertig++ });
   assert.strictEqual(aufgaben.length, 1, 'die erste Aufgabe ist geplant, noch nichts gezeichnet');
   assert.strictEqual(zellen.filter(z => z.gesetzt).length, 0);
   const jeAufgabe = [];
@@ -95,9 +96,10 @@ test('auflegen: 10.000 Zeilen in 20 Aufgaben zu je höchstens 500 Zeilen, „fer
 test('auflegen: Zeilen ohne Stück bleiben unberührt; ist die Datei nicht mehr gezeigt, endet die Auflage ohne „fertig“', () => {
   const zeilen = Array.from({ length: 1200 }, () => plus('x'));
   const zellen = fakeZellen(1200);
+  const jeZeile = zellen.map(z => [z]);
   const aufgaben = [];
   let gezeigt = true, fertig = 0;
-  auflegen({ zellen, zeilen, stuecke: Int32Array.of(0, 0, 1, 2, 700, 0, 1, 2), esc, planen: f => aufgaben.push(f), aktuell: () => gezeigt, fertig: () => fertig++ });
+  auflegen({ zellen: jeZeile, zeilen, stuecke: Int32Array.of(0, 0, 1, 2, 700, 0, 1, 2), esc, planen: f => aufgaben.push(f), aktuell: () => gezeigt, fertig: () => fertig++ });
   aufgaben.shift()();
   assert.deepStrictEqual(zellen.map((z, i) => z.gesetzt ? i : -1).filter(i => i >= 0), [0]);
   gezeigt = false;
@@ -105,6 +107,19 @@ test('auflegen: Zeilen ohne Stück bleiben unberührt; ist die Datei nicht mehr 
   assert.strictEqual(zellen[700].gesetzt, 0);
   assert.strictEqual(aufgaben.length, 0);
   assert.strictEqual(fertig, 0);
+});
+
+test('auflegen: eine Zeile mit zwei Zellen (Kontext in „Nebeneinander“) bekommt in beiden denselben Inhalt; vorher/nachher sehen die flache Liste (R00249 FA 4, m5)', () => {
+  const zeilen = [{ art: 'kontext', alt: 1, neu: 1, text: 'let a = 1;' }, plus('let b = 2;'), plus('ohne')];
+  const [l0, r0, z1, z2] = fakeZellen(4);
+  const aufgaben = [], gesehen = [];
+  auflegen({ zellen: [[l0, r0], [z1], [z2]], zeilen, stuecke: Int32Array.of(0, 0, 3, 0, 1, 0, 3, 0), esc, planen: f => aufgaben.push(f), aktuell: () => true, fertig: () => {}, vorher: liste => { gesehen.push(liste.length); return null; } });
+  aufgaben.shift()();
+  assert.strictEqual(l0.innerHTML, '<span class="tk-keyword">let</span> a = 1;');
+  assert.strictEqual(r0.innerHTML, l0.innerHTML);
+  assert.strictEqual(z1.innerHTML, '<span class="vh">hinzugefügt: </span><span class="tk-keyword">let</span> b = 2;');
+  assert.strictEqual(z2.gesetzt, 0, 'ohne Stück unberührt');
+  assert.deepStrictEqual(gesehen, [3]);
 });
 
 test('TK_KLASSEN der Seite ist dieselbe Rollenliste wie ROLLEN des Workers (Code-Review Kann 6)', () => {

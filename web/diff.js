@@ -321,11 +321,12 @@
   }
 
   /** `springt`: die Nummern der neuen Seite öffnen VS Code an ihrer Zeile (R00236 FA 7); die Nummern der alten Seite nie. */
-  function zeileHtml(z, esc, springt = false) {
-    if (z.art === 'kopf') return `<tr class="hk"><td colspan="4">${sichtbarHtml(z.text, esc)}</td></tr>`;
-    if (z.art === 'hinweis') return `<tr class="nn"><td class="n" aria-hidden="true"></td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true"></td><td class="c">${esc(z.text)}</td></tr>`;
+  /** `index`: die Stelle der Zeile in der Liste, als `data-z` an der Zelle (Farbauflage und Lesezeile, ADR-0042 N6.1). */
+  function zeileHtml(z, esc, springt, index) {
+    if (z.art === 'kopf') return `<tr class="hk"><td colspan="4" data-z="${index}">${sichtbarHtml(z.text, esc)}</td></tr>`;
+    if (z.art === 'hinweis') return `<tr class="nn"><td class="n" aria-hidden="true"></td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true"></td><td class="c" data-z="${index}">${esc(z.text)}</td></tr>`;
     const klasse = z.art === 'plus' ? 'add' : z.art === 'minus' ? 'del' : 'ctx';
-    return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td>${nummerNeuHtml(z.neu, springt)}<td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c">${zelleHtml(z, esc)}</td></tr>`;
+    return `<tr class="${klasse}"><td class="n" aria-hidden="true">${z.alt ?? ''}</td>${nummerNeuHtml(z.neu, springt)}<td class="m" aria-hidden="true">${ZEICHEN[z.art]}</td><td class="c" data-z="${index}">${zelleHtml(z, esc)}</td></tr>`;
   }
 
   /** Die Nummer der neuen Seite; springt sie, trägt sie den Tooltip des Sprungs, bleibt aber `aria-hidden` (über die Tastatur führt
@@ -404,7 +405,7 @@
     const block = (stil, n, klasse, inhalt) => `<div class="dz-b" style="--bb:${stil}px;contain-intrinsic-block-size:auto ${n * 18}px"><table class="${klasse}" aria-label="${name}">${inhalt}</table></div>`;
     let teile;
     if (nebeneinander) teile = bloecke(gegenueberstellen(zeilen)).map(b => block(nebenBlockBreite(zeilen, b), b.length, 'dz ru-nb', NEBEN_KOPF + b.map(t => nebenZeileHtml(t, zeilen, esc, springt)).join('')));
-    else teile = bloecke(zeilen).map(b => block(blockBreite(b), b.length, 'dz', b.map(z => zeileHtml(z, esc, springt)).join('')));
+    else teile = bloecke(zeilen).map((b, k) => block(blockBreite(b), b.length, 'dz', b.map((z, j) => zeileHtml(z, esc, springt, k * BLOCK_ZEILEN + j)).join('')));
     let ziel = '';
     if (springt) ziel = ` data-vsc="${esc(sprung)}"`;
     return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${ziel}${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;
@@ -490,7 +491,7 @@
     const knopf = `<h${ebene} class="df-h"><button type="button" class="df-k" id="rv-dk${id}" data-act="review-klappe" data-arg="${arg}" aria-expanded="${stand.offen}" aria-controls="rv-dc${id}">${symbol('pfeil', ' df-pf')}<span class="st ${klasse}">${esc(wort)}</span><span class="p">${pfadHtml(pfad, esc)}</span>${ren}${testHinweisHtml(d)}<span class="z">${zahlenHtml(d)}</span>${anzeigen}</button></h${ebene}>`;
     const kopf = kopfMitAktionenHtml(knopf, d, kennung, stand, hinweise, esc);
     const saetze = merkmalSaetze(d, zustand).map(t => `<p class="df-mm">${esc(t)}</p>`).join('');
-    const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc, sprungBasis(quelle, d)) : '';
+    const code = zustand === 'patch' && stand.offen ? codeHtml(d.patch, pfad, esc, sprungBasis(quelle, d), Boolean(quelle && quelle.nebeneinander)) : '';
     const inhalt = stand.offen ? saetze + hinweisHtml(d, arg, zustand, stand, esc) + code : '';
     const beschaeftigt = stand.laden === 'laeuft' ? ' aria-busy="true"' : '';
     let warumZu = '';

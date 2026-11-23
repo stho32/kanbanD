@@ -36,8 +36,8 @@ test('Datei mit patch offen: Kopf als Knopf mit aria-expanded, Tabelle „Änder
   assert.ok(/<h3 class="df-h"><button type="button" class="df-k" id="rv-dk0" data-act="review-klappe" data-arg="0" aria-expanded="true"/.test(html));
   assert.ok(html.includes('<div class="df-sc" tabindex="0" role="region" aria-label="Änderungen in src/a.dat" data-farbe="nein">'));
   assert.ok(html.includes('<table class="dz" aria-label="Änderungen in src/a.dat">'));
-  assert.ok(html.includes('<td class="n" aria-hidden="true">1</td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true">−</td><td class="c"><span class="vh">entfernt: </span>a</td>'));
-  assert.ok(html.includes('<td class="m" aria-hidden="true">+</td><td class="c"><span class="vh">hinzugefügt: </span>b</td>'));
+  assert.ok(html.includes('<td class="n" aria-hidden="true">1</td><td class="n" aria-hidden="true"></td><td class="m" aria-hidden="true">−</td><td class="c" data-z="1"><span class="vh">entfernt: </span>a</td>'));
+  assert.ok(html.includes('<td class="m" aria-hidden="true">+</td><td class="c" data-z="2"><span class="vh">hinzugefügt: </span>b</td>'));
   assert.ok(html.includes('<span class="st st-mod">geändert</span>'));
 });
 

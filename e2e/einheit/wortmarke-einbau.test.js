@@ -39,8 +39,9 @@ test('AK 5: der Farbauftrag trägt die Marken, und die Auflage ersetzt die Zelle
   const auftrag = d.farbAuftragHolen(nrAus(html));
   assert.deepStrictEqual(auftrag.zeilen.map(z => z.wm || null), [null, [9, 12], [9, 12]]);
   const zellen = auftrag.zeilen.map(() => ({ innerHTML: '' }));
+  const jeZeile = zellen.map(z => [z]);
   let fertig = false;
-  auflegen({ zellen, zeilen: auftrag.zeilen, stuecke: Int32Array.from([1, 8, 13, 1, 2, 8, 13, 1]), esc, planen: f => f(), aktuell: () => true, fertig: () => { fertig = true; } });
+  auflegen({ zellen: jeZeile, zeilen: auftrag.zeilen, stuecke: Int32Array.from([1, 8, 13, 1, 2, 8, 13, 1]), esc, planen: f => f(), aktuell: () => true, fertig: () => { fertig = true; } });
   assert.ok(fertig);
   assert.strictEqual(zellen[1].innerHTML, '<span class="vh">entfernt: </span>let s = <span class="tk-string">&quot;</span><mark class="wm"><span class="tk-string">alt</span></mark><span class="tk-string">&quot;</span>;');
   assert.deepStrictEqual(marken(zellen[2].innerHTML), ['<span class="tk-string">neu</span>']);

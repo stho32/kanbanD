@@ -346,7 +346,7 @@
       const zustand = diff.dateiZustand(s, hinweise);
       const saetze = diff.merkmalSaetze(s, zustand).map(t => `<p class="df-mm">${esc(t)}</p>`).join('');
       let code = '';
-      if (zustand === 'patch') code = diff.codeHtml(s.patch, d.pfad, esc, sprung);
+      if (zustand === 'patch') code = diff.codeHtml(s.patch, d.pfad, esc, sprung, Boolean(ctx.nebeneinander));
       rumpf = saetze + schrittHinweisHtml(s, arg, zustand, esc) + code;
     }
     return `<div class="fs" id="rv-d${id}"><h5 class="fs-k">${kopf}</h5>${rumpf}</div>`;
@@ -359,7 +359,7 @@
   }
 
   /** In „Alle Änderungen“ gilt die Wurzel des Abschnitts, und der Patch nennt seine Anwendung statt eines Commits (FA 10, 11). */
-  const abschnittQuelle = (ctx, sicht) => ({ nr: ctx.nr, anwendung: sicht.anwendung, wurzel: sicht.wurzel });
+  const abschnittQuelle = (ctx, sicht) => ({ nr: ctx.nr, anwendung: sicht.anwendung, wurzel: sicht.wurzel, nebeneinander: Boolean(ctx.nebeneinander) });
 
   /** Eine Gruppe `art` des geladenen Abschnitts `a` (R00235 FA 10): Kopf `h3` unter der Anwendung, offen nach `ab.gruppen`. */
   function abschnittGruppeHtml(ab, a, art, ctx) {

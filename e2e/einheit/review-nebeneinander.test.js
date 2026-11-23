@@ -279,3 +279,54 @@ test('codeHtml nebeneinander: fremder Text bleibt Text (FA Sicherheit) — Tags 
   assert.ok(!/<img|<b>/.test(html));
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
 });
+
+/* ── B1309 Einbau: data-z in beiden Darstellungen, Blöcke zu 500 Tabellenzeilen, --bb, der Schalter erreicht beide Ansichten ── */
+
+test('codeHtml aus: jede Code-Zelle und der Hunk-Kopf tragen den Index der Zeile der Liste als data-z (FA 2, ADR-0042 N6.1)', () => {
+  const html = d.codeHtml('@@ -1,2 +1,2 @@\n k\n-x\n\\ No newline at end of file\n+y\n', 'src/n.rs', esc);
+  assert.match(html, /<tr class="hk"><td colspan="4" data-z="0">/);
+  const z = Array.from(html.matchAll(/<td class="c" data-z="(\d+)">/g), m => Number(m[1]));
+  assert.deepStrictEqual(z, [1, 2, 3, 4]);
+  assert.ok(!/ru-nb/.test(html), 'aus: der heutige Zeichenweg');
+});
+
+test('codeHtml nebeneinander: Blöcke zu 500 Tabellenzeilen, Schätzung n × 18 je Block; 2.500 gegen 2.500 sind 2.501 Tabellenzeilen mit Kopf (FA 8, AK 8)', () => {
+  const patch = '@@ -1,2500 +1,2500 @@\n' + Array.from({ length: 2500 }, (_, i) => `-a${i}\n`).join('') + Array.from({ length: 2500 }, (_, i) => `+b${i}\n`).join('');
+  const html = d.codeHtml(patch, 'src/g.rs', esc, null, true);
+  const bloecke = Array.from(html.matchAll(/<div class="dz-b" style="--bb:\d+px;contain-intrinsic-block-size:auto (\d+)px">(.*?)<\/table><\/div>/g), m => [Number(m[1]), (m[2].split('</thead>')[1].match(/<tr/g) || []).length]);
+  assert.deepStrictEqual(bloecke.map(b => b[1]), [500, 500, 500, 500, 500, 1]);
+  assert.ok(bloecke.every(([hoehe, n]) => hoehe === n * 18), JSON.stringify(bloecke));
+});
+
+test('codeHtml nebeneinander: --bb ist 2 × die längste Zeile beider Seiten × 8 + 140; ein längerer Hunk-Kopf gilt mit seiner Länge (FA 8)', () => {
+  const bb = html => Number(html.match(/--bb:(\d+)px/)[1]);
+  const patch = `@@ -1 +1 @@\n-${'a'.repeat(10)}\n+${'b'.repeat(40)}\n`;
+  assert.strictEqual(bb(d.codeHtml(patch, 'x.txt', esc, null, true)), 2 * 40 * 8 + 140);
+  assert.strictEqual(bb(d.codeHtml(`@@ -1 +1 @@\n-${'a'.repeat(40)}\n+b\n`, 'x.txt', esc, null, true)), 2 * 40 * 8 + 140, 'links die längste');
+  const kopf = `@@ -1 +1 @@ ${'f'.repeat(200)}`;
+  assert.strictEqual(bb(d.codeHtml(`${kopf}\n-a\n+b\n`, 'x.txt', esc, null, true)), kopf.length * 8 + 140);
+  assert.strictEqual(bb(d.codeHtml(patch, 'x.txt', esc)), 40 * 8 + 140, 'aus unverändert');
+});
+
+test('dateiHtml: „nebeneinander“ aus der Quelle zeichnet die Datei nebeneinander; ohne bleibt sie untereinander (FA 5, Ein Commit)', () => {
+  const datei = { neu: 'src/n.rs', alt: 'src/n.rs', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: K_LAUF_A };
+  const stand = { offen: true, laden: null, fehler: null };
+  const quelle = { nr: 9, commit: 'kd:abc', wurzel: '/w' };
+  assert.match(d.dateiHtml(datei, 0, stand, [], esc, { id: 0, arg: 0, quelle: { ...quelle, nebeneinander: true } }), /class="dz ru-nb"/);
+  assert.ok(!/ru-nb/.test(d.dateiHtml(datei, 0, stand, [], esc, { id: 0, arg: 0, quelle })));
+});
+
+test('Alle Änderungen: ctx.nebeneinander zeichnet Netto-Dateien und Schritte einer Folge nebeneinander (FA 5, AK 8, m8)', () => {
+  const g = require('../../web/gesamt.js');
+  const schritt = c => ({ commit: `kd:${c.repeat(40)}`, alt: 'a.rs', neu: 'a.rs', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: '@@ -1 +1 @@\n-x\n+y\n' });
+  const netto = { neu: 'k.rs', alt: 'k.rs', status: 'M', plus: 1, minus: 1, binaer: false, gross: false, nachladen: false, nicht_utf8: false, patch: K_LAUF_A };
+  const folge = { pfad: 'a.rs', plus: 2, minus: 2, binaer: false, schritte: [schritt('a'), schritt('b')] };
+  const antwort = { anwendung: 'kd', wurzel: '/w', commits: [], dateien: [netto, folge], hinweise: [] };
+  const ab = { status: 'da', kuerzel: 'kd', antwort, staende: [{ offen: true, laden: null, fehler: null }, { offen: true, laden: null, fehler: null }], gruppen: { code: true, test: true, doku: true } };
+  const ctx = { esc, nr: 9, adresse: v => `#${v}`, titelVon: () => null };
+  const tabellen = html => (html.match(/<table class="dz[^"]*"/g) || []);
+  const an = g.abschnittHtml(ab, 0, { ...ctx, nebeneinander: true });
+  assert.deepStrictEqual(tabellen(an), ['<table class="dz ru-nb"', '<table class="dz ru-nb"', '<table class="dz ru-nb"']);
+  assert.deepStrictEqual(tabellen(g.abschnittHtml(ab, 0, ctx)), ['<table class="dz"', '<table class="dz"', '<table class="dz"']);
+  assert.match(g.abschnittDateiHtml(ab, 0, 0, { ...ctx, nebeneinander: true }), /class="dz ru-nb"/);
+});

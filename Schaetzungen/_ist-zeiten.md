@@ -1197,3 +1197,4 @@ Nie vom User erfragen.
 | 2026-11-23 | Karte #260 R00249 | B1306 Gegenüberstellung der Zeilen rein (`gegenueberstellen`), 16 Unit-Tests rot mit Stub, dann grün | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-23 | Karte #260 R00249 | B1307 Zustand des Schalters rein: `schalterLesen`/`schalterSchreiben` für beide Schlüssel, `nebeneinanderSchalterHtml`, 4 Unit-Tests | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
 | 2026-11-23 | Karte #260 R00249 | B1308 Zeichnen der Tabelle: zweiter Zeichenweg in `codeHtml` (vier Spalten, `lz`, Lesetexte, Hinweiszeile mit Seitenbezug, Sprung nur rechts), 9 Unit-Tests | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-23 | Karte #260 R00249 | B1309 Einbau: `data-z` in beiden Darstellungen, Auflage mit Liste von Zellen je Zeile (Test der Auflage zuerst umgestellt), Schalter über Quelle/ctx in Ein Commit und Alle Änderungen, 5 Unit-Tests | Standard | 1-2h | 0,3h | 0,3h | autonom |

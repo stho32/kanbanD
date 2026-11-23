@@ -112,8 +112,9 @@
     return je;
   }
 
-  /** Farbe blockweise auflegen: je Aufgabe (`planen`) höchstens 500 Zeilen; ersetzt wird nur der Inhalt der Codezelle `zellen[i]`
-      der Patch-Zeile i, Zeilen ohne Stück bleiben unberührt. `aktuell()` falsch ⇒ die Auflage endet still, sonst nach dem letzten
+  /** Farbe blockweise auflegen: je Aufgabe (`planen`) höchstens 500 Zeilen der Liste; ersetzt wird nur der Inhalt der Codezellen
+      `zellen[i]` der Patch-Zeile i (eine Liste: in „Nebeneinander“ steht eine Kontextzeile in zwei Zellen, R00249 FA 4), Zeilen ohne
+      Stück bleiben unberührt. `aktuell()` falsch ⇒ die Auflage endet still, sonst nach dem letzten
       Block `fertig()`. `vorher`/`nachher` umschließen jeden Block (Textauswahl merken und wiederherstellen, UX S2). */
   function auflegen({ zellen, zeilen, stuecke, esc, planen, aktuell, fertig, vorher = () => null, nachher = () => {} }) {
     const je = stueckeJeZeile(stuecke);
@@ -122,8 +123,11 @@
       const bis = Math.min(von + AUFLAGE_ZEILEN, zeilen.length);
       const betroffen = [];
       for (let i = von; i < bis; i++) if (je.has(i) && zellen[i]) betroffen.push(i);
-      const gemerkt = vorher(betroffen.map(i => zellen[i]));
-      for (const i of betroffen) zellen[i].innerHTML = zelleHtml(zeilen[i], esc, je.get(i));
+      const gemerkt = vorher(betroffen.flatMap(i => zellen[i]));
+      for (const i of betroffen) {
+        const html = zelleHtml(zeilen[i], esc, je.get(i));
+        for (const zelle of zellen[i]) zelle.innerHTML = html;
+      }
       nachher(gemerkt);
       if (bis < zeilen.length) planen(() => block(bis));
       else fertig();
@@ -189,7 +193,8 @@
       const aktuell = () => bereich.isConnected;
       const fertig = stuecke => {
         if (!stuecke) { bereich.dataset.farbe = 'nein'; return; }
-        const zellen = Array.from(bereich.querySelectorAll('tr'), tr => tr.querySelector('td.c'));
+        const zellen = [];
+        for (const zelle of bereich.querySelectorAll('td.c[data-z]')) (zellen[zelle.dataset.z] ||= []).push(zelle);
         // `esc` ist die eine Maskierung der Oberfläche (web/ansicht.js), zur Laufzeit geladen
         auflegen({ zellen, zeilen: auftrag.zeilen, stuecke, esc, planen: f => setTimeout(f, 0), aktuell, fertig: () => { bereich.dataset.farbe = 'ja'; }, vorher: auswahlMerken, nachher: auswahlSetzen });
       };
