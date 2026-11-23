@@ -442,6 +442,9 @@ test('Nacharbeit 1 Punkt 2: Vergleiche ≤ Obergrenze bei 1, 10, 500 und 2.000 g
     const zuViel = noetig > vergleiche || noetig * befehl > vergleichsZeichen;
     assert.strictEqual(r.teilweise, zuViel, `${n}: teilweise`);
     if (!zuViel) assert.strictEqual(r.titelpruefungen, noetig, `${n}: unter der Grenze jeder Vergleich`);
+    const gesuchteSchritte = Math.ceil(r.titelpruefungen / commits) + 1;
+    const suche = gesuchteSchritte * (Math.ceil(Math.log2(commits)) + 2 + commits);
+    assert.ok(r.fensterzugriffe <= suche, `${n}: nach dem Abbruch keine Suche nach dem Fenster mehr (${r.fensterzugriffe} ≤ ${suche})`);
     console.log(`Beobachtung: ${n} gleiche Titel → ${r.titelpruefungen} Vergleiche, ${r.verglicheneZeichen} Zeichen, ${ms.toFixed(1)} ms`);
   }
 });
