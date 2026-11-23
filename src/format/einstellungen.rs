@@ -243,14 +243,16 @@ impl Abschnitt {
 
 /// Ob der Abschnitt im Text der Normalform seines bisherigen Werts entspricht (ADR-0043 Regel 6, PO Z. 666): verglichen
 /// ohne Zeilenende; bei `sources` gelten auch die alte Registerform der Bestände und die Registerformen früherer Versionen;
-/// ein fehlender Abschnitt nur, wenn sein Wert leer ist.
+/// ein fehlender Abschnitt und `<schluessel>: {}` nur, wenn sein Wert leer ist.
 /// Alles andere (eingerückter Kommentar, Block- statt Flussform, eigene Anführung, Leerzeile) ist von Hand gestaltet.
 pub(crate) fn in_normalform(text: &str, abschnitt: Abschnitt, bisher: &Einstellungen) -> bool {
     let Some(steht) = frontmatter::abschnitt_lesen(text, abschnitt.schluessel()) else {
         return abschnitt.leer(bisher);
     };
+    // `<schluessel>: {}` trägt denselben leeren Wert wie „kein Abschnitt“ und nichts von Hand (R00250 Nacharbeit, PO Z. 685)
+    let leere_zuordnung = steht == format!("{}: {{}}", abschnitt.schluessel()) && abschnitt.leer(bisher);
     let fruehere_form = |q: &Quellen| steht == quellen_altform_schreiben(q) || quellen_fruehere_form(&steht, q);
-    abschnitt.block(bisher).as_ref() == Some(&steht) || (abschnitt == Abschnitt::Quellen && fruehere_form(&bisher.quellen))
+    leere_zuordnung || abschnitt.block(bisher).as_ref() == Some(&steht) || (abschnitt == Abschnitt::Quellen && fruehere_form(&bisher.quellen))
 }
 
 /// Der Text von `kanbanD.md` nach einem Schreibweg (ADR-0043 Regeln 3–6): nur die Abschnitte, deren Wert sich zwischen
@@ -390,6 +392,12 @@ mod tests {
         assert!(in_normalform("---\nx: 1\n---\n", Abschnitt::Personen, &leer), "fehlt bei leerem Wert");
         assert!(in_normalform(&t, Abschnitt::Signale, &e), "signals fehlt, keine Signale");
         assert!(!in_normalform("---\nx: 1\n---\n", Abschnitt::Personen, &e), "fehlt, obwohl Personen da sind");
+        for a in Abschnitt::ALLE {
+            let leer_zuordnung = format!("---\n{}: {{}}\n---\n", a.schluessel());
+            assert!(in_normalform(&leer_zuordnung, a, &leer), "{a:?}: `{{}}` bei leerem Wert (PO Z. 685)");
+            assert!(!in_normalform(&leer_zuordnung, a, &beispiel()), "{a:?}: `{{}}`, obwohl der Wert nicht leer ist");
+            assert!(!in_normalform(&format!("---\n{}: {{}} # leer\n---\n", a.schluessel()), a, &leer), "{a:?}: Kommentar dahinter ist Handform");
+        }
         assert!(!in_normalform(&t.replace("people:", "\"people\":"), Abschnitt::Personen, &e), "zitierter Schlüssel fehlt als Abschnitt");
     }
 

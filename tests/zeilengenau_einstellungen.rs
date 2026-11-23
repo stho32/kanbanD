@@ -362,3 +362,29 @@ fn nacharbeit_zeilenende_folgt_dem_frontmatter_crlf() {
     assert_eq!(l.diff(), (0, 2));
     assert_eq!(l.datei(), text.replace("---\r\n# Unser", "signals:\r\n  warten: {label: Warten, color: amber}\r\n---\r\n# Unser"));
 }
+
+/// B1331 (PO Z. 685): `signals: {}` ist die Normalform des leeren Werts — das erste Signal ersetzt die Zeile (Fall E).
+#[test]
+fn nacharbeit_signals_leer_unzitiert_erstes_signal() {
+    let text = h().replace(QUELLEN, &format!("signals: {{}}\n{QUELLEN}"));
+    let l = lage(&text);
+    assert_eq!(l.put(|e| e.signale.push(warten())), Ok(true));
+    assert_eq!(l.diff(), (1, 2));
+    assert_eq!(l.datei(), text.replace("signals: {}\n", "signals:\n  warten: {label: Warten, color: amber}\n"));
+}
+
+/// Dieselbe Regel in jedem Abschnitt: `classes: {}` bzw. `sources: {}` mit leerem Wert, erster Eintrag → 200.
+#[test]
+fn nacharbeit_leere_zuordnung_ist_normalform_in_jedem_abschnitt() {
+    let text = h().replace(KLASSEN, "classes: {}\n");
+    let l = lage(&text);
+    assert_eq!(
+        l.put(|e| e.klassen.push(kanband::modell::Klasse { schluessel: "neu".into(), bezeichnung: "Neu".into(), farbe: "blue".into() })),
+        Ok(true)
+    );
+    assert_eq!(l.diff(), (1, 2));
+    let text = h().replace(QUELLEN, "sources: {}\n");
+    let l = lage(&text);
+    assert_eq!(l.put(|e| e.quellen.repository = "/r".into()), Ok(true));
+    assert_eq!(l.datei(), text.replace("sources: {}\n", "sources:\n  repository: /r\n"));
+}
