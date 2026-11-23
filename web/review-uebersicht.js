@@ -428,6 +428,53 @@
     return { indizes, ende };
   }
 
+  /* ── Gegenüberstellung für „Nebeneinander“ (R00249 FA 2, ADR-0042 N6.4): Zeilen aus `patchZeilen` → Tabellenzeilen mit Indizes der
+     Liste. Ein Lauf gelöschter Zeilen mit dem direkt folgenden Lauf hinzugefügter steht i-te gegen i-te, der Überhang gegenüber leer
+     (`null`); Kontext steht links und rechts mit demselben Index. Ein Hinweis „\ No newline“ folgt als eigene Tabellenzeile direkt der
+     Tabellenzeile seiner Zeile, in der Spalte ihrer Seite; zwei Hinweise einer Tabellenzeile teilen sich eine. ── */
+
+  function gegenueberstellen(zeilen) {
+    const tabelle = [];
+    let k = 0;
+    while (k < zeilen.length) {
+      const art = zeilen[k].art;
+      if (art === 'minus' || art === 'plus') {
+        const geloescht = laufMitHinweisen(zeilen, k, 'minus');
+        const hinzugefuegt = laufMitHinweisen(zeilen, geloescht.ende, 'plus');
+        paareAnhaengen(tabelle, geloescht.eintraege, hinzugefuegt.eintraege);
+        k = hinzugefuegt.ende;
+        continue;
+      }
+      if (art === 'kopf') tabelle.push({ art: 'kopf', z: k });
+      else if (art === 'kontext') tabelle.push({ art: 'zeile', links: k, rechts: k });
+      else tabelle.push({ art: 'hinweis', links: k, rechts: k });
+      k++;
+    }
+    return tabelle;
+  }
+
+  /** Ab `k` die Zeilen eines Laufs der Art `art`, je `{z, hinweis}` (Index des folgenden Hinweises oder null), und der Index danach. */
+  function laufMitHinweisen(zeilen, k, art) {
+    const eintraege = [];
+    let ende = k;
+    for (; ende < zeilen.length; ende++) {
+      const a = zeilen[ende].art;
+      if (a === art) eintraege.push({ z: ende, hinweis: null });
+      else if (a === 'hinweis' && eintraege.length) eintraege[eintraege.length - 1].hinweis = ende;
+      else break;
+    }
+    return { eintraege, ende };
+  }
+
+  /** i-te gegen i-te, `max(n, m)` Tabellenzeilen; nach einer Tabellenzeile mit Hinweis folgt die Hinweiszeile. */
+  function paareAnhaengen(tabelle, links, rechts) {
+    for (let i = 0; i < Math.max(links.length, rechts.length); i++) {
+      const l = links[i] || { z: null, hinweis: null }, r = rechts[i] || { z: null, hinweis: null };
+      tabelle.push({ art: 'zeile', links: l.z, rechts: r.z });
+      if (l.hinweis !== null || r.hinweis !== null) tabelle.push({ art: 'hinweis', links: l.hinweis, rechts: r.hinweis });
+    }
+  }
+
   /** Höchstens so lang (UTF-16-Einheiten, ohne Vorzeichen) ist eine Zeile mit Marke (FA 4, wie `GRENZE_ZEILE` in diff.js). */
   const GRENZE_WORTMARKE = 1000;
   /** So viele Einheiten müssen Präfix und Suffix zusammen gleich sein, sonst trägt das Paar keine Marke (FA 2). */
@@ -492,7 +539,7 @@
     return { von, suffix: s };
   }
 
-  Object.assign(ziel, { wortMarken, wortMarke });
+  Object.assign(ziel, { wortMarken, wortMarke, gegenueberstellen });
 
   Object.assign(ziel, { UMBRECHEN_SCHLUESSEL, umbrechenLesen, umbrechenSchreiben, umbrechenSchalterHtml });
 

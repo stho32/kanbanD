@@ -1194,3 +1194,4 @@ Nie vom User erfragen.
 | 2026-11-23 | Karte #248 R00250 | B1334 Nacharbeit: Route, OpenAPI, Endpunktliste, V2/V5/V7/V8/V9/V14 über HTTP, Zähltabellen formfehler/parameterfehler/openapi | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-23 | Karte #248 R00250 | B1335 Nacharbeit: Vorschau aus dem Server, Takt-Modul mit Node-Tests, 10 E2E (rot am alten Stand), V15 in sechs Specs, r00180-Register ohne Handform, Wächter Schreibweg | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-23 | Karte #248 R00250 | B1336 Nacharbeit: R00250 AK 11–15, Mutanten (6, eigenes Build-Ziel, alle getötet), volles Gate | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-23 | Karte #260 R00249 | B1306 Gegenüberstellung der Zeilen rein (`gegenueberstellen`), 16 Unit-Tests rot mit Stub, dann grün | Standard | 1-2h | 0,2h | 0,2h | autonom |
