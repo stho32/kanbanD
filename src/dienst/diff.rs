@@ -254,7 +254,8 @@ impl Diffanfrage {
     }
 }
 
-/// Der eine Eintrag von `commits` (R00206 FA 4): wie in der Liste, ohne Zustand und Zweige.
+/// Der eine Eintrag von `commits` (R00206 FA 4): wie in der Liste, ohne Zustand, Zweige und Autordatum (`autordatum` trägt nur die
+/// Liste, R00251 FA 4).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
 pub struct Diffcommit {
     pub verweis: String,
