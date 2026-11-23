@@ -1,6 +1,6 @@
 # ADR-0043: `kanbanD.md` zeilengenau je Abschnitt schreiben — nur geänderte Schlüssel ersetzen, Textkörper nie, Handform im geänderten Abschnitt wird verweigert, Rücklese-Prüfung als zweite Sicherung
 
-**Status**: Akzeptiert — product-owner 2026-11-23 (po-entscheidungen Z. 665–668, Lauf 248-product-owner-1): Bug; V4 mit geänderter Regel 6 (Verweigerung statt Normalform); Wortlaut der 409 wörtlich. Technisch durch Code-Lesen getragen; nichts gebaut.
+**Status**: Akzeptiert — product-owner 2026-11-23 (po-entscheidungen Z. 665–668, Lauf 248-product-owner-1): Bug; V4 mit geänderter Regel 6 (Verweigerung statt Normalform); Wortlaut der 409 wörtlich. Technisch durch Code-Lesen getragen. Nachtrag N1 (2026-11-23, Akzeptiert): Vorschau in „Einrichten“ als Trockenlauf `POST /api/einstellungen/vorschau` desselben Schreibwegs (Regel 8), entprellt; zwei Wortlaute beim product-owner.
 **Datum**: 2026-11-23
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #248, Läufe 248-architekt-1 und -2); product-owner (Z. 665–668)
 **Kontext-Anforderung**: — (Karte #248, entstanden im Entwicklertest von #218, R00220). Bezug: ADR-0036 Nachtrag „Umschalten“ Regel 4 (Schalter zeilengenau), ADR-0034 N2 Regel 2 (alte Form des Registers wird beim `PUT` umgestellt), ADR-0031 Regel 1 (ein Schreiber für `classes`), PO Z. 492, Vision „Git-freundliche Form“ und „Die Dateien sind der einzige Speicher“
@@ -77,3 +77,96 @@ Gewählt **V4** (V1 mit Rücklese-Prüfung), mit der Änderung des product-owner
 - ADR-0036 Nachtrag „Umschalten“ Regel 4–5; ADR-0034 N2; ADR-0031 Regel 1
 - po-entscheidungen Z. 492, Z. 665–668; Vision „Git-freundliche Form“, „Die Dateien sind der einzige Speicher“
 - Bestand: `~/Projekte/Kanban-Boards/{Entwicklungsprozess,goaltreetoolA,JoinPuyaApp,kanbanD-Demo,kanbanD,localchatA}-*/kanbanD.md` und `git log -p -- kanbanD.md` dort (nur gelesen, 2026-11-23)
+
+## Nachtrag 2026-11-23 N1: Vorschau in „Einrichten“ als Trockenlauf desselben Schreibwegs — `POST /api/einstellungen/vorschau`, entprellt, Stand sichtbar (Karte #248, Nacharbeit 1 von 2)
+
+**Status `Akzeptiert`.** Anlass: Muss M1 des code-reviewer (`#einr-vorschau` baut `kanbanD.md` im Browser aus dem Modell und zeigt bei Datei H nicht das Gespeicherte; R00209 AK 11 wörtlich verletzt). Entschieden hat der product-owner (po-entscheidungen Z. 683): Der Server liefert per Trockenlauf genau den Text, den `einstellungen_aendern` nach den Regeln 5–6 schreiben würde, ohne Datei und ohne Commit; bei 409 zeigt die Vorschau den Wortlaut aus Z. 667. Dieser Nachtrag legt Form, Takt, Gleichlauf, Sicherheit und Proben fest. Zwei Wortlaute (N1.2) liegen beim product-owner; bis zur Antwort gilt die Empfehlung. Regeln 1–7 bleiben stehen; N1 ergänzt sie um Regel 8.
+
+### N1.1 Form des Aufrufs
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **A — eigener Pfad `POST /api/einstellungen/vorschau`** (gewählt) | Der Pfad sagt, dass nichts geschrieben wird; die Proben „nichts geschrieben“ hängen an einer Route; Endpunktliste und OpenAPI zeigen ihn als eigenen, nicht schreibenden Aufruf; kein bestehender Aufrufer (Factory `GET`→`PUT`) ändert sich | eine Route mehr, die Rumpf, Fehlerabbildung und Rechte mit `PUT` teilen muss — getragen von N1.3 (eine Dienstfunktion) |
+| B — Schalter am `PUT` (`?trocken=ja` oder Header) | keine neue Route, der Rumpf ist offensichtlich derselbe | ein vergessener oder verschluckter Schalter **schreibt** (Proxy, Tippfehler im Parameter, älterer Server ohne den Schalter antwortet 200 und committet); ein `PUT`, das nicht schreibt, widerspricht seiner Bedeutung (RFC 9110 §9.3.4); die Probe „nichts geschrieben“ prüft eine Verzweigung statt einer Route |
+| C — `GET /api/einstellungen/vorschau?entwurf=<json>` | lesend schon in der Methode | der Entwurf (Register mit Pfaden, viele Personen) gehört nicht in eine URL (Länge, Server-Log); Abfrageparameter brauchen eine eigene Kodierung des Modells |
+
+**Entscheidung A.** Rumpf genau wie `PUT /api/einstellungen` (`crate::modell::Einstellungen`, derselbe `JsonKoerper`, dieselbe Körpergrenze). `X-KanbanD-Wer` ist **optional** (Endpunktliste `wer: false`, „Lesen braucht keine Identität“): mit Header gelten die Rechte dieser Person wie beim `PUT` (unbekannt oder stillgelegt → 400, Agent ändert Menschen → 403); ohne Header wird wie für einen Menschen gerechnet — „Einrichten“ speichert ohnehin nur als Mensch (`ichNoetig`, `web/app.js:500`).
+
+Antworten (JSON wie alle Antworten der API, `Content-Type: application/json`):
+
+- **200** `{"text": "<ganze Datei>", "geaendert": true|false}` — `text` ist Zeichen für Zeichen der Inhalt, den `PUT` mit demselben Rumpf in diesem Moment schreiben würde, samt BOM und Zeilenenden der Datei; ohne Änderung (`geaendert: false`) der heutige Inhalt der Datei.
+- **400** `{fehler}` ungültiger Entwurf (dieselben Texte wie `PUT`, z. B. „Kürzel „x“ ist doppelt“), fehlender oder falscher Rumpf; **403** `PersonenartVerboten {fehler, kuerzel}`; **409** `{fehler}` — Regel 5/6 mit dem Wortlaut aus Z. 667, oder „noch nicht eingerichtet“, oder Personen entfernt; **423** Datei defekt; **500** Dateisystem.
+- Statuscode und `fehler` sind immer **dieselben**, die `PUT` mit demselben Rumpf in diesem Moment gäbe.
+
+OpenAPI: eigener Handler `einstellungen_vorschau` mit `#[utoipa::path(post, path = "/api/einstellungen/vorschau", tag = "Ordner", request_body = crate::modell::Einstellungen, …)]`, Antwortschema `Einstellungsvorschau {text: String, geaendert: bool}` (`utoipa::ToSchema`), Antworten 200, 400, 403 (`PersonenartVerboten`), 409, 423, 500 wie bei `PUT`; Header `X-KanbanD-Wer` als optionaler Parameter. Beschreibung (gleich in `src/web/endpunkte.rs`): „Trockenlauf von PUT /api/einstellungen mit demselben Rumpf: {text, geaendert} — text ist genau die Datei kanbanD.md, die PUT jetzt schreiben würde (BOM und Zeilenenden der Datei), ohne Änderung die heutige; dieselben Fehler wie PUT (400, 403, 409 mit dem Wortlaut der Handform, 423); schreibt nichts, kein Commit; X-KanbanD-Wer optional (ohne: gerechnet wie für einen Menschen) (R00250, ADR-0043 N1)“. Die Route steht in `src/web/mod.rs` neben `einstellungen_lesen, einstellungen_setzen`.
+
+### N1.2 Takt und Zustände in der Oberfläche
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| bei jeder Eingabe | immer aktuell | eine Anfrage je Taste, Antworten überholen sich, die Vorschau flackert |
+| **entprellt nach Eingabe, sofort nach Klick-Aktionen** (gewählt) | wenige Anfragen, Stand nach der letzten Taste spätestens nach Entprellzeit plus Antwort | dazwischen ist die Vorschau kurz veraltet — wird als „wartet“ gekennzeichnet |
+| bei Verlassen des Feldes | kaum Anfragen | während des Tippens dauerhaft veraltet; wer nach der letzten Eingabe auf die Vorschau schaut, sieht den alten Stand (AK 11 „vor dem Speichern“) |
+
+**Entscheidung: entprellt.**
+
+1. **Ein Anstoß** `vorschauAnfordern(sofort)` in `web/app.js`. Eingaben (`input` in „Einrichten“) stoßen mit **250 ms** Entprellung an; Aktionen, die den Entwurf per Klick ändern (Person, Klasse, Signal, Anwendung anlegen/entfernen, Farbe, Reihenfolge, „Verwerfen“), stoßen ohne Wartezeit an. Außerdem: beim Öffnen von „Einrichten“, nach jedem beendeten „Speichern“ (Erfolg wie Fehler) und nach jedem Nachladen von `S.zustand`, solange „Einrichten“ offen ist (eine fremde Änderung an `kanbanD.md` ändert den Trockenlauf).
+2. **Nur die jüngste Antwort zählt**: jede Anfrage trägt eine laufende Nummer; eine Antwort wird nur übernommen, wenn ihre Nummer die zuletzt vergebene ist und „Einrichten“ noch offen ist. Höchstens eine Anfrage ist unterwegs; was während einer laufenden Anfrage angestoßen wird, geht nach deren Ende einmal los (letzter Stand). Die Vorschau läuft **nicht** durch `durchDieSchlange` (sie schreibt nicht und darf „Speichern“ nicht aufhalten).
+3. **Zustände** am Element `#einr-vorschau` als `data-stand`:
+   - `aktuell` — `text` der Antwort steht im `pre`, unverändert (`textContent`; BOM und `\r` bleiben, sind unsichtbar).
+   - `wartet` — ab dem Anstoß bis zur Antwort: der letzte Text bleibt stehen, `aria-busy="true"`; erst wenn die Antwort länger als 400 ms ausbleibt, wird der Text gedämpft und die Statuszeile `#einr-vorschau-stand` zeigt „Vorschau wird aktualisiert …“ (kein Flackern beim Tippen). Vor der ersten Antwort ist das `pre` leer und die Statuszeile zeigt dasselbe.
+   - `verweigert` — Antwort 4xx: das `pre` zeigt statt eines Dateitexts das `fehler` der Antwort (bei Handform wörtlich Z. 667). Das gilt auch für 400 und 403, weil „Speichern“ genau diese Meldung brächte (Frage 2 an den product-owner).
+   - `fehler` — keine Antwort (Netz, Frist von `api`, 5xx): der letzte Text bleibt gedämpft stehen, die Statuszeile zeigt „Vorschau nicht aktuell — kanbanD antwortet nicht.“ (Wortlaut: Frage 1). Es gibt **keinen** Rückfall auf einen Nachbau im Browser — der wäre die zweite Schreibregel, die M1 beseitigt.
+   „Speichern“ bleibt in jedem Zustand bedienbar; die Vorschau sperrt nichts. Die Statuszeile ist `role="status"`; das `pre` ist keine Live-Region (keine Ansage je Taste).
+4. **`einstellungenText` nur noch für eine neue Datei**: Die Vorschau „Erster Start“ (`#vorschau-einstellungen`) baut weiter im Browser — dort schreibt der Server mit `einstellungen::schreiben` neu (`einrichten`, Regel 2), also ist der Nachbau dort die richtige Regel. `#einr-vorschau` wird nie mehr aus `einstellungenText` gesetzt (`web/ansicht.js:2211`, `web/app.js:5103`); der Parameter `schalter` und `S.transkripteVorgabe` entfallen dort. Der Vergleich „weitergetippt“ in `einr-ok` (`web/app.js:4703/4711`) darf `einstellungenText` als Fingerabdruck des Entwurfs behalten.
+
+### N1.3 Ein Schreibweg, Trockenlauf ohne den letzten Schritt (Regel 8)
+
+8. **Trockenlauf und Speichern teilen alles bis auf `aktion`.** `einstellungen_aendern` (`src/dienst/einstellungen.rs:172`) wird geteilt in
+   - `einstellungen_entwerfen(&self, _sperre: &MutexGuard<'_, ()>, art: Art, altform, aendern) -> Result<Entwurf<T>, Fehler>` — Modell lesen, `aendern`, `normalisieren`, `einstellungen_pruefen`, `personen_pruefen`, Vergleich mit `vergleich`, Text lesen, `abschnitte_schreiben` (Regeln 3–6, mit den Nacharbeiten S1/S2 dieser Karte). `Entwurf` trägt `datei: Option<String>` (`None` = keine Änderung), den bisherigen `text`, `nachricht` und `ergebnis`. Die Sperre ist Parameter, damit der Aufruf nur unter ihr möglich ist; die Funktion schreibt nichts, merkt nichts vor (`eigene.merken`) und ruft weder `aktion` noch Git.
+   - `einstellungen_aendern` = `gesperrt()` → `einstellungen_entwerfen` → bei `Some(datei)` `aktion(… Schritt::schreiben(DATEI, datei))`.
+   - `einstellungen_vorschau(&self, art: Art, neu: Einstellungen) -> Result<Einstellungsvorschau, Fehler>` = `gesperrt()` → `einstellungen_entwerfen` mit `Altform::Umstellen` und **derselben** Änderungsfunktion wie `einstellungen_setzen` → Sperre fallen lassen → `text = datei.unwrap_or(text)`, `geaendert = datei.is_some()`.
+   - Die Änderungsfunktion des `PUT` (Schalter aus der Datei, Rest aus dem Rumpf, `src/dienst/einstellungen.rs:196–198`) wird **eine** benannte Funktion, die `einstellungen_setzen` und `einstellungen_vorschau` aufrufen; zwei Abschriften der Closure sind verboten.
+   - `abschnitte_schreiben` hat genau einen Aufrufer: `einstellungen_entwerfen` (neben `einstellungen::schreiben` nur aus `einrichten`, R00250 AK 10). Review-Punkt für den architektur-reviewer.
+   - Gesichert durch den Gleichlauf-Test (Probe V5): für jeden Bestand der Matrix `vorschau(x)` und danach `PUT(x)` → bei 200 `text` byte-gleich mit der Datei danach, bei Fehler gleicher Status und gleiches `fehler`.
+
+### N1.4 Sicherheit
+
+- **Schreibt nichts**: kein `ordner.schreib`, keine Temporärdatei (`*.kanbanD-tmp`), kein `create_dir_all`, kein Commit, kein `eigene.merken` (sonst verschluckte der Wächter das nächste echte Ereignis). Folge: kein Live-Ereignis, kein Nachladen in anderen Fenstern.
+- **Sperre nur für Lesen und Rechnen**: gehalten wird sie für zwei Lesezugriffe auf `kanbanD.md` (Modell und Text) und das reine Rechnen auf diesem Text; sie fällt vor dem Serialisieren der Antwort. Kein Git, kein Netz, kein weiterer Dateizugriff unter ihr. Die Entprellung (N1.2) hält die Zahl der Anfragen klein; jede Anfrage läuft über `blockierend` wie `PUT`.
+- **Nur `kanbanD.md` wird gelesen**: der Pfad ist die Konstante `einstellungen::DATEI` relativ zur Ordnerwurzel; nichts aus dem Rumpf wird zu einem Pfad. Pfade im Rumpf (`quellen.repository`, `anwendungen[].repository`) sind nur Text — weder `normalisieren`, `repository_ergaenzen` noch die Prüfungen greifen auf sie zu (`src/modell/einstellungen.rs:119–131`: „kein Dateizugriff“); „erreichbar“ prüft weiter nur `GET`. Eine künftige Prüfung mit Dateizugriff in `einstellungen_pruefen` würde den Trockenlauf mittreffen — das ist ein Review-Punkt, kein neuer Weg.
+- **Offenlegung**: `text` enthält die Datei samt Kommentaren und Textkörper. Neu ist das nicht: dieselbe Datei liegt im Git des Ordners, und die API liest Commits und Diffs dieses Ordners schon heute ohne Identität.
+
+### N1.5 Prüfliste für den entwickler
+
+Datei H wie R00250 „Ausgangslage“; „Vergleich in der Oberfläche“ heißt: BOM entfernt, `\r\n` → `\n`, dann gleich. Jede Oberflächenprobe liest `#einr-vorschau` erst bei `data-stand="aktuell"` (bzw. `verweigert`).
+
+| # | Probe | Erwartet | heute |
+|---|---|---|---|
+| V1 | **Abnahme des PO**: H in „Einrichten“, `sh` → „Sven Hansen“, warten auf `aktuell`, Text lesen, „Speichern“ | Text vor dem Speichern = `kanbanD.md` nach dem Speichern (Vergleich in der Oberfläche); er enthält `# von Hand`, `eigener-schluessel: 1`, `# Klassen folgen`, `# Unser Ordner`, nicht `# kanbanD` | rot (`crev-248/vorschau.js`) |
+| V2 | V1 mit H in CRLF und BOM; dazu über HTTP `POST …/vorschau` | Oberfläche wie V1; über HTTP ist `text` byte-gleich mit der Datei nach `PUT` (BOM und `\r\n` erhalten) | rot |
+| V3 | R00209 AK 9/10/11: Register in alter Form (`kd: {name, wbs, requirements}`), Repository ändern bzw. WBS leeren | Vorschau zeigt `sources` mit `repository`, gleich der Datei nach dem Speichern; R00209-Specs grün | grün im Bestand, bleibt grün |
+| V4 | **Handform**: H mit `  # Vertretung` in `people`, `sh` umbenennen | `data-stand="verweigert"`, `#einr-vorschau` = „Nicht gespeichert: Der Abschnitt „people“ in kanbanD.md ist von Hand gestaltet und lässt sich nicht zeilengenau ändern. Bitte die Änderung direkt in kanbanD.md eintragen.“; „Speichern“ → derselbe Text in `#einr-fehler`, kein Commit, Datei zeichengleich | rot (Vorschau zeigt Dateitext) |
+| V5 | **Gleichlauf** (Rust, Dienst und HTTP): Matrix H, H CRLF+BOM, gemischte Zeilenenden (S1), `signals: {}` + erstes Signal (S2), Handform in `people`, Handform in `classes` mit Änderung an `sh`, sechs Bestände aus `tests/altbestaende/`, Entwurf ohne Änderung, ungültiger Entwurf (Kürzel doppelt) — je Fall `vorschau` dann `PUT` mit demselben Rumpf | 200: `text` byte-gleich mit der Datei nach `PUT`, `geaendert` = es gab einen Commit; sonst gleicher Status und gleiches `fehler`. Mutant „Vorschau baut mit `einstellungen::schreiben`“ und Mutant „Vorschau mit `Altform::Stehenlassen`“ machen den Test rot | — (neu) |
+| V6 | Ohne Änderung: `POST …/vorschau` mit dem Rumpf aus `GET /api/einstellungen` auf H (Register in neuer Form) | 200, `geaendert: false`, `text` = Datei byte-gleich | — |
+| V7 | **Schreibt nichts**: 20 × `POST …/vorschau` mit Änderung, Handform und ungültigem Rumpf auf H | `HEAD` unverändert, `git status --porcelain` leer, Bytes und `mtime` von `kanbanD.md` gleich, keine `*.kanbanD-tmp`, keine Wächter-Meldung an ein offenes Fenster (kein Nachladen). Mutant „Vorschau ruft `aktion`“ rot | — |
+| V8 | Rechte: Header `ag` (Agent), Entwurf ändert Mensch `sh`; ohne Header; Header unbekannt | 403 `{fehler, kuerzel}` wie `PUT`; ohne Header 200; unbekannt 400 wie `PUT` | — |
+| V9 | Pfade: `quellen.repository` = `/etc`, `../../x` und ein FIFO im Testordner | 200 in normaler Zeit (ein Öffnen des FIFO bliebe hängen), kein Zugriff außer `kanbanD.md` | — |
+| V10 | Takt (E2E, `page.route` zählt): fünf Zeichen schnell tippen | höchstens 2 Anfragen; die übernommene Vorschau trägt den letzten Stand | — |
+| V11 | Verzögerter Fake: erste Antwort 1 s verzögert, zweite sofort | Endstand = zweite Antwort; während des Wartens `data-stand="wartet"`, `aria-busy="true"`, alter Text steht; nach > 400 ms Statuszeile „Vorschau wird aktualisiert …“ | — |
+| V12 | Server antwortet nicht (`route.abort`) | `data-stand="fehler"`, Statuszeile mit Wortlaut aus N1.2 (bzw. PO), alter Text gedämpft, „Speichern“ bedienbar | — |
+| V13 | Klick-Aktion (Person anlegen) ohne Tastatureingabe; danach „Speichern“ | Vorschau aktualisiert sich ohne `input`; nach dem Speichern `aktuell` und = neue Datei | — |
+| V14 | Erster Start, OpenAPI, Endpunkte | `#vorschau-einstellungen` wie bisher (R00002-Spec grün); `/api/openapi.json` enthält `post` an `/api/einstellungen/vorschau` mit Schema `Einstellungsvorschau`; `/api/endpunkte` nennt ihn mit `wer: false`; Vollständigkeitstest der Endpunktliste grün | — |
+| V15 | Bestehende Specs mit `#einr-vorschau` (R00010, R00053, R00076, R00209, R00222) | warten vor jeder Prüfung auf `data-stand="aktuell"`; `not.toContainText` erst danach | — |
+
+### N1 Konsequenzen
+
+- **Positiv**: Vorschau und Datei können nicht auseinanderlaufen, weil es nur noch eine Schreibregel gibt; die 409 ist vor dem Klick sichtbar; der Nachbau im Browser für „Einrichten“ entfällt.
+- **Inkauf**: Die Vorschau braucht den Server und ist nach jeder Eingabe bis zu 250 ms plus Antwortzeit veraltet (gekennzeichnet). Eine Änderung an `kanbanD.md` von außen kommt erst mit dem Nachladen in die Vorschau. Eine Route mehr.
+- **Lastprofil**: eine Anfrage je Pause beim Tippen, je kleine Datei, Sperre nur für Lesen und Rechnen.
+
+### N1 Folgeaufgaben
+
+- [ ] entwickler (#248, Nacharbeit): N1.1–N1.4, Prüfliste N1.5
+- [ ] product-owner: Fragen 1 und 2 (Wortlaute), bis zur Antwort gilt N1.2
+- [ ] nach dem Bau: A00003 (Route), A00004 (`einstellungen_entwerfen`), A00009 (Vorschau aus dem Server) von Soll auf Ist
