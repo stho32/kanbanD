@@ -534,3 +534,59 @@ test('aufrufSatz ohne Fehler: Edit und Write wie bisher, ohne Satz und ohne Klas
   }
   assert.doesNotMatch(aufrufSatz('Bash', t16.T16[3].text, esc, null, true), /lv-na|nicht-angewendet/);
 });
+
+/* ── R00244: Farbfolgen übersetzen, reine Funktion (AK 1–3, ADR-0041 N6 Punkt 1–3, 5 „Durchsetzung“) ── */
+
+const { farbteile, GRUNDSCHRIFT } = satz;
+const E = '\u001b';
+const teileOhneZustand = text => farbteile(text, GRUNDSCHRIFT).teile;
+
+test('farbteile: „ESC[2m a ESC[22m“ ergibt eine gedämpfte Spanne ohne U+001B; Text ohne ESC bleibt ein Teil in Grundschrift', () => {
+  assert.deepStrictEqual(teileOhneZustand(`${E}[2m a ${E}[22m`), [{ text: ' a ', klasse: 'sgr2' }]);
+  assert.deepStrictEqual(teileOhneZustand('ok-Zeile ohne Farbe'), [{ text: 'ok-Zeile ohne Farbe', klasse: '' }]);
+  assert.deepStrictEqual(teileOhneZustand(''), []);
+});
+
+test('farbteile: Rechenbeispiele aus AK 1 — fett unabhängig, zuletzt genannte Farbe gilt, gleicher Zustand öffnet keine Spanne', () => {
+  assert.deepStrictEqual(teileOhneZustand(`${E}[1;31mA${E}[22mB`), [{ text: 'A', klasse: 'sgr1 sgr31' }, { text: 'B', klasse: '' }]);
+  assert.deepStrictEqual(teileOhneZustand(`${E}[1;2;31;32mx`), [{ text: 'x', klasse: 'sgr1 sgr32' }]);
+  assert.deepStrictEqual(teileOhneZustand(`${E}[31mA${E}[31mB`), [{ text: 'AB', klasse: 'sgr31' }]);
+  assert.deepStrictEqual(teileOhneZustand(`${E}[31m-    let x=1;${E}[0m`), [{ text: '-    let x=1;', klasse: 'sgr31' }]);
+  assert.deepStrictEqual(teileOhneZustand(`${E}[33mg${E}[1mf${E}[mz`), [{ text: 'g', klasse: 'sgr33' }, { text: 'f', klasse: 'sgr1 sgr33' }, { text: 'z', klasse: '' }]);
+  assert.deepStrictEqual(teileOhneZustand(`${E}[1mf${E}[0mz${E}[2;mx`), [{ text: 'f', klasse: 'sgr1' }, { text: 'zx', klasse: '' }], '2;leer endet in Grundschrift: keine neue Spanne');
+});
+
+test('farbteile: alles andere bleibt im Text (Marke) und ändert den Zustand nicht — 8, 7, 30, 30;40, 38;5;196, 0;8, ESC(B, ESC, ESC[, 5 Teile', () => {
+  const gegenproben = [`${E}[8m`, `${E}[7m`, `${E}[30m`, `${E}[30;40m`, `${E}[40m`, `${E}[38;5;196m`, `${E}[0;8m`, `${E}(B`, E, `${E}[`, `${E}[1;1;1;1;1m`, `${E}[2;2;2;2;2m`, `${E}[3m`, `${E}[4m`, `${E}[9m`, `${E}[21m`, `${E}[02m`, `${E}[31;`, `${E}[31M`];
+  for (const folge of gegenproben) {
+    assert.deepStrictEqual(teileOhneZustand(`${folge}geheim`), [{ text: `${folge}geheim`, klasse: '' }], JSON.stringify(folge));
+    assert.deepStrictEqual(teileOhneZustand(`${E}[31mrot${folge}x`), [{ text: `rot${folge}x`, klasse: 'sgr31' }], `im Zustand rot: ${JSON.stringify(folge)}`);
+  }
+  assert.deepStrictEqual(teileOhneZustand(`${E}[2mgeheim${E}[`), [{ text: `geheim${E}[`, klasse: 'sgr2' }], 'ESC[ am Textende');
+});
+
+test('farbteile: Zustand geht über die Zeile hinaus und kommt zurück; eine Folge ohne Text dahinter öffnet keine Spanne', () => {
+  const erste = farbteile(`${E}[31mrot über`, GRUNDSCHRIFT);
+  assert.deepStrictEqual(farbteile('zwei Zeilen', erste.zustand).teile, [{ text: 'zwei Zeilen', klasse: 'sgr31' }]);
+  const nurFolge = farbteile(`${E}[31m${E}[1m`, GRUNDSCHRIFT);
+  assert.deepStrictEqual(nurFolge.teile, []);
+  assert.deepStrictEqual(farbteile('x', nurFolge.zustand).teile, [{ text: 'x', klasse: 'sgr1 sgr31' }]);
+  assert.deepStrictEqual(farbteile('x', GRUNDSCHRIFT).teile, [{ text: 'x', klasse: '' }], 'GRUNDSCHRIFT bleibt unverändert');
+});
+
+test('farbteile: über alle Folgen aus erlaubten und fremden Teilen nur die fünf festen Klassen, nie ein Wert aus dem Text', () => {
+  const teile = ['', '0', '1', '2', '22', '31', '32', '33', '7', '8', '30', '40', '38', '5', '196', '255', '41', '47', '97', '107', 'x'];
+  const erlaubt = new Set(['', 'sgr1', 'sgr2', 'sgr31', 'sgr32', 'sgr33', 'sgr1 sgr2', 'sgr1 sgr31', 'sgr1 sgr32', 'sgr1 sgr33']);
+  let zufall = 7;
+  const naechstes = n => { zufall = (zufall * 1103515245 + 12345) % 2147483648; return zufall % n; };
+  for (let i = 0; i < 20000; i++) {
+    const folge = Array.from({ length: 1 + naechstes(5) }, () => teile[naechstes(teile.length)]).join(';');
+    const ergebnis = farbteile(`a${E}[${folge}mb`, GRUNDSCHRIFT);
+    for (const t of ergebnis.teile) {
+      assert.ok(erlaubt.has(t.klasse), `${folge} → ${t.klasse}`);
+      assert.deepStrictEqual(Object.keys(t), ['text', 'klasse']);
+    }
+    const unerlaubt = folge.split(';').length > 4 || folge.split(';').some(p => !['', '0', '1', '2', '22', '31', '32', '33'].includes(p));
+    if (unerlaubt) assert.ok(ergebnis.teile.map(t => t.text).join('').includes(`${E}[${folge}m`), `bleibt Marke: ${folge}`);
+  }
+});

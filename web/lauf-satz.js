@@ -774,6 +774,55 @@
     return linkHtml(`${arbeitsort.wurzel}/${pfad}`, sprung, huelle(anfang + zeile(geschrieben)));
   }
 
+  /* ── Farbfolgen im Ergebnis (ADR-0041 N6 Punkt 1–5, PO Z. 625): nur die feste Liste wirkt, und nur über feste Klassen ── */
+
+  /** Eine erlaubte Folge `ESC[<p>(;<p>)*m`: höchstens 4 Teile, jeder leer, 0, 1, 2, 22, 31, 32 oder 33. Jede andere bleibt im Text
+      und wird dort Marke — auch alles, was Text verbergen könnte (8, 7, Hintergründe, 256 Farben). */
+  const FARBFOLGE = /\u001B\[((?:22|31|32|33|0|1|2)?(?:;(?:22|31|32|33|0|1|2)?){0,3})m/y;
+  const GRUNDSCHRIFT = Object.freeze({ fett: false, farbe: null });
+  const ZURUECK = ['', '0', '22'];
+
+  /** Text und Zustand am Anfang → `{teile, zustand}`: Teile `{text, klasse}` in Folge, ohne die erlaubten Folgen, und der Zustand am
+      Ende. `klasse` ist '' (Grundschrift) oder aus `sgr1` (fett) und einer der vier Farben `sgr2`, `sgr31`, `sgr32`, `sgr33`; eine
+      Folge, die die Klasse nicht ändert, öffnet keinen neuen Teil, eine Folge ohne Text dahinter keinen leeren. Ein Durchlauf. */
+  function farbteile(text, zustand) {
+    const teile = [];
+    let jetzt = zustand, stueck = '', ab = 0;
+    for (let esc = text.indexOf('\u001B'); esc >= 0; esc = text.indexOf('\u001B', esc + 1)) {
+      FARBFOLGE.lastIndex = esc;
+      const folge = FARBFOLGE.exec(text);
+      if (folge === null) continue;
+      stueck += text.slice(ab, esc);
+      ab = FARBFOLGE.lastIndex;
+      const danach = folgeAnwenden(jetzt, folge[1]);
+      if (klasseVon(danach) === klasseVon(jetzt)) continue;
+      if (stueck) teile.push({ text: stueck, klasse: klasseVon(jetzt) });
+      stueck = '';
+      jetzt = danach;
+    }
+    stueck += text.slice(ab);
+    if (stueck) teile.push({ text: stueck, klasse: klasseVon(jetzt) });
+    return { teile, zustand: jetzt };
+  }
+
+  /** Die Teile einer Folge der Reihe nach: 0, 22 und leer setzen alles zurück, 1 setzt fett, jede Farbe ersetzt die vorige. */
+  function folgeAnwenden(zustand, teileDerFolge) {
+    let jetzt = zustand;
+    for (const teil of teileDerFolge.split(';')) {
+      if (ZURUECK.includes(teil)) jetzt = GRUNDSCHRIFT;
+      else if (teil === '1') jetzt = { ...jetzt, fett: true };
+      else jetzt = { ...jetzt, farbe: teil };
+    }
+    return jetzt;
+  }
+
+  function klasseVon(zustand) {
+    const klassen = [];
+    if (zustand.fett) klassen.push('sgr1');
+    if (zustand.farbe !== null) klassen.push(`sgr${zustand.farbe}`);
+    return klassen.join(' ');
+  }
+
   /* ── Budget der Marken: ein Satz zeigt nie mehr markierbare Zeichen, als `zeichenBuchen` (lauf.js) im Text gebucht hat ── */
 
   /** Was `zeichenBuchen` als Marke zählt (MARKIERBAR in lauf.js); ein Node-Test hält beide gleich. */
@@ -794,6 +843,6 @@
     };
   }
 
-  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR });
+  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR, farbteile, GRUNDSCHRIFT });
   Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml, pfadeFinden, pfadImCodeHtml, markenImText });
 })(typeof module !== 'undefined' ? module.exports : window);
