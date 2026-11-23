@@ -236,24 +236,54 @@
 
   /** Zeilentext mit Farbstücken `[von, bis, Rolle]` (UTF-16-Versätze im Zeilentext): die Teile aus `sichtbarTeile` bleiben, Text
       ohne Marke wird an den Stückgrenzen in `<span class="tk-…">` geteilt; eine Marke hat Vorrang und bleibt ohne Farbe (ADR-0037
-      Punkt 6). Jede Marke steht für genau ein Zeichen des Zeilentexts (alle sichtbar gemachten Zeichen liegen in der BMP). */
-  function farbigHtml(text, stuecke, esc) {
+      Punkt 6). Jede Marke steht für genau ein Zeichen des Zeilentexts (alle sichtbar gemachten Zeichen liegen in der BMP).
+      Mit der Wortmarke `wm` = `[von, bis)` (R00247 FA 5, 6) werden Text und Farbstücke zusätzlich an `von` und `bis` geschnitten, und
+      `<mark class="wm">` liegt außen um alles dazwischen; geschnitten wird vor dem Maskieren, also nie in einem Entity. */
+  function farbigHtml(text, stuecke, esc, wm = null) {
+    const grenzen = wm || [];
+    const abschnitte = [];
+    /** Ein Abschnitt `[von, bis)` ohne Marke als Abschnitte `[von, html]`, an den Grenzen der Wortmarke geteilt. */
+    const teilen = (von, bis, huelle) => {
+      let bei = von;
+      for (const g of grenzen) {
+        if (g <= bei || g >= bis) continue;
+        abschnitte.push([bei, huelle(esc(text.slice(bei, g)))]);
+        bei = g;
+      }
+      abschnitte.push([bei, huelle(esc(text.slice(bei, bis)))]);
+    };
+    const ohneFarbe = html => html;
     let pos = 0, s = 0;
-    return sichtbarTeile(String(text)).map(t => {
-      if (t.marke) { pos += 1; return markeHtml(t, esc); }
+    for (const t of sichtbarTeile(String(text))) {
+      if (t.marke) { abschnitte.push([pos, markeHtml(t, esc)]); pos += 1; continue; }
       const ende = pos + t.text.length;
-      let aus = '', bei = pos;
+      let bei = pos;
       while (s < stuecke.length && stuecke[s][1] <= bei) s++;
       for (let j = s; j < stuecke.length && stuecke[j][0] < ende; j++) {
         const von = Math.max(stuecke[j][0], bei), bis = Math.min(stuecke[j][1], ende);
-        if (von > bei) aus += esc(text.slice(bei, von));
-        aus += `<span class="${TK_KLASSEN[stuecke[j][2]]}">${esc(text.slice(von, bis))}</span>`;
+        if (von > bei) teilen(bei, von, ohneFarbe);
+        const klasse = TK_KLASSEN[stuecke[j][2]];
+        teilen(von, bis, html => `<span class="${klasse}">${html}</span>`);
         bei = bis;
       }
-      if (bei < ende) aus += esc(text.slice(bei, ende));
+      if (bei < ende) teilen(bei, ende, ohneFarbe);
       pos = ende;
-      return aus;
-    }).join('');
+    }
+    if (!wm) return abschnitte.map(st => st[1]).join('');
+    return mitWortmarke(abschnitte, wm, pos);
+  }
+
+  /** Abschnitte `[von, html]` in Textfolge → HTML mit `<mark class="wm">` vor dem Abschnitt bei `von` und `</mark>` vor dem Abschnitt bei `bis`
+      (am Zeilenende nach dem letzten); die Abschnitte sind an beiden Grenzen geschnitten. */
+  function mitWortmarke(abschnitte, [von, bis], laenge) {
+    let aus = '';
+    for (const [bei, html] of abschnitte) {
+      if (bei === bis) aus += '</mark>';
+      if (bei === von) aus += '<mark class="wm">';
+      aus += html;
+    }
+    if (bis === laenge) aus += '</mark>';
+    return aus;
   }
 
   /** Fremder Text für ein Attribut (`title`, `aria-label`): die Marken als Text, nie das Zeichen selbst. */
@@ -279,10 +309,12 @@
   const LESETEXT = { plus: 'hinzugefügt: ', minus: 'entfernt: ' };
   const ZEICHEN = { plus: '+', minus: '−', kontext: '' };
 
-  /** Inhalt der Codezelle einer Zeile mit Kontext, plus oder minus; mit `stuecke` gefärbt (die Auflage ersetzt nur diesen Inhalt). */
+  /** Inhalt der Codezelle einer Zeile mit Kontext, plus oder minus; mit `stuecke` gefärbt (die Auflage ersetzt nur diesen Inhalt),
+      mit der Wortmarke `z.wm` markiert (R00247) — beides unabhängig voneinander. */
   function zelleHtml(z, esc, stuecke = null) {
     const lesen = LESETEXT[z.art] ? `<span class="vh">${LESETEXT[z.art]}</span>` : '';
-    return lesen + (stuecke ? farbigHtml(z.text, stuecke, esc) : sichtbarHtml(z.text, esc));
+    if (!stuecke && !z.wm) return lesen + sichtbarHtml(z.text, esc);
+    return lesen + farbigHtml(z.text, stuecke || [], esc, z.wm || null);
   }
 
   /** `springt`: die Nummern der neuen Seite öffnen VS Code an ihrer Zeile (R00236 FA 7); die Nummern der alten Seite nie. */
