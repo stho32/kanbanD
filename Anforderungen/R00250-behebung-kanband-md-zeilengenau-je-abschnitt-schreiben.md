@@ -40,7 +40,8 @@ Ausgeschlossen: `einrichten` (`src/dienst/einrichten.rs:108–121`) legt die Dat
 - `src/format/einstellungen.rs`: `schreiben` wird in Abschnittsschreiber zerlegt. Dazu kommen der Blockschreiber `abschnitt_im_text`, die Normalform-Prüfung je Abschnitt und ein Schreiber der **alten Registerform**, den es heute nicht gibt (Hinweis des architekt). Ohne ihn lässt sich der bisherige Block `sources` der sechs Bestände nicht mit seiner Form vergleichen.
 - `src/format/board.rs` `schalter_im_text`: wird zu einem Aufruf von `abschnitt_im_text`. Seine Tests bleiben unverändert grün.
 - `src/dienst/einstellungen.rs` `einstellungen_aendern`; `src/dienst/schalter.rs` `vorgabe_transkripte_setzen` (Regel 7).
-- **Nicht** betroffen: `einrichten`, die Board-Dateien, die Oberfläche (`#einr-fehler` zeigt den Text schon heute, und der Entwurf bleibt stehen, R00209 AK 12).
+- Oberfläche (Nacharbeit 1, PO Z. 683, ADR-0043 N1): die Vorschau `#einr-vorschau` in „Einrichten“ baute `kanbanD.md` im Browser aus dem Modell und zeigte bei einer handgepflegten Datei nicht das Gespeicherte (R00209 AK 11). Sie kommt jetzt als Trockenlauf `POST /api/einstellungen/vorschau` desselben Schreibwegs vom Server (`src/dienst/einstellungen.rs` `einstellungen_entwerfen`, `web/einrichten-vorschau.js`, `web/app.js`, `web/ansicht.js`). `#einr-fehler` zeigt den Wortlaut wie zuvor, und der Entwurf bleibt stehen (R00209 AK 12).
+- **Nicht** betroffen: `einrichten`, die Board-Dateien.
 
 ## Lösungsvorschlag
 
@@ -120,15 +121,34 @@ H wird als „von Hand“ committet. **Diff** meint `git diff --numstat HEAD~1 H
   - `people:` als `"people":` zitiert; `PUT` benennt `sh` um → 409 mit dem Wortlaut, `<schluessel>` = `people`.
   - H mit der Zeile `"signals": {}` (zitiert, leer); `PUT` legt das erste Signal `warten` an → 409 mit `<schluessel>` = `signals`, weil sich der Text mit zwei Schlüsseln `signals` nicht zurücklesen lässt. Die Mutante „Rücklese-Prüfung entfernt“ macht genau diesen Fall rot.
   - H mit `"record-transcripts": false`; `PUT /api/einstellungen/transkripte` mit `{erfassen: true}` → 409 mit `<schluessel>` = `record-transcripts` (heute 500).
-- [x] **AK 9 Kopien der sechs echten Bestände (Legacy):** Gegeben je eine Kopie der `kanbanD.md` aus `Entwicklungsprozess`, `goaltreetoolA`, `JoinPuyaApp`, `kanbanD-Demo`, `kanbanD` und `localchatA` (Stand 2026-11-23). Die Namen der Menschen sind durch Platzhalter ersetzt, Kürzel, Art, Zustand, Reihenfolge, Form und Bytes der Zeilen sonst unverändert. Je Datei:
+- [x] **AK 9 Kopien der sechs echten Bestände (Legacy):** Gegeben je eine Kopie der `kanbanD.md` aus sechs Ordnern im Betrieb (Stand 2026-11-23), als `tests/altbestaende/kanbanD-md-2026-11-23/bestand-a.md` bis `bestand-f.md`. Die Namen der Menschen sind durch Platzhalter ersetzt, Projektnamen, Kürzel und Pfade der Anwendungen im Register sind neutral (Nacharbeit, PO Z. 686); Art, Zustand, Reihenfolge, Form und Bytes der Zeilen sonst unverändert. Je Datei:
   - `PUT` benennt die erste Person um → jede geänderte Zeile liegt in deren Zeile oder im Block `sources` (alte → neue Form), und nichts wird verweigert;
   - `PATCH /api/personen/{kürzel}` benennt sie um → Diff `1  1`.
-  Für `kanbanD` bleibt `record-transcripts: true` die letzte Zeile des Frontmatters (heute rot).
+  Für `bestand-e` bleibt `record-transcripts: true` die letzte Zeile des Frontmatters (heute rot).
 - [x] **AK 10 Oberfläche, Einrichten, Bug-Vorlage:**
   - Gegeben H mit `  # Vertretung` in `people`, im gestarteten Programm. Wenn `sh` in „Einrichten“ „Sven“ in „Sven Hansen“ ändert und „Speichern“ drückt, dann steht der Wortlaut aus AK 6 in `#einr-fehler`, das Feld zeigt weiter „Sven Hansen“, und es gibt keinen Commit.
   - Das Einrichten eines leeren Ordners schreibt `kanbanD.md` byte-gleich wie vor dem Fix.
   - `einstellungen::schreiben` wird nur noch aus `einrichten` aufgerufen.
   - Die Reproduktionstests sind ohne Fix rot und mit Fix grün, und alle Tests aller Ebenen sind grün.
+
+### Nacharbeit 1 (Karte #248, PO Z. 683–689, 693–695)
+
+Abnahme-Proben aus dem Code-Review (M1, S1, S2) und dem Legacy-Review (Sollte 3, 4); Technik ADR-0043 N1 (Regel 8, Prüfliste V1–V15).
+
+- [x] **AK 11 Vorschau = Trockenlauf (Abnahme des PO, Z. 683):** Gegeben H in „Einrichten“, wenn `sh` die Person `sh` in „Sven Hansen“ umbenennt, dann ist der Text von `#einr-vorschau` bei `data-stand="aktuell"` vor dem Speichern gleich `kanbanD.md` nach dem Speichern (BOM entfernt, Zeilenenden als `\n` verglichen); er enthält `# von Hand`, `eigener-schluessel: 1`, `# Klassen folgen`, `# Unser Ordner`, nicht `# kanbanD`. Dasselbe für H in CRLF mit BOM; über HTTP ist `text` von `POST /api/einstellungen/vorschau` byte-gleich mit der Datei nach `PUT`. Varianten:
+  - H mit `  # Vertretung` in `people`: `data-stand="verweigert"`, die Vorschau zeigt den Wortlaut aus AK 6, „Speichern“ → derselbe Text in `#einr-fehler`, kein Commit, Datei zeichengleich.
+  - Kürzel doppelt im Entwurf: `verweigert`, die Vorschau zeigt das `fehler` von `PUT` (jede 4xx, PO Z. 694).
+  - Keine Antwort: `data-stand="fehler"`, alter Text gedämpft, Statuszeile „Vorschau nicht aktuell — keine Antwort vom Server.“; 5xx: „Vorschau nicht aktuell: <fehler der Antwort | Fehler im Server> (<Status>).“; „Speichern“ bleibt bedienbar (PO Z. 693).
+  - Takt: fünf schnell getippte Zeichen → höchstens 2 Anfragen; bei verzögerter erster Antwort `wartet` mit `aria-busy="true"` und altem Text, nach 400 ms „Vorschau wird aktualisiert …“, Endstand = jüngste Eingabe; eine Klick-Aktion ohne Tastatur aktualisiert die Vorschau.
+- [x] **AK 12 Gleichlauf und schreibt nichts (Regel 8):** Für H, H in CRLF mit BOM, gemischte Zeilenenden, `signals: {}`, Handform in `people` bzw. `classes`, `"signals": {}`, Kürzel doppelt, Agent legt einen Menschen still, die sechs Bestände unverändert und umbenannt ergibt `vorschau` und danach `PUT` mit demselben Rumpf: bei 200 `text` byte-gleich mit der Datei danach und `geaendert` gleich, sonst derselbe Status und dasselbe `fehler`. Ohne Änderung `geaendert: false`, `text` = Datei. 20 Vorschauen schreiben nichts (`HEAD`, `git status`, Bytes und `mtime` gleich). Ohne `X-KanbanD-Wer` wie ein Mensch (200), unbekannte Person 400 wie `PUT`. Pfade im Rumpf (`/etc`, `../../x`, ein FIFO) werden nicht geöffnet. OpenAPI und `/api/endpunkte` nennen den Aufruf (`wer: false`). Die Mutanten „Vorschau mit `einstellungen::schreiben`“, „Vorschau mit `Altform::Stehenlassen`“ und „Vorschau ruft `aktion`“ machen diese Proben rot.
+- [x] **AK 13 Gemischte Zeilenenden (PO Z. 684):** Gegeben H mit LF im Frontmatter und CRLF im Textkörper, wenn `PUT` `sh` umbenennt und das erste Signal anlegt, dann ist der Diff `1  3`, die neuen Zeilen enden auf LF, alle übrigen Bytes sind gleich (heute `3  5`). Das Zeilenende kommt aus der ersten `---`-Zeile.
+- [x] **AK 14 `<schluessel>: {}` (PO Z. 685):** Gegeben H mit `signals: {}`, wenn `PUT` das erste Signal `warten` anlegt, dann 200 und Diff `1  2`, nur der Abschnitt `signals` geändert (heute 409). Dieselbe Regel gilt für jeden Abschnitt (`classes: {}`, `sources: {}` mit leerem Wert). AK 8 mit zitiertem `"signals": {}` bleibt 409.
+- [x] **AK 15 Testdaten und unverändertes `PUT` (PO Z. 686–687):** `grep -ri` nach Benutzer- und Familiennamen in `tests/altbestaende` ist leer. `GET` → `PUT` mit unveränderten Werten ergibt je Bestand genau den Diff der Registerumstellung: ohne Anwendung kein Commit, mit einer Anwendung `2  3` (nur der Block `sources`).
+
+## Nicht Teil
+
+- Ein Kommentar auf der Zeile `record-transcripts` oder in ihrer Blockform geht beim Umschalten mit der Zeile; alle anderen Zeilen bleiben (ADR-0043 Regel 7, PO Z. 688).
+- Eine Altform von `sources`, die keine kanbanD-Version je geschrieben hat, bleibt eine laute Verweigerung ohne Verlust (PO Z. 687).
 
 ## Implementierungshinweise
 
