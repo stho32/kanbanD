@@ -339,7 +339,7 @@
   const NUR_ASCII = /^[\x20-\x7E]*$/;
 
   /** Geschätzte Breite eines Blocks in px: Chromium misst die Breite eines Elements mit `content-visibility: auto` für die
-      Quer-Rolle nach `contain-intrinsic-inline-size`, nicht nach dem Inhalt (geprobt in Chromium aus e2e/node_modules); ohne
+      Quer-Rolle nach `contain-intrinsic-inline-size` (die Stilvorlage setzt sie aus `--bb`), nicht nach dem Inhalt (geprobt in Chromium aus e2e/node_modules); ohne
       Schätzung schnitte der Block lange Zeilen ab. Großzügig: 8 px je Zeichen (Monospace 12 px, ein Tab 4), dazu die Nummern. */
   function blockBreite(zeilen) {
     const breiteJeZeichen = z => sichtbarTeile(z.text).reduce((n, t) => n + Array.from(t.text).reduce((m, c) => m + (c === '\t' ? 4 : c.codePointAt(0) > 0x2E7F ? 2 : 1), 0), 0);
@@ -355,7 +355,7 @@
     const name = `Änderungen in ${esc(sichtbarText(pfad))}`;
     const zeilen = mitWortmarken(patchZeilen(patch));
     const springt = Boolean(sprung);
-    const teile = bloecke(zeilen).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc, springt)).join('')}</table></div>`);
+    const teile = bloecke(zeilen).map(b => `<div class="dz-b" style="--bb:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc, springt)).join('')}</table></div>`);
     let ziel = '';
     if (springt) ziel = ` data-vsc="${esc(sprung)}"`;
     return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${ziel}${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;

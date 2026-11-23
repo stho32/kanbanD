@@ -1575,7 +1575,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 @media (prefers-reduced-motion:no-preference){.df-laedt::before,.rv-laedt::before{animation:cl-dreh 1s linear infinite}}
 .df-sc{overflow-x:auto;min-width:0}
 .df-sc:focus-visible{outline-offset:-2px}
-.dz-b{content-visibility:auto;min-inline-size:100%;inline-size:max-content}
+.dz-b{content-visibility:auto;min-inline-size:100%;inline-size:max-content;contain-intrinsic-inline-size:var(--bb)}
 .dz{border-collapse:collapse;font:12px/1.5 var(--kd-mono);min-inline-size:100%;tab-size:4}
 .dz td{padding:0;vertical-align:top}
 .dz .n{min-inline-size:46px;inline-size:46px;padding:0 6px;text-align:right;color:var(--kd-muted);background:var(--kd-surface);user-select:none;font-size:11px}

@@ -340,6 +340,27 @@
     karten.slice(0, Math.max(0, karten.length + 1 - GESEHEN_HOECHSTENS)).forEach(k => speicher.removeItem(k.schluessel));
   }
 
+  /* ── „Umbrechen“ im Browser-Speicher (R00248 FA 4; ADR-0042 N5.1): ein Wert für alle Karten und beide Ansichten, `1` ist an, alles
+     andere und fehlend ist aus. Der Speicher hat die Schnittstelle von `localStorage` und kommt als Parameter; fehlt er oder wirft er,
+     gilt der Zustand nur bis zum Neuladen, ohne Meldung (eine Ansichtswahl, kein Fortschritt wie „Gesehen“). ── */
+
+  const UMBRECHEN_SCHLUESSEL = 'kanbanD.umbrechen';
+
+  /** Der gemerkte Zustand; ein Speicher, der fehlt oder wirft, ergibt „aus“. */
+  function umbrechenLesen(speicher) {
+    try { return speicher.getItem(UMBRECHEN_SCHLUESSEL) === '1'; } catch (_) { return false; }
+  }
+
+  /** Merkt `an` als `1` bzw. `0`; scheitert der Speicher, wirft das nie nach außen, sondern steht als `fehler` im Ergebnis. */
+  function umbrechenSchreiben(speicher, an) {
+    try {
+      speicher.setItem(UMBRECHEN_SCHLUESSEL, an ? '1' : '0');
+      return { fehler: false };
+    } catch (_) {
+      return { fehler: true };
+    }
+  }
+
   /* ── Schlüssel einer Datei (FA 7, 8; ADR-0042 N3): in „Ein Commit“ über den vollen Hash, in „Alle Änderungen“ über den Fingerabdruck ── */
 
   function commitDateiSchluessel(hash, d) {
@@ -467,6 +488,8 @@
   }
 
   Object.assign(ziel, { wortMarken, wortMarke });
+
+  Object.assign(ziel, { UMBRECHEN_SCHLUESSEL, umbrechenLesen, umbrechenSchreiben });
 
   Object.assign(ziel, { GESEHEN_HOECHSTENS, gesehenSchluessel, gesehenLesen, gesehenSchreiben, commitDateiSchluessel, alleDateiSchluessel, fingerabdruck });
 
