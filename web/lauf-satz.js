@@ -5,8 +5,9 @@
   'use strict';
 
   /** Grenzen je Eintrag (N4 Punkt 7); darüber steht der Aufruf wie heute als `pre`, ein Ergebnis als Text. Nie in der Oberfläche.
-      `jsonTiefe` und `satzZeichen` deckeln Stapel und HTML eines JSON-Satzes, `hinweise` die eingebetteten Hinweise je Text. */
-  const SATZ_GRENZEN = Object.freeze({ aufrufBytes: 65536, aufrufZeilen: 2000, befehlBytes: 16384, jsonTiefe: 32, satzZeichen: 524288, hinweise: 200 });
+      `jsonTiefe` und `satzZeichen` deckeln Stapel und HTML eines JSON-Satzes, `hinweise` die eingebetteten Hinweise je Text, `farben`
+      die Spannen der Farbfolgen je Ergebnis (N6 Punkt 4). */
+  const SATZ_GRENZEN = Object.freeze({ aufrufBytes: 65536, aufrufZeilen: 2000, befehlBytes: 16384, jsonTiefe: 32, satzZeichen: 524288, hinweise: 200, farben: 2000 });
   const OFFENE_ZEILEN = 20;
   const PFEIL_KLEIN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 
@@ -805,6 +806,20 @@
     return { teile, zustand: jetzt };
   }
 
+  /** Werden die Farbfolgen eines Ergebnisses übersetzt? Nur, wenn es höchstens 2.000 Spannen trägt, je Zeile gezählt, der Zustand über
+      die Zeile hinaus; sonst steht es ganz wie ohne Übersetzung, jedes `ESC` eine Marke im Budget (N6 Punkt 4). */
+  function farbenErlaubt(text) {
+    if (!text.includes('\u001B')) return true;
+    let zustand = GRUNDSCHRIFT, spannen = 0;
+    for (const zeile of text.split('\n')) {
+      const ergebnis = farbteile(zeile, zustand);
+      spannen += ergebnis.teile.filter(t => t.klasse).length;
+      if (spannen > SATZ_GRENZEN.farben) return false;
+      zustand = ergebnis.zustand;
+    }
+    return true;
+  }
+
   /** Die Teile einer Folge der Reihe nach: 0, 22 und leer setzen alles zurück, 1 setzt fett, jede Farbe ersetzt die vorige. */
   function folgeAnwenden(zustand, teileDerFolge) {
     let jetzt = zustand;
@@ -843,6 +858,6 @@
     };
   }
 
-  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR, farbteile, GRUNDSCHRIFT });
+  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR, farbteile, farbenErlaubt, GRUNDSCHRIFT });
   Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml, pfadeFinden, pfadImCodeHtml, markenImText });
 })(typeof module !== 'undefined' ? module.exports : window);

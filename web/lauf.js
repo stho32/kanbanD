@@ -125,15 +125,22 @@
   const ZEICHEN_JE_LAUF = 10000;
   /** Was `sichtbarTeile` (diff.js) sichtbar macht — ohne `\n`, das hier die Zeilen trennt; ein Node-Test hält beide gleich. */
   const MARKIERBAR = '[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u0000-\u0008\u000B-\u001F\u007F-\u009F\u00AD\u200B-\u200D\u2028\u2029\u2060\uFEFF]';
+  /** Dasselbe im übersetzten Ergebnis (ADR-0041 N6 Punkt 4): `U+001B` nicht, wenn eine erlaubte Farbfolge folgt (`FARBFOLGE` in
+      lauf-satz.js) — die wird übersetzt, nicht Marke. Ein Node-Test hält es gleich mit dem, was der Satz als Marke zeigt. */
+  const MARKIERBAR_ERGEBNIS = '(?:[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u0000-\u0008\u000B-\u001A\u001C-\u001F\u007F-\u009F\u00AD\u200B-\u200D\u2028\u2029\u2060\uFEFF]'
+    + '|\u001B(?!\\[(?:22|31|32|33|0|1|2)?(?:;(?:22|31|32|33|0|1|2)?){0,3}m))';
   const tausender = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   const restText = n => (n === 1 ? '… und 1 weiteres Steuerzeichen' : `… und ${tausender(n)} weitere Steuerzeichen`);
 
   /** Bucht die sichtbar zu machenden Zeichen eines Texts gegen `budget = {lauf, gebucht}`: höchstens 1.000 je Text und was der
       Lauf noch hat. Liefert `{vorher, rest, nachher, gezeigt}`: `vorher` bis zum ersten Zeichen über dem Budget, `rest` die Zahl
-      der nicht gezeigten, `nachher` den übrigen Text ohne sie — kein nicht gezeigtes Zeichen bleibt im Text. */
-  function zeichenBuchen(text, budget) {
+      der nicht gezeigten, `nachher` den übrigen Text ohne sie — kein nicht gezeigtes Zeichen bleibt im Text. Mit `farbig` sind die
+      erlaubten Farbfolgen übersetzt und zählen nicht (ein Ergebnis innerhalb von `farbenErlaubt`). */
+  function zeichenBuchen(text, budget, farbig = false) {
     const frei = Math.min(ZEICHEN_JE_TEXT, budget.lauf);
-    const suche = new RegExp(MARKIERBAR, 'g');
+    let markierbar = MARKIERBAR;
+    if (farbig) markierbar = MARKIERBAR_ERGEBNIS;
+    const suche = new RegExp(markierbar, 'g');
     let gezeigt = 0, schnitt = -1;
     for (let m = suche.exec(text); m; m = suche.exec(text)) {
       if (gezeigt === frei) { schnitt = m.index; break; }
@@ -143,7 +150,7 @@
     budget.gebucht += gezeigt;
     if (schnitt < 0) return { vorher: text, rest: 0, nachher: '', gezeigt };
     const ueber = text.slice(schnitt);
-    const nachher = ueber.replace(new RegExp(MARKIERBAR, 'g'), '');
+    const nachher = ueber.replace(new RegExp(markierbar, 'g'), '');
     return { vorher: text.slice(0, schnitt), rest: ueber.length - nachher.length, nachher, gezeigt };
   }
 

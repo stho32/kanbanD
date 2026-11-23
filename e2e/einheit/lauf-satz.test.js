@@ -590,3 +590,52 @@ test('farbteile: über alle Folgen aus erlaubten und fremden Teilen nur die fün
     if (unerlaubt) assert.ok(ergebnis.teile.map(t => t.text).join('').includes(`${E}[${folge}m`), `bleibt Marke: ${folge}`);
   }
 });
+
+/* ── R00244: Vorgriff an drei Orten und Grenze der Spannen (AK 4, 5, ADR-0041 N6 Punkt 4) ── */
+
+const { sichtbarTeile } = require('../../web/diff.js');
+const { farbenErlaubt } = satz;
+/** Marken, die `sichtbarTeile` (diff.js) im übersetzten Ergebnis sieht: je Zeile die Teile ohne die erlaubten Folgen. */
+function markenNachUebersetzung(text) {
+  let zustand = GRUNDSCHRIFT, marken = 0;
+  for (const z of text.split('\n')) {
+    const ergebnis = farbteile(z, zustand);
+    zustand = ergebnis.zustand;
+    marken += ergebnis.teile.reduce((n, t) => n + sichtbarTeile(t.text).filter(x => x.marke).length, 0);
+  }
+  return marken;
+}
+const gebucht = (text, farbig) => require('../../web/lauf.js').zeichenBuchen(text, { lauf: 10000, gebucht: 0 }, farbig).gezeigt;
+
+test('Vorgriff: ein Ergebnis mit 252 erlaubten ESC bucht 0, mit 252 unerlaubten 252; ohne Übersetzung (Aufruf, Nachricht) beide 252', () => {
+  const erlaubt = `${E}[2mx${E}[22m`.repeat(126), unerlaubt = `${E}[8mx${E}(B`.repeat(126);
+  assert.strictEqual(gebucht(erlaubt, true), 0);
+  assert.strictEqual(gebucht(unerlaubt, true), 252);
+  assert.strictEqual(gebucht(erlaubt, false), 252);
+  assert.strictEqual(gebucht(unerlaubt, false), 252);
+});
+
+test('Vorgriff gleich an drei Orten: je Zeichen U+0000–U+FFFF mit erlaubter und unerlaubter Folge dahinter bucht zeichenBuchen, was die Übersetzung mit sichtbarTeile als Marke zeigt', () => {
+  const abweichend = [];
+  for (let c = 0; c <= 0xffff; c++) {
+    if (c === 0x0a) continue;
+    for (const folge of [`${E}[2m`, `${E}[8m`, `${E}[1;31m`, `${E}[1;1;1;1;1m`]) {
+      const text = String.fromCharCode(c) + folge + 'x';
+      if (gebucht(text, true) !== markenNachUebersetzung(text)) abweichend.push(`${c.toString(16)} ${JSON.stringify(folge)}`);
+    }
+  }
+  assert.deepStrictEqual(abweichend, []);
+});
+
+test('farbenErlaubt: höchstens 2.000 Spannen je Ergebnis — 2.000 ja, 2.001 nein; 1.200 gedämpfte ja; 3.000 rote nein; 3 MiB ESC[31m ohne Text ja, rasch', () => {
+  assert.strictEqual(SATZ_GRENZEN.farben, 2000);
+  assert.strictEqual(farbenErlaubt(`${E}[31mx${E}[0m `.repeat(2000)), true);
+  assert.strictEqual(farbenErlaubt(`${E}[31mx${E}[0m `.repeat(2001)), false);
+  assert.strictEqual(farbenErlaubt(`${E}[2mx${E}[22m`.repeat(1200)), true);
+  assert.strictEqual(farbenErlaubt(`${E}[31mx${E}[0m`.repeat(3000)), false);
+  assert.strictEqual(farbenErlaubt(`${E}[31mrot über\n`.repeat(2001)), false, 'eine Spanne je Zeile');
+  assert.strictEqual(farbenErlaubt('ohne Folge'), true);
+  const beginn = Date.now();
+  assert.strictEqual(farbenErlaubt(`${E}[31m`.repeat(3 * 1048576 / 5)), true);
+  assert.ok(Date.now() - beginn < 2000, `${Date.now() - beginn} ms`);
+});
