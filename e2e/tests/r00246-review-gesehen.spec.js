@@ -66,6 +66,59 @@ async function k3bAnhaengen(page, k, h) {
   expect(antwort.ok()).toBe(true);
 }
 
+/** Speicher gesperrt: schon der Zugriff auf `localStorage` wirft (privates Fenster, gesperrte Website-Daten). */
+function speicherGesperrt() {
+  Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new DOMException('gesperrt', 'SecurityError'); } });
+}
+
+/** Der Speicher wirft genau beim ersten Schreiben eines Schlüssels „Gesehen“ (Kontingent kurz voll), danach nicht mehr. */
+function ersterSchreibfehler() {
+  const setzen = Storage.prototype.setItem;
+  let geworfen = false;
+  Storage.prototype.setItem = function (schluessel, wert) {
+    if (!geworfen && String(schluessel).startsWith('kanbanD.gesehen.')) { geworfen = true; throw new DOMException('voll', 'QuotaExceededError'); }
+    return setzen.call(this, schluessel, wert);
+  };
+}
+
+/** Kontrast des Rands eines nativ gezeichneten Kästchens gegen den Grund daneben: Bildschirmfoto des Labels, im Browser dekodiert;
+    Grund ist das Pixel links oben im Label, gemessen wird das Pixel im Kästchen mit dem größten Abstand dazu. */
+async function kaestchenRandKontrast(page, label) {
+  const bild = (await label.screenshot({ animations: 'disabled' })).toString('base64');
+  const box = await label.evaluate(l => { const a = l.getBoundingClientRect(), i = l.querySelector('input').getBoundingClientRect(); return { x: i.x - a.x, y: i.y - a.y, w: i.width, h: i.height, dpr: devicePixelRatio }; });
+  return page.evaluate(async ([daten, b]) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${daten}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const lum = ([r, gr, bl]) => { const k = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * k(r) + 0.7152 * k(gr) + 0.0722 * k(bl); };
+    const grund = lum(g.getImageData(1, 1, 1, 1).data);
+    const d = g.getImageData(Math.round(b.x * b.dpr), Math.round(b.y * b.dpr), Math.round(b.w * b.dpr), Math.round(b.h * b.dpr)).data;
+    let best = 1;
+    for (let p = 0; p < d.length; p += 4) {
+      const l = lum([d[p], d[p + 1], d[p + 2]]);
+      best = Math.max(best, (Math.max(l, grund) + 0.05) / (Math.min(l, grund) + 0.05));
+    }
+    return best;
+  }, [bild, box]);
+}
+
+/** Zählt Textänderungen am Statusknoten des Satzes zum Speicher (der Knoten muss derselbe bleiben). */
+async function speicherSatzZaehlen(page) {
+  await page.evaluate(() => {
+    const knoten = document.getElementById('rv-gesehen-speicher');
+    window.kdSatz = { knoten, texte: [] };
+    new MutationObserver(() => window.kdSatz.texte.push(knoten.textContent)).observe(knoten, { childList: true, characterData: true, subtree: true });
+  });
+  return {
+    texte: () => page.evaluate(() => window.kdSatz.texte.slice()),
+    derselbe: () => page.evaluate(() => window.kdSatz.knoten === document.getElementById('rv-gesehen-speicher')),
+  };
+}
+
 /** Zählt Textänderungen an der Live-Region `#rv-gesehen` (der Knoten muss derselbe bleiben). */
 async function liveZaehlen(page) {
   await page.evaluate(() => {
@@ -395,4 +448,251 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     await expect(s.zeileText()).toHaveText('1 von 1 gesehen');
   });
 
+
+  /* ── AK 6 Obergrenze und unlesbarer Wert (US-6) ── */
+
+  test('AK 6/US-6: #1–#200 mit je einem Haken, dann ein Haken bei #1 und bei #201 — 200 Schlüssel, #2 fehlt, fremde bleiben', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    await page.evaluate(() => {
+      for (let nr = 1; nr <= 200; nr++) localStorage.setItem(`kanbanD.gesehen..${nr}`, JSON.stringify({ zeit: 1000 + nr, gesehen: [`alt${nr}`] }));
+      localStorage.setItem('kanbanD.spalten-zu.entwicklung', '["Erledigt"]');
+    });
+    await neuLaden(page);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    await commitOeffnen(page, k, 201, h.kArt);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    const gespeichert = await s.speicher();
+    expect(Object.keys(gespeichert)).toHaveLength(200);
+    expect(gespeichert['kanbanD.gesehen..2']).toBeUndefined();
+    expect(gespeichert['kanbanD.gesehen..3']).toBeDefined();
+    expect(JSON.parse(gespeichert['kanbanD.gesehen..1']).gesehen).toEqual(['alt1', `${h.kArt}\u0000web/kd-app.css`]);
+    expect(JSON.parse(gespeichert['kanbanD.gesehen..201']).gesehen).toEqual([`${h.kArt}\u0000web/kd-app.css`]);
+    expect(await page.evaluate(() => localStorage.getItem('kanbanD.spalten-zu.entwicklung'))).toBe('["Erledigt"]');
+    expect(fehler).toEqual([]);
+  });
+
+  test('AK 6: ein unlesbarer Wert „{kaputt“ — „0 von 8 gesehen“ ohne Fehler, der nächste Haken überschreibt ihn', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    await page.evaluate(() => localStorage.setItem('kanbanD.gesehen..1', '{kaputt'));
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText('0 von 8 gesehen');
+    await expect(s.speicherSatz()).toHaveText('');
+    await s.kaestchen('web/kd-app.css').click();
+    const wert = JSON.parse((await s.speicher())['kanbanD.gesehen..1']);
+    expect(wert.gesehen).toEqual([`${h.kArt}\u0000web/kd-app.css`]);
+    expect(fehler).toEqual([]);
+  });
+
+  /* ── AK 7 Speicher nicht verfügbar (US-7) ── */
+
+  test('AK 7/US-7: gesperrter Speicher — Satz schon beim Laden, Haken klappt ein, „1 von 8“, kein Fehler; nach dem Neuladen „0 von 8“ und der Satz', async ({ page }) => {
+    const s = seite(page);
+    await page.addInitScript(speicherGesperrt);
+    await commitOeffnen(page, k, 1, h.kArt);
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    await expect(s.speicherSatz()).toHaveAttribute('role', 'status');
+    await expect(s.speicherSatz().locator('button, a')).toHaveCount(0);
+    const satz = await speicherSatzZaehlen(page);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    expect(await s.offen('web/kd-app.css')).toBe(false);
+    await s.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    expect(await satz.texte()).toEqual([]);
+    expect(await satz.derselbe()).toBe(true);
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText('0 von 8 gesehen');
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    expect(fehler).toEqual([]);
+  });
+
+  test('AK 7: der Satz steht nicht vor dem ersten Fehlschlag und erscheint mit einer Textänderung, wenn erst das Schreiben scheitert', async ({ page }) => {
+    const s = seite(page);
+    await page.addInitScript(() => {
+      Storage.prototype.setItem = function () { throw new DOMException('voll', 'QuotaExceededError'); };
+    });
+    await commitOeffnen(page, k, 1, h.kArt);
+    await expect(s.speicherSatz()).toHaveText('');
+    const satz = await speicherSatzZaehlen(page);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    await s.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    expect(await satz.texte()).toEqual([SATZ_SPEICHER]);
+    expect(await satz.derselbe()).toBe(true);
+    expect(fehler).toEqual([]);
+  });
+
+  test('AK 7: wirft nur beim ersten Schreiben — Satz nach dem ersten Haken, nach dem zweiten weg; beide Haken gespeichert', async ({ page }) => {
+    const s = seite(page);
+    await page.addInitScript(ersterSchreibfehler);
+    await commitOeffnen(page, k, 1, h.kArt);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    await s.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await expect(s.speicherSatz()).toHaveText('');
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    expect(fehler).toEqual([]);
+  });
+
+  test('AK 7: der Satz ist gedämpft, nicht im Fehlerrot, ≥ 4,5:1 in Hell und Dunkel und bricht bei 320 px um', async ({ page }) => {
+    const s = seite(page);
+    await page.addInitScript(speicherGesperrt);
+    await commitOeffnen(page, k, 1, h.kArt);
+    for (const name of ['light', 'dark']) {
+      await thema(page, name);
+      expect(await kontrastAm(s.speicherSatz()), name).toBeGreaterThanOrEqual(4.5);
+      const farben = await page.evaluate(() => {
+        const wurzel = getComputedStyle(document.documentElement);
+        const probe = farbe => { const e = document.createElement('span'); e.style.color = farbe; document.body.append(e); const f = getComputedStyle(e).color; e.remove(); return f; };
+        return { satz: getComputedStyle(document.getElementById('rv-gesehen-speicher')).color, gedaempft: probe(wurzel.getPropertyValue('--kd-muted')), rot: probe(wurzel.getPropertyValue('--kd-status-error-ink')) };
+      });
+      expect(farben.satz, name).toBe(farben.gedaempft);
+      expect(farben.satz, name).not.toBe(farben.rot);
+    }
+    await breiteSetzen(page, 320);
+    await expect(s.speicherSatz()).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    const satz = await s.speicherSatz().evaluate(e => ({ breit: e.scrollWidth <= e.clientWidth, hoch: e.getBoundingClientRect().height }));
+    expect(satz.breit).toBe(true);
+    expect(satz.hoch).toBeGreaterThan(20);
+  });
+
+  test('AK 7: bei funktionierendem Speicher steht der Satz nie da (Laden, Haken, Entfernen, Neuladen)', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    const satz = await speicherSatzZaehlen(page);
+    await s.kaestchen('web/kd-app.css').click();
+    await s.kaestchen('web/kd-app.css').click();
+    expect(await satz.texte()).toEqual([]);
+    await neuLaden(page);
+    await expect(s.speicherSatz()).toHaveText('');
+  });
+
+
+  /* ── AK 9 Breite, Themen, Kontrast, Tastatur, Ansage ── */
+
+  test('AK 9: Ein Commit — Live-Region ändert sich genau einmal auf „1 von 8 gesehen“, derselbe Knoten; Tab-Folge im Kopf endet mit „Gesehen“', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    const live = await liveZaehlen(page);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    expect(await live.texte()).toEqual(['1 von 8 gesehen']);
+    expect(await live.derselbe()).toBe(true);
+    await s.kaestchen('web/kd-app.css').click();
+    await s.klappe('web/kd-app.css').focus();
+    const reihe = [];
+    for (let n = 0; n < 4; n++) {
+      await page.keyboard.press('Tab');
+      reihe.push(await page.evaluate(() => document.activeElement.getAttribute('aria-label') || document.activeElement.textContent.trim()));
+    }
+    expect(reihe).toEqual(['Pfad', 'VS Code', 'Patch', 'Gesehen: web/kd-app.css']);
+    const ring = await page.evaluate(() => { const st = getComputedStyle(document.activeElement); return { stil: st.outlineStyle, breite: parseFloat(st.outlineWidth), farbe: st.outlineColor }; });
+    expect(ring.stil).not.toBe('none');
+    expect(ring.breite).toBeGreaterThanOrEqual(2);
+    expect(await page.evaluate(() => document.activeElement.matches('input.ru-ges-k:focus-visible'))).toBe(true);
+  });
+
+  for (const name of ['light', 'dark']) {
+    test(`AK 9 (${name}): Breiten 320, 414, 980, 1280 — kein Querscrollen, Kästchen und Haken-Symbol ganz in der Breite, Ziel ≥ 24 px, Kontraste`, async ({ page }) => {
+      const s = seite(page);
+      await commitOeffnen(page, k, 1, h.kArt);
+      await thema(page, name);
+      await s.kaestchen('web/kd-app.css').click();
+      for (const breite of [320, 414, 980, 1280]) {
+        await breiteSetzen(page, breite);
+        if (await page.locator('#rv-auf').isVisible()) {
+          if ((await page.locator('#rv-auf').getAttribute('aria-expanded')) !== 'true') await page.locator('#rv-auf').click();
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${breite}`).toBe(true);
+        const lage = await page.evaluate(() => {
+          const r = e => e.getBoundingClientRect();
+          const label = document.querySelector('#rv-insel label.ru-ges'), symbol = document.querySelector('#review .dn-e .rv-gm svg');
+          return { label: r(label), kaestchen: r(label.querySelector('input')), symbol: r(symbol), breite: innerWidth };
+        });
+        for (const teil of ['label', 'kaestchen', 'symbol']) {
+          expect(lage[teil].left, `${breite} ${teil}`).toBeGreaterThanOrEqual(0);
+          expect(lage[teil].right, `${breite} ${teil}`).toBeLessThanOrEqual(lage.breite);
+        }
+        expect(lage.label.height, `${breite}`).toBeGreaterThanOrEqual(24);
+        expect(lage.kaestchen.width, `${breite}`).toBeGreaterThanOrEqual(16);
+      }
+      await breiteSetzen(page, 1280);
+      const texte = await kontrastMessen(page, ['#rv-ges-t', '#rv-insel label.ru-ges']);
+      expect(texte.length).toBeGreaterThan(0);
+      for (const m of texte) expect(m.wert, m.element).toBeGreaterThanOrEqual(4.5);
+      const zeile = s.zeile('web/kd-app.css');
+      const symbolKontrast = () => zeile.locator('.rv-gm svg').evaluate(e => window.kdKontrast.schriftGegenGrund(e, getComputedStyle(e).color));
+      expect(await symbolKontrast(), 'normal').toBeGreaterThanOrEqual(3);
+      await zeile.hover();
+      expect(await symbolKontrast(), 'hover').toBeGreaterThanOrEqual(3);
+      await page.mouse.move(0, 0);
+      await s.kaestchen('e2e/einheit/kontrast.test.js').focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      const ring = await s.kaestchen('e2e/einheit/kontrast.test.js').evaluate(e => {
+        const farbe = getComputedStyle(e).outlineColor;
+        return window.kdKontrast.schriftGegenGrund(e.closest('label'), farbe);
+      });
+      expect(ring, 'Fokusring').toBeGreaterThanOrEqual(3);
+      await page.evaluate(() => document.activeElement.blur());
+      expect(await kaestchenRandKontrast(page, s.label('e2e/tests/r00229-sperrform.spec.js')), 'Rand ungehakt').toBeGreaterThanOrEqual(3);
+    });
+  }
+
+  test('AK 9: Alle Änderungen mit 30 Dateien und einem Pfad über 300 Zeichen und bei gesperrtem Speicher — kein Querscrollen bei 320 px, Ziele ganz in der Breite', async ({ page }) => {
+    await page.addInitScript(speicherGesperrt);
+    const s = seite(page);
+    await alleOeffnen(page, k, 9);
+    await expect(s.zeileText()).toHaveText('0 von 30 gesehen');
+    await expect(page.locator('#rv-insel .ru-k.ru-lang')).toHaveCount(1);
+    await s.kaestchen(h.k30Lang).click();
+    await expect(s.zeileText()).toHaveText('1 von 30 gesehen');
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    for (const name of ['light', 'dark']) {
+      await thema(page, name);
+      for (const breite of [320, 414, 980, 1280]) {
+        await breiteSetzen(page, breite);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${name} ${breite}`).toBe(true);
+        const lage = await s.label(h.k30Lang).evaluate(e => { const r = e.getBoundingClientRect(); return { links: r.left, rechts: r.right, hoehe: r.height, breite: innerWidth }; });
+        expect(lage.links).toBeGreaterThanOrEqual(0);
+        expect(lage.rechts).toBeLessThanOrEqual(lage.breite);
+        expect(lage.hoehe).toBeGreaterThanOrEqual(24);
+        for (const m of await kontrastMessen(page, ['#rv-ges', '#rv-insel label.ru-ges'])) expect(m.wert, `${name} ${breite} ${m.element}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+});
+
+test.describe('R00246 Gesehen bei grobem Zeiger', () => {
+  test.use({ viewport: { width: 320, height: 800 }, isMobile: true, hasTouch: true });
+  let k, h;
+  test.beforeEach(async ({ page }) => {
+    await mutanteEinsetzen(page);
+    h = gesehenRepository();
+    k = await kanbanStarten(gesehenVorbereiten(h));
+    await alsPerson(page, 'sh');
+  });
+  test.afterEach(() => k.stoppen());
+
+  test('AK 9: Touch — das Label ist ≥ 44 px hoch, ein Tippen darauf setzt den Haken, kein Querscrollen', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+    const hoehe = await s.label('web/kd-app.css').evaluate(e => e.getBoundingClientRect().height);
+    expect(hoehe).toBeGreaterThanOrEqual(44);
+    await s.label('web/kd-app.css').tap();
+    await expect(s.kaestchen('web/kd-app.css')).toBeChecked();
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
 });

@@ -474,6 +474,9 @@ function gesehenBauen(basis) {
   h.kg = aenderungsCommit(h.r, 'KG', { 'src/riesig.rs': reihe(3001, 'riesig') });
   h.k5 = aenderungsCommit(h.r, 'K5', { 'src/a.rs': 'fn a() { k5() }\n', ...Object.fromEntries([1, 2, 3, 4].map(i => [`src/k5-${i}.rs`, `fn k${i}() {}\n`])) });
   h.leer = aenderungsCommit(h.r, 'Leer', {});
+  const tief = ['a', 'b', 'c'].map(z => z.repeat(100)).join('/') + '/lang.rs';
+  h.k30 = aenderungsCommit(h.r, 'K30', { [tief]: 'fn lang() {}\n', ...Object.fromEntries(Array.from({ length: 29 }, (_, i) => [`src/k30/datei-${i + 1}.rs`, `fn d${i}() {}\n`])) });
+  h.k30Lang = tief;
   h.w5 = aenderungsCommit(h.s, 'W5', { 'src/a.rs': 'fn wb() {}\n', 'w5-1.js': 'w1();\n', 'w5-2.js': 'w2();\n' });
   return h;
 }
@@ -489,10 +492,10 @@ function gesehenRepository() {
   return gesehenGeteilt;
 }
 
-/** Aufgaben: #1 K-Art und K-Doku, #2 K-Rand, #3 K3 und W3, #4 K-Budget, #6 KG, #7 K5 und W5, #8 leer, #201 K-Art; zwei Boards `entwicklung`
+/** Aufgaben: #1 K-Art und K-Doku, #2 K-Rand, #3 K3 und W3, #4 K-Budget, #6 KG, #7 K5 und W5, #8 leer, #9 K30 (30 Dateien, ein Pfad über 300 Zeichen), #201 K-Art; zwei Boards `entwicklung`
     und `zweites` mit denselben Aufgaben. */
 function gesehenVorbereiten(h) {
-  const aufgaben = { 1: [`kd:${h.kArt}`, `kd:${h.kDoku}`], 2: [`kd:${h.kRand}`], 3: [`kd:${h.k3}`, `wb:${h.w3}`], 4: [`kd:${h.kBudget}`], 6: [`kd:${h.kg}`], 7: [`kd:${h.k5}`, `wb:${h.w5}`], 8: [`kd:${h.leer}`], 201: [`kd:${h.kArt}`] };
+  const aufgaben = { 1: [`kd:${h.kArt}`, `kd:${h.kDoku}`], 2: [`kd:${h.kRand}`], 3: [`kd:${h.k3}`, `wb:${h.w3}`], 4: [`kd:${h.kBudget}`], 6: [`kd:${h.kg}`], 7: [`kd:${h.k5}`, `wb:${h.w5}`], 8: [`kd:${h.leer}`], 9: [`kd:${h.k30}`], 201: [`kd:${h.kArt}`] };
   const register = EINSTELLUNGEN_KOPF
     + `    kd: {name: KD, wbs: ${h.r}/Dokumentation/Planung/app.md, requirements: ""}\n`
     + `    wb: {name: WB, wbs: ${h.s}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
