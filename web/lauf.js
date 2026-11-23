@@ -166,19 +166,20 @@
 
   /** Die Liste der Einträge `[{nr, eintrag}]` samt Schluss: „Ende des Transkripts“ oder, an der Grenze, Wortlaut 15. Aufruf und
       Ergebnis stehen als eine Zeile an der Stelle des Aufrufs, vor einem Eintrag steht seine Denk- oder Wartezeile (R00234 FA 6, FA 8).
-      Jede Zeile ist mit `id="lv-s<Nr>"` ein Sprungziel. Je Aufruf ein Lauf und ein frisches Budget. */
-  function laufHtml(zeilen, grenze, esc, auswertung = laufAuswerten(zeilen, grenze)) {
+      Jede Zeile ist mit `id="lv-s<Nr>"` ein Sprungziel. Je Aufruf ein Lauf und ein frisches Budget. `commits` trägt die Marker je
+      Schritt (`web/lauf-commits.js`) und `adresse(verweis)` für den Link (R00251 FA 6). */
+  function laufHtml(zeilen, grenze, esc, auswertung = laufAuswerten(zeilen, grenze), commits = null) {
     const budget = { lauf: ZEICHEN_JE_LAUF, gebucht: 0 };
     const schluss = grenze
       ? `<li class="lv-g meld warn" role="note">${GRENZE_SYMBOL}<p>${GRENZE_ERREICHT}</p></li>`
       : `<li class="lv-ende">${ENDE}</li>`;
-    const z = zeichenKontext(zeilen, auswertung, esc, budget);
+    const z = zeichenKontext(zeilen, auswertung, esc, budget, commits);
     return `<ol class="lv-l" id="lv-insel" data-ohne-rollstand aria-label="Einträge des Transkripts der Reihe nach">${zeilen.map(zeile => zeileMitLueckeHtml(zeile, z)).join('')}${schluss}</ol>`;
   }
 
   /** Was das Zeichnen einer Zeile braucht: Schritte und Lücken nach Nummer, Ergebnisse, die zu einem Aufruf gehören, die
       Eingeklappten, die längste Dauer von „Längste Schritte“ (Maß der Balken) und die Einträge nach Nummer für die Partner. */
-  function zeichenKontext(zeilen, a, esc, budget) {
+  function zeichenKontext(zeilen, a, esc, budget, commits) {
     const schrittAm = new Map(a.schritte.map(s => [s.nr, s]));
     const gepaart = new Set(a.schritte.filter(s => s.aufruf && s.ergebnisNr !== null).map(s => s.ergebnisNr));
     const lueckeVor = new Map(a.luecken.map(l => [l.vorNr, l]));
@@ -186,7 +187,9 @@
     for (const { nr, eintrag } of zeilen) if (eintragAm.has(nr)) eintragAm.set(nr, eintrag);
     const laengste = a.top3.length ? a.top3[0].dauer : null;
     const tokens = tokenKontext(a.tokens);
-    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, wurzeln: a.wurzeln, laengste, tokens, esc, budget };
+    const commitMarker = commits ? commits.marker : new Map();
+    const commitAdresse = commits ? commits.adresse : null;
+    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, wurzeln: a.wurzeln, laengste, tokens, esc, budget, commitMarker, commitAdresse };
   }
 
   /** Neue Tokens je Träger (Nummer der Zeile) und die Folgezeilen einer Antwort aus der Auswertung; ohne `tokens` beide leer. */
@@ -214,7 +217,31 @@
     const luecke = z.lueckeVor.get(zeile.nr);
     let davor = '';
     if (luecke) davor = lueckeHtml(luecke, z.laengste, artAttribut(zeileArt(zeile.eintrag, z.eingeklappt[zeile.nr])));
-    return davor + eintragHtml(zeile, z);
+    return davor + eintragHtml(zeile, z) + commitZeilenHtml(z.commitMarker.get(zeile.nr), z);
+  }
+
+  /* ── Commit-Marker (R00251 FA 6, D0009 `#laufansicht` Bild 15): eigene Zeilen unmittelbar nach der Schrittzeile, nie in ihr ── */
+
+  const COMMIT_SYMBOL = '<span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M3 12h5M16 12h5"/></svg></span>';
+  const NICHT_AN_DER_KARTE = 'Commit nicht an der Karte';
+
+  function commitZeilenHtml(marker, z) {
+    if (!marker) return '';
+    return marker.map(m => (m.art === 'link' ? commitLinkHtml(m, z) : commitTextHtml(m, z.esc))).join('');
+  }
+
+  /** Link-Fassung: das `<a>` umschließt Wort, Kurzhash und Titel aus der Karte (PO Z. 697); die Adresse kommt nur aus dem Verweis der
+      Karte über `adresse`, nie aus dem Transkript. */
+  function commitLinkHtml(m, z) {
+    const { esc } = z;
+    return `<li class="lv-cm" tabindex="-1">${COMMIT_SYMBOL}<a class="m" href="${esc(z.commitAdresse(m.verweis))}" data-act="lauf-commit" data-arg="${esc(m.verweis)}"><span class="k">Commit</span> <span class="mono">${esc(m.kurzhash)}</span> <span class="ti">${zeileHtml(m.titel, esc)}</span></a></li>`;
+  }
+
+  /** Text-Fassung aus der Belegzeile: Kurzhash (nur als Hex), Titel und „Commit nicht an der Karte“, ohne Link (PO Z. 658). */
+  function commitTextHtml(m, esc) {
+    let hash = '';
+    if (m.kurzhash !== null) hash = `<span class="mono">${esc(m.kurzhash)}</span> `;
+    return `<li class="lv-cm text" tabindex="-1">${COMMIT_SYMBOL}<span class="k">Commit</span> <span class="m">${hash}<span class="ti">${zeileHtml(m.titel, esc)}</span></span> <span class="n">${NICHT_AN_DER_KARTE}</span></li>`;
   }
 
   const LUECKE_WORT = { denken: 'denkt', warten: 'wartet' };

@@ -294,3 +294,66 @@ test('web/lauf-commits.js überschreibt im Browser keinen Namen eines anderen Mo
   for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
   assert.match(fs.readFileSync(path.join(ordner, 'index.html'), 'utf8'), /<script src="\/web\/lauf-commits\.js"><\/script>\n<script src="\/web\/lauf-satz\.js"><\/script>\n<script src="\/web\/lauf\.js"><\/script>/, 'vor app.js geladen');
 });
+
+/* ── B1326: Marker-Zeilen zeichnen (FA 6), Sicherheit rein (AK 9) ── */
+
+const escHtml = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ADRESSE = verweis => `#/board/fabrik/aufgabe/1/review?commit=${encodeURIComponent(verweis)}`;
+function zeichnen(eintraege, karte) {
+  const { laufHtml } = require('../../web/lauf.js');
+  const zeilen = eintraege.map((o, i) => ({ nr: i + 1, eintrag: eintragPruefen(o) }));
+  const auswertung = laufAuswerten(zeilen, false);
+  const { marker } = commitMarker(zeilen, auswertung.schritte, karte);
+  return laufHtml(zeilen, false, escHtml, auswertung, { marker, adresse: ADRESSE });
+}
+/** Die Zeilen der Insel: je `<li>` seine Kennung oder Klasse, Marker-Zeilen mit Text. */
+const zeilenDerInsel = html => [...html.matchAll(/<li (?:id="(lv-s\d+(?:-vor)?)"|class="(lv-cm[^"]*)")[^>]*>/g)].map(m => m[1] || m[2]);
+
+test('AK 1: T17 — Marker-Zeilen stehen als eigene <li> unmittelbar nach der Schrittzeile, nie in ihr', () => {
+  const html = zeichnen(T17, T17_KARTE);
+  const reihe = zeilenDerInsel(html).filter(z => z.startsWith('lv-cm') || /^lv-s(2|4|6|8|12|14|16)$/.test(z));
+  assert.deepStrictEqual(reihe, ['lv-s2', 'lv-cm', 'lv-s4', 'lv-s6', 'lv-cm', 'lv-cm', 'lv-s8', 'lv-cm text', 'lv-s12', 'lv-cm', 'lv-s14', 'lv-cm', 'lv-s16']);
+  for (const m of html.matchAll(/<li class="lv-cm/g)) {
+    const davor = html.slice(0, m.index);
+    assert.strictEqual(davor.split('<details').length, davor.split('</details>').length, 'kein Marker in einem details');
+    assert.ok(davor.endsWith('</li>'), 'unmittelbar nach einer Zeile');
+  }
+});
+
+test('AK 4: Link-Fassung — <a href> nur aus dem Verweis der Karte, Wort „Commit“, Kurzhash und Titel im Link', () => {
+  const html = zeichnen(T17, T17_KARTE);
+  const c2 = T17_KARTE[2];
+  const erwartet = `<a class="m" href="${escHtml(ADRESSE(c2.verweis))}" data-act="lauf-commit" data-arg="${c2.verweis}"><span class="k">Commit</span> <span class="mono">${c2.hash.slice(0, 7)}</span> <span class="ti">[R00999] B0002: Zähler zeichnen</span></a>`;
+  assert.ok(html.includes(erwartet), html.slice(html.indexOf('lv-s6'), html.indexOf('lv-s8')));
+});
+
+test('AK 5: Text-Fassung — Kurzhash, Titel und „Commit nicht an der Karte“, kein Link', () => {
+  const html = zeichnen(T17, T17_KARTE);
+  const zeile = /<li class="lv-cm text"[^]*?<\/li>/.exec(html)[0];
+  assert.ok(!zeile.includes('<a'), zeile);
+  assert.strictEqual(zeile.replace(/<[^>]+>/g, ''), 'Commit e5f6a7b [DOC] Anforderung angelegt Commit nicht an der Karte');
+});
+
+test('AK 9: fremder Text bleibt Text — kein Element aus Befehl, Belegzeile, Ergebnis oder Titel; href, title, data-* nie aus dem Transkript', () => {
+  const BOESE = '"><img src=x onerror=alert(1)>';
+  const titel = `Titel ${BOESE} javascript:alert(1) ‮ umgekehrt`;
+  const lauf = paar([
+    aufruf(T(10), `git commit -q -m "${titel}" && git log --oneline -1 # ${BOESE}`), ergebnis(T(12), `e5f6a7b ${titel}\n${BOESE}`),
+    aufruf(T(20), `git commit -q -m "Karte <b>x</b> mit Titel" # javascript:alert(1) ${BOESE}`), ergebnis(T(22), `abc1234 Karte <b>x</b> mit Titel\n${BOESE}`),
+  ], { 1: 0, 3: 2 });
+  const karte = [karteneintrag('Karte <b>x</b> mit Titel', EPOCH_11 + 21)];
+  const html = zeichnen(lauf, karte);
+  const marker = html.match(/<li class="lv-cm[^]*?<\/li>/g);
+  assert.strictEqual(marker.length, 2);
+  for (const m of marker) {
+    assert.deepStrictEqual(m.match(/<(\w+)/g).filter(t => !['<li', '<span', '<svg', '<circle', '<path', '<a'].includes(t)), [], m);
+    assert.ok(!m.includes('<img') && !m.includes('<b>'), m);
+    for (const [, attr, wert] of m.matchAll(/ (href|title|data-[a-z-]+)="([^"]*)"/g)) {
+      assert.ok(!wert.includes('javascript') && !wert.includes('e5f6a7b') && !wert.includes('img') && !wert.includes('Titel'), `${attr}=${wert}`);
+    }
+  }
+  assert.ok(marker[0].includes('lv-cm text') && marker[0].includes('mk-bidi'), 'U+202E als sichtbare Marke');
+  assert.ok(!marker[0].includes('‮'.repeat(1) + ' umgekehrt') || marker[0].includes('mk-bidi'));
+  const hrefs = [...html.matchAll(/<li class="lv-cm[^]*?href="([^"]*)"/g)].map(x => x[1]);
+  assert.deepStrictEqual(hrefs, [escHtml(ADRESSE(karte[0].verweis))], 'genau die Adresse aus reviewAdresseBilden mit dem Verweis der Karte');
+});

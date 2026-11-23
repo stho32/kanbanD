@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { kanbanStarten, alsPerson, mutanteEinsetzen } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, thema, kontrastAm } = require('./hilfen');
 const lv = require('./laufansicht-hilfen');
 const { T17, T17_KENNUNG, T17_COMMITS } = require('./laufansicht-t17');
 
@@ -113,7 +113,32 @@ const sprache = (page, k) => ({
       unter: satz.getBoundingClientRect().top >= davor.getBoundingClientRect().bottom - 1, position: st.position, order: st.order, float: st.float };
   }),
   farbe: ort => ort.evaluate(el => getComputedStyle(el).color),
+  link: name => page.getByRole('link', { name, exact: true }),
+  async aufklappen(nr) {
+    await page.locator(`#lv-s${nr} > details > summary`).click();
+    await expect(page.locator(`#lv-s${nr} > details`)).toHaveAttribute('open', '');
+  },
+  async filter(name) {
+    await page.locator(`.lv-filt input[data-filter="${{ Nachrichten: 'n', Werkzeuge: 'w', 'nur Fehler': 'f' }[name]}"]`).click();
+  },
+  sichtbareMarker: () => page.locator(`${INSEL} > li.lv-cm:visible`),
+  reviewTitel: () => page.locator('.rv-commit h2'),
+  linkMarker: () => page.locator(`${INSEL} > li.lv-cm > a`),
+  /** Alle Textteile der Marker-Zeilen (Wort, Hash, Titel, Satz). */
+  markerTexte: () => page.locator(`${INSEL} > li.lv-cm :is(.k, .mono, .ti, .n)`),
+  zielflaechen: () => page.locator(`${INSEL} > li.lv-cm > a`).evaluateAll(as => as.map(a => a.getBoundingClientRect().height)),
+  ziel: () => page.evaluate(() => { const p = document.createElement('i'); p.style.blockSize = 'var(--kd-ziel)'; p.style.display = 'block'; document.body.appendChild(p); const h = p.getBoundingClientRect().height; p.remove(); return h; }),
+  titelStil: () => page.locator(`${INSEL} > li.lv-cm .ti`).first().evaluate(t => { const st = getComputedStyle(t); return { umbruch: st.whiteSpace, kuerzung: st.textOverflow }; }),
+  quer: () => page.evaluate(() => document.scrollingElement.scrollWidth > window.innerWidth),
+  zeitachse: () => page.locator('.lv-za').evaluate(el => el.outerHTML),
+  async reviewSchliessen() {
+    await page.locator('#rv-rueckweg').click();
+  },
 });
+
+/** Die Adresse der Review-Seite eines Commits der Karte (`reviewAdresseBilden` mit basis `board`, slug `fabrik`, #1). */
+const reviewAdresse = hash => `#/board/fabrik/aufgabe/1/review?commit=${encodeURIComponent(`kd:${hash}`)}`;
+const kurz = hash => hash.slice(0, 7);
 
 test.describe('R00251 Laufansicht: Commit-Marker', () => {
   let k, s, repo;
@@ -130,6 +155,162 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
   test.afterEach(async () => {
     await k.stoppen();
     fs.rmSync(repo.basis, { recursive: true, force: true });
+  });
+
+  /* ── B1326: Marker-Zeile, Link nur aus der Karte, Text-Fassung, Rückweg ── */
+
+  /** Die sechs Marker von T17 nach R00251 AK 1, mit den Hashes der Karte nach dem Rebase. */
+  const sechsMarker = n => [
+    { nach: 'lv-s2', text: `Commit ${kurz(n.C1)} [R00999] B0001: Zähler zuerst`, link: reviewAdresse(n.C1) },
+    { nach: 'lv-s6', text: `Commit ${kurz(n.C2)} [R00999] B0002: Zähler zeichnen`, link: reviewAdresse(n.C2) },
+    { nach: 'lv-s6', text: `Commit ${kurz(n.C3)} [R00999] B0003: Grenze prüfen`, link: reviewAdresse(n.C3) },
+    { nach: 'lv-s8', text: 'Commit e5f6a7b [DOC] Anforderung angelegt Commit nicht an der Karte', link: null },
+    { nach: 'lv-s12', text: `Commit ${kurz(n.C5a)} [R00999] B0004: Nacharbeit`, link: reviewAdresse(n.C5a) },
+    { nach: 'lv-s14', text: `Commit ${kurz(n.C5b)} [R00999] B0004: Nacharbeit`, link: reviewAdresse(n.C5b) },
+  ];
+
+  test('AK 1 · AK 3 · US-1: sechs Marker unmittelbar nach ihrer Schrittzeile, Links mit den Hashes nach dem Rebase, auch aufgeklappt und bei jedem Filter', async () => {
+    await s.oeffnen();
+    await s.gelesen();
+    expect(await s.marker()).toEqual(sechsMarker(repo.nachher));
+    expect(JSON.stringify(await s.marker())).not.toContain(kurz(repo.vorher.C1));
+    await s.aufklappen(6);
+    expect(await s.marker(), 'aufgeklappt: Marker nach der Zeile, nicht in ihr').toEqual(sechsMarker(repo.nachher));
+    for (const name of ['Nachrichten', 'Werkzeuge', 'nur Fehler']) {
+      await s.filter(name);
+      await expect(s.sichtbareMarker(), `Filter ${name}`).toHaveCount(6);
+      await s.filter(name);
+    }
+    await s.filter('Nachrichten');
+    await s.filter('Werkzeuge');
+    await expect(s.sichtbareMarker(), 'nichts gewählt').toHaveCount(6);
+  });
+
+  test('AK 4 · US-2: Link auf „Ein Commit“ mit dem Verweis der Karte — Name mit dem Wort „Commit“, Linksklick hin, „Schließen“ zurück, Strg-Klick neue Registerkarte', async ({ page, context }) => {
+    const c2 = repo.nachher.C2;
+    await s.oeffnen();
+    await s.gelesen();
+    const link = s.link(`Commit ${kurz(c2)} [R00999] B0002: Zähler zeichnen`);
+    await expect(link).toHaveAttribute('href', reviewAdresse(c2));
+    expect(await link.evaluate(a => a.textContent.replace(/\s+/g, ' ').trim())).toBe(`Commit ${kurz(c2)} [R00999] B0002: Zähler zeichnen`);
+    const laenge = await page.evaluate(() => history.length);
+    const [neu] = await Promise.all([context.waitForEvent('page'), link.click({ modifiers: ['Control'] })]);
+    await neu.waitForLoadState();
+    expect(neu.url()).toBe(k.adresse + reviewAdresse(c2));
+    await neu.close();
+    expect(page.url()).toBe(k.adresse + adresse(T17_KENNUNG));
+    await link.click();
+    await expect(s.reviewTitel()).toContainText('Zähler zeichnen');
+    expect(page.url()).toBe(k.adresse + reviewAdresse(c2));
+    expect(await page.evaluate(() => history.length)).toBe(laenge + 1);
+    await s.reviewSchliessen();
+    await s.gelesen();
+    expect(page.url()).toBe(k.adresse + adresse(T17_KENNUNG));
+    expect(await s.marker()).toEqual(sechsMarker(repo.nachher));
+  });
+
+  test('AK 5 · US-3: Text-Marker ohne Link; ohne Repository steht nur er, ohne Fehlerbild', async ({ page }) => {
+    await s.oeffnen();
+    await s.gelesen();
+    const text = page.locator(`${INSEL} > li.lv-cm.text`);
+    await expect(text).toHaveCount(1);
+    await expect(text.locator('a')).toHaveCount(0);
+    fs.renameSync(repo.r, repo.r + '-weg');
+    await s.oeffnen();
+    await s.gelesen();
+    expect(await s.marker()).toEqual([sechsMarker(repo.nachher)[3]]);
+    await expect(s.fehlerbild()).toHaveCount(0);
+    await expect(s.satzImKopf()).toHaveCount(0);
+  });
+
+  test('AK 6 · US-5: Commits mit 500 — nur der Text-Marker zu C4', async ({ page }) => {
+    await page.route(url => istCommits(url.href), route => route.fulfill({ status: 500, contentType: 'application/json', body: '{"fehler":"kaputt"}' }));
+    await s.oeffnen();
+    await s.gelesen();
+    expect(await s.marker()).toEqual([sechsMarker(repo.nachher)[3]]);
+  });
+
+  /* ── B1328: Zielflächen, Kontrast, 320 px, Zeitachse byte-gleich ── */
+
+  test('AK 8 · AK 11: 1280 px hell und dunkel — Zielfläche ≥ --kd-ziel, Text ≥ 4,5 : 1, Titel kürzt mit „…“, Zeitachse byte-gleich ohne „Commit“', async ({ page }) => {
+    const { laufZeitachseHtml, laufAuswerten, eintragPruefen } = require('../../web/lauf.js');
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await s.oeffnen();
+    await s.gelesen();
+    const ziel = await s.ziel();
+    for (const h of await s.zielflaechen()) expect(h).toBeGreaterThanOrEqual(ziel);
+    expect(await s.titelStil()).toEqual({ umbruch: 'nowrap', kuerzung: 'ellipsis' });
+    for (const name of ['light', 'dark']) {
+      await thema(page, name);
+      for (const teil of await s.markerTexte().all()) expect(await kontrastAm(teil), `${name}: ${await teil.textContent()}`).toBeGreaterThanOrEqual(4.5);
+    }
+    process.env.TZ = 'Europe/Berlin';
+    const zeilen = T17.map((o, i) => ({ nr: i + 1, eintrag: eintragPruefen(o) }));
+    const ohneMarker = await page.evaluate(html => { const t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild.outerHTML; }, laufZeitachseHtml(laufAuswerten(zeilen, false)));
+    expect(await s.zeitachse(), 'wie ohne Commit-Marker gerechnet').toBe(ohneMarker);
+    expect(await s.zeitachse()).not.toContain('Commit');
+    expect(await s.quer()).toBe(false);
+  });
+
+  test.describe('320 px, grober Zeiger', () => {
+    test.use({ viewport: { width: 320, height: 800 }, isMobile: true, hasTouch: true });
+
+    test('AK 8: jeder Link-Marker mindestens --kd-ziel hoch, Titel bricht um, kein Querscrollen, hell und dunkel ≥ 4,5 : 1', async ({ page }) => {
+      await s.oeffnen();
+      await s.gelesen();
+      const ziel = await s.ziel();
+      expect(ziel).toBe(48);
+      const hoehen = await s.zielflaechen();
+      expect(hoehen.length).toBe(5);
+      for (const h of hoehen) expect(h).toBeGreaterThanOrEqual(ziel);
+      expect((await s.titelStil()).umbruch).toBe('normal');
+      expect(await s.quer()).toBe(false);
+      for (const name of ['light', 'dark']) {
+        await thema(page, name);
+        for (const teil of await s.markerTexte().all()) expect(await kontrastAm(teil), `${name}: ${await teil.textContent()}`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  });
+
+  /* ── B1329: Sicherheit im echten Programm ── */
+
+  test('AK 9 · US-6: fremder Text bleibt Text — kein alert, kein fremdes Element, jedes href aus dem Verweis der Karte, keine Anfrage mit Transkripttext', async ({ page }) => {
+    const BOESE = '"><img src=x onerror=alert(1)>';
+    const KARTENTITEL = 'Karte <b>x</b> mit Titel';
+    fs.writeFileSync(path.join(repo.r, 'sicher.txt'), 'x\n');
+    git(repo.r, { GIT_AUTHOR_DATE: '2026-11-22T11:10:05+01:00', GIT_COMMITTER_DATE: '2026-11-22T11:10:05+01:00' }, 'add', '-A');
+    git(repo.r, { GIT_AUTHOR_DATE: '2026-11-22T11:10:05+01:00', GIT_COMMITTER_DATE: '2026-11-22T11:10:05+01:00' }, 'commit', '-q', '-m', KARTENTITEL);
+    const hash = git(repo.r, {}, 'rev-parse', 'HEAD');
+    const antwort = await fetch(`${k.adresse}api/aufgaben/1/commits`, { method: 'POST', headers: { 'X-KanbanD-Wer': lv.AGENT, 'Content-Type': 'application/json' }, body: JSON.stringify({ commits: [`kd:${hash}`] }) });
+    expect(antwort.status).toBe(200);
+    const kennung = 'sicherheit@2026-11-22T11:10+01:00';
+    const titelFremd = `Titel ${BOESE} javascript:alert(1) \u202E umgekehrt`;
+    const lauf = [
+      { zeit: '2026-11-22T11:10:00+01:00', art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', id: 'a', text: JSON.stringify({ command: `git commit -q -m "${titelFremd}" && git log --oneline -1 # ${BOESE}` }) },
+      { zeit: '2026-11-22T11:10:01+01:00', art: 'werkzeugergebnis', wer: 'werkzeug', zu: 'a', text: `e5f6a7b ${titelFremd}\nABC1234X ${titelFremd}\n${BOESE}` },
+      { zeit: '2026-11-22T11:10:04+01:00', art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', id: 'b', text: JSON.stringify({ command: `git commit -q -m "${KARTENTITEL}" # javascript:alert(1) ${BOESE}` }) },
+      { zeit: '2026-11-22T11:10:06+01:00', art: 'werkzeugergebnis', wer: 'werkzeug', zu: 'b', text: `abc1234 ${KARTENTITEL}\n${BOESE}` },
+    ];
+    await lv.hochladen(k.adresse, 1, kennung, 'Entwicklung', lv.gz(lauf.map(lv.zeile).join('')));
+    let alerts = 0;
+    page.on('dialog', d => { alerts++; d.dismiss().catch(() => { }); });
+    const anfragen = [];
+    page.on('request', r => anfragen.push(r.url()));
+    await s.oeffnen(kennung);
+    await s.gelesen();
+    const marker = await s.marker();
+    expect(marker.map(m => m.link)).toEqual([null, null, reviewAdresse(hash)]);
+    expect(marker[0].text).toMatch(/^Commit e5f6a7b Titel "><img src=x onerror=alert\(1\)> javascript:alert\(1\) .* umgekehrt Commit nicht an der Karte$/);
+    expect(marker[1].text, 'Belegzeile ohne Hex: ohne Hash').toMatch(/^Commit Titel "><img src=x onerror=alert\(1\)> javascript:alert\(1\) .* umgekehrt Commit nicht an der Karte$/);
+    expect(marker[2].text).toBe(`Commit ${kurz(hash)} ${KARTENTITEL}`);
+    const fremd = await page.locator(`${INSEL} > li.lv-cm`).evaluateAll(lis => lis.flatMap(li => [...li.querySelectorAll('*')].map(e => e.tagName.toLowerCase())).filter(t => !['span', 'svg', 'circle', 'path', 'a'].includes(t)));
+    expect(fremd).toEqual([]);
+    await expect(page.locator(`${INSEL} img, ${INSEL} b`)).toHaveCount(0);
+    const attribute = await page.locator(`${INSEL} > li.lv-cm`).evaluateAll(lis => lis.flatMap(li => [li, ...li.querySelectorAll('*')].flatMap(e => [...e.attributes].filter(a => a.name === 'href' || a.name === 'title' || a.name.startsWith('data-')).map(a => a.value))));
+    for (const wert of attribute) expect(wert).not.toMatch(/javascript|e5f6a7b|ABC1234X|img|Titel/);
+    for (const url of anfragen) expect(url).not.toMatch(/javascript|e5f6a7b|ABC1234X|img|Titel|umgekehrt/);
+    await expect(page.locator(`${INSEL} > li.lv-cm.text .mk-bidi`).first()).toBeVisible();
+    expect(alerts).toBe(0);
   });
 
   /* ── B1325: zweite Anfrage, Frist, Abbruch, Satz im Kopf ── */
@@ -179,6 +360,7 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
     await s.oeffnen();
     await s.gelesen();
     await expect(s.satzImKopf()).toHaveCount(0);
+    expect(await s.marker()).toEqual(sechsMarker(repo.nachher));
   });
 
   test('AK 6: Wechsel der Kennung bricht Transkript und Commits ab, vom alten Lauf wird nichts gezeichnet', async ({ page }) => {

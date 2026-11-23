@@ -1149,9 +1149,12 @@ async function commitsLesen(nr, { still = false, fokusAuf = null, ausloeser = nu
 
 /* ── Review-Seite eines Commits (R00207, ADR-0033): eigene Adresse, zwei Anfragen beim Öffnen, Diffbereich als stehende Insel ── */
 
-/** Marke am Verlaufseintrag einer Review-Seite, die aus der Ansicht „Commits“ geöffnet wurde: der Eintrag davor ist das Fenster. */
-const REVIEW_AUS_DER_LISTE = { kdReviewAusListe: true };
+/** Marke am Verlaufseintrag einer Review-Seite, die aus der Ansicht „Commits“ (`liste`) oder aus einer Marker-Zeile der Laufansicht
+    (`lauf`, R00251 FA 6) geöffnet wurde: der Eintrag davor ist die Seite, zu der „Schließen“ zurückführt. */
+const REVIEW_AUS_DER_LISTE = { kdReviewAusListe: true, herkunft: 'liste' };
+const REVIEW_AUS_DEM_LAUF = { kdReviewAusListe: true, herkunft: 'lauf' };
 const reviewAusDerListe = () => Boolean(history.state) && history.state.kdReviewAusListe === true;
+const reviewAusDemLauf = () => reviewAusDerListe() && history.state.herkunft === 'lauf';
 /** Fristen des Diffs (ADR-0033 Punkt 3, ADR-0032 N4.1/N5.1): bis zum Kopf und für den Rumpf. */
 const DIFF_FRIST_KOPF_MS = 15000;
 const DIFF_FRIST_RUMPF_MS = 60000;
@@ -2389,7 +2392,7 @@ function vReviewKopf() {
 function reviewZurueck() {
   const r = S.ui.review;
   if (!r) return;
-  S.ui.tab = 'commits';
+  if (!reviewAusDemLauf()) S.ui.tab = 'commits';
   if (reviewAusDerListe()) { history.back(); return; }
   history.replaceState(null, '', adresseBilden({ sicht: r.basis, slug: r.slug, nummer: r.nr }));
   adresseGewechselt();
@@ -2402,6 +2405,15 @@ function reviewOeffnen(verweis) {
   u.reviewHerkunft = verweis || null;
   const basis = u.view === 'aufgaben' ? 'aufgaben' : 'board';
   history.pushState(REVIEW_AUS_DER_LISTE, '', reviewAdresseBilden({ basis, slug: u.slug, nummer: u.offen, commit: verweis || null }));
+  adresseGewechselt();
+}
+
+/** Öffnet „Ein Commit“ aus einer Marker-Zeile der Laufansicht (R00251 FA 6): neuer Verlaufseintrag mit Marke `lauf`, „Schließen“
+    führt zurück in denselben Lauf. `verweis` ist der Verweis der Karte, nie Text aus dem Transkript. */
+function laufCommitOeffnen(verweis) {
+  const v = S.ui.lauf;
+  if (!v || !verweis) return;
+  history.pushState(REVIEW_AUS_DEM_LAUF, '', reviewAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, commit: verweis }));
   adresseGewechselt();
 }
 
@@ -2513,7 +2525,8 @@ async function laufLesen(v) {
     ergebnis = { art: 'fehler', fehler: { art: 'unbekannt' } };
   } else {
     const karte = laufCommitsLesen(v.nr, anfrage.abbruch.signal);
-    ergebnis = await transkriptLesen(`/api/aufgaben/${v.nr}/transkripte/${encodeURIComponent(treffer.kennung)}`, anfrage.abbruch.signal, karte);
+    const commitAdresse = verweis => reviewAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, commit: verweis });
+    ergebnis = await transkriptLesen(`/api/aufgaben/${v.nr}/transkripte/${encodeURIComponent(treffer.kennung)}`, anfrage.abbruch.signal, { karte, adresse: commitAdresse });
   }
   if (S.ui.lauf !== v || v.anfrage !== anfrage) return;
   v.anfrage = null;
@@ -2531,7 +2544,7 @@ async function laufLesen(v) {
 /** `GET …/transkripte/{kennung}` mit den Fristen des Diffs → `{art: 'eintraege', html, grenze}`, `{art: 'fehlt'}` oder
     `{art: 'fehler', fehler}`. Entpackt im Strom; an der Grenze bricht das Lesen ab und gibt das Budget des Servers frei — das
     ist kein Fehler. Jeder Fehler vor dem Ende verwirft das Gelesene (ADR-0041 Punkt 4). */
-async function transkriptLesen(pfad, abbruchSignal, karte) {
+async function transkriptLesen(pfad, abbruchSignal, quelle) {
   try {
     const gelesen = await mitFristen(pfad, abbruchSignal, async (r, netzFehler, abbruch) => {
       if (!r.ok) await antwortFehler(r, netzFehler);
@@ -2552,8 +2565,8 @@ async function transkriptLesen(pfad, abbruchSignal, karte) {
     });
     // einmal je erfolgreichem Lesen ausgewertet (R00234 FA 11); Live zeichnet Kopf und Kennzahlen aus dieser Auswertung neu
     const auswertung = laufAuswerten(gelesen.zeilen, gelesen.grenze);
-    const commits = laufCommitMarker(gelesen.zeilen, auswertung, await karte);
-    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, commits, bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung) };
+    const commits = laufCommitMarker(gelesen.zeilen, auswertung, await quelle.karte, quelle.adresse);
+    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, commits, bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung, commits) };
   } catch (g) {
     // FA 8: Server, Verbindung, Entpacken, `fehlt` — jede andere Ausnahme beim Lesen oder Zeichnen heißt „verarbeiten“ (PO Z. 495)
     const fehler = laufFehlerArt(g);
@@ -2581,9 +2594,9 @@ function laufCommitsLesen(nr, abbruchSignal) {
 }
 
 /** Die Marker des Laufs und die Sätze im Kopf: ohne lesbare Commits der Karte bleiben die Text-Marker, der Kopf sagt es. */
-function laufCommitMarker(zeilen, auswertung, karte) {
+function laufCommitMarker(zeilen, auswertung, karte, adresse) {
   const { marker, mehrAlsGrenze } = commitMarker(zeilen, auswertung.schritte, karte || []);
-  return { marker, mehrAlsGrenze, nichtLesbar: karte === null };
+  return { marker, mehrAlsGrenze, nichtLesbar: karte === null, adresse };
 }
 
 /** Die Bytes des Rumpfs entpackt, als Folge von Stücken für `zeilenLesen`. Ein Fehler der Verbindung ist in `quelle.netz` vermerkt,
@@ -2699,7 +2712,7 @@ function laufFilterAnInsel(knoten, filter) {
 
 /** Der Text der Einträge: einmal beim Lesen gebaut; nach dem Einsetzen nur noch aus den Einträgen, wenn die Insel neu entsteht. */
 function laufInselText(e) {
-  return e.html === null ? laufHtml(e.zeilen, e.grenze, esc, e.auswertung) : e.html;
+  return e.html === null ? laufHtml(e.zeilen, e.grenze, esc, e.auswertung, e.commits) : e.html;
 }
 
 /** Öffnet die Laufansicht aus „Läufe“ mit einem neuen Verlaufseintrag samt Marke (ADR-0041 Punkt 2). */
@@ -4100,6 +4113,7 @@ async function aktion(a, arg, wert) {
       }
       case 'review-oeffnen': reviewOeffnen(arg); return;
       case 'lauf-oeffnen': laufOeffnen(arg); return;
+      case 'lauf-commit': laufCommitOeffnen(arg); return;
       case 'lauf-zurueck': laufZurueck(); return;
       case 'lauf-blaettern': laufBlaettern(arg); return;
       case 'lauf-springe': {
@@ -5233,7 +5247,7 @@ document.addEventListener('click', e => {
   // Ein Review-Verweis mit Umschalt-, Strg- oder Meta-Taste bleibt ein Link (neuer Tab, neues Fenster; ADR-0033 Punkt 2)
   // Der gezeigte Eintrag der Leiste führt auf die eigene Adresse: sein Klick bewirkt nichts, auch keine Zeichnung (R00245 FA 6)
   if (el.tagName === 'A' && el.closest('#rv-ls') && el.getAttribute('aria-current') === 'page' && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) { e.preventDefault(); return; }
-  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-leiste', 'review-alle-zeigen', 'lauf-oeffnen', 'lauf-zurueck', 'lauf-blaettern'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
+  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-leiste', 'review-alle-zeigen', 'lauf-oeffnen', 'lauf-zurueck', 'lauf-blaettern', 'lauf-commit'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });

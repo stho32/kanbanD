@@ -2010,11 +2010,12 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .lv-haupt,.lv-rumpf2>.lv-ber,.lv-rumpf2>.lv-ohne-ber{max-width:none}
 }
 /* Filter „Zeigen“ (R00239 FA 5, FA 6): der Stand steht als Attribut an der Insel, ausgeblendet wird nur hier. Eine Zeile ohne
-   `data-art` ist eine Nachricht; „nur Fehler“ wirkt allein; „Ende des Transkripts“ und der Satz zur Grenze bleiben immer stehen. */
-#lv-insel:not([data-nur-fehler]):not([data-zeigen~="n"])>li:not([data-art]):not(.lv-ende):not(.lv-g),
+   `data-art` ist eine Nachricht; „nur Fehler“ wirkt allein; „Ende des Transkripts“, der Satz zur Grenze und die Commit-Marker (R00251)
+   bleiben immer stehen. */
+#lv-insel:not([data-nur-fehler]):not([data-zeigen~="n"])>li:not([data-art]):not(.lv-ende):not(.lv-g):not(.lv-cm),
 #lv-insel:not([data-nur-fehler]):not([data-zeigen~="w"])>li[data-art="w"],
 #lv-insel:not([data-nur-fehler]):not([data-zeigen~="h"])>li[data-art="h"],
-#lv-insel[data-nur-fehler]>li:not([data-fehler]):not(.lv-ende):not(.lv-g){display:none}
+#lv-insel[data-nur-fehler]>li:not([data-fehler]):not(.lv-ende):not(.lv-g):not(.lv-cm){display:none}
 .lv-filt{margin:var(--kd-s3) 0 0;padding:0;border:0;min-width:0;display:flex;flex-direction:column}
 .lv-filt legend{margin:0 0 2px;padding:0;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted);text-transform:uppercase}
 .lv-filt label{display:flex;align-items:center;gap:8px;min-block-size:max(26px,var(--kd-ziel));font-size:13px;cursor:pointer}
