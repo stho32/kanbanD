@@ -79,7 +79,7 @@ Heute (Stand `68a71996`) gibt es den Schalter nicht, AK 1–9 sind deshalb rot (
   - (m13) die Klasse hängt nur an den bereits gezeichneten Blöcken statt an `#review` → AK 2 rot (nachgezeichnete Datei)
   - (m14) `.rv.umbr{overflow-anchor:auto}` entfernt → AK 7 (Hinaufrollen bei „an“) rot
   - (m15) Anker überall (`.rv{overflow-anchor:auto}`) → AK 7 (Scroll-Anker bei „aus“) rot
-  - (m16) `min-inline-size:0;min-block-size:0` am Schalter bei grobem Zeiger fehlt → AK 8 (Touch) rot
+  - (m16) `min-inline-size:auto;min-block-size:auto` am Schalter bei grobem Zeiger fehlt → AK 8 (Touch) rot
 
 ## Betroffene Verzeichnisstruktur
 
