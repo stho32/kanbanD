@@ -33,7 +33,7 @@ Die meisten Änderungen eines Commits sind Zeilen, in denen sich ein Wort, eine 
 
 ## Nicht-funktionale Anforderungen
 
-- Performance: Kosten linear in den Zeichen der geänderten Zeilen; höchstens 2.000 Vergleiche je Paar (zwei Zeilen zu 1.000 Zeichen); keine Aufgabe des Hauptfadens dauert wegen der Marke länger als 150 ms (ADR-0042 Q2; Messziel ADR-0040 Punkt 6). Berechnet wird beim Zeichnen je Block zu 500 Zeilen, also in denselben Aufgaben wie heute. Der heutige Messwert fehlt noch (Hypothese: weit unter 150 ms); der entwickler misst ihn in B1299, bevor er die Grenze festschreibt (Abstand ≥ 30 %, `rollen/planer/zeitkriterien.md`).
+- Performance: Kosten linear in den Zeichen der geänderten Zeilen; höchstens 2.000 Vergleiche je Paar (zwei Zeilen zu 1.000 Zeichen); keine Aufgabe des Hauptfadens dauert wegen der Marke länger als 150 ms (ADR-0042 Q2; Messziel ADR-0040 Punkt 6). Berechnet wird beim Zeichnen je Block zu 500 Zeilen, also in denselben Aufgaben wie heute. Messweise (PO Z. 676): Die Grenze wird über den Zähler belegt — höchstens 2.000 Vergleiche je Paar (2 × 1.000 Zeichen) und Zeit bei doppelter Zeilenzahl etwa doppelt (linear); das sind die Prüfungen im Gate. Die längste Aufgabe ab dem Klick „Änderungen anzeigen“ wird mit `PerformanceObserver` (`longtask`, ereignisgenau) allein (ein Worker) gemessen und mit dem Wert ohne Marke im Bericht genannt, ohne Grenze im Gate; sie gehört überwiegend zum Einsetzen der nachgeladenen Datei (R00207, ADR-0033 Punkt 5).
 - Sicherheit: kein neuer Endpunkt, kein neues Feld, kein Prozess; fremder Text bleibt Text (FA 5).
 - Benutzerfreundlichkeit: Bei 320 px scrollt die Seite nicht quer; Kontrast und Form nach FA 8 in beiden Themen.
 
@@ -52,7 +52,7 @@ Heute (Stand `03dda757`) steht keine Marke, die ganze Zeile ist rot oder grün. 
 
 - [x] **AK 1 Paar und Marke:** Gegeben K-Wort (a) und (c), wenn `sh` die Review-Seite von W1 öffnet, dann trägt die gelöschte Zeile genau ein `mark.wm` mit dem Text „1“ und die hinzugefügte genau eins mit „2“, und der Rest beider Zeilen steht außerhalb der Marke (`let a = ` davor, `;` dahinter). Rechnung (a): Präfix `let a = ` = 8, Suffix `;` = 1, Summe 9 ≥ 4, Marke `[8, 9)`. Rechnung (c): Präfix `a = ` = 4, Suffix 0, Summe 4 ≥ 4, Marke `[4, 5)`. Heute rot.
 - [x] **AK 2 Wortgrenze:** Gegeben K-Wort (b), dann markiert die gelöschte Zeile das ganze Wort „alt_name“ und die hinzugefügte „alt_namen“ (je ein `mark.wm`). Rechnung: Präfix `fn alt_name` = 11, Suffix `(x) {}` = 6; der Rest ist links leer, rechts „n“, wird nach links bis zum Wortanfang 3 erweitert: gelöscht `[3, 11)`, hinzugefügt `[3, 12)`. Heute rot.
-- [x] **AK 3 Keine Marke, eine Marke, wo es heißt:** Gegeben K-Wort, dann tragen **keine** Marke: (d) (Präfix 2 + Suffix 1 = 3 < 4), (g) (2 gelöschte gegen 3 hinzugefügte Zeilen, ungleich lang), (h) (nur hinzugefügt), (i) (eine unveränderte Zeile trennt die Läufe); (e) trägt **eine** Marke je Zeile, gelöscht „1; b = 2“ und hinzugefügt „9; b = 8“ (Präfix 4, Suffix 1, `[4, 12)`, ein Bereich mit allem dazwischen, FA 3). Gegeben (p), dann trägt die hinzugefügte Zeile genau ein `mark.wm` mit dem Text „3, “ (Präfix `foo(1, ` = 7, Suffix `2)` = 2, `[7, 10)`) und die gelöschte Zeile **kein** `mark.wm`, auch kein leeres (Bereich `[7, 7)` ist leer, FA 2). Gegeben K-Rand (n), dann tragen beide Zeilen eine Marke („1“ bzw. „2“); gegeben (o) (1.001 Zeichen), dann trägt keine der beiden Zeilen eine Marke, und die Zeile steht sonst unverändert da. Heute rot.
+- [x] **AK 3 Keine Marke, eine Marke, wo es heißt:** Gegeben K-Wort, dann tragen **keine** Marke: (d) (Präfix 2 + Suffix 1 = 3 < 4), (g) (2 gelöschte gegen 3 hinzugefügte Zeilen, ungleich lang), (h) (nur hinzugefügt), (i) (eine unveränderte Zeile trennt die Läufe); (e) trägt **eine** Marke je Zeile, gelöscht „1; b = 2“ und hinzugefügt „9; b = 8“ (Präfix 4, Suffix 1, `[4, 12)`, ein Bereich mit allem dazwischen, FA 3). Gegeben (p), dann trägt die hinzugefügte Zeile genau ein `mark.wm` mit dem Text „3, “ (Präfix `foo(1, ` = 7, Suffix `2)` = 2, `[7, 10)`) und die gelöschte Zeile **kein** `mark.wm`, auch kein leeres (Bereich `[7, 7)` ist leer, FA 2). Gegeben K-Rand (n), dann tragen beide Zeilen eine Marke über `[2, 1000)`, also 997 × `a` und „1“ bzw. „2“ (der Rest „1“/„2“ wird nach FA 2 auf das Wort erweitert); gegeben (o) (1.001 Zeichen), dann trägt keine der beiden Zeilen eine Marke, und die Zeile steht sonst unverändert da. Heute rot.
 
 ### Text, Farbe, fremder Text
 
@@ -70,7 +70,7 @@ Heute (Stand `03dda757`) steht keine Marke, die ganze Zeile ist rot oder grün. 
 
 ### Leistung, Bestand, Mutanten
 
-- [ ] **AK 9 Last:** Gegeben eine Datei mit 10.000 geänderten Zeilen (5.000 gelöschte, 5.000 hinzugefügte, gleich lange Läufe, Zeilen zu etwa 80 Zeichen) in „Ein Commit“, dann gibt es beim Zeichnen mit Marke und Farbe keinen `longtask` über 150 ms (`PerformanceObserver`, ereignisgenau, ohne Polling im Raster des Testwerkzeugs). Im Einheitentest ergeben zwei Zeilen zu je 1.000 Zeichen höchstens 2.000 Vergleiche (Zähler; Rechnung 2 × 1.000), die Zeit wächst bei doppelter Zeilenzahl auf etwa das Doppelte (linear, keine Rechnung über das Paar hinaus). Der heutige Messwert ohne Marke steht im Bericht des entwicklers (Zeitkriterium: ≥ 30 % Abstand). Heute rot (Zähler fehlt).
+- [ ] **AK 9 Last:** Gegeben eine Datei mit 10.000 geänderten Zeilen (5.000 gelöschte, 5.000 hinzugefügte, gleich lange Läufe, Zeilen zu etwa 80 Zeichen) in „Ein Commit“, dann ergeben im Einheitentest zwei Zeilen zu je 1.000 Zeichen höchstens 2.000 Vergleiche (Zähler; Rechnung 2 × 1.000), und die Zeit wächst bei doppelter Zeilenzahl auf etwa das Doppelte (linear, keine Rechnung über das Paar hinaus). Zähler und Linearität sind die harten Prüfungen. Die längste Aufgabe ab dem Klick „Änderungen anzeigen“ wird mit `PerformanceObserver` (`longtask`, ereignisgenau, ohne Polling im Raster des Testwerkzeugs) allein (ein Worker) gemessen und mit dem Wert ohne Marke im Bericht genannt, ohne Grenze; sie gehört zum Einsetzen der nachgeladenen Datei (R00207, ADR-0033 Punkt 5). Heute rot (Zähler fehlt). (PO Z. 676)
 - [x] **AK 10 Bestand und Mutanten:** Ohne Marke (alle Fälle ohne Paar) verhält sich die Seite wie vor S5: Gruppen, Größenbalken, Aufklapper „Dateien (<n>) und Commits“, „Pfad“, „VS Code“, „Patch“, Leiste der Commits, „Gesehen“, soweit sie dann auf main stehen, und die Syntaxfarbe (R00217); bestehende Tests behalten ihre Erwartungen, jede geänderte Erwartung nennt der entwickler im Bericht mit Grund. Mutanten, je von einem benannten Test getötet, in einer eigenen Kopie:
   - (m1) Läufe ungleicher Länge werden trotzdem gepaart → AK 3 rot (g)
   - (m2) keine Erweiterung auf Wortgrenzen → AK 2 rot
@@ -83,7 +83,7 @@ Heute (Stand `03dda757`) steht keine Marke, die ganze Zeile ist rot oder grün. 
   - (m9) eine Kontextzeile zwischen − und + trennt den Lauf nicht → AK 3 rot (i)
   - (m10) die Marke steht nur in der hinzugefügten Zeile → AK 1 rot
   - (m11) die Unterkante fehlt (nur Hintergrundfarbe) → AK 7 rot
-  - (m12) die Rechnung vergleicht jedes Zeichen mit jedem (quadratisch) → AK 9 rot
+  - (m12) die Rechnung vergleicht jedes Zeichen mit jedem (quadratisch) → AK 9 rot (Zähler)
   - (m13) die `@media (forced-colors: active)`-Regel fehlt → AK 7 rot (Teil 3)
 
 ## Betroffene Verzeichnisstruktur
@@ -101,7 +101,7 @@ Heute (Stand `03dda757`) steht keine Marke, die ganze Zeile ist rot oder grün. 
 2. **B1296 Marke in `zelleHtml`**: `<mark class="wm">` mit und ohne Farbstücke, Bidi und Steuerzeichen in derselben Zählung (FA 5, 6; AK 4, 5).
 3. **B1297 Einbau**: Paarung beim Zeichnen je Block, Lauf über Blockgrenze vorab auf der ganzen Zeilenliste, Farbauflage trägt die Marke mit, „Alle Änderungen“ (FA 7; AK 5, 6).
 4. **B1298 Stil und Messung**: Fläche, Unterkante, erzwungene Farben, Breite und Höhe, Kontrast in vier Lagen (FA 8, 9; AK 7, 8). Vorprüfung durch den ux-reviewer.
-5. **B1299 Last**: 10.000 Zeilen, `longtask`, Zähler (AK 9).
+5. **B1299 Last**: Zähler und Linearität als Prüfung; 10.000 Zeilen, `longtask` allein gemessen und berichtet, ohne Grenze (AK 9).
 6. **B1300 Probe im echten Programm**, Mutanten m1–m13, Gate, Anforderung abschließen.
 
 ### Artboard
