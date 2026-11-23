@@ -7,7 +7,8 @@
   /* `vergleiche` und `vergleichsZeichen` begrenzen die Titelvergleiche eines Laufs (Paare Schritt × Commit im Fenster) und die dabei
      durchsuchten Zeichen der Befehle (PO Z. 710). Gemessen 2026-11-23 an allen 296 echten Läufen mit Transkript: höchstens 11 Vergleiche
      und 14.728 Zeichen; die Grenzen liegen weit darüber und begrenzen den schlimmsten Lauf (gleiche Titel, Befehle aus „a“) auf rund
-     4.200 Vergleiche (beobachtet 0,1–0,2 s statt 17 s). */
+     4.200 Vergleiche (beobachtet 0,1–0,2 s statt 17 s). Die Suche der Belegtitel bucht dieselben Grenzen in eigenem Topf (Nacharbeit 2):
+     an 300 echten Läufen höchstens 25 Suchen und 28.148 Zeichen. */
   const COMMIT_GRENZEN = Object.freeze({ commits: 500, marker: 1000, befehl: 65536, titel: 60, belegTitel: 12, vergleiche: 10000, vergleichsZeichen: 16777216 });
 
   /**
@@ -16,22 +17,25 @@
    * der Reihenfolge des Laufs höchstens `COMMIT_GRENZEN.marker`: `{art: 'link', verweis, kurzhash, titel}` aus der Karte oder
    * `{art: 'text', kurzhash, titel}` aus der Belegzeile. `titelpruefungen` zählt jeden Vergleich eines Titels mit einem Befehl,
    * `verglicheneZeichen` die Zeichen der dabei durchsuchten Befehle, `fensterzugriffe` jeden Blick auf einen Commit bei der Suche
-   * nach dem Fenster (Lehre „Grenzen, die Arbeit begrenzen“: Zähler am einzigen Leseort). `teilweise`: die Grenze der Vergleiche hat
-   * die Zuordnung abgebrochen.
+   * nach dem Fenster (Lehre „Grenzen, die Arbeit begrenzen“: Zähler am einzigen Leseort). `belegvergleiche` und `belegZeichen` zählen
+   * die Suchen der Belegtitel im Befehl (Text-Marker) mit denselben Grenzen über `vergleichBuchen`, in eigenem Topf, damit nach dem
+   * Abbruch der Zuordnung Belegzeilen weiter Text-Marker werden (PO Z. 710). `teilweise`: eine der beiden Grenzen hat abgebrochen.
    */
   function commitMarker(zeilen, schritte, karte) {
     const commits = verlinkbareCommitsNachAutordatum(karte);
     const kandidaten = befehlsSchritte(zeilen, schritte);
     const zuordnung = commitsZuordnen(kandidaten, commits);
+    const belege = { vergleiche: 0, zeichen: 0, abgebrochen: false };
     const marker = new Map();
     for (const k of kandidaten) {
       const eigene = zuordnung.jeSchritt.get(k.nr);
       let liste = eigene.map(linkMarker);
-      if (!eigene.length) liste = textMarker(k);
+      if (!eigene.length && !belege.abgebrochen) liste = textMarker(k, belege);
       if (liste.length) marker.set(k.nr, liste);
     }
-    const { titelpruefungen, verglicheneZeichen, fensterzugriffe, teilweise } = zuordnung;
-    return { ...begrenzt(marker), teilweise, titelpruefungen, verglicheneZeichen, fensterzugriffe };
+    const { titelpruefungen, verglicheneZeichen, fensterzugriffe } = zuordnung;
+    const teilweise = zuordnung.teilweise || belege.abgebrochen;
+    return { ...begrenzt(marker), teilweise, titelpruefungen, verglicheneZeichen, fensterzugriffe, belegvergleiche: belege.vergleiche, belegZeichen: belege.zeichen };
   }
 
   /* ── Die Commits der Karte: nur, was einen Link tragen darf, sortiert nach Autordatum ── */
@@ -160,8 +164,8 @@
     return { jeSchritt, teilweise, titelpruefungen: zaehler.vergleiche, verglicheneZeichen: zaehler.zeichen, fensterzugriffe: zaehler.zugriffe };
   }
 
-  /** Bucht einen Titelvergleich mit einem Befehl von `zeichen` Zeichen; false, wenn er eine der beiden Grenzen überschritte. Der
-      einzige Ort, der Vergleiche zählt. */
+  /** Bucht einen Vergleich (Titel der Karte bzw. Titel einer Belegzeile) mit einem Befehl von `zeichen` Zeichen; false, wenn er eine
+      der beiden Grenzen überschritte. Der einzige Ort, der Vergleiche zählt. */
   function vergleichBuchen(zaehler, zeichen) {
     if (zaehler.vergleiche >= COMMIT_GRENZEN.vergleiche || zaehler.zeichen + zeichen > COMMIT_GRENZEN.vergleichsZeichen) return false;
     zaehler.vergleiche++;
@@ -193,13 +197,17 @@
   const BELEG_EINZEILER = /^([0-9a-f]{7,12}) (.+)$/;
 
   /** Ein Schritt ohne Commit der Karte, der `git commit` aufruft (nicht `--amend`): je Belegzeile im Ergebnis ein Text-Marker, wenn der
-      Titel mindestens 12 Zeichen hat und im Befehl steht. Der Hash ist der des Worktrees: er wird nur gezeigt. */
-  function textMarker(k) {
+      Titel mindestens 12 Zeichen hat und im Befehl steht. Jede Suche im Befehl bucht `vergleichBuchen` auf `belege` (Security-Review
+      #269 Muss 3); würde sie eine Grenze überschreiten, endet die Belegsuche des Laufs dort (`belege.abgebrochen`), gefundene Marker
+      bleiben. Der Hash ist der des Worktrees: er wird nur gezeigt. */
+  function textMarker(k, belege) {
     if (!k.commitWort || k.amend || !k.ergebnis) return [];
     const marker = [], gesehen = new Set();
     for (const zeile of k.ergebnis.text.split('\n')) {
       const beleg = belegzeileLesen(zeile.replace(/\r$/, ''));
-      if (!beleg || gesehen.has(zeile) || Array.from(beleg.titel).length < COMMIT_GRENZEN.belegTitel || !k.befehl.includes(beleg.titel)) continue;
+      if (!beleg || gesehen.has(zeile) || Array.from(beleg.titel).length < COMMIT_GRENZEN.belegTitel) continue;
+      if (!vergleichBuchen(belege, k.befehl.length)) { belege.abgebrochen = true; break; }
+      if (!k.befehl.includes(beleg.titel)) continue;
       gesehen.add(zeile);
       marker.push({ art: 'text', kurzhash: beleg.hash.slice(0, 7), titel: beleg.titel });
     }

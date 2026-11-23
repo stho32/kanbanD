@@ -509,6 +509,59 @@ test('Nacharbeit 1 Punkt 2: Satz „Commits nur teilweise zugeordnet — der Lau
   assert.ok(!/role=|aria-live/.test(kachel(kopf({ nichtLesbar: false, mehrAlsGrenze: true, teilweise: true }))));
 });
 
+/** Probe des security-reviewer (srev-269/n2/q2.js) als Treiber: `schritte` Bash-Aufrufe `git commit -m <65.000 × „a“>`, je mit einem
+    Ergebnis aus `zeilen` verschiedenen Belegzeilen `<hex7> aaaaaaaaaaab` (Titel 12 Zeichen, steht nicht im Befehl), ohne Karte. */
+function vieleBelegzeilen(zeilen, schritte) {
+  const befehl = `git commit -m ${'a'.repeat(65000)}`;
+  let text = '';
+  for (let i = 0; i < zeilen; i++) text += `${(0x1000000 + i).toString(16)} aaaaaaaaaaab\n`;
+  const lauf = [];
+  for (let i = 0; i < schritte; i++) lauf.push(aufruf(T(0), befehl), ergebnis(T(1), text));
+  return { befehl, r: rechnen(paar(lauf, Object.fromEntries(lauf.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1))), []) };
+}
+
+test('Nacharbeit 2 (Security Muss 3): Suche der Belegtitel im Befehl gebucht — Vergleiche/Zeichen ≤ Grenze bei 1, 10, 500, 100.000 Belegzeilen × 1 und 100 Schritten, teilweise genau, wenn mehr nötig wäre', () => {
+  const { vergleiche, vergleichsZeichen } = COMMIT_GRENZEN;
+  for (const zeilen of [1, 10, 500, 100000]) {
+    for (const schritte of [1, 100]) {
+      const start = process.hrtime.bigint();
+      const { befehl, r } = vieleBelegzeilen(zeilen, schritte);
+      const ms = Number(process.hrtime.bigint() - start) / 1e6;
+      const noetig = zeilen * schritte;
+      const moeglich = Math.min(vergleiche, Math.floor(vergleichsZeichen / befehl.length));
+      const fall = `${zeilen} Zeilen × ${schritte} Schritte`;
+      assert.ok(r.belegvergleiche <= vergleiche && r.belegZeichen <= vergleichsZeichen, `${fall}: ${r.belegvergleiche} Vergleiche, ${r.belegZeichen} Zeichen`);
+      assert.strictEqual(r.belegvergleiche, Math.min(noetig, moeglich), `${fall}: jeder Vergleich gebucht, bis die Grenze erreicht ist`);
+      assert.strictEqual(r.belegZeichen, r.belegvergleiche * befehl.length, `${fall}: Zeichen je Vergleich = Länge des Befehls`);
+      assert.strictEqual(r.teilweise, noetig > moeglich, `${fall}: teilweise`);
+      assert.strictEqual(r.marker.size, 0, `${fall}: kein Titel steht im Befehl`);
+      console.log(`Beobachtung: ${fall} → ${r.belegvergleiche} Vergleiche, ${r.belegZeichen} Zeichen, ${ms.toFixed(0)} ms`);
+    }
+  }
+});
+
+test('Nacharbeit 2 (Security Muss 3): nach dem Abbruch der Belegsuche keine Text-Marker mehr, die davor bleiben; Links unberührt, Satz im Kopf', () => {
+  const { vergleiche } = COMMIT_GRENZEN;
+  const zuordnung = liste => Object.fromEntries(liste.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1));
+  const lauf = [];
+  // vorn ein Text-Marker und ein Link, dann ein Schritt, dessen Belegzeilen die Grenze sprengen, dann ein Text-Marker
+  lauf.push(aufruf(T(0), 'git commit -m "Titel vor der Grenze"'), ergebnis(T(0), 'abc1234 Titel vor der Grenze'));
+  lauf.push(aufruf(T(10), 'git commit -q -m "Titel aus der Karte"'), ergebnis(T(11)));
+  const viele = Array.from({ length: vergleiche }, (_, i) => `${(0x1000000 + i).toString(16)} zzzzzzzzzzzz`);
+  lauf.push(aufruf(T(20), 'git commit -q -m x'), ergebnis(T(21), viele.join('\n')));
+  lauf.push(aufruf(T(30), 'git commit -m "Titel nach der Grenze"'), ergebnis(T(31), 'abc1235 Titel nach der Grenze'));
+  const karte = [karteneintrag('Titel aus der Karte', EPOCH_11 + 10)];
+  const r = rechnen(paar(lauf, zuordnung(lauf)), karte);
+  assert.strictEqual(r.belegvergleiche, vergleiche, 'genau bis zur Grenze gebucht');
+  assert.strictEqual(r.teilweise, true, 'ein Vergleich zu viel: teilweise');
+  assert.deepStrictEqual(uebersicht(r), { 1: ['Titel vor der Grenze (Text)'], 3: ['Titel aus der Karte'] }, 'nach der Grenze kein Text-Marker');
+  // eine Belegzeile weniger: 1 + 9.998 + 1 = 10.000 Vergleiche, genau an der Grenze, vollständig, kein Satz
+  lauf[5] = ergebnis(T(21), viele.slice(0, vergleiche - 2).join('\n'));
+  const g = rechnen(paar(lauf, zuordnung(lauf)), karte);
+  assert.deepStrictEqual([g.belegvergleiche, g.teilweise], [vergleiche, false], 'Grenze genau erreicht: vollständig');
+  assert.deepStrictEqual(uebersicht(g), { 1: ['Titel vor der Grenze (Text)'], 3: ['Titel aus der Karte'], 7: ['Titel nach der Grenze (Text)'] });
+});
+
 test('Nacharbeit 1 Punkt 3: ein --amend-Aufruf erzeugt keinen Marker — weder Link noch Text (Probe „amend same title -m“)', () => {
   const lauf = paar([
     aufruf(T(10), 'git commit -m "[R1] B1: Erster Titel"'), ergebnis(T(12), '[karte/1 abc1234] [R1] B1: Erster Titel'),
