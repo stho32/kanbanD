@@ -564,12 +564,19 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
 
   test('AK 8: Alle Änderungen — dieselben Dateien offen wie bei „aus“; (a) in kd und wb je eine Zeile mit Marke „1“/„2“', async ({ page }) => {
     const s = seite(page);
+    const beideGeladen = async () => {
+      await expect(page.locator('#rv-insel .rv-abs')).toHaveCount(2);
+      await expect(page.locator('#rv-insel .rv-abs[aria-busy]')).toHaveCount(0);
+      await expect(page.locator('#rv-insel .rv-abs').nth(1).locator('.rv-gk').first()).toBeAttached();
+    };
     await s.alleOeffnen(k, 9);
+    await beideGeladen();
     const offenAus = (await s.zustand()).dateien;
     await s.schalter.click();
     await expect.poll(() => s.nebeneinander('src/n.rs')).toBe(true);
     await page.reload();
     await page.locator('#rv-insel section.df').first().waitFor();
+    await beideGeladen();
     await expect(s.eingabe).toBeChecked();
     expect((await s.zustand()).dateien, 'Budget zählt die Zeilen der Liste').toEqual(offenAus);
     await s.dokuOeffnen();
