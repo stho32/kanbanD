@@ -329,3 +329,36 @@ fn schalter_ohne_normalform_pruefung_und_zeichengleich() {
     assert_eq!(l.diff(), (0, 1));
     assert_eq!(l.datei(), vor_schluss(&text, "record-transcripts: true\n"));
 }
+
+// ---- Nacharbeit 1 (PO Z. 684–685): gemischte Zeilenenden, `signals: {}` ----
+
+/// H mit LF im Frontmatter und CRLF im Textkörper (Fall D des code-reviewer).
+fn h_gemischt() -> String {
+    h().replace("# Unser Ordner\n\nVon Hand geschrieben.\n", "# Unser Ordner\r\n\r\nVon Hand geschrieben.\r\n")
+}
+
+/// B1330 (PO Z. 684): das Zeilenende der geschriebenen Zeilen kommt aus der ersten `---`-Zeile, nicht aus der ganzen
+/// Datei — `sh` umbenennen und ein Signal anlegen ändern nur ihre Zeilen, die unberührte Zeile von `ag` bleibt auf LF.
+#[test]
+fn nacharbeit_gemischte_zeilenenden_nur_die_geaenderten_zeilen() {
+    let l = lage(&h_gemischt());
+    assert_eq!(
+        l.put(|e| {
+            umbenennen(e);
+            e.signale.push(warten());
+        }),
+        Ok(true)
+    );
+    assert_eq!(l.diff(), (1, 3), "eine Zeile ersetzt, zwei Signalzeilen dazu");
+    assert_eq!(l.datei(), vor_schluss(&h_gemischt().replace(SH, "  sh: {name: Sven Hansen, kind: human}\n"), "signals:\n  warten: {label: Warten, color: amber}\n"));
+}
+
+/// Variante: CRLF im Frontmatter, LF im Textkörper — die neuen Zeilen folgen dem Frontmatter (CRLF).
+#[test]
+fn nacharbeit_zeilenende_folgt_dem_frontmatter_crlf() {
+    let text = h_gemischt().replace("\r\n", "\u{1}").replace('\n', "\r\n").replace('\u{1}', "\n");
+    let l = lage(&text);
+    assert_eq!(l.put(|e| e.signale.push(warten())), Ok(true));
+    assert_eq!(l.diff(), (0, 2));
+    assert_eq!(l.datei(), text.replace("---\r\n# Unser", "signals:\r\n  warten: {label: Warten, color: amber}\r\n---\r\n# Unser"));
+}

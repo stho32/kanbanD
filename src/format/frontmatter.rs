@@ -38,10 +38,13 @@ struct Lage<'a> {
 
 impl<'a> Lage<'a> {
     fn von(text: &'a str) -> Self {
-        let ende = if text.contains("\r\n") { "\r\n" } else { "\n" };
         let (bom, ohne_bom) = text.strip_prefix('\u{feff}').map_or(("", text), |rest| ("\u{feff}", rest));
         let zeilen: Vec<&str> = ohne_bom.split_inclusive('\n').collect();
         let mit_kopf = zeilen.first().is_some_and(|z| z.trim_end() == "---");
+        // mit Frontmatter das Zeilenende seiner ersten `---`-Zeile, nicht das der ganzen Datei: ein Körper in CRLF stellt
+        // die Zeilen eines LF-Frontmatters nicht um (R00250 Nacharbeit, PO Z. 684)
+        let crlf = if mit_kopf { zeilen[0].ends_with("\r\n") } else { text.contains("\r\n") };
+        let ende = if crlf { "\r\n" } else { "\n" };
         let schluss = mit_kopf.then(|| zeilen.iter().skip(1).position(|z| z.trim_end() == "---").map(|i| i + 1)).flatten();
         Lage { bom, ende, zeilen, schluss }
     }
@@ -64,7 +67,7 @@ impl<'a> Lage<'a> {
 
 /// Ersetzt im Frontmatter den Abschnitt `schluessel` durch `block` (Zeilen mit `\n` getrennt, ohne Zeilenende am Schluss)
 /// und lässt alles andere zeichengleich (ADR-0043 Regel 1): an Ort und Stelle; fehlt er, vor dem schließenden `---`; bei
-/// `None` wird er entfernt. Ohne Frontmatter entsteht einer. BOM und Zeilenende folgen der Datei. Ob sich der Text danach
+/// `None` wird er entfernt. Ohne Frontmatter entsteht einer. BOM folgt der Datei, das Zeilenende der ersten `---`-Zeile. Ob sich der Text danach
 /// richtig liest, prüft der Aufrufer (Regel 5).
 pub fn abschnitt_im_text(text: &str, schluessel: &str, block: Option<&str>) -> String {
     let lage = Lage::von(text);
@@ -128,6 +131,16 @@ mod tests {
         assert_eq!(abschnitt_lesen(crlf, "people").as_deref(), Some("people:\n  a: 1"), "ohne Zeilenende gelesen");
         assert_eq!(abschnitt_im_text("# zweit\n", "a", Some("a: 1")), "---\na: 1\n---\n\n# zweit\n", "ohne Frontmatter entsteht einer");
         assert_eq!(abschnitt_im_text("# zweit\n", "a", None), "# zweit\n");
+    }
+
+    /// R00250 Nacharbeit (PO Z. 684): das Zeilenende kommt aus der ersten `---`-Zeile, nicht aus der ganzen Datei.
+    #[test]
+    fn abschnitt_zeilenende_aus_dem_frontmatter() {
+        let gemischt = "---\npeople:\n  a: 1\n---\r\nText\r\n";
+        assert_eq!(abschnitt_im_text(gemischt, "people", Some("people:\n  a: 2\n  b: 3")), "---\npeople:\n  a: 2\n  b: 3\n---\r\nText\r\n");
+        let umgekehrt = "---\r\npeople:\r\n  a: 1\r\n---\r\nText\n";
+        assert_eq!(abschnitt_im_text(umgekehrt, "signals", Some("signals:\n  w: 1")), "---\r\npeople:\r\n  a: 1\r\nsignals:\r\n  w: 1\r\n---\r\nText\n");
+        assert_eq!(abschnitt_im_text("\u{feff}---\n---\r\nT\r\n", "a", Some("a: 1")), "\u{feff}---\na: 1\n---\r\nT\r\n", "BOM vor dem Kopf");
     }
 
     #[test]
