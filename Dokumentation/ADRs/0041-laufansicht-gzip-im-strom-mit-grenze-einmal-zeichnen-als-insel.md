@@ -624,3 +624,119 @@ Gemessen an der Insel mit 1.003 Zeilen (1.000er-Lauf des Kriteriums) und mit 10.
 
 - [x] product-owner: Fragen 1–3 aus dem Bericht (Variante C oder B; Diff bei Fehlschlag gedämpft statt verborgen; Kurzform) — entschieden 2026-11-23, alle wie empfohlen (`AI-Team/po-entscheidungen.md` Z. 625–627); Zeichnung D0009 Bild 14 freigegeben (Z. 628).
 - [ ] Entwickler (Karte #267, eine Karte, Reihenfolge 7 → 6 → 1–5): je Punkt Probe zuerst; Änderungen in `web/kd-app.css`, `web/lauf-satz.js`, `web/lauf.js` (`schrittHtml` gibt `s.fehler` an `aufrufSatz`, Ergebnis-Zeile mit Zustand), Probe-Dateien.
+
+## Nachtrag 2026-11-23 N7: Commit-Marker im Lauf — Zuordnung über Titel und Autordatum im Zeitfenster des Aufrufs, nie über den Hash des Transkripts; Link nur aus dem Verweis der Karte; Ergebnis als Soll (Karte #269)
+
+**Status**: Akzeptiert. Offen sind nur zwei Wortlaute und eine Zahl (Fragen an den PO, unten); an der Technik ändern sie nichts. Die Messung der Antwortzeit (Punkt 6) entscheidet über Stufe 2, nicht über die Wahl.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #269, Lauf 269-architekt-1)
+**Bezug**: po-entscheidungen Z. 645 (Zuschnitt, Fragen a–e), ADR-0032 N1.2 (Commitzustände), ADR-0033 Punkte 1–2 (Verweisform, Review-Adresse), ADR-0036 (kein Entpacken am Server), ADR-0038 (Patch-ID, verworfen für diesen Zweck), Punkt 5 und N2 oben (Paare, `zu`); `werkzeuge/board.py` der Factory (`_rebase`, `commits`)
+**Erprobt durch**: Probe 2026-11-23 am laufenden Board (nur GET): 5 Karten (#253, #256, #261, #264, #267), alle ihre Transkripte (Ablage `gemeinsam/scratchpad/arch-269/`, Wegwerf) gegen `a.commits` und `git log --no-walk` im Repository (nur lesen). Die Regel in Punkt 2 ist an diesen Daten gerechnet, am Code der Laufansicht gelesen (Stand `18bd6172`), nicht gebaut.
+
+### Belegt
+
+- **Die Ausgabezeile `[zweig hash] titel` steht fast nie im Transkript.** Von 89 Aufrufen mit `git … commit` in den 5 Karten tragen 86 `-q`. Genau einer zeigt die Zeile. Eine Erkennung an ihr (Vorschlag des PO) fände 1 von 89. ADR-0041 N1 nannte das schon („`git commit -q` gefolgt von `git log --oneline`“); jetzt ist es gezählt.
+- **Der Hash des Transkripts ist der des Worktrees.** Er steht, wenn überhaupt, nur in einer Folgezeile (`git log --oneline -1`, 8 Zeichen). Er verschwindet mit dem Rebase der Merge-Wache (`board.py` `_rebase`: `git rebase -q main`); `commits()` hängt danach die Hashes von main an die Karte (`rev-list stand..ziel`).
+- **Titel und Autordatum überstehen den Rebase.** Die Wache prüft selbst „denselben Titeln“ (`board.py` `_rebase`, Zeile „Commit(s) mit denselben Titeln“). Das Commit-Datum (`%cI`, in der API `datum`) nicht: bei #261 tragen 16 Commits dieselbe Sekunde (Zeit des Rebase). Das Autordatum (`%at`) bleibt. Es steht heute nur intern in `Metadaten.autordatum` (`src/git/arbeitsrepo.rs:288`), nicht in der Antwort von `GET …/commits`.
+- **Das Autordatum liegt im Fenster des Aufrufs.** Für alle 53 Kartencommits mit Transkript gilt: Es liegt zwischen `zeit` des Aufrufs (abgerundet auf die Sekunde) und `zeit` des Ergebnisses, und der Titelanfang (40 Zeichen) steht im Befehl dieses einen Aufrufs. Die Abstände zum Ergebnis betragen −0,1 bis −1,3 s. Zwei Aufrufe laufen länger (Tests vor dem Commit im selben Befehl), das Fenster trägt sie. Zwei von 55 Commits der Karten stammen aus Läufen ohne Transkript an der Karte (Commit des Directors) und finden keinen Aufruf, wie es sein soll.
+- **Mehrere Commits in einem Aufruf sind häufig** (4 bei #261, je 2 bei #253 und #256); sie tragen dieselbe Sekunde.
+- **Die Karte trägt nicht alle Commits des Laufs.** `commits()` hängt nur die Spanne der letzten Merge-Wache an. Commits früherer Phasen (ADR, WBS, Anforderung der Rollen `architekt`, `planer`, `product-owner`) stehen auf main, aber nicht an der Karte (#261: ADR-Commit `e8c69a2d` auf main, nicht in `a.commits`). Von 89 Aufrufen: 48 zuordenbar, 33 ohne Kartencommit, aber mit einer Zeile `<hash> <titel>`, deren Titel im Befehl steht; 8 weder noch (`--amend`, Tests, Skripte).
+- **`GET …/commits` kostet 245 ms bei 16 Commits** (3 Messungen, Last 3,3), mehr als das Lesen-Ziel p95 < 200 ms (Lastprofil). Der Aufruf steht heute nur in der Ansicht „Commits“.
+- Der Verweis der Karte hat die Form `<kürzel>:<hash>` (`VERWEIS_FORM`, `web/adresse.js:21`); `a.commits` liefert ihn wörtlich ohne Git-Aufruf (`GET /api/aufgaben/{nr}`).
+
+Qualitätsziele (Szenarien mit Maß):
+
+- **Q1 Richtig oder still**: Ein Marker verlinkt nur einen Commit, der nach Titel **und** Zeit zu diesem Aufruf gehört. Im Zweifel steht Text oder nichts, nie ein falscher Link. Maß: 0 falsche Links in den 5 Karten und in der Mutantenprobe.
+- **Q2 Nie Hash aus fremdem Text im Link**: Jedes Zeichen der Adresse kommt aus `a.commits`; der Hash im Transkript ist nie Teil einer Adresse.
+- **Q3 Lesbar ohne Repository**: Fehlt das Repository oder der Commit, bleibt jeder Marker ein lesbarer Satz; die Ansicht zeigt keinen Fehler allein deshalb.
+- **Q4 Billig**: Zeichnen höchstens 300 ms nach dem späteren der beiden Antworten (Transkript, Commits) für 30 Commits und den größten echten Lauf; Zuordnung O((n + m) log n).
+
+### Optionen
+
+**(a) Zuordnung**
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| Z1 — Hash des Transkripts → Nachfolger über Patch-ID (ADR-0038) | genau, auch bei geändertem Titel | der Hash fehlt in 86 von 89 Aufrufen; das Objekt ist nach dem Löschen des Zweigs unerreichbar und wird von `gc` entfernt; ADR-0038 kostet je Suche bis 12 Git-Prozesse |
+| Z2 — Zweig `karte/<nr>` solange er lebt | einfach | nach `wache gruen` ist der Zweig gelöscht (`board.py` `wache_gruen`); gerade dann wird die Ansicht gelesen; der Hash fehlt weiter |
+| Z3 — Trailer `Lauf: <kennung>` in jedem Commit | überlebt Rebase, Zweig und Repository-Wechsel; auch bei Titeländerung | ändert alle Rollen der Factory und `-q`-Gewohnheiten; kein Altbestand (alle Läufe bis heute ohne Marker); Zeitpunkt des Commits bleibt unbekannt |
+| **Z4 — Titel + Autordatum im Fenster des Aufrufs, gegen die Commits der Karte** (gewählt) | braucht weder Hash noch Zweig; hält nach dem Löschen des Zweigs; belegt an 53 von 53; ein Feld mehr in einer vorhandenen Antwort; Altbestand sofort | setzt voraus, dass Titel und Autordatum erhalten bleiben (Rebase tut es; `--reset-author`, `--amend`, Reword, `-C` nicht); Zeit braucht gleiche Uhr von Aufruf und Commit |
+
+**(b) Erkennung**
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| E1 — Ausgabezeile `[zweig hash] titel` | Beleg im Transkript selbst | 1 von 89 (`-q`) |
+| E2 — ein Commit der Karte liegt im Fenster des Aufrufs und sein Titel steht im Befehl | beweist, dass der Commit **entstand** (Hook-Abbruch und leerer Commit erzeugen keinen); unabhängig von `-q`, Heredoc, mehreren `-m` und mehreren Commits | nur für Commits an der Karte; Titel mit `\"` oder `\$` im Befehl treffen nicht (dann Punkt 2 Satz 4) |
+| E3 — Fenster allein | kein Titel zu lesen | Parallelaufrufe und Tests mit `git` im selben Fenster treffen falsch |
+
+**(c) Zeitpunkt**
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **Z-E — `zeit` des Ergebnisses der Schrittzeile** (gewählt) | liegt in der Zeitachse an derselben Stelle wie der Schritt; PO Z. 645 | Sekundengenau ist nur das Autordatum, das Ergebnis kommt bis zu einigen Sekunden später (Tests vor dem Commit) |
+| Z-A — Autordatum, in das Fenster geklemmt | näher an der Wahrheit | Ort in der Zeile ungleich dem Ort des Schritts; Zwischenwert ohne Zeile im Verlauf |
+
+### Entscheidung
+
+1. **Ort**: Ein neues reines Modul **`web/lauf-commits.js`** (Browser und Node, wie `web/lauf-satz.js`). `commitMarker(schritte, karte)` liefert je Schritt eine Liste von Markern; es kennt weder DOM noch `fetch`. `web/lauf.js` setzt sie (`schrittHtml`, Zeitachse). Gründe: `lauf.js` hat 1.250 Zeilen; die Zuordnung ist ein eigenes Unterthema mit eigenen Proben.
+2. **Zuordnung (a, b)**: Eingabe sind die Schritte der Auswertung (Paare nach N2) und die Commits der Karte `{verweis, hash, titel, autordatum, zustand}`.
+   - Gerechnet wird **je Schritt mit `name` Bash** (und nur dann), dessen Aufruf und Ergebnis eine gültige `zeit` tragen. Das **Fenster** ist `floor(zeit Aufruf) ≤ autordatum ≤ floor(zeit Ergebnis) + 1` in Sekunden. Ein Aufruf ohne Ergebnis hat das Fenster bis `zeit` des nächsten Eintrags mit Zeit.
+   - Die Commits der Karte stehen nach `autordatum` sortiert; je Schritt wird das Fenster gesucht (O(log n)), nur dessen Treffer werden geprüft.
+   - **Titel-Treffer**: Die ersten `min(60, Länge)` Zeichen des Titels (nach `sichtbarText` nicht verändert; roh) kommen als Teilstring im Text des Befehls vor (`command` des JSON, sonst der Text). Befehle über 64 KiB werden nicht durchsucht.
+   - Ein Commit ist **zugeordnet** bei Fenster **und** Titel-Treffer. Hat der Befehl keinen Titel-Treffer (Titel mit Anführungszeichen, `$`, Backtick, die im Befehl maskiert stehen), gilt er nur dann, wenn genau ein Commit im Fenster liegt, genau ein Schritt mit dem Wort `commit` im Befehl dieses Fenster hat und der Commit keinem anderen Schritt zugeordnet ist.
+   - Ein Commit gehört **höchstens einem** Schritt (der Titel-Treffer geht vor, bei Gleichstand der frühere Schritt); ein Schritt hat beliebig viele Commits, geordnet nach Autordatum, bei gleicher Sekunde nach der Stelle des Titels im Befehl, sonst nach der Reihenfolge von `a.commits`.
+   - **Ohne Treffer**: kein Marker aus der Karte. Hook-Abbruch erzeugt keinen Commit und darum keinen Marker; `-C`, `--amend`, `cherry-pick` und `rebase` (Autordatum außerhalb des Fensters) bleiben ohne Marker (PO: nicht in der ersten Scheibe).
+3. **Belegzeile und Text-Marker (b, e)**: Ein Schritt ohne Zuordnung bekommt einen **Text-Marker**, wenn sein Ergebnis eine Zeile der Form `[<zweig> <hex7–40>] <titel>` (ohne `-q`) oder `<hex7–12> <titel>` (Folgezeile von `git log --oneline`) trägt und der Titel (mindestens 12 Zeichen) im Befehl vorkommt. Der Hash dieser Zeile ist der des Worktrees; er wird **nur angezeigt**, nicht gelinkt, und nur, wenn er `^[0-9a-f]{7,40}$` trifft (sonst ohne Hash). Wortlaut des Satzes nach Frage 1 an den PO.
+4. **Daten (a, e)**: `GET /api/aufgaben/{nr}/commits` bekommt je Eintrag `autordatum` (Epoch-Sekunden, ganze Zahl; bei `auf_zweig` und `verwaist`, wie `datum`). Es ist nur eine Ausgabe von `Metadaten.autordatum`; kein neuer Git-Aufruf, **kein neues Datenformat in der Karte** (Zustände werden nie gespeichert, `commit_eintrag.rs`). Die Seite fragt `GET …/commits` **zugleich** mit dem Transkript und zeichnet, wenn beide da sind oder die Commits scheiterten oder 2 s überschritten (dann ohne Zuordnung, Text-Marker nach Punkt 3 bleiben). Ein Fehler der Commits-Anfrage ist **kein** Fehlerbild der Laufansicht: der Lauf steht, im Kopf steht gedämpft ein Satz „Commits der Karte nicht lesbar“ (Wortlaut: Frage 3 an den PO). Der Wechsel der Kennung bricht beide Anfragen ab (Punkt 4 oben).
+5. **Link (d)**: Ein Marker ist ein Link nur, wenn der Eintrag der Karte `zustand` `auf_zweig` oder `verwaist` hat **und** sein `verweis` `VERWEIS_FORM` trifft (`web/adresse.js:21`). Die Adresse entsteht **nur** über `reviewAdresseBilden` mit dem **Verweis der Karte**. Aus dem Transkript fließt keine Zeichenkette in `href`, `title`, `data-*` oder eine Anfrage. Der Kurzhash im Text ist `hash.slice(0, 7)` des Karteneintrags (vom Server als Hex geprüft, 40 oder 64 Zeichen); der Titel steht aus der Karte (`titel`, `sichtbarText`, `esc`). Der Link ist ein echter `<a href>`; ein einfacher Linksklick öffnet wie `reviewOeffnen` (ein neuer Verlaufseintrag), Strg- und Mittelklick eine neue Registerkarte. „Schließen“ der Review-Seite führt zurück in die Laufansicht, wenn sie von dort geöffnet wurde: die Marke am Verlaufseintrag (`REVIEW_AUS_DER_LISTE`, `web/app.js:1092`) wird zur Marke mit Herkunft `liste` oder `lauf`. Ein gezielter Rücksprung an die Stelle im Lauf bleibt außerhalb dieser Scheibe.
+6. **Zeitpunkt und Lage (c)**: Ein Marker steht im Verlauf **unmittelbar nach der Schrittzeile**, nicht innerhalb ihrer aufgeklappten Teile, und hat die Zeit des Ergebnisses (Z-E). In der **Zeitachse** ist er ein Strich über den Fächern an der Stelle der kumulierten Dauer bis zu diesem Ergebnis (derselbe Maßstab wie die Fächer, N1 Punkt 2), nicht ein Fach; Striche derselben Stelle werden einer („3 Commits“). Mehr als 100 Striche werden wie die Fächer zu höchstens 100 verdichtet. Ein Klick auf einen Strich springt wie ein Eintrag der Top 3 zur Marker-Zeile (Knopf mit `data-act`, `scrollIntoView`, Fokus; nie `href="#…"`). Marker sind bei **jedem** Filter sichtbar: Sie tragen eine eigene Klasse, die kein Filter ausblendet. Der Marker-Strich und die Zeile tragen Text („Commit <kurzhash> <titel>“), nicht nur Farbe. Der Lesetext der Zeitachse nennt die Zahl der Commits.
+7. **Zustände (e)**: `auf_zweig` und `verwaist`: Link. `fehlt`, `repository_fehlt`, `anwendung_unbekannt`, `unlesbar`: Der Eintrag hat weder Titel noch Autordatum; er wird nie zugeordnet, und es entsteht höchstens ein Text-Marker nach Punkt 3. Ohne Repository bleibt die Laufansicht also so lesbar wie heute; Marker für `-q`-Commits entfallen dann (in Kauf genommen, Q3 verlangt Lesbarkeit, nicht Vollständigkeit).
+8. **Grenzen**: höchstens 500 Commits der Karte werden gelesen (die Antwort ist begrenzt wie bisher), höchstens 1.000 Marker je Lauf; darüber steht ein Satz im Kopf. Konstanten in `web/lauf-commits.js`.
+9. **Stufe 2, nur nach Messung**: Liegt die Zeit von `GET …/commits` bei 30 Commits über 200 ms **und** das Zeichnen über 300 ms nach der späteren Antwort, kommt `?felder=zuordnung` (Verweis, Hash, Titel, Autordatum, Zustand; ohne Zweige und ohne `--numstat`). Vorher nicht bauen.
+
+**In Kauf genommen**:
+
+- Ein Commit, der nicht an der Karte steht (frühere Phase, Commit des Directors, Repository fehlt) und dessen Lauf kein `-q` weglässt und keine Folgezeile mit Hash und Titel zeigt, hat keinen Marker.
+- Wer das Autordatum verändert (`GIT_AUTHOR_DATE`, `--date`, `--reset-author`) oder den Titel ändert (Reword in der Wache; heute prüft die Wache gleiche Titel), verliert den Marker. Das ist die sichere Richtung.
+- Zwei Commits mit gleichem Titel in derselben Sekunde und einem Aufruf werden nach ihrer Reihenfolge in `a.commits` verteilt; sie zeigen dann auf den falschen von zwei gleich betitelten Commits. Kein Fehlbefund für andere Titel; der Review-Link zeigt einen Commit mit gleichem Titel.
+- Der Text-Marker sagt nur, dass ein Commit entstand, nicht, dass er an irgendeiner Stelle noch zu finden ist.
+
+### Pre-Mortem (Z4)
+
+| Wie es scheitert | Früh-Indikator | Gegenmittel |
+|---|---|---|
+| Ein anderer Aufruf in einem Parallelfenster erhält den Commit | Marker an einem Schritt ohne `commit` im Befehl | Titel-Treffer geht vor; ohne Titel nur bei Eindeutigkeit (Punkt 2); Mutantenprobe |
+| Die Wache ändert Titel (Reword) oder Autordatum | Anteil zugeordneter Kartencommits sinkt | Wache prüft gleiche Titel bereits; Stufe Z3 (Trailer) als Rückfall, falls die Quote unter 90 % fällt |
+| Uhren zweier Rechner weichen ab | Autordatum außerhalb jedes Fensters | die Factory läuft heute auf einem Rechner; bei Abweichung Fenster verbreitern ist **kein** Vorschlag, sondern Z3 |
+
+### Durchsetzung
+
+- **Node-Tests `web/lauf-commits.js`** (`e2e/einheit/`, aus den echten Mustern, die Befehle gekürzt):
+  - ein Commit, ein Aufruf mit `-q` und `-m`, Heredoc, mehreren `-m`, `-C` (ohne Marker), `--amend` (ohne Marker);
+  - mehrere Commits in einem Aufruf, gleiche Sekunde, Reihenfolge nach Titelstelle;
+  - Hook-Abbruch: Aufruf mit `Exit code 1`, kein Commit im Fenster → kein Marker;
+  - Parallelfenster: zwei überlappende Aufrufe, Titel entscheidet; ohne Titel und zwei Kandidaten kein Marker;
+  - Titel mit `"`, `$`, Backtick im Befehl: Rückfall nur bei Eindeutigkeit;
+  - Fenstergrenzen: `floor(Aufruf)` und `floor(Ergebnis)+1` gelten, eine Sekunde davor und danach nicht;
+  - Aufruf ohne Ergebnis; Eintrag ohne `zeit`; Schritt ohne `name`; Nicht-Bash-Schritt;
+  - Belegzeile: `[main abc1234] titel`, `abc1234 titel`, Hash mit Großbuchstaben und mit `<`, Titel kürzer als 12 Zeichen, Titel nicht im Befehl;
+  - 5.000 Schritte und 500 Commits unter 50 ms.
+- **Sicherheitsprobe (rein)**: ein Transkript mit `"><img src=x onerror=…>` und `javascript:` in Befehl, Titel und Belegzeile ergibt Marker, deren `href` **genau** `reviewAdresseBilden(…verweis der Karte…)` ist; Verweis mit `../` oder Leerzeichen, `zustand` `fehlt`, Verweis nicht `VERWEIS_FORM` ergeben Text; U+202E im Titel wird sichtbar (`sichtbarText`). Mutant „Hash des Transkripts im Link“ und „Titel aus dem Befehl im Marker“ je rot.
+- **API-Test** (Rust): `autordatum` ist bei `auf_zweig` und `verwaist` gesetzt, nach einem Rebase gleich dem Wert vor dem Rebase, bei den übrigen Zuständen fehlt das Feld (nie `null`); die Antwortform der übrigen Felder bleibt gleich.
+- **E2E**: Lauf mit drei Commits (davon zwei in einem Aufruf): drei Marker an der Stelle der Ergebnisse, Link öffnet „Ein Commit“, „Schließen“ führt zurück; Zeitachse mit drei Strichen, Filter „nur Fehler“ blendet die Marker nicht aus; Repository gelöscht → Lauf steht, Marker nur als Text (Beleg aus der Zeile) oder nicht vorhanden, keine Meldung außer dem Satz im Kopf; Commits-Anfrage 500 → Lauf steht; Wechsel der Kennung bricht beide Anfragen ab (Probe wie Punkt 4 oben); Live-Ereignis ersetzt die Insel nicht (`el.__probe`).
+- **Messprobe (Beobachtung im Bericht)**: `GET …/commits` mit 30 Commits und Zeichnen mit Markern am größten echten Lauf, Last und Zeit nennen (Punkt 9).
+- Review-Punkt `security-reviewer`: In `web/lauf-commits.js` und seinen Aufrufern kommt kein Text aus dem Transkript in `href`, `title`, `data-*` oder eine Anfrage; der einzige Linkbau ist `reviewAdresseBilden` mit einem Wert aus `a.commits`.
+- Review-Punkt `architektur-reviewer`: Zuordnung nur in `web/lauf-commits.js`; `web/lauf.js` zeichnet nur; kein zweiter Weg, der den Hash des Transkripts nutzt.
+
+### Folgeaufgaben
+
+- [ ] PO: drei Fragen (unten); Zuschnitt der Karte #269 bleibt, nur die Wortlaute und der Anspruch an die Quote ändern sich. Der gestalter zeichnet D0009 `#laufansicht` mit Marker-Zeile, Strich in der Zeitachse (Verdichtung) und dem Satz im Kopf nach.
+- [ ] Planer (eine Anforderung, höchstens zehn Kriterien): Zuordnung (Punkt 2), Text-Marker (3), Anfrage und Kopf (4), Link und Rückweg (5), Zeitachse (6), Zustände (7). Eine Rust-Bubble für `autordatum` gehört dazu (`src/dienst/commits_lesen.rs`, `src/web/endpunkte.rs`, OpenAPI).
+- [ ] Director (Factory, nicht dieser Schnitt): `commits()` hängt nur die Spanne der **letzten** Wache an; Commits früherer Phasen fehlen an der Karte und erscheinen in der Laufansicht nur als Text. Vorschlag: alle Spannen der Wachen der Karte anhängen, oder ausdrücklich so lassen. Rollen sollen `git commit` ohne `-q` fahren, dann trägt jedes Transkript die Belegzeile (nicht nötig für Punkt 2).
+- [ ] Modell nachführen nach dem Bau (A00009: Modul `web/lauf-commits.js`, Feld `autordatum`).
+
+### Fragen an den PO (Empfehlung zuerst)
+
+1. **Wortlaut des Text-Markers** (Z. 645 nennt „Commit nicht mehr an der Karte“). Von 89 Aufrufen standen 33 nie an der Karte (Commits früherer Phasen, Punkt 2 „Belegt“); „nicht mehr“ sagt dort etwas Falsches. Empfehlung: **„Commit nicht an der Karte“**, davor Kurzhash und Titel aus der Belegzeile. Alternative: bei „nicht mehr“ bleiben, nur für Commits der letzten Phase richtig.
+2. **Commits früherer Phasen an der Karte**: Soll die Karte künftig die Spannen **aller** Wachen tragen (Änderung in der Factory, nicht in kanbanD)? Empfehlung: **ja, als eigene Karte an den Director**; #269 braucht sie nicht, denn ohne sie steht der Text-Marker. Mit ihr verlinkt der Marker auch Commits von `architekt`, `planer` und `product-owner`.
+3. **Wortlaut des Satzes im Kopf**, wenn die Commits der Karte nicht gelesen werden können (Fehler, Frist): Empfehlung **„Commits der Karte nicht lesbar“**, gedämpft, kein Fehlerrot, ohne Ansage (der Lauf selbst ist lesbar).
