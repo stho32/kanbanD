@@ -1182,3 +1182,4 @@ Nie vom User erfragen.
 | 2026-11-23 | Karte #248 R00250 | B1314 Abschnittsschreiber `personen_schreiben`, `signale_schreiben`, `quellen_schreiben`; `schreiben` daraus zusammengesetzt, Goldtest gegen den alten Schreiber grün | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-23 | Karte #248 R00250 | B1316 `frontmatter::abschnitt_im_text`/`abschnitt_lesen` (ersetzen, einfügen vor ---, entfernen, BOM, CRLF), `schalter_im_text` als Aufruf, seine Tests unverändert grün | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-23 | Karte #248 R00250 | B1315 sechs Bestände als Fixtures (Namen ersetzt, Bytes sonst gleich), `quellen_altform_schreiben`; je Bestand Block `sources` zeichengleich | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-23 | Karte #248 R00250 | B1317 `Abschnitt` (feste Reihenfolge, Block, Wertvergleich) und `in_normalform`; Bestände je Abschnitt ja, fünf Handformen nein | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

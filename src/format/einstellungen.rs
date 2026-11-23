@@ -159,6 +159,63 @@ pub(crate) fn quellen_altform_schreiben(q: &Quellen) -> String {
     s
 }
 
+/// Die Abschnitte von `kanbanD.md`, die ein Schreibweg ändert, in der festen Reihenfolge (ADR-0043 Regel 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Abschnitt {
+    Personen,
+    Klassen,
+    Signale,
+    Quellen,
+}
+
+impl Abschnitt {
+    pub const ALLE: [Abschnitt; 4] = [Abschnitt::Personen, Abschnitt::Klassen, Abschnitt::Signale, Abschnitt::Quellen];
+
+    /// Der Schlüssel, wie er in der Datei steht.
+    pub fn schluessel(self) -> &'static str {
+        match self {
+            Abschnitt::Personen => "people",
+            Abschnitt::Klassen => "classes",
+            Abschnitt::Signale => "signals",
+            Abschnitt::Quellen => "sources",
+        }
+    }
+
+    /// Der Block in Normalform für den Wert in `e`, ohne Zeilenende; `None` = der Abschnitt steht nicht in der Datei.
+    pub fn block(self, e: &Einstellungen) -> Option<String> {
+        match self {
+            Abschnitt::Personen => Some(personen_schreiben(&e.personen)),
+            Abschnitt::Klassen => Some(klassen_schreiben(&e.klassen)),
+            Abschnitt::Signale => signale_schreiben(&e.signale),
+            Abschnitt::Quellen => Some(quellen_schreiben(&e.quellen)),
+        }
+    }
+
+    /// Ob der Wert dieses Abschnitts in `a` und `b` gleich ist.
+    pub fn gleich(self, a: &Einstellungen, b: &Einstellungen) -> bool {
+        match self {
+            Abschnitt::Personen => a.personen == b.personen,
+            Abschnitt::Klassen => a.klassen == b.klassen,
+            Abschnitt::Signale => a.signale == b.signale,
+            Abschnitt::Quellen => a.quellen == b.quellen,
+        }
+    }
+
+    fn leer(self, e: &Einstellungen) -> bool {
+        self.gleich(e, &Einstellungen::default())
+    }
+}
+
+/// Ob der Abschnitt im Text der Normalform seines bisherigen Werts entspricht (ADR-0043 Regel 6, PO Z. 666): verglichen
+/// ohne Zeilenende; bei `sources` gilt auch die alte Registerform; ein fehlender Abschnitt nur, wenn sein Wert leer ist.
+/// Alles andere (eingerückter Kommentar, Block- statt Flussform, eigene Anführung, Leerzeile) ist von Hand gestaltet.
+pub(crate) fn in_normalform(text: &str, abschnitt: Abschnitt, bisher: &Einstellungen) -> bool {
+    let Some(steht) = frontmatter::abschnitt_lesen(text, abschnitt.schluessel()) else {
+        return abschnitt.leer(bisher);
+    };
+    abschnitt.block(bisher).as_ref() == Some(&steht) || (abschnitt == Abschnitt::Quellen && steht == quellen_altform_schreiben(&bisher.quellen))
+}
+
 /// Setzt `kanbanD.md` aus den Abschnitten neu zusammen — nur für eine neue Datei (`einrichten`, ADR-0043 Regel 2);
 /// jeder andere Schreibweg ändert nur die geänderten Abschnitte im vorhandenen Text.
 pub fn schreiben(e: &Einstellungen) -> String {
@@ -243,6 +300,58 @@ mod tests {
         }
         let mit = "sources:\n  wbs: plan/wbs.md\n  requirements: anf/\n  applications:\n    kc: {name: \"K: C\", wbs: /c.md, requirements: \"\"}\n    kd: {name: kanbanD, wbs: /a/b.md, requirements: /a}";
         assert_eq!(quellen_altform_schreiben(&lesen(&format!("---\n{mit}\n---\n")).unwrap().quellen), mit, "Anführung und Sortierung wie im Normalform-Schreiber");
+    }
+
+    /// Datei H aus R00250 (Ausgangslage) ohne die Zusätze von Hand: so, wie `einrichten` sie schreibt.
+    fn h_normal() -> (Einstellungen, String) {
+        let e = lesen("---\npeople:\n  sh: {name: Sven, kind: human}\n  ag: {name: Agent A, kind: agent}\nclasses:\n  bug: {label: Fehler, color: red}\nsources:\n  repository: \"\"\n---\n").unwrap();
+        let t = schreiben(&e);
+        (e, t)
+    }
+
+    /// R00250 B1317 (ADR-0043 Regel 6): der bisherige Abschnittstext ist die Normalform seines bisherigen Werts; bei
+    /// `sources` auch die alte Registerform; ein fehlender Abschnitt nur bei leerem Wert.
+    #[test]
+    fn normalform_je_abschnitt() {
+        let (e, t) = h_normal();
+        for a in Abschnitt::ALLE {
+            assert!(in_normalform(&t, a, &e), "{a:?} in der Datei von einrichten");
+        }
+        for (name, text) in BESTAENDE {
+            let b = lesen(text).unwrap();
+            for a in Abschnitt::ALLE {
+                assert!(in_normalform(text, a, &b), "{name}: {a:?}");
+            }
+        }
+        let leer = Einstellungen::default();
+        assert!(in_normalform("---\nx: 1\n---\n", Abschnitt::Personen, &leer), "fehlt bei leerem Wert");
+        assert!(in_normalform(&t, Abschnitt::Signale, &e), "signals fehlt, keine Signale");
+        assert!(!in_normalform("---\nx: 1\n---\n", Abschnitt::Personen, &e), "fehlt, obwohl Personen da sind");
+        assert!(!in_normalform(&t.replace("people:", "\"people\":"), Abschnitt::Personen, &e), "zitierter Schlüssel fehlt als Abschnitt");
+    }
+
+    /// R00250 AK 6 (Formen): Handform im Abschnitt ist keine Normalform.
+    #[test]
+    fn handform_ist_keine_normalform() {
+        let (e, t) = h_normal();
+        let sh = "  sh: {name: Sven, kind: human}\n";
+        for (fall, text) in [
+            ("eingerückter Kommentar", t.replace(sh, &format!("{sh}  # Vertretung\n"))),
+            ("Blockform", t.replace(sh, "  sh:\n    {name: Sven, kind: human}\n")),
+            ("eigene Anführung", t.replace("name: Sven,", "name: 'Sven',")),
+            ("Leerzeile zwischen Einträgen", t.replace(sh, &format!("{sh}\n"))),
+            ("Leerzeichen am Zeilenende", t.replace(sh, "  sh: {name: Sven, kind: human} \n")),
+        ] {
+            assert_eq!(lesen(&text).unwrap().personen, e.personen, "{fall}: derselbe Wert");
+            assert!(!in_normalform(&text, Abschnitt::Personen, &e), "{fall}");
+            assert!(in_normalform(&text, Abschnitt::Klassen, &e), "{fall}: classes unberührt");
+        }
+        let klassen = t.replace("  bug: {label: Fehler, color: red}\n", "  bug: {label: Fehler, color: red}\n  # Farbe abgestimmt\n");
+        assert!(!in_normalform(&klassen, Abschnitt::Klassen, &e));
+        let quellen = t.replace("sources:\n  repository: \"\"\n", "sources:\n  repository: \"\"   # leer\n");
+        assert!(!in_normalform(&quellen, Abschnitt::Quellen, &e));
+        let crlf = t.replace('\n', "\r\n");
+        assert!(in_normalform(&format!("\u{feff}{crlf}"), Abschnitt::Personen, &e), "verglichen ohne Zeilenende, BOM egal");
     }
 
     #[test]
