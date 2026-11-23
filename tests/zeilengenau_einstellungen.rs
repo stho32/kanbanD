@@ -309,3 +309,23 @@ fn ak8_signals_zitiert_und_leer_scheitert_beim_ruecklesen() {
     assert_eq!(l.put(|e| e.signale.push(warten())), Err(wortlaut("signals")));
     l.unveraendert(&head, &text);
 }
+
+/// AK 8 Fall 3 (Regel 7): scheitert beim Schalter das Rücklesen, antwortet kanbanD 409 mit dem Wortlaut (vorher 500).
+#[test]
+fn ak8_schalter_zitiert_scheitert_beim_ruecklesen_mit_409() {
+    let text = vor_schluss(&h(), "\"record-transcripts\": false\n");
+    let l = lage(&text);
+    let head = l.head();
+    assert_eq!(l.k.vorgabe_transkripte_setzen(&sh(), true).map(|(g, _)| g), Err(wortlaut("record-transcripts")));
+    l.unveraendert(&head, &text);
+}
+
+/// Regel 7: der Schalter nutzt denselben Blockschreiber ohne Regel 6 — eine Handform anderswo hält ihn nicht auf.
+#[test]
+fn schalter_ohne_normalform_pruefung_und_zeichengleich() {
+    let text = h().replace(SH, &format!("{SH}  # Vertretung\n"));
+    let l = lage(&text);
+    assert_eq!(l.k.vorgabe_transkripte_setzen(&sh(), true).map(|(g, _)| g), Ok(true));
+    assert_eq!(l.diff(), (0, 1));
+    assert_eq!(l.datei(), vor_schluss(&text, "record-transcripts: true\n"));
+}

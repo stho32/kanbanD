@@ -51,7 +51,8 @@ impl Kanban {
 
     /// Setzt `record-transcripts` in `kanbanD.md` (R00220 FA 2). Verglichen wird der wirksame Wert: fehlt der Schlüssel,
     /// ist „aus“ schon wirksam und ändert nichts; sonst wird der Wert ausdrücklich geschrieben. Geschrieben wird nur die eine
-    /// Zeile im Text der Datei (`schalter_im_text`), nicht die ganze Datei neu: alles andere bleibt zeichengleich.
+    /// Zeile im Text der Datei (`schalter_im_text`), nicht die ganze Datei neu: alles andere bleibt zeichengleich. Ohne
+    /// Normalform-Prüfung (ADR-0043 Regel 7); scheitert das Rücklesen, 409 mit dem Wortlaut von `Fehler::handform`.
     pub fn vorgabe_transkripte_setzen(&self, wer: &Person, neu: bool) -> Result<(bool, Schalterantwort), Fehler> {
         nur_menschen_schalten(wer)?;
         let _sperre = self.gesperrt();
@@ -63,9 +64,10 @@ impl Kanban {
         // nur die eine Zeile: Kommentare, unbekannte Schlüssel, Reihenfolge und Text der Datei bleiben (Nacharbeit 1)
         let alt = self.ordner().lies(einstellungen::DATEI)?.unwrap_or_default();
         let datei = board::schalter_im_text(&alt, Some(neu));
-        let gelesen = einstellungen::lesen(&datei).map_err(|f| Fehler::Intern(format!("{}: Schalter nicht setzbar: {f}", einstellungen::DATEI)))?;
-        if gelesen.transkripte_erfassen != Some(neu) {
-            return Err(Fehler::Intern(format!("{}: der Schalter liest sich nach dem Setzen anders", einstellungen::DATEI)));
+        // Rücklese-Sicherung (ADR-0043 Regel 5, 7): liest sich der Text nicht zum gesetzten Wert zurück, 409 ohne Commit
+        let zurueck = einstellungen::lesen(&datei).ok().and_then(|g| g.transkripte_erfassen);
+        if zurueck != Some(neu) {
+            return Err(Fehler::handform(board::SCHALTER));
         }
         let text = format!("Transkripte, Vorgabe des Ordners: {}", wort(Some(neu)));
         self.aktion(wer, &text, &[Schritt::schreiben(einstellungen::DATEI, datei)])?;
