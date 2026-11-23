@@ -406,26 +406,25 @@ test.describe('R00236 Pfad, VS Code und Patch je Datei', () => {
 
   /* ── AK 10 Beide Ansichten, Breite, Tastatur, Klappzustand ── */
 
-  test('AK 10: Knöpfe in beiden Ansichten auch an eingeklappten Dateien; Tab-Folge je Datei; kein „Gesehen“', async ({ page }) => {
+  test('AK 10: Knöpfe in beiden Ansichten auch an eingeklappten Dateien; Tab-Folge je Datei, seit R00246 mit „Gesehen“ zuletzt', async ({ page }) => {
     const s = seite(page);
     await commitOeffnen(page, k, 1, h.kPfad);
     await expect(s.klappe('weg.rs')).toHaveAttribute('aria-expanded', 'false');
-    const folge = async pfad => s.datei(pfad).locator('.ru-k').evaluate(kopf => [...kopf.querySelectorAll('button, a[href], input')].map(e => (e.classList.contains('df-k') ? 'Klappe' : e.textContent.trim())));
-    expect(await folge('src/a.rs')).toEqual(['Klappe', 'Pfad', 'VS Code', 'Patch']);
-    expect(await folge('weg.rs')).toEqual(['Klappe', 'Pfad', 'Patch']);
-    expect(await folge(BIDI_SICHTBAR)).toEqual(['Klappe', 'Pfad', 'Patch']);
+    const folge = async pfad => s.datei(pfad).locator('.ru-k').evaluate(kopf => [...kopf.querySelectorAll('button, a[href], input')].map(e => (e.classList.contains('df-k') ? 'Klappe' : e.matches('input.ru-ges-k') ? 'Gesehen' : e.textContent.trim())));
+    expect(await folge('src/a.rs')).toEqual(['Klappe', 'Pfad', 'VS Code', 'Patch', 'Gesehen']);
+    expect(await folge('weg.rs')).toEqual(['Klappe', 'Pfad', 'Patch', 'Gesehen']);
+    expect(await folge(BIDI_SICHTBAR)).toEqual(['Klappe', 'Pfad', 'Patch', 'Gesehen']);
     await s.klappe('src/a.rs').focus();
     const getabt = [];
-    for (let n = 0; n < 3; n++) {
+    for (let n = 0; n < 4; n++) {
       await page.keyboard.press('Tab');
-      getabt.push(await page.evaluate(() => document.activeElement.textContent.trim()));
+      getabt.push(await page.evaluate(() => document.activeElement.getAttribute('aria-label') || document.activeElement.textContent.trim()));
     }
-    expect(getabt).toEqual(['Pfad', 'VS Code', 'Patch']);
-    await expect(page.getByText('Gesehen')).toHaveCount(0);
+    expect(getabt).toEqual(['Pfad', 'VS Code', 'Patch', 'Gesehen: src/a.rs']);
     await commitOeffnen(page, k, 1, h.kLang);
-    expect(await folge(h.lang)).toEqual(['Klappe', 'Pfad', 'VS Code']);
+    expect(await folge(h.lang)).toEqual(['Klappe', 'Pfad', 'VS Code', 'Gesehen']);
     await alleOeffnen(page, k, 4);
-    for (const pfad of ['b.js', 'src/f.rs']) expect(await folge(pfad), pfad).toEqual(['Klappe', 'Pfad', 'VS Code', 'Patch']);
+    for (const pfad of ['b.js', 'src/f.rs']) expect(await folge(pfad), pfad).toEqual(['Klappe', 'Pfad', 'VS Code', 'Patch', 'Gesehen']);
   });
 
   test('AK 10: ein Klick auf Pfad, VS Code oder Patch lässt den Klappzustand, an einer offenen und einer eingeklappten Datei', async ({ page }) => {

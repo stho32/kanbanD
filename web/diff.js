@@ -207,6 +207,7 @@
     kopieren: '<path d="M9 9h11v11H9z"/><path d="M5 15H4V4h11v1"/>',
     extern: '<path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M19 14v6H4V5h6"/>',
     laden: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+    haken: '<path d="M5 12.5l4.5 4.5L19 7"/>',
   };
   const symbol = (name, klasse = '') => `<svg class="i${klasse}" viewBox="0 0 24 24" aria-hidden="true">${SYMBOLE[name]}</svg>`;
 
@@ -433,7 +434,15 @@
     }
     const zuGross = hinweise.some(h => h.art === 'zu_gross_zum_anzeigen' && h.datei === pfad);
     if (!zuGross) teile.push(`<a class="btn ru-k1 ru-patch" href="${esc(patchAdresse(quelle.nr, quelle, pfad))}" download="${esc(patchName(pfad))}" title="Patch dieser Datei herunterladen">${symbol('laden')}Patch</a>`);
+    teile.push(gesehenKaestchenHtml(id, arg, pfad, stand.gesehen, esc));
     return `<div class="ru-akt">${teile.join('')}</div>`;
+  }
+
+  /** Das Kästchen „Gesehen“ (R00246 FA 1): zuletzt in der Tab-Folge, Name „Gesehen: <voller Pfad>“, sichtbarer Text „Gesehen“. */
+  function gesehenKaestchenHtml(id, arg, pfad, gesehen, esc) {
+    let haken = '';
+    if (gesehen) haken = ' checked';
+    return `<label class="ru-ges"><input type="checkbox" class="ru-ges-k" id="rv-gs${id}" data-act="review-gesehen" data-arg="${arg}" aria-label="${esc(`Gesehen: ${sichtbarText(pfad)}`)}"${haken}>Gesehen</label>`;
   }
 
   /** Das schreibgeschützte Feld mit dem Pfad (FA 9); '' ohne Pfad. */
@@ -491,8 +500,8 @@
   }
 
   /** Dateiliste „Ein Commit“: gruppiert wie der Hauptteil; ein Eintrag springt zur Datei und klappt Gruppe und Datei auf. */
-  function dateilisteHtml(dateien, esc) {
-    return gruppierteListeHtml(dateien, (d, i) => ({ arg: i, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0] }), esc);
+  function dateilisteHtml(dateien, esc, staende = []) {
+    return gruppierteListeHtml(dateien, (d, i) => ({ arg: i, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0], gesehen: Boolean(staende[i] && staende[i].gesehen) }), esc);
   }
 
   /** Die Dateiliste in Gruppen (R00235 FA 2, 9): je Gruppe ein Kopf mit Zahlen und eine Liste; `eintrag(d, i)` liefert `arg`, `pfad`
@@ -506,9 +515,12 @@
     return `<h3 class="rv-ue">DATEIEN <span class="mono">${dateien.length}</span></h3>${gruppen.join('')}`;
   }
 
-  /** Eine Zeile der Dateiliste: Pfad, Größenbalken, Zahlen, darunter Statuswort und Test-Hinweis. */
-  function listenzeileHtml(d, { arg, pfad, wort }, groesste, esc) {
-    return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${arg}"><span class="p">${pfadHtml(pfad, esc)}</span>${balkenHtml(d, groesste)}<span class="z">${zahlenHtml(d)}</span><span class="s">${esc(wort)}${testHinweisHtml(d)}</span></button></li>`;
+  /** Eine Zeile der Dateiliste: Platz des Haken-Symbols (R00246 FA 3, leer bei ungesehenen, damit der Pfad an derselben Stelle
+      beginnt), Pfad, Größenbalken, Zahlen, darunter Statuswort und Test-Hinweis. */
+  function listenzeileHtml(d, { arg, pfad, wort, gesehen }, groesste, esc) {
+    let marke = '';
+    if (gesehen) marke = `${symbol('haken')}<span class="vh">gesehen</span>`;
+    return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${arg}"><span class="rv-gm">${marke}</span><span class="p">${pfadHtml(pfad, esc)}</span>${balkenHtml(d, groesste)}<span class="z">${zahlenHtml(d)}</span><span class="s">${esc(wort)}${testHinweisHtml(d)}</span></button></li>`;
   }
 
   /** Größenbalken (ADR-0042 Punkt 9): je Zahl über 0 ein Teil mit seinem Anteil an der größten Summe der Gruppe; Länge im CSS. */
@@ -642,11 +654,35 @@
   }
 
   /** Rand (b): der Commit der Antwort steht nicht in der Folge. */
+  /** Der Satz, wenn der Browser „Gesehen“ nicht speichern kann (R00246 FA 10, Wortlaut PO Z. 641). */
+  const GESEHEN_NICHT_GESPEICHERT = 'Gesehen wird in diesem Browser nicht gespeichert und gilt nur bis zum Neuladen.';
+
+  /** Zeile „<k> von <n> gesehen“ mit Balken (R00246 FA 2, 10): sichtbar ohne Ansage (`aria-hidden`), angesagt wird nur `ansage` in
+      der Live-Region `rv-gesehen`, die sich allein mit einem Haken ändert; `fuer` (Commit oder „alle“) hält ihren Knoten beim Zeichnen.
+      Ohne Dateien (n = 0) keine Zeile; der Statusknoten des Satzes zum Speicher steht immer, leer bei funktionierendem Speicher. */
+  function gesehenZeileHtml({ k, n, ansage, fuer, ungeladen, speicherFehlt }, esc) {
+    let zeile = '';
+    if (n > 0) {
+      let rest = '';
+      if (ungeladen === 1) rest = '<span class="rv-ges-ng"> · 1 Abschnitt nicht geladen</span>';
+      else if (ungeladen > 1) rest = `<span class="rv-ges-ng"> · ${tausender(ungeladen)} Abschnitte nicht geladen</span>`;
+      const sichtbar = `<span class="rv-ges-z" id="rv-ges-z" aria-hidden="true"><span id="rv-gesehen-k">${tausender(k)}</span> von <span id="rv-gesehen-n">${tausender(n)}</span> gesehen</span>`;
+      const balken = `<span class="rv-ges-balken" id="rv-ges-balken" aria-hidden="true"><i style="--anteil:${k / n}"></i></span>`;
+      zeile = `<span class="rv-ges-t" id="rv-ges-t">${sichtbar}${rest}</span>${balken}<span class="vh" id="rv-gesehen" aria-live="polite" aria-atomic="true" data-fuer="${esc(fuer)}">${esc(ansage)}</span>`;
+    }
+    let satz = '';
+    if (speicherFehlt) satz = GESEHEN_NICHT_GESPEICHERT;
+    return `<div class="rv-ges" id="rv-ges">${zeile}<span class="rv-ges-sp" id="rv-gesehen-speicher" role="status">${satz}</span></div>`;
+  }
+
+  /** Lesetext der Live-Region: „<k> von <n> gesehen“. */
+  const gesehenAnsage = (k, n) => `${tausender(k)} von ${tausender(n)} gesehen`;
+
   function fremdHtml(kurz, esc) {
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }
 
-  Object.assign(ziel, { kopfMitAktionenHtml, pfadFeldHtml, sprungBasis });
+  Object.assign(ziel, { kopfMitAktionenHtml, pfadFeldHtml, sprungBasis, gesehenZeileHtml, gesehenAnsage });
   Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, chipHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });

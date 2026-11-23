@@ -233,8 +233,8 @@ test.describe('R00235 Review-Seite nach Art gruppiert', () => {
     await commitOeffnen(page, k, 2, h.kRand);
     const g501 = s.datei('tests/fixtures/genau-501.json');
     await g501.locator('.df-k').focus();
-    // R00236: zwischen Klappknopf und Satz stehen Pfad, VS Code und Patch
-    for (let n = 0; n < 4; n++) await page.keyboard.press('Tab');
+    // R00236: zwischen Klappknopf und Satz stehen Pfad, VS Code und Patch; R00246: danach „Gesehen“
+    for (let n = 0; n < 5; n++) await page.keyboard.press('Tab');
     await expect(g501.locator('.df-zu button')).toBeFocused();
     await g501.locator('.df-k').click();
     await expect(g501.locator('.df-k')).toHaveAttribute('aria-expanded', 'true');

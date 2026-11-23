@@ -2068,3 +2068,18 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .lv-e>summary{grid-template-columns:14px minmax(0,1fr) auto;grid-template-areas:"pf nm zt" ". z1 z1"}
   .lv-e .pf{grid-area:pf}.lv-e .nm{grid-area:nm}.lv-e .zt{grid-area:zt}.lv-e .z1{grid-area:z1;white-space:normal;overflow-wrap:anywhere}
 }
+/* „Gesehen“ (R00246, D0009 `#review-uebersicht` .ru-fs, .ru-ges, .ru-gm): Zeile „<k> von <n> gesehen“ mit Balken in der Leiste,
+   Kästchen zuletzt im Dateikopf (M3 Checkbox: Kästchen 18 px, Ziel ist das Label), Haken-Symbol vor dem Pfad der Dateiliste. */
+.rv-ges{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px var(--kd-s3);min-width:0;font-size:12.5px;color:var(--kd-text)}
+.rv-ges-t{font-weight:600;overflow-wrap:anywhere;min-width:0}
+.rv-ges-ng{font-weight:400;color:var(--kd-muted)}
+.rv-ges-balken{display:block;flex:0 1 160px;min-width:48px;block-size:4px;background:var(--kd-line-strong)}
+.rv-ges-balken i{display:block;block-size:4px;inline-size:calc(100% * var(--anteil));background:var(--kd-accent)}
+.rv-ges-sp{flex:1 1 100%;min-width:0;color:var(--kd-muted);overflow-wrap:anywhere}
+.rv-ges-sp:empty{flex:0 0 0}
+.ru-ges{display:inline-flex;align-items:center;gap:6px;min-block-size:max(24px,var(--kd-ziel));padding:0 var(--kd-s2);font-size:12.5px;color:var(--kd-text);white-space:nowrap;cursor:pointer}
+.ru-ges input{flex:none;inline-size:18px;block-size:18px;margin:0;accent-color:var(--kd-accent);cursor:pointer}
+.dn-e{grid-template-columns:14px minmax(0,1fr) auto auto}
+.rv-gm{display:inline-flex;align-items:center;inline-size:14px;color:var(--kd-accent-ink)}
+.rv-gm svg.i{width:13px;height:13px;stroke-width:2.5}
+.dn .s{padding-left:22px}

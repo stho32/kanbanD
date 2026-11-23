@@ -463,4 +463,51 @@ function leisteVorbereiten(h) {
   };
 }
 
-module.exports = { reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
+/* ── Ausgangslage von R00246 (Gesehen): eigene Repositories nach R00235, dazu K3b (src/a.rs +1 Zeile, Kind von K3), KG (eine geänderte
+   Datei über 3.000 Zeilen, `gross`), K5 (fünf Dateien in `kd`) und W5 (drei Dateien in `wb`) ── */
+
+function gesehenBauen(basis) {
+  const h = uebersichtBauen(basis);
+  h.k3b = aenderungsCommit(h.r, 'K3b', { 'src/a.rs': 'fn a() { neu() }\nfn b() {}\n' });
+  aenderungsCommit(h.r, 'G0 Vorgänger', { 'src/riesig.rs': '' });
+  h.kg = aenderungsCommit(h.r, 'KG', { 'src/riesig.rs': reihe(3001, 'riesig') });
+  h.k5 = aenderungsCommit(h.r, 'K5', Object.fromEntries([1, 2, 3, 4, 5].map(i => [`src/k5-${i}.rs`, `fn k${i}() {}\n`])));
+  h.w5 = aenderungsCommit(h.s, 'W5', Object.fromEntries([1, 2, 3].map(i => [`w5-${i}.js`, `w${i}();\n`])));
+  return h;
+}
+
+let gesehenGeteilt = null;
+/** Ein Satz Repositories je Prozess für R00246, getrennt von dem der Übersicht; am Prozessende entfernt. */
+function gesehenRepository() {
+  if (!gesehenGeteilt) {
+    const basis = basisAnlegen();
+    gesehenGeteilt = gesehenBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return gesehenGeteilt;
+}
+
+/** Aufgaben: #1 K-Art und K-Doku, #2 K-Rand, #3 K3 und W3, #4 K-Budget, #6 KG, #7 K5 und W5, #201 K-Art; zwei Boards `entwicklung`
+    und `zweites` mit denselben Aufgaben. */
+function gesehenVorbereiten(h) {
+  const aufgaben = { 1: [`kd:${h.kArt}`, `kd:${h.kDoku}`], 2: [`kd:${h.kRand}`], 3: [`kd:${h.k3}`, `wb:${h.w3}`], 4: [`kd:${h.kBudget}`], 6: [`kd:${h.kg}`], 7: [`kd:${h.k5}`, `wb:${h.w5}`], 201: [`kd:${h.kArt}`] };
+  const register = EINSTELLUNGEN_KOPF
+    + `    kd: {name: KD, wbs: ${h.r}/Dokumentation/Planung/app.md, requirements: ""}\n`
+    + `    wb: {name: WB, wbs: ${h.s}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
+  const dateien = { 'kanbanD.md': register };
+  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/${String(nr).padStart(4, '0')}-aufgabe-${nr}.md`] = aufgabeDatei(nr, `Aufgabe ${nr}`, verweise);
+  const liste = Object.keys(aufgaben).map(n => `- #${n}`).join('\n');
+  dateien['boards/entwicklung.md'] = `# Entwicklung\n\n## Zu erledigen\n\n${liste}\n\n## Erledigt\n`;
+  dateien['boards/zweites.md'] = `# Zweites\n\n## Zu erledigen\n\n${liste}\n\n## Erledigt\n`;
+  return ordner => {
+    for (const [rel, inhalt] of Object.entries(dateien)) {
+      fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
+      fs.writeFileSync(path.join(ordner, rel), inhalt);
+    }
+    execFileSync('git', ['-C', ordner, 'init', '-q']);
+    execFileSync('git', ['-C', ordner, 'add', '-A']);
+    execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-m', 'eingerichtet']);
+  };
+}
+
+module.exports = { gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };

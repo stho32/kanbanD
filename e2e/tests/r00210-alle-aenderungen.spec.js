@@ -292,12 +292,12 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     expect(leiste[0]).toBe('rv-u-alle');
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
-    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch
-    for (let i = 0; i < 16 + leiste.length; i++) {
+    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch; R00246: Gesehen
+    for (let i = 0; i < 17 + leiste.length; i++) {
       folge.push(await page.evaluate(() => { const e = document.activeElement; return e.closest('#review, #kopf') ? (e.id || e.className) : 'aus'; }));
       await page.keyboard.press('Tab');
     }
-    expect(folge).toEqual(['rv-rueckweg', ...leiste, 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'rv-pk0-0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'df-sc', 'aus']);
+    expect(folge).toEqual(['rv-rueckweg', ...leiste, 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'rv-pk0-0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'rv-gs0-0', 'df-sc', 'aus']);
   });
 
   /* ── AK 1 Adresse, Umschalter, Titel, Ansage ── */

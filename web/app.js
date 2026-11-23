@@ -1039,6 +1039,14 @@ function laeufeKnotenBehalten(vorher) {
 }
 
 /** „i von n“ der Review-Seite bleibt derselbe Knoten (`aria-live`, R00207 FA 3): nur so sagt ein Bildschirmleser den Schritt an. */
+/** Die Live-Region „<k> von <n> gesehen“ bleibt derselbe Knoten, solange sie dieselbe Seite meint (R00246 FA 2); zu einem anderen
+    Commit kommt ein neuer Knoten, der beim Einhängen nicht angesagt wird. */
+function gesehenAnsageBehalten(vorher) {
+  const neu = document.getElementById('rv-gesehen');
+  if (!vorher || !neu || vorher.dataset.fuer !== neu.dataset.fuer) return;
+  ansageBehalten(vorher, 'rv-gesehen');
+}
+
 function ansageBehalten(vorher, id) {
   const neu = document.getElementById(id);
   if (!vorher || !neu || vorher === neu) return;
@@ -1161,14 +1169,14 @@ function reviewAnstossen() {
   const gleicheSeite = Boolean(r) && r.nr === a.nummer && r.basis === a.basis && r.slug === adresse.slug;
   if (r) { reviewNachladenAbbrechen(r); reviewAlleAbbrechen(r); }
   if (!gleicheSeite) {
-    r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, alle: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null };
+    r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, alle: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null, gesehen: new Set(), gesehenOffen: [], gesehenFehler: false };
     S.ui.reviewHerkunft = null;
   }
   let ansicht = 'commit';
   if (!a.commit && !a.ungueltig) ansicht = 'alle';
   // jede Adresse beginnt wie beim Laden: die linke Spalte hinter dem Aufklapper zu (R00235 FA 11)
   // die Ansage der Wahl gilt nur für die Adresse, die die Leiste gewählt hat (R00245 FA 6); die Zweigliste beginnt zu (FA 9)
-  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, ansicht, fokusOffen: true, laufend: null, schlange: [], railOffen: false, zweigeOffen: false, wahlAnsage: r.wahlNaechste || '', wahlNaechste: null });
+  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, ansicht, fokusOffen: true, laufend: null, schlange: [], railOffen: false, zweigeOffen: false, wahlAnsage: r.wahlNaechste || '', wahlNaechste: null, gesehenAnsage: null });
   if (a.ungueltig) { r.diff = null; reviewFokus(r); return; }
   if (!gleicheSeite) reviewListeLesen(r);
   r.diff = null;
@@ -1357,10 +1365,117 @@ function reviewDateienAufbauen(r, antwort) {
   const hash = antwort.commits[0].hash;
   r.dateien = antwort.dateien.slice();
   r.hinweise = (antwort.hinweise || []).slice();
+  reviewGesehenLesen(r);
   const plan = aufklappPlanSeite(r.dateien, r.hinweise, { rest: BUDGET_ZEILEN, gesperrt: false, erste: true });
   const gemerkt = r.klappenJe[hash];
-  r.staende = r.dateien.map((d, i) => ({ offen: gemerkt ? gemerkt[i] : (plan.offen[i] || (d.status !== 'D' && dateiZustand(d, r.hinweise) !== 'patch')), budgetZu: plan.budgetZu[i], laden: null, fehler: null }));
+  r.staende = r.dateien.map((d, i) => ({ offen: gemerkt ? gemerkt[i] : (plan.offen[i] || (d.status !== 'D' && dateiZustand(d, r.hinweise) !== 'patch')), budgetZu: plan.budgetZu[i], laden: null, fehler: null, gesehen: r.gesehen.has(commitDateiSchluessel(hash, d)) }));
   r.gruppenOffen = gruppenAnfang();
+  r.gesehenFuer = hash;
+  r.gesehenAnsage = '';
+}
+
+/* ── „Gesehen“ (R00246): Speicher im Browser je Karte, Haken je Datei, Fortschritt „<k> von <n> gesehen“ ── */
+
+/** `localStorage`, oder null, wenn schon der Zugriff darauf scheitert (gesperrt); nie ein Wurf in die Seite (FA 10). */
+function gesehenSpeicher() {
+  try { return window.localStorage; } catch (_) { return null; }
+}
+
+/** Liest die Haken der Karte frisch; noch nicht gespeicherte Haken dieser Seite gelten darüber. Scheitert der Speicher, bleiben die
+    Haken der Seite und der Satz zum Speicher erscheint (FA 10). */
+function reviewGesehenLesen(r) {
+  const gelesen = gesehenLesen(gesehenSpeicher(), r.slug || '', r.nr);
+  if (gelesen.fehler) { r.gesehenFehler = true; return; }
+  const menge = new Set(gelesen.gesehen);
+  r.gesehenOffen.forEach(([schluessel, ja]) => {
+    if (ja) menge.add(schluessel);
+    else menge.delete(schluessel);
+  });
+  r.gesehen = menge;
+}
+
+const reviewGesehenZahl = staende => staende.filter(st => st.gesehen).length;
+
+/** Haken setzen oder entfernen (FA 4, 7, 10): frisch lesen, Eintrag ändern, schreiben; die Datei klappt ein bzw. wieder auf. */
+function reviewGesehenSchalten(r, { st, d, schluessel, hinweise }) {
+  const ja = !st.gesehen;
+  const aenderungen = [...r.gesehenOffen, [schluessel, ja]];
+  const ergebnis = gesehenSchreiben(gesehenSpeicher(), r.slug || '', r.nr, aenderungen, Date.now());
+  if (ergebnis.fehler) {
+    if (ja) r.gesehen.add(schluessel);
+    else r.gesehen.delete(schluessel);
+    r.gesehenOffen = aenderungen;
+  } else {
+    r.gesehen = new Set(ergebnis.gesehen);
+    r.gesehenOffen = [];
+  }
+  r.gesehenFehler = ergebnis.fehler;
+  st.gesehen = ja;
+  st.offen = !ja && reviewOffenOhneHaken(d, hinweise);
+}
+
+/** Wie eine Datei ohne Haken steht (FA 4): Code zeigt sie offen; neue Dateien über 500 Zeilen und gelöschte bleiben zu, nachzuladende,
+    große und binäre stehen offen mit ihrem Satz. */
+function reviewOffenOhneHaken(d, hinweise) {
+  if (istFolge(d)) return true;
+  if (d.status === 'D') return false;
+  if (dateiZustand(d, hinweise) !== 'patch') return true;
+  return !grosseNeueDatei(d);
+}
+
+/** Der Ort eines Kästchens aus `data-arg`: in „Ein Commit“ der Index, in „Alle Änderungen“ „<a>:<i>“. */
+function reviewGesehenOrt(r, arg) {
+  const ort = reviewOrt(r, arg);
+  if (ort) {
+    const antwort = r.alle.abschnitte[ort.a].antwort, d = antwort.dateien[ort.i];
+    return { st: ort.st, d, hinweise: antwort.hinweise, schluessel: alleDateiSchluessel(antwort.anwendung, d), id: `${ort.a}-${ort.i}`, a: ort.a, i: ort.i };
+  }
+  const i = +arg;
+  if (!r || r.ansicht === 'alle' || !r.staende || !r.staende[i] || !r.diff || r.diff.status !== 'da') return null;
+  return { st: r.staende[i], d: r.dateien[i], hinweise: r.hinweise, schluessel: commitDateiSchluessel(r.diff.antwort.commits[0].hash, r.dateien[i]), id: String(i), a: null, i };
+}
+
+/** Nach dem Schalten: die Haken aller Dateien folgen dem gelesenen Stand (ein anderer Tab kann einen gesetzt haben, FA 10); neu
+    gezeichnet werden die geschaltete Datei und jede, deren Haken sich dabei änderte. */
+function reviewGesehenNachziehen(r, ort) {
+  if (ort.a === null) {
+    const hash = r.diff.antwort.commits[0].hash;
+    r.staende.forEach((st, i) => {
+      const gesehen = r.gesehen.has(commitDateiSchluessel(hash, r.dateien[i]));
+      if (i !== ort.i && st.gesehen === gesehen) return;
+      st.gesehen = gesehen;
+      reviewDateiNeu(r, i);
+    });
+    r.gesehenAnsage = gesehenAnsage(reviewGesehenZahl(r.staende), r.staende.length);
+    return;
+  }
+  r.alle.abschnitte.forEach((ab, a) => {
+    if (ab.status !== 'da') return;
+    let geaendert = false;
+    ab.staende.forEach((st, i) => {
+      const gesehen = r.gesehen.has(alleDateiSchluessel(ab.antwort.anwendung, ab.antwort.dateien[i]));
+      if ((a !== ort.a || i !== ort.i) && st.gesehen === gesehen) return;
+      st.gesehen = gesehen;
+      geaendert = true;
+      reviewGesamtDateiNeu(r, a, i);
+    });
+    if (geaendert) reviewAbschnittListeNeu(r, a);
+  });
+  const z = reviewAlleGesehen(r.alle);
+  r.gesehenAnsage = gesehenAnsage(z.k, z.n);
+}
+
+/** Zähler in „Alle Änderungen“ (FA 2): k und n über die geladenen Abschnitte, `ungeladen` die ladenden, wartenden und gescheiterten. */
+function reviewAlleGesehen(alle) {
+  const geladen = alle.abschnitte.filter(ab => ab.status === 'da');
+  const staende = geladen.flatMap(ab => ab.staende);
+  return { k: reviewGesehenZahl(staende), n: staende.length, ungeladen: alle.abschnitte.length - geladen.length };
+}
+
+/** Die Dateiliste eines Abschnitts liegt in der stehenden Insel: nach einem Haken wird nur sie neu gezeichnet. */
+function reviewAbschnittListeNeu(r, a) {
+  const alt = document.getElementById(`rv-a${a}-liste`);
+  if (alt) alt.outerHTML = abschnittListeHtml(r.alle.abschnitte[a], a, esc);
 }
 
 /** Klappzustand der Gruppen beim Laden einer Seite oder eines Abschnitts (R00235 FA 4). */
@@ -2041,13 +2156,14 @@ function reviewDiffHtml(r, b) {
   let liste = '<p class="rv-leer">Dieser Commit ändert keine Dateien.</p>';
   let aufklapper = '';
   if (!leer) {
-    liste = `<div class="rv-liste" id="rv-liste">${dateilisteHtml(r.dateien, esc)}</div>`;
+    liste = `<div class="rv-liste" id="rv-liste">${dateilisteHtml(r.dateien, esc, r.staende)}</div>`;
     aufklapper = reviewAufklapperHtml(r, r.dateien.length, 'rv-liste');
   }
   const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc, r.zweigeOffen) + liste;
   const schluessel = reviewInselSchluessel();
   const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen, reviewQuelle(r));
-  return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${navigation}${summe}${aufklapper}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
+  const gesehen = gesehenZeileHtml({ k: reviewGesehenZahl(r.staende), n: r.staende.length, ansage: r.gesehenAnsage, fuer: r.gesehenFuer, ungeladen: 0, speicherFehlt: r.gesehenFehler }, esc);
+  return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${navigation}${summe}${aufklapper}${gesehen}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
 }
 
 /** Nach jedem Zeichnen liegt der gezeigte Eintrag der Leiste samt Fokusring ganz in ihrem sichtbaren Teil (R00245 FA 13): gerollt wird
@@ -2923,6 +3039,8 @@ function render() {
   const reviewAnsageVorher = document.getElementById('rv-ansage');
   const reviewWahlVorher = document.getElementById('rv-wahl');
   const reviewLaedtVorher = document.getElementById('rv-laedt');
+  const reviewGesehenVorher = document.getElementById('rv-gesehen');
+  const reviewSpeicherVorher = document.getElementById('rv-gesehen-speicher');
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
   S.ui.auswahl = S.ui.auswahl.filter(n => S.board && S.board.spalten.some(sp => sp.aufgaben.includes(n)) && aufgabe(n) && !aufgabe(n).archiviert);
@@ -2951,6 +3069,8 @@ function render() {
     ansageBehalten(reviewWahlVorher, 'rv-wahl');
     // der Ladesatz der Seite ist ein Start-Ereignis: ein Neuzeichnen während des Ladens sagt ihn nicht ein zweites Mal an (R00230 S2)
     ansageBehalten(reviewLaedtVorher, 'rv-laedt');
+    gesehenAnsageBehalten(reviewGesehenVorher);
+    ansageBehalten(reviewSpeicherVorher, 'rv-gesehen-speicher');
   } finally {
     inselGehalten = null;
     laufInselGehalten = null;
@@ -3865,6 +3985,14 @@ async function aktion(a, arg, wert) {
         if (arg === 'alle' && r.ansicht === 'alle') { reviewListeLesen(r); reviewAlleLesen(r); break; }
         if (arg === 'liste' && (!r.liste || r.liste.status !== 'laedt')) reviewListeLesen(r);
         if (arg === 'diff' && r.commit && (!r.diff || r.diff.status !== 'laedt')) reviewDiffWiederholen(r);
+        break;
+      }
+      case 'review-gesehen': {
+        const r = u.review, ort = reviewGesehenOrt(r, arg);
+        if (!ort) break;
+        reviewGesehenSchalten(r, ort);
+        reviewGesehenNachziehen(r, ort);
+        u.fokus = '#rv-gs' + ort.id;
         break;
       }
       case 'review-klappe': {
