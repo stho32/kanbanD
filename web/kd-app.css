@@ -1917,6 +1917,8 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-top button:hover,.lv-teu button:hover{background:var(--kd-accent-weak)}
 .lv-top button:focus-visible,.lv-teu button:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:-2px}
 .lv-top .was,.lv-teu .was{overflow-wrap:anywhere;min-width:0}
+/* Nacharbeit R00243: die Beschriftung ohne Absicht ist wie der Anlass auf zwei Zeilen gekürzt (der volle Text bleibt im Namen des Knopfs und im Schritt) */
+.lv-top .was:not(.zw),.lv-teu .was:not(.zw){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .lv-top .d,.lv-teu .d{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 /* „Teuerste Schritte“ (R00238 FA 8): Wert rechts, der Anlass gedämpft unter der Beschriftung, beides umbricht statt abzuschneiden */
 .lv-teu button{grid-template-areas:"was d" "nach d";row-gap:0}

@@ -220,6 +220,30 @@ test.describe('R00243 Laufansicht: Seitenfeld bei niedrigem Fenster', () => {
     }
   });
 
+  test('Nacharbeit 1 · US-2: bei 844 × 390 ist kein Listenknopf höher als `.lv`, auch mit Pfaden über 100 Zeichen in der Beschriftung ohne Beschreibung; der Tab-Fokus liegt ganz im Rollbereich', async ({ browser }) => {
+    const kennung = 'entwickler@2026-11-21T10:00+01:00';
+    const pfad = n => `/home/entwickler/Projekte/.worktrees/demo/karte-9/src/handler/auflister/transkript/abschnitte/zeitachse/berechnung/datei-${n}.rs`;
+    const um = (m, s) => `2026-11-21T10:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}+01:00`;
+    const eintraege = [{ zeit: um(0, 0), art: 'nachricht', wer: 'mensch', text: 'Bitte lesen.' }];
+    for (const [i, n] of ['a', 'b', 'c'].entries()) {
+      const von = 10 + i * 10;
+      eintraege.push(
+        { zeit: um(0, von), art: 'werkzeugaufruf', wer: 'agent', name: 'Read', text: JSON.stringify({ file_path: pfad(n) }), tokens: { ein: 1, aus: 500 * (i + 1), cache_lesen: 1000, cache_schreiben: 3000 * (i + 1) } },
+        { zeit: um(1 + i, 0), art: 'werkzeugergebnis', wer: 'werkzeug', text: '1→fn x() {}' });
+    }
+    await lv.hochladen(k.adresse, 1, kennung, 'Entwicklung', lv.gz(eintraege.map(zeile).join('')));
+    const page = await oeffnen(browser, [844, 390, true], kennung);
+    const knoepfe = await page.evaluate(() => {
+      const lvh = document.querySelector('.lv').getBoundingClientRect().height;
+      return { lvh, liste: [...document.querySelectorAll('#lauf .lv-top button, #lauf .lv-teu button')].map(b => ({ id: b.id, h: b.getBoundingClientRect().height, zeichen: b.textContent.length })) };
+    });
+    expect(knoepfe.liste.length).toBe(6);
+    expect(knoepfe.liste.every(b => b.zeichen > 100)).toBe(true);
+    expect(knoepfe.liste.filter(b => b.h > knoepfe.lvh).map(b => b.id)).toEqual([]);
+    const folge = await tabDurchSeitenfeld(page);
+    expect(folge.filter(f => !f.ganz || !f.getroffen).map(f => f.id)).toEqual([]);
+  });
+
   /* ── AK 6 ── */
 
   test('AK 6 · US-5: kein Nachfahre von `.lv` ist `position:fixed`, auch mit allen Schritten aufgeklappt und einem Tooltip', async ({ browser }) => {
