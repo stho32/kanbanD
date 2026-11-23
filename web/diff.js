@@ -669,7 +669,7 @@
       let rest = '';
       if (ungeladen === 1) rest = '<span class="rv-ges-ng"> · 1 Abschnitt nicht geladen</span>';
       else if (ungeladen > 1) rest = `<span class="rv-ges-ng"> · ${tausender(ungeladen)} Abschnitte nicht geladen</span>`;
-      const sichtbar = `<span class="rv-ges-z" id="rv-ges-z" aria-hidden="true"><span id="rv-gesehen-k">${tausender(k)}</span> von <span id="rv-gesehen-n">${tausender(n)}</span> gesehen</span>`;
+      const sichtbar = `<span class="rv-ges-z" id="rv-ges-z" aria-hidden="true"><span id="rv-gesehen-k">${tausender(k)}</span> von ${tausender(n)} gesehen</span>`;
       const balken = `<span class="rv-ges-balken" id="rv-ges-balken" aria-hidden="true"><i style="--anteil:${k / n}"></i></span>`;
       const live = `<span class="vh" id="rv-gesehen" aria-atomic="true" data-fuer="${esc(fuer)}">${esc(gesehenAnsage(k, n))}</span>`;
       zeile = `${live}<span class="rv-ges-t" id="rv-ges-t">${sichtbar}${rest}</span>${balken}`;

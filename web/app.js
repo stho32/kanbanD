@@ -1038,21 +1038,23 @@ function laeufeKnotenBehalten(vorher) {
   }
 }
 
-/** Die Live-Region „<k> von <n> gesehen“ trägt schon beim Zeichnen den aktuellen Text und bleibt derselbe Knoten, solange sie dieselbe
-    Seite meint: ihr Text ändert sich nur mit einem Haken (`gesehenAnsage` der Seite), nie beim Nachladen (R00246 FA 2). Zu einem
-    anderen Commit kommt ein neuer Knoten mit dem Text des neuen Stands. Damit weder sein Einhängen noch das Zurücksetzen des alten
-    Knotens als Ansage zählt, steht ein Knoten ohne neuen Text beim Einhängen ohne `aria-live` und wird live, nachdem er steht;
-    ein neuer Text (der Haken) kommt in einen Knoten, der live ist. */
+/** Die Live-Region „<k> von <n> gesehen“ trägt nach jedem Zeichnen den aktuellen Text und bleibt derselbe Knoten, solange sie dieselbe
+    Seite meint (R00246 FA 2). Ihr Text wird nur mit `aria-live` geändert, wenn ein Haken ihn ändert (`gesehenAnsage` der Seite,
+    einmal verbraucht); das Nachführen beim Laden, Nachladen oder Blättern geschieht bei entferntem `aria-live` und sagt nichts an.
+    Zu einem anderen Commit kommt ein neuer Knoten mit dem Text des neuen Stands. `aria-live` kommt per `setTimeout(0)` zurück —
+    beim Einhängen wie beim Nachführen. */
 function gesehenAnsageBehalten(vorher) {
   const neu = document.getElementById('rv-gesehen');
   if (!neu || vorher === neu) return;
   const ansage = S.ui.review && S.ui.review.gesehenAnsage;
+  if (S.ui.review) S.ui.review.gesehenAnsage = '';
   if (vorher && vorher.dataset.fuer === neu.dataset.fuer) {
-    const wechselt = Boolean(ansage) && vorher.textContent !== ansage;
-    if (wechselt) vorher.setAttribute('aria-live', 'polite');
+    const text = neu.textContent;
+    const haken = Boolean(ansage) && vorher.textContent !== ansage;
+    if (haken) vorher.setAttribute('aria-live', 'polite');
     else vorher.removeAttribute('aria-live');
     neu.replaceWith(vorher);
-    if (wechselt) vorher.textContent = ansage;
+    vorher.textContent = haken ? ansage : text;
   }
   setTimeout(() => {
     const region = document.getElementById('rv-gesehen');

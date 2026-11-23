@@ -119,12 +119,12 @@ async function speicherSatzZaehlen(page) {
   };
 }
 
-/** Zählt Textänderungen an der Live-Region `#rv-gesehen` (der Knoten muss derselbe bleiben). */
+/** Zählt Textänderungen an der Live-Region `#rv-gesehen`, die bei gesetztem `aria-live` geschehen (nur sie wären Ansagen); der Knoten muss derselbe bleiben. */
 async function liveZaehlen(page) {
   await page.evaluate(() => {
     const knoten = document.getElementById('rv-gesehen');
     window.kdLive = { knoten, texte: [] };
-    new MutationObserver(() => window.kdLive.texte.push(knoten.textContent)).observe(knoten, { childList: true, characterData: true, subtree: true });
+    new MutationObserver(() => { if (knoten.hasAttribute('aria-live')) window.kdLive.texte.push(knoten.textContent); }).observe(knoten, { childList: true, characterData: true, subtree: true });
   });
   return {
     texte: () => page.evaluate(() => window.kdLive.texte.slice()),
@@ -369,9 +369,8 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     await expect(s.ganzeZeile()).toHaveText('5 von 8 gesehen');
     expect(await live.texte()).toEqual([]);
     expect(await live.derselbe()).toBe(true);
-    await expect(s.live()).toHaveText('5 von 5 gesehen');
-    await expect(page.locator('#rv-gesehen-n')).toHaveText('8');
-    expect(await page.locator('#rv-gesehen-n').evaluate(e => Boolean(e.closest('[aria-hidden="true"]')) && !e.closest('#rv-gesehen'))).toBe(true);
+    await expect(s.live()).toHaveText('5 von 8 gesehen');
+    await expect(s.zeileText()).toHaveText('5 von 8 gesehen');
     const wbDatei = page.locator('#rv-a1 section.df').filter({ has: page.locator('.df-k .p', { hasText: exakt('src/a.rs') }) });
     await expect(wbDatei.locator('input.ru-ges-k')).not.toBeChecked();
     await wbDatei.locator('input.ru-ges-k').click();
@@ -591,7 +590,8 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
       window.kdLadeAenderungen = [];
       new MutationObserver(records => records.forEach(m => {
         const knoten = m.target.nodeType === 1 ? m.target : m.target.parentElement;
-        if (knoten && knoten.closest('#rv-gesehen')) window.kdLadeAenderungen.push(knoten.closest('#rv-gesehen').textContent);
+        const live = knoten && knoten.closest('#rv-gesehen');
+        if (live && live.hasAttribute('aria-live')) window.kdLadeAenderungen.push(live.textContent);
       })).observe(document, { childList: true, characterData: true, subtree: true });
     });
     await neuLaden(page);
@@ -601,6 +601,32 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     await s.kaestchen('web/kd-app.css').click();
     await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
     expect(await live.texte()).toEqual(['1 von 8 gesehen']);
+    expect(await live.derselbe()).toBe(true);
+  });
+
+  test('Nacharbeit 2 UX M1/AK 5: Aufgabe #3 „Alle Änderungen“ mit 2 Haken, Neuladen — nach 800 ms steht „2 von 5 gesehen“ in der Live-Region, bei gesetztem aria-live ändert sich nichts; ein Haken ändert den Text genau einmal auf „3 von 5 gesehen“', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 3);
+    await s.kaestchen('src/a.rs').click();
+    await s.gruppenkopf('doku', 0).click();
+    await s.kaestchen('README.md').click();
+    await expect(s.zeileText()).toHaveText('2 von 5 gesehen');
+    await page.addInitScript(() => {
+      window.kdLaden = [];
+      new MutationObserver(records => records.forEach(m => {
+        const knoten = (m.target.nodeType === 1 ? m.target : m.target.parentElement)?.closest('#rv-gesehen');
+        if (knoten && knoten.hasAttribute('aria-live')) window.kdLaden.push(knoten.textContent);
+      })).observe(document, { childList: true, characterData: true, subtree: true });
+    });
+    await neuLaden(page);
+    await page.waitForTimeout(800);
+    await expect(s.zeileText()).toHaveText('2 von 5 gesehen');
+    expect(await s.live().evaluate(e => e.textContent)).toBe('2 von 5 gesehen');
+    expect(await page.evaluate(() => window.kdLaden)).toEqual([]);
+    const live = await liveZaehlen(page);
+    await page.locator('#rv-insel input.ru-ges-k:not(:checked)').first().click();
+    await expect(s.zeileText()).toHaveText('3 von 5 gesehen');
+    expect(await live.texte()).toEqual(['3 von 5 gesehen']);
     expect(await live.derselbe()).toBe(true);
   });
 
