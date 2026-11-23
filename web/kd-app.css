@@ -1971,14 +1971,15 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-l>li[id]{scroll-margin-block-start:var(--kd-head-h)}
 .lv-l>li[tabindex="-1"]:focus{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
 /* Commit-Marker (R00251 FA 6, D0009 `#laufansicht` Bild 15): eigene Zeile unmittelbar unter der Schrittzeile, ohne den Abstand der
-   Liste dazwischen; Streifen links nur Zugabe, Wort, Hash und Titel tragen den Marker. Link-Fassung mit Zielfläche ≥ --kd-ziel. */
+   Liste dazwischen; Streifen links nur Zugabe, Wort, Hash und Titel tragen den Marker. Die Zielfläche des Links ≥ --kd-ziel gibt
+   kd-base.css allen a[href]. */
 .lv-l>li.lv-cm{margin-top:calc(-1 * var(--kd-s3));margin-left:29px;display:flex;flex-wrap:wrap;align-items:center;gap:0 var(--kd-s3);padding:2px var(--kd-s3);min-block-size:max(var(--kd-row),var(--kd-ziel));border-left:3px solid var(--kd-accent-ink);background:var(--kd-surface);font-size:12px;color:var(--kd-text);contain-intrinsic-size:auto var(--kd-row)}
 .lv-l>li.lv-cm.text{min-block-size:var(--kd-row);border-left-color:var(--kd-line-strong);color:var(--kd-muted)}
 .lv-cm .ic{display:flex;flex:none}
 .lv-cm svg.i{width:12px;height:12px;color:var(--kd-muted)}
 .lv-cm .k{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted);text-transform:uppercase;flex:none}
 .lv-cm .m{display:flex;align-items:baseline;gap:var(--kd-s3);min-width:0;flex:0 1 auto}
-.lv-cm a.m{align-items:center;min-block-size:var(--kd-ziel);color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
+.lv-cm a.m{align-items:center;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
 .lv-cm a.m .k{color:inherit}
 .lv-cm a.m:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
 .lv-cm .mono{flex:none;font-size:12px}

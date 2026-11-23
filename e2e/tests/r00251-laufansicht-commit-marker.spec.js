@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { kanbanStarten, alsPerson, mutanteEinsetzen, thema, kontrastAm } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, thema, kontrastAm, reiter } = require('./hilfen');
 const lv = require('./laufansicht-hilfen');
 const { T17, T17_KENNUNG, T17_COMMITS } = require('./laufansicht-t17');
 
@@ -207,6 +207,21 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
     await s.gelesen();
     expect(page.url()).toBe(k.adresse + adresse(T17_KENNUNG));
     expect(await s.marker()).toEqual(sechsMarker(repo.nachher));
+  });
+
+  test('AK 4: aus „Läufe“ → Lauf → Commit → „Schließen“ → Zurück des Browsers: das Fenster zeigt wieder „Läufe“, nicht „Commits“', async ({ page }) => {
+    await page.goto(`${k.adresse}#/board/fabrik/aufgabe/1`);
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await reiter(page, 'Läufe');
+    await page.locator(`#fenster a.lf-an[data-arg="${T17_KENNUNG}"]`).click();
+    await s.gelesen();
+    await s.link(`Commit ${kurz(repo.nachher.C2)} [R00999] B0002: Zähler zeichnen`).click();
+    await expect(s.reviewTitel()).toContainText('Zähler zeichnen');
+    await s.reviewSchliessen();
+    await s.gelesen();
+    await page.goBack();
+    await expect(page.getByRole('dialog', { name: 'Aufgabe #1' })).toBeVisible();
+    await expect(page.locator('#laeufe-kopf')).toBeVisible();
   });
 
   test('AK 5 · US-3: Text-Marker ohne Link; ohne Repository steht nur er, ohne Fehlerbild', async ({ page }) => {
