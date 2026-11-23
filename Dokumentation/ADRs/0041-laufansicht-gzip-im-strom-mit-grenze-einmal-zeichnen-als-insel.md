@@ -513,6 +513,15 @@ Aus `arev-261` und `rsr-261` (Sollte). Der Wortlaut oben bleibt stehen, maßgebl
 3. **Bezug auf ADR-0037**: Punkt 2 und die Optionen verweisen für die Rollenfarben auf ADR-0037. Dessen Mechanik (Worker, Frist) hat **ADR-0040 abgelöst**; die sieben Rollen und ihre Farben `--kd-tk-*` gelten weiter. Der Verweis gilt künftig ADR-0040.
 4. **Wortlaut**: „**Von Claude Code gekürzt**“ steht groß geschrieben (Punkt 3 oben schrieb „von Claude Code gekürzt“), und die Kürzung heißt „**1 weitere Zeile**“ im Singular (Nachtrag 261-architekt-2 schrieb „weitere 1 Zeilen“), beides nach PO Z. 595. Maßgeblich ist der Wortlaut des PO.
 
+### Nachtrag 2026-11-23 (Lauf 264-architekt-2, nach dem Bau von #264, Stand `d0563339`): Wurzeln des Auftragskopfs, Abhilfe zu M1
+
+Aus `srev-264` und `crev-264` (M1). Der Wortlaut von Punkt 6 oben bleibt stehen, maßgeblich ist dieser Nachtrag. Der Fehler: Wurzeln wurden aus jedem durch `·` getrennten Teil jeder Zeile gelesen, auch aus `Karte:`-Zeilen, und ein Pfad mit `\` galt als Pfad ohne Besonderheit. Damit konnte Text im Auftrag, der kein Pfadkopf ist, Marken erzeugen.
+
+1. **Zeilen**: Eine Wurzel stammt nur aus einer Zeile, die selbst mit `Projekt:`, `Arbeitsort:` oder `Ablage:` beginnt. Teile nach `·` gelten nur in solchen Zeilen, damit `Projekt: … · Factory: …` gültig bleibt. Nie aus der Zeile `Karte:`, auch nicht aus ihren Teilen nach `·`.
+2. **Je Art gilt die erste**: Gibt es mehrere Zeilen derselben Art, zählt die erste. Relative Pfade lösen gegen die erste Arbeitsort-Zeile auf.
+3. **Rückwärtsschrägstrich**: Ein Pfad mit `\` bekommt keinen Link, er steht als Text.
+4. Setzen, Grenzen und Leistung (Punkte 7 und 8) bleiben unverändert. Prüfung: Node-Test mit einem Auftragskopf, der alle Fälle trägt (`Karte:`-Zeile mit Pfad, zweite Zeile derselben Art, `Projekt: … · Factory: …`, Pfad mit `\`).
+
 ## Nachtrag 2026-11-22 N5: Filterwechsel ohne Einfrieren — die Zeilen der Insel sind keine Listenelemente im Sinne der Darstellung (`display:block` statt `list-item`) (Karte #265)
 
 **Status bleibt `Akzeptiert`.** Die Filter aus N1 Punkt 2 und R00239 FA 6 bleiben, wie sie sind: Attribute an der Wurzel der Insel, Wirkung nur über CSS, derselbe Knoten. Neu ist nur **eine Regel im CSS**. Punkte 1–7 und N1–N4 gelten weiter.
