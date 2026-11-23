@@ -655,14 +655,15 @@
     return `<p class="rv-gekappt">${tausender(h.gezeigt)} von ${tausender(h.gesamt)} Dateien gezeigt. Die übrigen stehen nicht in dieser Liste; der Commit liegt vollständig im Repository.</p>`;
   }
 
-  /** Rand (b): der Commit der Antwort steht nicht in der Folge. */
   /** Der Satz, wenn der Browser „Gesehen“ nicht speichern kann (R00246 FA 10, Wortlaut PO Z. 641). */
   const GESEHEN_NICHT_GESPEICHERT = 'Gesehen wird in diesem Browser nicht gespeichert und gilt nur bis zum Neuladen.';
 
-  /** Zeile „<k> von <n> gesehen“ mit Balken (R00246 FA 2, 10): sichtbar ohne Ansage (`aria-hidden`), angesagt wird nur `ansage` in
-      der Live-Region `rv-gesehen`, die sich allein mit einem Haken ändert; `fuer` (Commit oder „alle“) hält ihren Knoten beim Zeichnen.
-      Ohne Dateien (n = 0) keine Zeile; der Statusknoten des Satzes zum Speicher steht immer, leer bei funktionierendem Speicher. */
-  function gesehenZeileHtml({ k, n, ansage, fuer, ungeladen, speicherFehlt }, esc) {
+  /** Zeile „<k> von <n> gesehen“ mit Balken (R00246 FA 2, 10): sichtbar ohne Ansage (`aria-hidden`); gelesen wird die Live-Region
+      `rv-gesehen`, die schon beim Zeichnen den aktuellen Text trägt und sich danach allein mit einem Haken ändert (`aria-live` setzt
+      `gesehenAnsageBehalten` der Oberfläche nach dem Einhängen); `fuer` (Commit
+      oder „alle“) hält ihren Knoten beim Zeichnen. Sie steht vor dem Zusatz „nicht geladen“, der so mit „gesehen“ zusammen gelesen
+      wird. Ohne Dateien (n = 0) keine Zeile; der Statusknoten des Satzes zum Speicher steht immer, leer bei funktionierendem Speicher. */
+  function gesehenZeileHtml({ k, n, fuer, ungeladen, speicherFehlt }, esc) {
     let zeile = '';
     if (n > 0) {
       let rest = '';
@@ -670,7 +671,8 @@
       else if (ungeladen > 1) rest = `<span class="rv-ges-ng"> · ${tausender(ungeladen)} Abschnitte nicht geladen</span>`;
       const sichtbar = `<span class="rv-ges-z" id="rv-ges-z" aria-hidden="true"><span id="rv-gesehen-k">${tausender(k)}</span> von <span id="rv-gesehen-n">${tausender(n)}</span> gesehen</span>`;
       const balken = `<span class="rv-ges-balken" id="rv-ges-balken" aria-hidden="true"><i style="--anteil:${k / n}"></i></span>`;
-      zeile = `<span class="rv-ges-t" id="rv-ges-t">${sichtbar}${rest}</span>${balken}<span class="vh" id="rv-gesehen" aria-live="polite" aria-atomic="true" data-fuer="${esc(fuer)}">${esc(ansage)}</span>`;
+      const live = `<span class="vh" id="rv-gesehen" aria-atomic="true" data-fuer="${esc(fuer)}">${esc(gesehenAnsage(k, n))}</span>`;
+      zeile = `${live}<span class="rv-ges-t" id="rv-ges-t">${sichtbar}${rest}</span>${balken}`;
     }
     let satz = '';
     if (speicherFehlt) satz = GESEHEN_NICHT_GESPEICHERT;
@@ -680,6 +682,7 @@
   /** Lesetext der Live-Region: „<k> von <n> gesehen“. */
   const gesehenAnsage = (k, n) => `${tausender(k)} von ${tausender(n)} gesehen`;
 
+  /** Rand (b): der Commit der Antwort steht nicht in der Folge. */
   function fremdHtml(kurz, esc) {
     return `<div class="rv-randb" role="status"><p>${esc(kurz)} gehört nicht zu den Commits dieser Aufgabe mit Diff. Gezeigt wird sein Diff, ohne „i von n“.</p>${knopf('Zum ersten Commit', 'review-erster', null, 'rv-erster')}</div>`;
   }

@@ -581,6 +581,59 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     expect(fehler.filter(f => !f.includes('503'))).toEqual([]);
   });
 
+  test('Nacharbeit UX S1/FA 2: nach dem Neuladen mit 2 Haken steht „2 von 8 gesehen“ schon in der Live-Region, das Laden ändert sie nicht; ein Haken ändert den Text genau einmal', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    await s.kaestchen('web/kd-app.css').click();
+    await s.kaestchen('e2e/einheit/kontrast.test.js').click();
+    await expect(s.zeileText()).toHaveText('2 von 8 gesehen');
+    await page.addInitScript(() => {
+      window.kdLadeAenderungen = [];
+      new MutationObserver(records => records.forEach(m => {
+        const knoten = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+        if (knoten && knoten.closest('#rv-gesehen')) window.kdLadeAenderungen.push(knoten.closest('#rv-gesehen').textContent);
+      })).observe(document, { childList: true, characterData: true, subtree: true });
+    });
+    await neuLaden(page);
+    await expect(s.live()).toHaveText('2 von 8 gesehen');
+    expect(await page.evaluate(() => window.kdLadeAenderungen)).toEqual([]);
+    const live = await liveZaehlen(page);
+    await s.kaestchen('web/kd-app.css').click();
+    await expect(s.zeileText()).toHaveText('1 von 8 gesehen');
+    expect(await live.texte()).toEqual(['1 von 8 gesehen']);
+    expect(await live.derselbe()).toBe(true);
+  });
+
+  test('Nacharbeit UX S1/AK 5, AK 9: Blättern und Nachladen sagen nichts an, die Live-Region trägt jeweils schon den aktuellen Stand', async ({ page }) => {
+    const s = seite(page);
+    await commitOeffnen(page, k, 1, h.kArt);
+    await expect(s.live()).toHaveText('0 von 8 gesehen');
+    const live = await liveZaehlen(page);
+    await page.locator('#rv-vor').click();
+    await expect(page.locator('#rv-pos')).toHaveText(/^2 von 2/);
+    await expect(s.live()).toHaveText(/^0 von \d+ gesehen$/);
+    expect(await live.texte()).toEqual([]);
+  });
+
+  test('Nacharbeit UX S2: „1 Abschnitt nicht geladen“ wird zusammen mit „gesehen“ gelesen — die Lesetexte der Zeile enthalten beides, in dieser Reihenfolge, der sichtbare Text bleibt', async ({ page }) => {
+    const s = seite(page);
+    const wb = url => url.pathname === '/api/aufgaben/7/diff' && url.searchParams.get('anwendung') === 'wb' && !url.searchParams.has('datei');
+    await page.route(wb, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ fehler: 'Zeitgrenze' }) }));
+    await alleOeffnen(page, k, 7);
+    await expect(page.locator('#rv-a1 .rv-abs-f')).toBeVisible();
+    await expect(s.ganzeZeile()).toHaveText('0 von 5 gesehen · 1 Abschnitt nicht geladen');
+    const gelesen = () => page.locator('#rv-ges').evaluate(wurzel => {
+      const teile = [];
+      const gehen = e => { if (e.getAttribute && e.getAttribute('aria-hidden') === 'true') return; e.childNodes.forEach(n => (n.nodeType === 3 ? teile.push(n.textContent) : gehen(n))); };
+      gehen(wurzel);
+      return teile.join(' ').replace(/\s+/g, ' ').trim();
+    });
+    expect(await gelesen()).toMatch(/gesehen.*nicht geladen/);
+    await s.kaestchen('src/a.rs').click();
+    await expect(s.ganzeZeile()).toHaveText('1 von 5 gesehen · 1 Abschnitt nicht geladen');
+    expect(await gelesen()).toMatch(/1 von 5 gesehen.*1 Abschnitt nicht geladen/);
+  });
+
   test('AK 7: der Satz ist gedämpft, nicht im Fehlerrot, ≥ 4,5:1 in Hell und Dunkel und bricht bei 320 px um', async ({ page }) => {
     const s = seite(page);
     await page.addInitScript(speicherGesperrt);

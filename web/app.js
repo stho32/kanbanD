@@ -1038,15 +1038,29 @@ function laeufeKnotenBehalten(vorher) {
   }
 }
 
-/** „i von n“ der Review-Seite bleibt derselbe Knoten (`aria-live`, R00207 FA 3): nur so sagt ein Bildschirmleser den Schritt an. */
-/** Die Live-Region „<k> von <n> gesehen“ bleibt derselbe Knoten, solange sie dieselbe Seite meint (R00246 FA 2); zu einem anderen
-    Commit kommt ein neuer Knoten, der beim Einhängen nicht angesagt wird. */
+/** Die Live-Region „<k> von <n> gesehen“ trägt schon beim Zeichnen den aktuellen Text und bleibt derselbe Knoten, solange sie dieselbe
+    Seite meint: ihr Text ändert sich nur mit einem Haken (`gesehenAnsage` der Seite), nie beim Nachladen (R00246 FA 2). Zu einem
+    anderen Commit kommt ein neuer Knoten mit dem Text des neuen Stands. Damit weder sein Einhängen noch das Zurücksetzen des alten
+    Knotens als Ansage zählt, steht ein Knoten ohne neuen Text beim Einhängen ohne `aria-live` und wird live, nachdem er steht;
+    ein neuer Text (der Haken) kommt in einen Knoten, der live ist. */
 function gesehenAnsageBehalten(vorher) {
   const neu = document.getElementById('rv-gesehen');
-  if (!vorher || !neu || vorher.dataset.fuer !== neu.dataset.fuer) return;
-  ansageBehalten(vorher, 'rv-gesehen');
+  if (!neu || vorher === neu) return;
+  const ansage = S.ui.review && S.ui.review.gesehenAnsage;
+  if (vorher && vorher.dataset.fuer === neu.dataset.fuer) {
+    const wechselt = Boolean(ansage) && vorher.textContent !== ansage;
+    if (wechselt) vorher.setAttribute('aria-live', 'polite');
+    else vorher.removeAttribute('aria-live');
+    neu.replaceWith(vorher);
+    if (wechselt) vorher.textContent = ansage;
+  }
+  setTimeout(() => {
+    const region = document.getElementById('rv-gesehen');
+    if (region) region.setAttribute('aria-live', 'polite');
+  }, 0);
 }
 
+/** „i von n“ der Review-Seite bleibt derselbe Knoten (`aria-live`, R00207 FA 3): nur so sagt ein Bildschirmleser den Schritt an. */
 function ansageBehalten(vorher, id) {
   const neu = document.getElementById(id);
   if (!vorher || !neu || vorher === neu) return;
@@ -2086,7 +2100,7 @@ function vReviewAlle(r, b) {
     const mitListe = alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da' && ab.antwort.dateien.length);
     if (mitListe.length) summe += reviewAufklapperHtml(r, abschnittSummen(alle.abschnitte).dateien, mitListe.map(([, a]) => `rv-a${a}-rail`).join(' '));
     const z = reviewAlleGesehen(alle);
-    summe += gesehenZeileHtml({ ...z, ansage: r.gesehenAnsage, fuer: r.gesehenFuer, speicherFehlt: r.gesehenFehler }, esc);
+    summe += gesehenZeileHtml({ ...z, fuer: r.gesehenFuer, speicherFehlt: r.gesehenFehler }, esc);
   }
   return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${summe}${ansage}</div>${inhalt}`;
 }
@@ -2175,7 +2189,7 @@ function reviewDiffHtml(r, b) {
   const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc, r.zweigeOffen) + liste;
   const schluessel = reviewInselSchluessel();
   const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen, reviewQuelle(r));
-  const gesehen = gesehenZeileHtml({ k: reviewGesehenZahl(r.staende), n: r.staende.length, ansage: r.gesehenAnsage, fuer: r.gesehenFuer, ungeladen: 0, speicherFehlt: r.gesehenFehler }, esc);
+  const gesehen = gesehenZeileHtml({ k: reviewGesehenZahl(r.staende), n: r.staende.length, fuer: r.gesehenFuer, ungeladen: 0, speicherFehlt: r.gesehenFehler }, esc);
   return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${navigation}${summe}${aufklapper}${gesehen}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
 }
 
