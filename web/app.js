@@ -25,6 +25,8 @@ function timerStartMerken(schluessel, ms) {
 /* Berichtsfilter (R00081): steht am Board (`report-filter:`), für alle. Eine Änderung wirkt sofort und wird mit gewählter
    Person gespeichert; bis die Antwort da ist — oder ohne Person ganz — gilt der lokale Stand (`bfLokal`). */
 S.ui.bf = filterAus('');
+/* „Umbrechen“ der Review-Seite (R00248): ein Wert für alle Karten, gemerkt im Browser (ADR-0042 N5.1); ohne Speicher gilt er bis zum Neuladen */
+S.ui.umbrechen = (() => { try { return umbrechenLesen(window.localStorage); } catch (_) { return false; } })();
 S.ui.signaleOben = (() => { try { return localStorage.getItem('kanbanD.signale-oben') === '1'; } catch (_) { return false; } })();
 /** Bei „Signale oben“ ist die Anzeige nicht die echte Reihenfolge — ein Zug daraus wäre ein Zug an die falsche Stelle (R00088). */
 function zugGesperrt() {
@@ -2081,6 +2083,31 @@ function reviewLesepositionHalten(merk) {
   if (verschiebung) document.getElementById('review').scrollTop += verschiebung;
 }
 
+/** Die oberste im Bild stehende Zeile der Rolle samt ihrer Lage (R00248 FA 3, ADR-0042 N6.2): ein `elementFromPoint` an der Oberkante
+    von `#review`; trifft es keine Zeile, gilt der Kopf der Datei, sonst der erste Abschnitt. Gehalten wird sie mit `reviewLesepositionHalten`. */
+function reviewLeseZeileMerken() {
+  const rolle = document.getElementById('review');
+  if (!rolle) return null;
+  const r = rolle.getBoundingClientRect();
+  const getroffen = document.elementFromPoint(r.left + r.width / 2, r.top + 1);
+  let anker = null;
+  if (getroffen) anker = getroffen.closest('tr') || (getroffen.closest('section.df') || document.createElement('i')).querySelector('.df-k');
+  if (!anker) return reviewLesepositionMerken();
+  return { anker, oben: anker.getBoundingClientRect().top };
+}
+
+/** Der Schalter „Umbrechen“: nur eine Klasse an `#review`, kein Neuzeichnen; die Leseposition bleibt sofort und im nächsten Bild. */
+function reviewUmbrechenSetzen(an) {
+  S.ui.umbrechen = an;
+  umbrechenSchreiben(gesehenSpeicher(), an);
+  const rolle = document.getElementById('review');
+  if (!rolle) return;
+  const merk = reviewLeseZeileMerken();
+  rolle.classList.toggle('umbr', an);
+  reviewLesepositionHalten(merk);
+  requestAnimationFrame(() => reviewLesepositionHalten(merk));
+}
+
 /** Die Seite „Alle Änderungen“ (Hauptbereich): Commit-Leiste, darunter Summe und Ansage, dann die Insel oder ein Zustand. */
 function vReviewAlle(r, b) {
   const alle = r.alle;
@@ -2097,7 +2124,7 @@ function vReviewAlle(r, b) {
     const offen = alle.abschnitte.some(ab => ab.status === 'da' && ab.staende.some(st => st.offen));
     const mitDateien = alle.abschnitte.some(ab => ab.status === 'da' && ab.antwort.dateien.length);
     let knopfAlle = '';
-    if (mitDateien) knopfAlle = knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle');
+    if (mitDateien) knopfAlle = knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen);
     summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span>${knopfAlle}</div>`;
     const mitListe = alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da' && ab.antwort.dateien.length);
     if (mitListe.length) summe += reviewAufklapperHtml(r, abschnittSummen(alle.abschnitte).dateien, mitListe.map(([, a]) => `rv-a${a}-rail`).join(' '));
@@ -2123,6 +2150,7 @@ function vReview() {
   const b = reviewBild(r);
   let railKlasse = '';
   if (r.railOffen) railKlasse = ' rail-offen';
+  if (S.ui.umbrechen) railKlasse += ' umbr';
   const seite = inhalt => `<div class="rv${railKlasse}" id="review">${inhalt}</div>`;
   const erneut = ziel => knopf('Erneut versuchen', 'review-erneut', ziel, 'rv-erneut');
   const zurListe = knopf('Zur Liste der Commits', 'review-liste');
@@ -2178,7 +2206,7 @@ function reviewDiffHtml(r, b) {
   else if (b.folge && b.folge.art === 'folge') navigation = blaetternHtml(b.folge, esc(kurz), reviewSchmal(), Boolean(r.wahlAnsage));
   else if (b.folge) navigation = fremdHtml(kurz, esc);
   const offen = r.staende.some(s => s.offen);
-  const alle = r.dateien.length ? knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') : '';
+  const alle = r.dateien.length ? knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen) : '';
   const summe = `<div class="sum"><span>${dateienWort(c.dateien)} · <span class="pl">+${tausender(c.plus)}</span> <span class="mi">−${tausender(c.minus)}</span></span>${alle}</div>`;
   const eintrag = b.liste.status === 'da' ? b.liste.eintraege.find(e => e.hash && e.hash.toLowerCase() === c.hash.toLowerCase()) : null;
   const leer = !r.dateien.length;
@@ -4927,6 +4955,7 @@ function meldetBeimVerlassen(ereignis) {
 }
 document.addEventListener('change', e => {
   if (S.neuzeichnen) return;
+  if (e.target.matches('input[data-umbrechen]')) { reviewUmbrechenSetzen(e.target.checked); return; }
   // das „focusout“ gleich danach kennt das Ziel des Fokus und trägt die Änderung nach
   if (meldetBeimVerlassen(e)) { aenderungAufschieben(e.target); return; }
   aenderungGemeldet(e.target);

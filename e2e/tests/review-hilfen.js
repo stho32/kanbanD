@@ -641,4 +641,84 @@ function wortmarkeVorbereiten(h) {
   };
 }
 
-module.exports = { wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
+/* ── Ausgangslage von R00248 (Umbrechen): U1 in `kd` mit K-Lang (a), (b) je 30-mal und (c) in src/u.rs und K-Kurz in src/kurz.rs, U2 in `wb`
+   (K-Zwei, Fall (a) in docs/u.md), U3 in `kd` (K-Last: src/gross.rs mit 5.000 gelöschten und 5.000 hinzugefügten Zeilen zu etwa 200 Zeichen) ── */
+
+/** Fall (a): Kommentar mit Leerzeichen, 407 Zeichen. Fall (b): ein Wort ohne Leerzeichen, 411 Zeichen. */
+const UM_A = '// ' + 'wort '.repeat(80) + 'ende';
+const UM_B = 'let u = "' + 'x'.repeat(400) + '";';
+/** Funktionszeile, die git im Hunk-Kopf des Falls (c) auf 80 Zeichen kürzt (90 Zeichen, in Spalte 0 beginnend). */
+const UM_FN = 'fn ' + 'funktion_mit_einem_sehr_langen_namen_'.repeat(3).slice(0, 87);
+
+/** src/u.rs als [alt, neu]: (a) und (b) je 30-mal in einem Hunk, durch eine unveränderte Zeile getrennt; danach mehr als sechs
+    unveränderte Zeilen, die Funktionszeile und Fall (c) als eigener Hunk. */
+function umbrechenU() {
+  const alt = [], neu = [];
+  for (let i = 0; i < 30; i++) {
+    alt.push(`// u trenner a${i}`); neu.push(`// u trenner a${i}`, UM_A);
+    alt.push(`// u trenner b${i}`); neu.push(`// u trenner b${i}`, UM_B);
+  }
+  const beide = z => { alt.push(z); neu.push(z); };
+  for (let i = 1; i <= 8; i++) beide(`// u fuellung ${i}`);
+  beide(UM_FN);
+  for (let i = 1; i <= 5; i++) beide(`    // u vor c ${i}`);
+  alt.push('    zaehler = 1;'); neu.push('    zaehler = 2;');
+  for (let i = 1; i <= 4; i++) beide(`    // u nach c ${i}`);
+  beide('// u ende');
+  return [alt.join('\n') + '\n', neu.join('\n') + '\n'];
+}
+
+const UM_LAST = (i, ziffer) => `// z${String(i).padStart(5, '0')} ${ziffer} ${'wort '.repeat(37)}`;
+
+function umbrechenBauen(basis) {
+  const r = path.join(basis, 'KD'), s = path.join(basis, 'WB');
+  for (const ort of [r, s]) {
+    fs.mkdirSync(path.join(ort, 'Dokumentation/Planung'), { recursive: true });
+    fs.writeFileSync(path.join(ort, 'Dokumentation/Planung/app.md'), '# App\n');
+    gitAls(ort, ADA, '2026-06-01T08:00:00+00:00', 'init', '-q', '-b', 'main');
+  }
+  const u = umbrechenU();
+  const kurz = ziffer => ['// k anfang', '// k 2', '// k 3', '// k 4', `let a = ${ziffer};`, '// k 5', '// k 6', '// k 7', '// k ende'].join('\n') + '\n';
+  const last = lastDatei(5000, UM_LAST);
+  const h = { r, s };
+  aenderungsCommit(r, 'U0 Vorgänger', { 'src/u.rs': u[0], 'src/kurz.rs': kurz(1), 'src/gross.rs': last[0] });
+  h.u1 = aenderungsCommit(r, 'U1 Lange Zeilen', { 'src/u.rs': u[1], 'src/kurz.rs': kurz(2) });
+  h.u3 = aenderungsCommit(r, 'U3 Last', { 'src/gross.rs': last[1] });
+  h.leer = aenderungsCommit(r, 'U4 ohne Dateien', {});
+  aenderungsCommit(s, 'U2 Vorgänger', { 'docs/u.md': '# u\n\nEnde\n' });
+  h.u2 = aenderungsCommit(s, 'U2', { 'docs/u.md': `# u\n\n${UM_A}\n\nEnde\n` });
+  return h;
+}
+
+let umbrechenGeteilt = null;
+/** Ein Satz Repositories je Prozess für R00248, am Prozessende entfernt. */
+function umbrechenRepository() {
+  if (!umbrechenGeteilt) {
+    const basis = basisAnlegen();
+    umbrechenGeteilt = umbrechenBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return umbrechenGeteilt;
+}
+
+/** Aufgaben: #9 U1 und U2 (K-Lang, K-Kurz, K-Zwei), #10 U3 (K-Last), #11 U4 ohne Dateien; Register `kd`, `wb`. */
+function umbrechenVorbereiten(h) {
+  const aufgaben = { 9: [`kd:${h.u1}`, `wb:${h.u2}`], 10: [`kd:${h.u3}`], 11: [`kd:${h.leer}`] };
+  const register = EINSTELLUNGEN_KOPF
+    + `    kd: {name: KD, wbs: ${h.r}/Dokumentation/Planung/app.md, requirements: ""}\n`
+    + `    wb: {name: WB, wbs: ${h.s}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
+  const dateien = { 'kanbanD.md': register };
+  for (const [nr, verweise] of Object.entries(aufgaben)) dateien[`aufgaben/${String(nr).padStart(4, '0')}-aufgabe-${nr}.md`] = aufgabeDatei(nr, `Aufgabe ${nr}`, verweise);
+  dateien['boards/entwicklung.md'] = `# Entwicklung\n\n## Zu erledigen\n\n${Object.keys(aufgaben).map(n => `- #${n}`).join('\n')}\n\n## Erledigt\n`;
+  return ordner => {
+    for (const [rel, inhalt] of Object.entries(dateien)) {
+      fs.mkdirSync(path.dirname(path.join(ordner, rel)), { recursive: true });
+      fs.writeFileSync(path.join(ordner, rel), inhalt);
+    }
+    execFileSync('git', ['-C', ordner, 'init', '-q']);
+    execFileSync('git', ['-C', ordner, 'add', '-A']);
+    execFileSync('git', ['-C', ordner, '-c', 'user.name=Vorbereitung', '-c', 'user.email=v@v', 'commit', '-q', '-m', 'eingerichtet']);
+  };
+}
+
+module.exports = { umbrechenRepository, umbrechenVorbereiten, UM_A, UM_B, UM_FN, wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };

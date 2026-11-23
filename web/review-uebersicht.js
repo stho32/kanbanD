@@ -346,6 +346,11 @@
 
   const UMBRECHEN_SCHLUESSEL = 'kanbanD.umbrechen';
 
+  /** Der Schalter der Kopfzeile (D0009 `.ru-sch`): ein Eingabefeld mit Rolle `switch`, der Zustand steht in `checked` (ADR-0042 N6.3). */
+  function umbrechenSchalterHtml(an) {
+    return `<label class="ru-sch"><input type="checkbox" role="switch" id="rv-umbr" data-umbrechen${an ? ' checked' : ''}>Umbrechen</label>`;
+  }
+
   /** Der gemerkte Zustand; ein Speicher, der fehlt oder wirft, ergibt „aus“. */
   function umbrechenLesen(speicher) {
     try { return speicher.getItem(UMBRECHEN_SCHLUESSEL) === '1'; } catch (_) { return false; }
@@ -489,7 +494,7 @@
 
   Object.assign(ziel, { wortMarken, wortMarke });
 
-  Object.assign(ziel, { UMBRECHEN_SCHLUESSEL, umbrechenLesen, umbrechenSchreiben });
+  Object.assign(ziel, { UMBRECHEN_SCHLUESSEL, umbrechenLesen, umbrechenSchreiben, umbrechenSchalterHtml });
 
   Object.assign(ziel, { GESEHEN_HOECHSTENS, gesehenSchluessel, gesehenLesen, gesehenSchreiben, commitDateiSchluessel, alleDateiSchluessel, fingerabdruck });
 

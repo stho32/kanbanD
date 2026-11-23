@@ -53,3 +53,10 @@ test('codeHtml: die Breite eines Blocks steht als Eigenschaft --bb im style, ohn
   assert.ok(Number(stil.match(/--bb:(\d+)px/)[1]) >= 400 * 8, 'die Schätzung bleibt großzügig (8 px je Zeichen)');
   assert.ok(!html.includes('contain-intrinsic-inline-size') && !/style="[^"]*inline-size/.test(html), 'die Entscheidung steht in der Stilvorlage, nicht im style');
 });
+
+test('umbrechenSchalterHtml: label.ru-sch mit input[checkbox][role=switch], „Umbrechen“; checked nur bei an (FA 1, m9)', () => {
+  const aus = u.umbrechenSchalterHtml(false), an = u.umbrechenSchalterHtml(true);
+  assert.match(aus, /^<label class="ru-sch"><input type="checkbox" role="switch"[^>]*>Umbrechen<\/label>$/);
+  assert.ok(!/checked/.test(aus));
+  assert.ok(/ checked>/.test(an));
+});

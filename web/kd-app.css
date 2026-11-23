@@ -1590,6 +1590,13 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .dz .c .tk-number{color:var(--kd-tk-number)}.dz .c .tk-function{color:var(--kd-tk-function)}.dz .c .tk-type{color:var(--kd-tk-type)}.dz .c .tk-macro{color:var(--kd-tk-macro)}
 .mk-z{display:inline-flex;align-items:center;gap:2px;margin:0 1px;padding:0 3px;border:1px solid var(--kd-status-warn-ink);background:var(--kd-status-warn-bg);color:var(--kd-status-warn-ink);font:600 11px/1.3 var(--kd-mono);white-space:nowrap}
 .mk-z svg.i{width:11px;height:11px}
+/* Umbrechen (R00248, D0009 `.ru-sch`): Schalter mit Daumen links (aus) bzw. rechts auf gefüllter Fläche (an); Rand `--kd-muted` ≥ 3:1 */
+.ru-sch{display:inline-flex;align-items:center;gap:6px;min-block-size:var(--kd-ziel);font-size:12.5px;color:var(--kd-text);white-space:nowrap;cursor:pointer}
+.ru-sch input{appearance:none;flex:none;box-sizing:border-box;inline-size:32px;block-size:18px;margin:0;border:2px solid var(--kd-muted);border-radius:9px;background:radial-gradient(circle,var(--kd-muted) 0 5px,transparent 5.5px) 1px 50%/14px 14px no-repeat var(--kd-surface);cursor:pointer}
+.ru-sch input:checked{border-color:var(--kd-accent);background:radial-gradient(circle,var(--kd-on-accent) 0 5px,transparent 5.5px) calc(100% - 1px) 50%/14px 14px no-repeat var(--kd-accent)}
+.ru-sch input:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
+.touch .ru-sch input{inline-size:40px;block-size:22px;border-radius:11px}
+@media (forced-colors:active){.ru-sch input{border-color:CanvasText;background-color:Canvas}.ru-sch input:checked{border-color:Highlight;background-color:Highlight}}
 /* Wortmarke (R00247, D0009 S5): Fläche aus den Tokens gemischt, 2 px Unterkante in der Linienfarbe; inline, ohne Maß und ohne Seitenrand */
 mark.wm{color:inherit;padding:0;background:none}
 .dz tr.del mark.wm{background:color-mix(in oklch,var(--kd-c-red) 85%,var(--kd-c-red-line));box-shadow:inset 0 -2px 0 var(--kd-c-red-line)}
