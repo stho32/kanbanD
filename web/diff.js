@@ -4,7 +4,7 @@
   'use strict';
   const { ZUSTANDSWOERTER, anwendungName, zustandSatz, zustandsSymbol, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
   const { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, grosseNeueDatei, testHinweis, groessteSumme, balkenTeile } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
-  const { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, patchAdresse, patchName, mitDiff: mitDiffVon, commitChips, chipText, zweigVerdichtung, zweigeWort } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
+  const { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, patchAdresse, patchName, mitDiff: mitDiffVon, commitChips, chipText, zweigVerdichtung, zweigeWort, wortMarken } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
 
   /** Folge der Review-Seite aus der Liste `GET …/commits` und dem vollen Hash der Diff-Antwort (ADR-0033 Punkte 2 und 9):
       gezählt wird über die Einträge mit Diff in der Reihenfolge der Antwort, „i“ nie aus dem Text der Adresse (Rand a).
@@ -346,12 +346,19 @@
       ohne Zeile (`data-vsc`), an den ein Klick auf eine Nummer der neuen Seite ihre Zeile hängt; ohne ihn springt keine Nummer. */
   function codeHtml(patch, pfad, esc, sprung = null) {
     const name = `Änderungen in ${esc(sichtbarText(pfad))}`;
-    const zeilen = patchZeilen(patch);
+    const zeilen = mitWortmarken(patchZeilen(patch));
     const springt = Boolean(sprung);
     const teile = bloecke(zeilen).map(b => `<div class="dz-b" style="contain-intrinsic-inline-size:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc, springt)).join('')}</table></div>`);
     let ziel = '';
     if (springt) ziel = ` data-vsc="${esc(sprung)}"`;
     return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${ziel}${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;
+  }
+
+  /** Die Zeilen mit ihrer Wortmarke `wm` (R00247 FA 7): gepaart vorab über die ganze Liste, damit ein Lauf über eine Blockgrenze wie
+      ohne sie gilt; der Farbauftrag bekommt dieselben Zeilen, die Auflage zeichnet also dieselbe Marke. */
+  function mitWortmarken(zeilen) {
+    const marken = wortMarken(zeilen);
+    return zeilen.map((z, i) => (marken[i] ? { ...z, wm: marken[i] } : z));
   }
 
   /* ── Aufträge der Syntaxfarben (R00217 FA 5–7, ADR-0040 Punkt 5): `codeHtml` zeichnet ungefärbt und legt je färbbarer Datei einen
