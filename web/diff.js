@@ -85,6 +85,8 @@
   const BIDI = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
   /** Steuerzeichen außer Tab, dazu Unsichtbares: weiches Trennzeichen, Nullbreiten, Zeilen- und Absatztrenner, Wortverbinder, BOM. */
   const STEUER = /[\u0000-\u0008\u000A-\u001F\u007F-\u009F\u00AD\u200B-\u200D\u2028\u2029\u2060\uFEFF]/;
+  /** Ein Zeichen aus BIDI oder STEUER irgendwo im Text: ohne Treffer bleibt der Text ein Teil, ohne Gang über jedes Zeichen (R00247 AK 9). */
+  const UNSICHTBAR = new RegExp(`${BIDI.source}|${STEUER.source}`);
   const code = z => 'U+' + z.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
   /** Bildzeichen der Steuerzeichen: U+2400 + Code für 0–31, ␡ für DEL; C1-Zeichen haben keins und stehen nur mit Code. */
   const bildzeichen = z => {
@@ -97,6 +99,7 @@
   /** Fremder Text → Teile; Unsichtbares wird sichtbar, nie entfernt (ADR-0033 Punkt 8, „Trojan Source“): Bidi-Steuerzeichen als
       Marke `⟨U+202E⟩`, Steuerzeichen außer Tab als Bildzeichen mit Code (ohne Bildzeichen nur der Code), ein `\r` am Ende als `␍`. */
   function sichtbarTeile(text) {
+    if (!UNSICHTBAR.test(text)) return text ? [{ text }] : [];
     const teile = [];
     let rest = '';
     const zeichen = Array.from(text);
@@ -333,11 +336,15 @@
     return `<td class="n ru-nk" aria-hidden="true" title="${vscodeTitel(neu)}">${neu}</td>`;
   }
 
+  const NUR_ASCII = /^[\x20-\x7E]*$/;
+
   /** Geschätzte Breite eines Blocks in px: Chromium misst die Breite eines Elements mit `content-visibility: auto` für die
       Quer-Rolle nach `contain-intrinsic-inline-size`, nicht nach dem Inhalt (geprobt in Chromium aus e2e/node_modules); ohne
       Schätzung schnitte der Block lange Zeilen ab. Großzügig: 8 px je Zeichen (Monospace 12 px, ein Tab 4), dazu die Nummern. */
   function blockBreite(zeilen) {
-    const zeichen = z => sichtbarTeile(z.text).reduce((n, t) => n + Array.from(t.text).reduce((m, c) => m + (c === '\t' ? 4 : c.codePointAt(0) > 0x2E7F ? 2 : 1), 0), 0);
+    const breiteJeZeichen = z => sichtbarTeile(z.text).reduce((n, t) => n + Array.from(t.text).reduce((m, c) => m + (c === '\t' ? 4 : c.codePointAt(0) > 0x2E7F ? 2 : 1), 0), 0);
+    // druckbares ASCII ohne Tab ist ein Zeichen je Einheit, ohne Gang über jedes Zeichen (R00247 AK 9)
+    const zeichen = z => (NUR_ASCII.test(z.text) ? z.text.length : breiteJeZeichen(z));
     return Math.ceil(Math.max(0, ...zeilen.map(zeichen)) * 8 + 140);
   }
 
