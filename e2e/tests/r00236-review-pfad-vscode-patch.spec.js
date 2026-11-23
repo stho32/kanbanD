@@ -28,6 +28,17 @@ function vscodeAbfangen() {
   }, true);
 }
 
+// Zeigeraktion erst nach der Trefferprobe (ADR-0033 N2): Ziel ins Bild holen, warten, bis der Punkt an
+// seiner Mitte das Ziel selbst trifft (content-visibility-Blöcke zeichnen sich nach), dann tippen.
+async function nachTrefferprobeTippen(page, ziel) {
+  await ziel.scrollIntoViewIfNeeded();
+  await expect.poll(() => ziel.evaluate(e => {
+    const r = e.getBoundingClientRect();
+    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === e;
+  })).toBe(true);
+  await ziel.tap();
+}
+
 function seite(page) {
   const datei = pfad => page.locator('#rv-insel section.df').filter({ has: page.locator('.df-k .p', { hasText: exakt(pfad) }) });
   const nummer = (pfad, spalte, z) => datei(pfad).locator(`tr:not(.hk) td.n:nth-child(${spalte})`, { hasText: exakt(String(z)) }).first();
@@ -43,6 +54,7 @@ function seite(page) {
     nummerNeu: (pfad, z) => nummer(pfad, 2, z),
     nummerAlt: (pfad, z) => nummer(pfad, 1, z),
     codeZeile: (pfad, text) => datei(pfad).locator('tr td.c', { hasText: text }).first(),
+    tippen: ziel => nachTrefferprobeTippen(page, ziel),
     geoeffnet: () => page.evaluate(() => window.kdVscode.slice()),
     zwischenablage: () => page.evaluate(() => navigator.clipboard.readText()),
     alleFelder: () => page.locator('#rv-insel input.ru-pfin'),
@@ -478,7 +490,7 @@ test.describe('R00236 mit Touch (pointer: coarse)', () => {
     const s = seite(page);
     await commitOeffnen(page, k, 1, h.kPfad);
     expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
-    await s.nummerNeu('src/a.rs', 13).tap();
+    await s.tippen(s.nummerNeu('src/a.rs', 13));
     expect(await s.geoeffnet()).toEqual([`vscode://file${kodiert(h.w)}/src/a.rs:13`]);
     const hoehen = await page.locator('#rv-insel .ru-akt .ru-k1').evaluateAll(l => l.map(e => e.getBoundingClientRect().height));
     expect(hoehen.filter(x => x < 44)).toEqual([]);
