@@ -453,7 +453,9 @@ async fn ak06_antwortform_und_anwendungen() {
         for f in ["zustand", "zweige", "entfernte_zweige"] {
             e.as_object_mut().unwrap().remove(f);
         }
-        assert_eq!(c, &e, "wie die Liste, ohne Zustand und Zweige");
+        // R00251 FA 4: `autordatum` trägt nur die Liste `GET …/commits`, der Gesamt-Diff bleibt byte-gleich
+        assert!(e.as_object_mut().unwrap().remove("autordatum").is_some_and(|w| w.is_i64()), "die Liste trägt autordatum");
+        assert_eq!(c, &e, "wie die Liste, ohne Zustand, Zweige und Autordatum");
     }
     let (z, _) = gesamt(&lauf.adresse, 2, "anwendung=zw").await;
     assert_eq!((z["anwendung"].as_str(), namen(&z)), (Some("zw"), vec!["z.txt".to_string()]));
