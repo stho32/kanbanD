@@ -197,7 +197,10 @@
     return `<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite"${busy}>${sprung}<ul>${alle}${eintraege}</ul></nav><p class="vh" id="rv-wahl" role="status">${esc(ansage || '')}</p>`;
   }
 
-  const aktuell = ja => (ja ? ' aria-current="page"' : '');
+  function aktuell(ja) {
+    if (ja) return ' aria-current="page"';
+    return '';
+  }
   const zahlenSpannen = (z, esc) => `<span class="pl">+${esc(tausender(z.plus))}</span> <span class="mi">−${esc(tausender(z.minus))}</span>`;
 
   /** Ein Eintrag eines Commits (FA 3, 4, 12): Chips und Titel ohne Chips, darunter Kurz-Hash, die Marke „auf keinem Zweig“, Zeit, Zeilen. */

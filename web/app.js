@@ -2022,7 +2022,8 @@ function reviewGezeigt(r, b) {
   const liste = r.liste;
   if (!liste || liste.status !== 'da') return null;
   const genannt = liste.eintraege.find(e => e.verweis === r.commit && e.hash);
-  return genannt ? genannt.hash : null;
+  if (!genannt) return null;
+  return genannt.hash;
 }
 
 function reviewDiffHtml(r, b) {

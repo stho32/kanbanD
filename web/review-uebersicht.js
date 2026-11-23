@@ -232,7 +232,8 @@
   function leistenFolge(eintraege) {
     const commits = mitDiff(eintraege).map(e => {
       const { chips, rest } = commitChips(e.titel);
-      const kurz = (e.anwendung ? `${e.anwendung}:` : '') + e.hash.slice(0, 7);
+      let kurz = e.hash.slice(0, 7);
+      if (e.anwendung) kurz = `${e.anwendung}:${kurz}`;
       return { verweis: e.verweis, hash: e.hash, kurz, titel: e.titel, chips, rest, zeit: zeitKurz(e.datum), plus: e.plus, minus: e.minus, verwaist: e.zustand === 'verwaist' };
     });
     const gezaehlt = commits.filter(c => !c.verwaist);
@@ -243,7 +244,8 @@
   /** Zeilen in Worten für die Namen (FA 12): das Minuszeichen läse ein Bildschirmleser verschieden. */
   function zeilenWorte(plus, minus) {
     const { tausender } = diffModul();
-    const hinzu = plus === 1 ? '1 Zeile hinzugefügt' : `${tausender(plus)} Zeilen hinzugefügt`;
+    let hinzu = `${tausender(plus)} Zeilen hinzugefügt`;
+    if (plus === 1) hinzu = '1 Zeile hinzugefügt';
     return `${hinzu}, ${tausender(minus)} entfernt`;
   }
 

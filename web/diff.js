@@ -535,7 +535,8 @@
   /** Ein Chip (R00245 FA 8): höchstens 16 Zeichen, die volle Kennung im `title`, wenn gekürzt; in der Leiste ein `span`, im Kopf ein `li`. */
   function chipHtml(kennung, esc, element = 'span') {
     const text = chipText(kennung);
-    const titel = text === kennung ? '' : ` title="${esc(kennung)}"`;
+    let titel = '';
+    if (text !== kennung) titel = ` title="${esc(kennung)}"`;
     return `<${element} class="rv-chip"${titel}>${esc(text)}</${element}>`;
   }
 
@@ -547,7 +548,9 @@
     const genannt = `<span class="rv-zw-auf">auf ${v.name}</span>`;
     if (!v.weitere) return genannt;
     const knopf = `<button type="button" class="btn rv-mehr" id="rv-zw-mehr" data-act="review-zweige" aria-expanded="${offen}" aria-controls="rv-zw-liste">${zweigeWort(v.weitere)}</button>`;
-    return `${genannt}${knopf}<span class="rv-zw-liste" id="rv-zw-liste"${offen ? '' : ' hidden'}>${zweigeHtml(eintrag, esc)}</span>`;
+    let verborgen = ' hidden';
+    if (offen) verborgen = '';
+    return `${genannt}${knopf}<span class="rv-zw-liste" id="rv-zw-liste"${verborgen}>${zweigeHtml(eintrag, esc)}</span>`;
   }
 
   /** Commit-Kopf (FA 5, R00245 FA 9): Kurz-Hash, Kennungen aus dem Titel als Liste, Zweige verdichtet oder „auf keinem Zweig“, der Titel
@@ -576,7 +579,9 @@
       const zeichen = `<span class="bl-s" aria-hidden="true">${zurueck ? '‹' : '›'}</span>`;
       return `<button type="button" class="btn bl-k" id="rv-${richtung}" data-act="review-blaettern" data-arg="${richtung}" aria-label="${name}">${zurueck ? zeichen + text : text + zeichen}</button>`;
     };
-    return `<nav class="bl" aria-label="Commits der Aufgabe, ältester zuerst">${seite('zurueck', f.zurueck, f.i - 1)}<span class="pos"><b id="rv-pos"${still ? '' : ' aria-live="polite"'}>${f.i} von ${f.n}</b> <span class="mono">${kurz}</span></span>${seite('vor', f.vor, f.i + 1)}</nav>`;
+    let ansage = ' aria-live="polite"';
+    if (still) ansage = '';
+    return `<nav class="bl" aria-label="Commits der Aufgabe, ältester zuerst">${seite('zurueck', f.zurueck, f.i - 1)}<span class="pos"><b id="rv-pos"${ansage}>${f.i} von ${f.n}</b> <span class="mono">${kurz}</span></span>${seite('vor', f.vor, f.i + 1)}</nav>`;
   }
 
   /** Meldung einer ganzen Seite: die erste Zeile ist die Überschrift mit `tabindex="-1"` (Fokusziel, FA 13). `zeilen` setzt Überschrift
