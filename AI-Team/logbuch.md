@@ -2198,3 +2198,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-23 | #248 | Auto-Reviews | legacy-reviewer | bestanden | 4 min | keine Muss, 4 Sollte · claude · sonnet · Lauf 248-legacy-reviewer-1 |
 | 2026-11-23 | #248 | Auto-Reviews | code-reviewer | befund | 5 min | M1 Vorschau Einrichten ≠ gespeicherte Datei bei Handform · claude · sonnet · Lauf 248-code-reviewer-1 |
 | 2026-11-23 | #248 | Auto-Reviews | product-owner | bestanden | 2 min | Nacharbeit: Vorschau per Trockenlauf + 4 Punkte · claude · opus · Lauf 248-product-owner-2 · 0,78 $ · Karte gesamt 16,07 $ |
+| 2026-11-23 | #269 | Detailplanung | planer | bestanden | 7 min | R00251, I0241, B1322–B1329 · claude · opus · Lauf 269-planer-1 · 2,95 $ · Karte gesamt 6,64 $ |
+| 2026-11-23 | #269 | Detailplanung | product-owner | bestanden | 1 min | Wortlaut 1.000 Marker, Legende nur mit Strich · claude · opus · Lauf 269-product-owner-4 · 0,61 $ · Karte gesamt 7,25 $ |
