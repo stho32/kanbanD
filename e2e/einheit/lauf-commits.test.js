@@ -183,6 +183,8 @@ test('AK 10: 5.000 Bash-Schritte × 500 Commits, je Schritt höchstens 2 im Fens
   const dauerMs = Number(process.hrtime.bigint() - start) / 1e6;
   assert.strictEqual(r.titelpruefungen, 500, 'genau die 500 Paare (Schritt, Commit im Fenster), nie 5.000 × 500');
   assert.strictEqual([...r.marker.values()].flat().length, 250);
+  const schranke = 5000 * (Math.ceil(Math.log2(500)) + 2) + 500;
+  assert.ok(r.fensterzugriffe <= schranke, `Suche nach dem Fenster halbiert: ${r.fensterzugriffe} Zugriffe auf Commits, Schranke ${schranke}, linear wären es 2.500.000`);
   console.log(`Beobachtung: 5.000 Schritte × 500 Commits samt Auswertung in ${dauerMs.toFixed(1)} ms`);
   const riesig = paar([aufruf(T(10), `git commit -q -m "Titel im Befehl" ${'x'.repeat(COMMIT_GRENZEN.befehl)}`), ergebnis(T(12))], { 1: 0 });
   const r2 = rechnen(riesig, [karteneintrag('Titel im Befehl', EPOCH_11 + 11)]);

@@ -10,7 +10,8 @@
    * Zeilen `[{nr, eintrag}]`, die Schritte der Auswertung und die Commits der Karte (`GET …/commits`) → `{marker, mehrAlsGrenze,
    * titelpruefungen}`. `marker` ordnet der Nummer eines Schritts seine Marker zu, in der Reihenfolge des Laufs höchstens
    * `COMMIT_GRENZEN.marker`: `{art: 'link', verweis, kurzhash, titel}` aus der Karte oder `{art: 'text', kurzhash, titel}` aus der
-   * Belegzeile (`kurzhash` null ohne Hex). `titelpruefungen` zählt jeden Vergleich eines Titels mit einem Befehl.
+   * Belegzeile (`kurzhash` null ohne Hex). `titelpruefungen` zählt jeden Vergleich eines Titels mit einem Befehl, `fensterzugriffe`
+   * jeden Blick auf einen Commit bei der Suche nach dem Fenster (Lehre „Grenzen, die Arbeit begrenzen“: Zähler am einzigen Leseort).
    */
   function commitMarker(zeilen, schritte, karte) {
     const commits = verlinkbareCommitsNachAutordatum(karte);
@@ -23,7 +24,7 @@
       if (!eigene.length) liste = textMarker(k);
       if (liste.length) marker.set(k.nr, liste);
     }
-    return { ...begrenzt(marker), titelpruefungen: zuordnung.titelpruefungen };
+    return { ...begrenzt(marker), titelpruefungen: zuordnung.titelpruefungen, fensterzugriffe: zuordnung.fensterzugriffe };
   }
 
   /* ── Die Commits der Karte: nur, was einen Link tragen darf, sortiert nach Autordatum ── */
@@ -108,9 +109,11 @@
 
   function commitsZuordnen(kandidaten, commits) {
     let titelpruefungen = 0;
+    const zaehler = { zugriffe: 0 };
     const imFenster = new Map(), titelTreffer = [], commitSchritteJeCommit = new Map();
     for (const k of kandidaten) {
-      const liste = k.fenster ? commitsImFenster(commits, k.fenster) : [];
+      let liste = [];
+      if (k.fenster) liste = commitsImFenster(commits, k.fenster, zaehler);
       imFenster.set(k.nr, liste);
       for (const c of liste) {
         titelpruefungen++;
@@ -130,19 +133,20 @@
     for (const t of gehoert.values()) jeSchritt.get(t.k.nr).push(t);
     for (const liste of jeSchritt.values()) liste.sort((a, b) => a.c.autordatum - b.c.autordatum || a.stelle - b.stelle || a.c.stelle - b.c.stelle);
     for (const [nr, liste] of jeSchritt) jeSchritt.set(nr, liste.map(t => t.c));
-    return { jeSchritt, titelpruefungen };
+    return { jeSchritt, titelpruefungen, fensterzugriffe: zaehler.zugriffe };
   }
 
   /** Die Commits mit `von ≤ autordatum ≤ bis` aus der nach Autordatum sortierten Liste: Anfang per Halbierung, dann nur die Treffer. */
-  function commitsImFenster(commits, { von, bis }) {
+  function commitsImFenster(commits, { von, bis }, zaehler) {
+    const ansehen = i => { zaehler.zugriffe++; return commits[i]; };
     let unten = 0, oben = commits.length;
     while (unten < oben) {
       const mitte = (unten + oben) >> 1;
-      if (commits[mitte].autordatum < von) unten = mitte + 1;
+      if (ansehen(mitte).autordatum < von) unten = mitte + 1;
       else oben = mitte;
     }
     const treffer = [];
-    for (let i = unten; i < commits.length && commits[i].autordatum <= bis; i++) treffer.push(commits[i]);
+    for (let i = unten; i < commits.length && ansehen(i).autordatum <= bis; i++) treffer.push(commits[i]);
     return treffer;
   }
 
