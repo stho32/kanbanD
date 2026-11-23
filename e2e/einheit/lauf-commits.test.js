@@ -260,3 +260,24 @@ test('Grenze: höchstens 500 Commits der Karte werden gelesen', () => {
   assert.deepStrictEqual(uebersicht(rechnen(lauf, karte)), {});
   assert.deepStrictEqual(uebersicht(rechnen(lauf, karte.slice(1))), { 1: ['Der fünfhundertunderste'] });
 });
+
+/* ── B1325: Satz im Kopf (FA 5, FA 9; PO Z. 660, 690) ── */
+
+test('AK 6/AK 10: Satz im Kopf unmittelbar nach „Werkzeuge … · Denken …“ in der Kachel Gesamtdauer, gedämpft, ohne role und aria-live', () => {
+  const { laufKopfHtml } = require('../../web/lauf.js');
+  const zeilen = T17.map((o, i) => ({ nr: i + 1, eintrag: eintragPruefen(o) }));
+  const auswertung = laufAuswerten(zeilen, false);
+  const esc = t => String(t);
+  const kopf = commits => laufKopfHtml({ zustand: 'eintraege', auswertung, kosten: null, commits }, esc);
+  const kachel = html => /<div class="lv-gd">(.*?)<\/div>/.exec(html)[1];
+  const ohne = kachel(kopf({ nichtLesbar: false, mehrAlsGrenze: false }));
+  assert.strictEqual(kachel(kopf(undefined)), ohne, 'ohne Angabe wie ohne Satz');
+  assert.ok(!ohne.includes('lv-cn'));
+  const NICHT_LESBAR = '<span class="lv-cn">Commits der Karte nicht lesbar</span>';
+  const GRENZE = '<span class="lv-cn">Mehr als 1.000 Commits im Lauf, markiert sind die ersten 1.000.</span>';
+  assert.strictEqual(kachel(kopf({ nichtLesbar: true, mehrAlsGrenze: false })), ohne + NICHT_LESBAR);
+  assert.strictEqual(kachel(kopf({ nichtLesbar: false, mehrAlsGrenze: true })), ohne + GRENZE);
+  assert.strictEqual(kachel(kopf({ nichtLesbar: true, mehrAlsGrenze: true })), ohne + NICHT_LESBAR + GRENZE, 'beide, je eine Zeile, erst nicht lesbar');
+  assert.ok(/<span class="auf">Werkzeuge [^<]*<\/span>$/.test(ohne), ohne);
+  assert.ok(!/role=|aria-live/.test(kachel(kopf({ nichtLesbar: true, mehrAlsGrenze: true }))));
+});

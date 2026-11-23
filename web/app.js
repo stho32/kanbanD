@@ -2512,7 +2512,8 @@ async function laufLesen(v) {
     await new Promise(weiter => setTimeout(weiter, 0));
     ergebnis = { art: 'fehler', fehler: { art: 'unbekannt' } };
   } else {
-    ergebnis = await transkriptLesen(`/api/aufgaben/${v.nr}/transkripte/${encodeURIComponent(treffer.kennung)}`, anfrage.abbruch.signal);
+    const karte = laufCommitsLesen(v.nr, anfrage.abbruch.signal);
+    ergebnis = await transkriptLesen(`/api/aufgaben/${v.nr}/transkripte/${encodeURIComponent(treffer.kennung)}`, anfrage.abbruch.signal, karte);
   }
   if (S.ui.lauf !== v || v.anfrage !== anfrage) return;
   v.anfrage = null;
@@ -2530,7 +2531,7 @@ async function laufLesen(v) {
 /** `GET …/transkripte/{kennung}` mit den Fristen des Diffs → `{art: 'eintraege', html, grenze}`, `{art: 'fehlt'}` oder
     `{art: 'fehler', fehler}`. Entpackt im Strom; an der Grenze bricht das Lesen ab und gibt das Budget des Servers frei — das
     ist kein Fehler. Jeder Fehler vor dem Ende verwirft das Gelesene (ADR-0041 Punkt 4). */
-async function transkriptLesen(pfad, abbruchSignal) {
+async function transkriptLesen(pfad, abbruchSignal, karte) {
   try {
     const gelesen = await mitFristen(pfad, abbruchSignal, async (r, netzFehler, abbruch) => {
       if (!r.ok) await antwortFehler(r, netzFehler);
@@ -2551,13 +2552,38 @@ async function transkriptLesen(pfad, abbruchSignal) {
     });
     // einmal je erfolgreichem Lesen ausgewertet (R00234 FA 11); Live zeichnet Kopf und Kennzahlen aus dieser Auswertung neu
     const auswertung = laufAuswerten(gelesen.zeilen, gelesen.grenze);
-    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung) };
+    const commits = laufCommitMarker(gelesen.zeilen, auswertung, await karte);
+    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, commits, bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung) };
   } catch (g) {
     // FA 8: Server, Verbindung, Entpacken, `fehlt` — jede andere Ausnahme beim Lesen oder Zeichnen heißt „verarbeiten“ (PO Z. 495)
     const fehler = laufFehlerArt(g);
     if (fehler.art === 'fehlt') return { art: 'fehlt' };
     return { art: 'fehler', fehler };
   }
+}
+
+/** Frist der Commits der Karte (R00251 FA 5): danach zeichnet die Laufansicht ohne Zuordnung, eine spätere Antwort zählt nicht. */
+const LAUF_COMMITS_FRIST_MS = 2000;
+
+/** `GET …/commits` zugleich mit dem Transkript (ADR-0041 N7 Punkt 4) → die Einträge der Karte, oder null, wenn die Anfrage scheiterte
+    oder die Frist ablief. Scheitert nie; der Abbruch der Laufansicht (Wechsel der Kennung, Verlassen) bricht auch diese Anfrage ab. */
+function laufCommitsLesen(nr, abbruchSignal) {
+  const abbruch = new AbortController();
+  abbruchSignal.addEventListener('abort', () => abbruch.abort(), { once: true });
+  let uhr = null;
+  const frist = new Promise(fertig => { uhr = setTimeout(() => { abbruch.abort(); fertig(null); }, LAUF_COMMITS_FRIST_MS); });
+  const antwort = fetch(`/api/aufgaben/${nr}/commits`, { signal: abbruch.signal })
+    .then(r => (r.ok ? r.json() : null))
+    .then(daten => (daten && Array.isArray(daten.commits) ? daten.commits : null))
+    .catch(() => null)
+    .finally(() => clearTimeout(uhr));
+  return Promise.race([antwort, frist]);
+}
+
+/** Die Marker des Laufs und die Sätze im Kopf: ohne lesbare Commits der Karte bleiben die Text-Marker, der Kopf sagt es. */
+function laufCommitMarker(zeilen, auswertung, karte) {
+  const { marker, mehrAlsGrenze } = commitMarker(zeilen, auswertung.schritte, karte || []);
+  return { marker, mehrAlsGrenze, nichtLesbar: karte === null };
 }
 
 /** Die Bytes des Rumpfs entpackt, als Folge von Stücken für `zeilenLesen`. Ein Fehler der Verbindung ist in `quelle.netz` vermerkt,
@@ -2620,7 +2646,7 @@ function vLauf() {
   // der Bericht steht vor der Insel, nicht in ihr: ein Filter der Einträge verbirgt ihn nie (R00234 FA 5)
   // der Bericht steht im Dokument vor der Gliederung: unter 641 px liest er sich zuerst (PO Z. 590); daneben ordnet ihn das Raster
   if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter), laufSeitenfeldBreit())}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
-  const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten }, esc);
+  const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten, commits: e && e.commits }, esc);
   let zeitachse = '';
   if (e && e.art === 'eintraege') zeitachse = laufZeitachseHtml(e.auswertung);
   let leiste = '';

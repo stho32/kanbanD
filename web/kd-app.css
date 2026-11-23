@@ -2080,6 +2080,8 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-gd .k,.lv-kz dt{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted);text-transform:uppercase;hyphens:auto;overflow-wrap:anywhere}
 .lv-gd .w{font-size:22px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .lv-gd .auf{font-size:12px;color:var(--kd-muted);overflow-wrap:anywhere}
+/* R00251 FA 5, FA 9: Sätze zu den Commit-Markern unter der Aufteilung, gedämpft, ohne Fehlerfarbe, je eine Zeile */
+.lv-gd .lv-cn{margin-top:2px;font-size:12px;color:var(--kd-muted);overflow-wrap:anywhere}
 .lv-kz{display:flex;flex-wrap:wrap;margin:0;padding:0;min-width:0}
 .lv-kz>div{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:var(--kd-s3) var(--kd-s5);border-right:1px solid var(--kd-line);min-width:0}
 .lv-kz dd{margin:0;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}

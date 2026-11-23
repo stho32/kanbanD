@@ -1097,9 +1097,10 @@
   /** „–“ für Augen, daneben der Lesetext; nie ein `aria-label` an einem `span` (FA 4). */
   const ohneWert = lesetext => `<span class="lv-leerwert" aria-hidden="true">–</span><span class="vh">${lesetext}</span>`;
 
-  /** Kopf aus `{zustand, auswertung, kosten}`: `zustand` ist `eintraege` (mit Auswertung), `liest` oder `ohne` (fehlt, Fehler);
-      `kosten` ist der Kosteneintrag der Karte mit dieser Kennung (`{amount, currency}`) oder null. */
-  function laufKopfHtml({ zustand, auswertung, kosten }, esc) {
+  /** Kopf aus `{zustand, auswertung, kosten, commits}`: `zustand` ist `eintraege` (mit Auswertung), `liest` oder `ohne` (fehlt, Fehler);
+      `kosten` ist der Kosteneintrag der Karte mit dieser Kennung (`{amount, currency}`) oder null; `commits` trägt `nichtLesbar` und
+      `mehrAlsGrenze` für die Sätze unter der Gesamtdauer (R00251 FA 5, FA 9). */
+  function laufKopfHtml({ zustand, auswertung, kosten, commits }, esc) {
     const a = zustand === 'eintraege' ? auswertung : null;
     const leer = ohneWert(LESETEXT[zustand]);
     const feld = (name, wert, klasse = '') => `<div class="${klasse}"><dt>${name}</dt><dd>${wert}</dd></div>`;
@@ -1113,7 +1114,7 @@
     kennzahlen += feld('Kosten', kostenWert, kosten ? '' : 'ohne');
     const tokens = tokensKopf(zustand, a, kosten);
     kennzahlen += feld('Tokens', tokens.html, tokens.klasse);
-    return `<div class="lv-aw"><div class="lv-gd"><span class="k">Gesamtdauer</span>${a ? dauerKopfHtml(a) : `<span class="w">${leer}</span>`}</div><dl class="lv-kz">${kennzahlen}</dl></div>`;
+    return `<div class="lv-aw"><div class="lv-gd"><span class="k">Gesamtdauer</span>${a ? dauerKopfHtml(a) + commitSaetzeHtml(commits) : `<span class="w">${leer}</span>`}</div><dl class="lv-kz">${kennzahlen}</dl></div>`;
   }
 
   const GEZAEHLT = 'aus dem Transkript gezählt';
@@ -1140,6 +1141,17 @@
     const aufteilung = `<span class="auf">${teile.map(([name, ms]) => `${name} ${dauerText(ms)}`).join(' · ')}</span>`;
     if (a.grenze) return `<span class="w">mindestens ${dauerText(a.gesamt)}</span><span class="auf">gerechnet bis zur Grenze des Transkripts</span>${aufteilung}`;
     return `<span class="w">${dauerText(a.gesamt)}</span>${aufteilung}`;
+  }
+
+  const COMMITS_NICHT_LESBAR = 'Commits der Karte nicht lesbar';
+  const MEHR_ALS_GRENZE = 'Mehr als 1.000 Commits im Lauf, markiert sind die ersten 1.000.';
+  /** Die Sätze zu den Commit-Markern unter der Aufteilung (PO Z. 660, 690): gedämpft, ohne Ansage, je eine Zeile. */
+  function commitSaetzeHtml(commits) {
+    if (!commits) return '';
+    let html = '';
+    if (commits.nichtLesbar) html += `<span class="lv-cn">${COMMITS_NICHT_LESBAR}</span>`;
+    if (commits.mehrAlsGrenze) html += `<span class="lv-cn">${MEHR_ALS_GRENZE}</span>`;
+    return html;
   }
 
   function ergebnisHtml(bericht) {
