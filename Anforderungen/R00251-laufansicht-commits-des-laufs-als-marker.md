@@ -1,0 +1,185 @@
+---
+id: R00251
+status: Neu
+datum: 2026-11-23
+---
+
+# R00251: Laufansicht — Commits des Laufs als Marker an ihrer Stelle, Link ins Diff
+
+## Beschreibung
+
+Karte #269, Auftrag des Betreibers vom 2026-11-23 (wörtlich auf der Karte): „Kann man in der Anzeige des Transkripts, wenn git commits gemacht werden, diese ebenfalls referenzieren, so dass man da gleich ins Diff springen könnte?“ Technik [ADR-0041](../Dokumentation/ADRs/0041-laufansicht-gzip-im-strom-mit-grenze-einmal-zeichnen-als-insel.md) Nachtrag N7, Punkte 1–9; Produkt `AI-Team/po-entscheidungen.md` Z. 645 (Zuschnitt Scheibe 1), 658 (Wortlaut „Commit nicht an der Karte“), 659 (Commits früherer Phasen nicht in #269), 660 (Satz im Kopf), 662 (Nachzeichnung), 664 (Freigabe D0009 `#laufansicht` Bild 15 mit Änderung: Strich-Knöpfe mindestens `--kd-ziel` hoch, Satz unter der Gesamtdauer).
+
+Wer einen Lauf liest, sieht danach jeden Commit, den die Rolle in diesem Lauf gemacht hat, als eigene Zeile unmittelbar nach dem Schritt, der ihn erzeugte, und als Strich in der Zeitachse. Steht der Commit an der Karte, ist die Zeile ein Link auf die Review-Seite „Ein Commit“ dieses Commits; „Schließen“ führt zurück in die Laufansicht. Steht er nicht an der Karte (frühere Phase, Repository fehlt), sagt die Zeile das in Worten, ohne Link. Die Zuordnung läuft über Titel und Autordatum im Zeitfenster des Aufrufs, nie über den Hash aus dem Transkript: der Hash im Transkript ist der des Worktrees und stimmt nach dem Rebase der Merge-Wache nicht mehr.
+
+Zahlt ein auf: [Vision](R00000-vision.md) — „Die Arbeit hinter der Karte nachvollziehen“ (Z. 110): Commits und Läufe sind zwei Seiten derselben Spur; der Marker verbindet beide, nur lesend (Nicht-Ziel „Kein Git-Client“ bleibt gewahrt).
+
+### Domänenbezug
+
+- [Aufgabenfenster](../Dokumentation/Domaenenwissen/D00001-aufgabenfenster.md) (Ansicht „Läufe“, von dort „Ansehen“; Ansicht „Commits“)
+- [Live-Ereignis](../Dokumentation/Domaenenwissen/D00005-live-ereignis.md) (ersetzt die Insel der Einträge nicht)
+
+## Geschäftlicher Nutzen
+
+Gezählt in ADR-0041 N7 „Belegt“ (5 Karten, alle Transkripte): 89 Aufrufe mit `git … commit`, davon 86 mit `-q`, also ohne Ausgabezeile; 53 von 53 Kartencommits mit Transkript liegen mit ihrem Autordatum im Fenster ihres Aufrufs, und ihr Titelanfang steht im Befehl. Heute muss der Leser den Titel aus dem Befehl abschreiben und in der Ansicht „Commits“ suchen; danach ist der Diff einen Klick entfernt, an der Stelle, an der er entstand.
+
+## Funktionale Anforderungen
+
+1. **Zuordnung** (N7 Punkt 2): Gerechnet wird je Schritt mit `name` `Bash`, dessen Aufruf und Ergebnis eine gültige `zeit` tragen. Fenster: `floor(zeit Aufruf) ≤ autordatum ≤ floor(zeit Ergebnis) + 1` in Sekunden; ein Aufruf ohne Ergebnis hat das Fenster bis zur `zeit` des nächsten Eintrags mit Zeit. Ein Commit der Karte ist einem Schritt **zugeordnet**, wenn sein Autordatum im Fenster liegt **und** die ersten `min(60, Länge)` Zeichen seines Titels (roh) als Teilstring im Befehl stehen (`command` des JSON, sonst der Text; Befehle über 64 KiB werden nicht durchsucht). Ohne Titel-Treffer gilt er nur, wenn genau ein Commit im Fenster liegt, genau ein Schritt mit dem Wort `commit` im Befehl dieses Fenster hat und der Commit keinem anderen Schritt zugeordnet ist. Ein Commit gehört höchstens einem Schritt (Titel-Treffer vor Rückfall, bei Gleichstand der frühere Schritt); mehrere Commits eines Schritts stehen nach Autordatum, bei gleicher Sekunde nach der Stelle des Titels im Befehl, sonst nach der Reihenfolge der Karte.
+2. **Ohne Treffer kein Link**: Hook-Abbruch (kein Commit), `--amend`, `-C`, `cherry-pick`, `rebase` (Autordatum außerhalb des Fensters) bekommen keinen Marker aus der Karte.
+3. **Text-Marker aus der Belegzeile** (N7 Punkt 3, Z. 658): Ein Schritt ohne Zuordnung bekommt einen Text-Marker, wenn sein Ergebnis eine Zeile `[<zweig> <hex7–40>] <titel>` oder `<hex7–12> <titel>` trägt und dieser Titel (mindestens 12 Zeichen) im Befehl steht. Er zeigt Kurzhash (nur wenn `^[0-9a-f]{7,40}$`, sonst ohne Hash), Titel und den Satz „Commit nicht an der Karte“; er ist nie ein Link.
+4. **Daten** (N7 Punkt 4): `GET /api/aufgaben/{nr}/commits` trägt je Eintrag mit `zustand` `auf_zweig` oder `verwaist` zusätzlich `autordatum` (Epoch-Sekunden, ganze Zahl); bei den übrigen Zuständen fehlt das Feld. Kein neuer Git-Aufruf, kein neues Datenformat in der Karte.
+5. **Anfrage und Kopf** (N7 Punkt 4, Z. 660, 664 (b)): Die Laufansicht fragt `GET …/commits` zugleich mit dem Transkript und zeichnet einmal, wenn beide da sind, die Commits scheiterten oder die Antwort 2 s überschritt; dann ohne Zuordnung, Text-Marker bleiben, eine spätere Antwort wird verworfen. Scheitert die Anfrage oder überschreitet sie die Frist, steht im Kopf unter „Werkzeuge … · Denken …“ in der Kachel Gesamtdauer der Satz „Commits der Karte nicht lesbar“, gedämpft, ohne Fehlerrot, ohne `role` und ohne `aria-live`. Der Lauf ist kein Fehlerbild. Ein Wechsel der Kennung und das Verlassen brechen beide Anfragen ab.
+6. **Marker-Zeile und Link** (N7 Punkt 5, 6; Z. 645 (2)): Die Marker-Zeile steht unmittelbar nach der Schrittzeile, nicht in deren aufgeklappten Teilen, und ist bei jedem Filter sichtbar. Link-Fassung: das Wort „Commit“, Kurzhash (`hash.slice(0, 7)` des Karteneintrags) und Titel aus der Karte, ein echtes `<a href>` auf „Ein Commit“, gebildet nur über `reviewAdresseBilden` mit dem **Verweis der Karte**, nur bei `zustand` `auf_zweig` oder `verwaist` und `verweis` nach `VERWEIS_FORM`. Linksklick öffnet wie `reviewOeffnen` (ein Verlaufseintrag), Strg- und Mittelklick eine neue Registerkarte. „Schließen“ der Review-Seite führt zurück in die Laufansicht, wenn sie von dort geöffnet wurde.
+7. **Zeitachse** (N7 Punkt 6, Z. 664 (a)): Je Stelle ein Strich über den Fächern an der kumulierten Dauer bis zum Ergebnis des Schritts (derselbe Maßstab wie die Fächer), beschriftet mit dem Kurzhash; mehrere Marker an derselben Stelle werden ein Strich „<n> Commits“. Mehr als 100 Striche werden zu höchstens 100 verdichtet. Jeder Strich ist ein Knopf, der zur Marker-Zeile springt (`data-act`, `scrollIntoView`, Fokus; nie `href="#…"`), mit einer Zielfläche von mindestens `--kd-ziel` in der Höhe (`min-block-size`) auf jeder Breite; die Breite bleibt wie gezeichnet. Die Legende nennt „Commit“, der Lesetext der Zeitachse die Zahl der Commits.
+8. **Zustände** (N7 Punkt 7): `fehlt`, `repository_fehlt`, `anwendung_unbekannt`, `unlesbar` werden nie zugeordnet; höchstens ein Text-Marker nach FA 3 entsteht.
+9. **Grenzen** (N7 Punkt 8): höchstens 500 Commits der Karte (Grenze der Antwort, `HOECHSTZAHL_COMMITS`), höchstens 1.000 Marker je Lauf; darüber steht im Kopf ein Satz (Wortlaut Frage 1 an den product-owner). Konstanten in `web/lauf-commits.js`.
+
+## Nicht-funktionale Anforderungen
+
+- **Sicherheit** (Label `sicherheit`, N7 Q2, Review-Punkt `security-reviewer`): Befehl, Ergebnis, Belegzeile, Titel und Hash aus dem Transkript sind fremder Text. Aus dem Transkript fließt keine Zeichenkette in `href`, `title`, `data-*` oder eine Anfrage; der einzige Linkbau ist `reviewAdresseBilden` mit einem Wert aus `a.commits`. Text aus dem Transkript wird nur als Text gezeigt (`esc`, `sichtbarText`), nie ausgeführt.
+- **Leistung** (Label `leistung`, N7 Q4, Punkt 8, 9; Lehre „Grenzen, die Arbeit begrenzen“): Die Zuordnung sucht je Schritt das Fenster in der nach Autordatum sortierten Liste (O(log n)) und prüft nur dessen Treffer. Gate ist ein **Zähler** der Titelprüfungen (AK 10), nicht die Wanduhr. Beobachtung im Bericht des entwicklers (kein Gate): Zuordnung 5.000 Schritte × 500 Commits unter 50 ms; Zeichnen höchstens 300 ms nach der späteren der beiden Antworten für 30 Commits und den größten echten Lauf; Zeit von `GET …/commits` bei 30 Commits (heute 245 ms bei 16 Commits, Last 3,3, N7 „Belegt“). Stufe 2 (`?felder=zuordnung`) nur, wenn beide Schwellen nach N7 Punkt 9 überschritten sind; nicht in dieser Anforderung.
+- **Zugänglichkeit**: Marker und Striche tragen Text, nicht nur Farbe; Text ≥ 4,5 : 1, Strich mit Rand ≥ 3 : 1 (gemessen vom gestalter, `gemeinsam/scratchpad/ges-269/kontrast.txt`); der Satz im Kopf wird nicht angesagt.
+- **Architektur** (Review-Punkt `architektur-reviewer`): Zuordnung nur in `web/lauf-commits.js` (rein, Browser und Node, ohne DOM und `fetch`); `web/lauf.js` zeichnet nur; kein Weg, der den Hash des Transkripts in eine Adresse bringt.
+
+## Akzeptanzkriterien
+
+**Ausgangslage** (herstellbar über Git und die API wie in R00244: das Arbeits-Repository der Anwendung `kd` bekommt die Commits mit `GIT_AUTHOR_DATE` wie `e2e/tests/commits-hilfen.js`, die Verweise stehen an Aufgabe #1, die gz-Datei erzeugt der Test mit `zlib` und legt sie über `POST /api/aufgaben/1/transkripte` ab; Unit-Proben in Node). Mensch `sh`, Browser headless (Chromium) in `Europe/Berlin`, Board `fabrik` mit `record-transcripts: true`. Datum 2026-11-22 (der Server lehnt Zeitpunkte in der Zukunft ab). Alle Inhalte erfunden.
+
+**Commits** (Autordatum, Ort):
+
+| Name | Titel | Autordatum | an Aufgabe #1 |
+|---|---|---|---|
+| C1 | `[R00999] B0001: Zähler zuerst` | 11:00:13 | ja, nach Rebase als C1′ (neuer Hash, gleiches Autordatum) |
+| C2 | `[R00999] B0002: Zähler zeichnen` | 11:00:31 | ja |
+| C3 | `[R00999] B0003: Grenze prüfen` | 11:00:31 | ja |
+| C4 | `[DOC] Anforderung angelegt` | 11:00:40 | **nein** (frühere Phase), Hash `e5f6a7b` nur im Transkript |
+| C5a | `[R00999] B0004: Nacharbeit` | 11:01:05 | ja |
+| C5b | `[R00999] B0004: Nacharbeit` | 11:01:39 | ja |
+| C6 | `[R00999] B0006: von Hand` | 11:00:45 | ja (kein Aufruf im Lauf) |
+
+**T17** = `entwickler@2026-11-22T11:00+01:00` in Aufgabe #1 (alle Aufrufe `name` `Bash`, `command` im JSON):
+
+| Nr | art · Zeit | Inhalt |
+|---|---|---|
+| 1 | nachricht · 11:00:00 | „Projekt: /w/demo“ |
+| 2 | aufruf · 11:00:10.400 | `git add -A && git commit -q -m "[R00999] B0001: Zähler zuerst"` |
+| 3 | ergebnis · 11:00:12.900 | (leer) |
+| 4 | aufruf · 11:00:20 | `cargo test -q` |
+| 5 | ergebnis · 11:00:29 | `test result: ok` |
+| 6 | aufruf · 11:00:30.200 | `git commit -q -F - <<'EOF'`⏎`[R00999] B0002: Zähler zeichnen`⏎`EOF`⏎`git commit -q -m "[R00999] B0003: Grenze prüfen"` |
+| 7 | ergebnis · 11:00:31.600 | (leer) |
+| 8 | aufruf · 11:00:40 | `git commit -q -m "[DOC] Anforderung angelegt" && git log --oneline -1` |
+| 9 | ergebnis · 11:00:41 | `e5f6a7b [DOC] Anforderung angelegt` |
+| 10 | aufruf · 11:00:50 | `git commit -q --amend --no-edit` |
+| 11 | ergebnis · 11:00:51 | (leer) |
+| 12 | aufruf · 11:01:04.500 | `git commit -q -m "[R00999] B0004: Nacharbeit"` |
+| 13 | ergebnis · 11:01:05.300 | (leer) |
+| 14 | aufruf · 11:01:39.800 | `git commit -q -m "[R00999] B0004: Nacharbeit"` |
+| 15 | ergebnis · 11:01:40.200 | (leer) |
+| 16 | aufruf · 11:01:50 | `git commit -m "[R00999] B0005: Hook bricht ab"` |
+| 17 | ergebnis · 11:01:52 | „Exit code 1“⏎„pre-commit hook exited with code 1“ |
+| 18 | nachricht · 11:02:00 | „Ergebnis: bestanden“ |
+
+Zählen in den Proben: Marker = Zeile `.lv-cm`; Strich = Knopf in der Zeitachse.
+
+### Zuordnung
+
+- [ ] **AK 1 Marker an ihrer Stelle, auch mit `-q`, Rechenbeispiel:** Gegeben T17 und die Commits oben, wenn `sh` den Lauf öffnet, dann stehen genau sechs Marker: nach Schritt 2/3 C1′; nach Schritt 6/7 erst C2, dann C3 (gleiche Sekunde, Reihenfolge nach der Stelle des Titels im Befehl); nach 8/9 der Text-Marker zu C4 (AK 5); nach 12/13 C5a; nach 14/15 C5b. Jeder Marker steht unmittelbar nach seiner Schrittzeile, nicht in ihrem aufgeklappten Teil, auch wenn der Schritt aufgeklappt ist. Schritt 4/5, 10/11 (`--amend`), 16/17 (Hook-Abbruch) haben keinen Marker; C6 hat keinen. Rechenbeispiel Fenster: Schritt 2/3 → `floor(10,4) = 10` bis `floor(12,9) + 1 = 13`, C1 (13) liegt darin, 14 läge außerhalb; Schritt 14/15 → 39 bis 41, C5b (39) liegt darin, 38 läge außerhalb.
+- [ ] **AK 2 Gleiche Titel, Parallelfenster, Rückfall:** Gegeben T17, dann gehört C5a zu Schritt 12/13 und C5b zu 14/15, obwohl beide denselben Titel tragen (das Fenster trennt sie); kein Commit erscheint zweimal. Unit am Modul: zwei überlappende Aufrufe mit je einem Titel ordnen jedem seinen Commit zu; zwei überlappende Aufrufe ohne Titel-Treffer und mit zwei Commits im Fenster ergeben keinen Marker; ein Aufruf, dessen Titel `"`, `$` oder einen Backtick maskiert trägt, bekommt seinen Commit nur, wenn er allein im Fenster liegt und der einzige Schritt mit `commit` darin ist; ein Schritt ohne `name`, ein Nicht-Bash-Schritt, ein Eintrag ohne `zeit` ergeben keinen Marker; ein Aufruf ohne Ergebnis hat das Fenster bis zur nächsten `zeit`.
+- [ ] **AK 3 Nach dem Rebase der Merge-Wache:** Gegeben C1 wurde auf einen neuen Stand von `main` rebasiert (C1′: neuer Hash, neues Commit-Datum, gleiches Autordatum) und die Karte trägt nur C1′, wenn `sh` den Lauf öffnet, dann zeigt der Marker nach Schritt 2/3 Kurzhash und Link von C1′. Am Server: `GET /api/aufgaben/1/commits` trägt für C1′ `autordatum` `1795341613` (= 2026-11-22T11:00:13+01:00), gleich dem Wert von C1 vor dem Rebase, als ganze Zahl; ein Verweis mit `zustand` `fehlt` hat kein Feld `autordatum` (nicht `null`); alle übrigen Felder sind gleich wie vorher.
+
+### Marker und Link
+
+- [ ] **AK 4 Link führt ins Diff und zurück:** Gegeben der Marker zu C2, dann ist er ein `<a href>`, dessen `href` genau `reviewAdresseBilden({basis, slug: 'fabrik', nummer: 1, commit: <Verweis von C2 an der Karte>})` ist, sein Text „Commit“, die ersten 7 Zeichen des Hashes aus der Karte und der Titel aus der Karte. Wenn `sh` ihn mit einfachem Linksklick öffnet, zeigt die Review-Seite „Ein Commit“ mit C2; „Schließen“ führt zurück in die Laufansicht desselben Laufs. Strg-Klick öffnet eine neue Registerkarte, die Laufansicht bleibt.
+- [ ] **AK 5 Text, wenn der Commit nicht an der Karte steht:** Gegeben Schritt 8/9, dann steht der Marker „e5f6a7b [DOC] Anforderung angelegt“ mit dem Satz „Commit nicht an der Karte“, ohne `<a>`, ohne Hover. Gegeben dieselbe Ausgangslage, aber das Repository der Anwendung ist gelöscht (alle Verweise `repository_fehlt`), dann steht nur dieser eine Text-Marker, die übrigen Schritte haben keinen, und der Lauf steht ohne Fehlerbild. Ein Ergebnis `abc1234 kurz` (Titel unter 12 Zeichen) oder eine Belegzeile, deren Titel nicht im Befehl steht, ergibt keinen Marker.
+- [ ] **AK 6 Satz im Kopf, Frist, Abbruch:** Gegeben T17, wenn `GET …/commits` mit 500 antwortet, dann steht der Lauf vollständig, nur mit dem Text-Marker zu C4, und unter der Aufteilung der Gesamtdauer steht „Commits der Karte nicht lesbar“ in `--kd-muted`, ohne `role` und ohne `aria-live`, keine Fehlermeldung sonst. Antwortet `GET …/commits` erst nach 2,5 s, ist der Lauf vorher gezeichnet (ereignisgenau gemessen: Zeichnen spätestens nach Ablauf der Frist von 2 s), mit demselben Satz, und die späte Antwort ändert nichts. Antwortet es nach 0,5 s, stehen alle sechs Marker und kein Satz. Wechselt `sh` die Kennung, während beide Anfragen laufen, werden beide abgebrochen (Abbruchsignal gesetzt) und nichts vom alten Lauf wird gezeichnet.
+
+### Zeitachse
+
+- [ ] **AK 7 Striche, Verdichtung, Sprung, Filter:** Gegeben T17, dann trägt die Zeitachse fünf Striche: an den Stellen der Ergebnisse 3, 9, 13, 15 je mit Kurzhash und an der Stelle von 7 einer mit „2 Commits“. Lage, Rechenbeispiel: hat ein Lauf 100 s kumulierte Dauer und liegt das Ergebnis bei 25 s, steht der Strich bei 25 % der Breite des Balkens (±1 px). Ein Lauf mit 150 Commit-Schritten an verschiedenen Stellen hat höchstens 100 Striche. Klickt `sh` auf „2 Commits“, liegt die Marker-Zeile von C2 im Blick und hat den Fokus; die Adresse ändert sich nicht. Die Legende nennt „Commit“, der Lesetext der Zeitachse nennt „6 Commits“. Mit jedem Filter (auch „nur Fehler“) bleiben alle Marker und Striche sichtbar.
+- [ ] **AK 8 Bedienbar auf jeder Breite:** Gegeben T17 bei 320 px mit grobem Zeiger und bei 1280 px, hell und dunkel, dann hat jeder Strich-Knopf und jeder Link-Marker eine Höhe der Zielfläche von mindestens `--kd-ziel` (`getBoundingClientRect`); Text der Marker ≥ 4,5 : 1, Strich mit Rand ≥ 3 : 1 zum Grund; bei 1280 px kürzt ein Titel über die Zeilenbreite mit „…“ (voller Titel im Text des Links für den Lesetext), bei 320 px bricht er um, und die Seite scrollt nicht quer.
+
+### Sicherheit und Leistung
+
+- [ ] **AK 9 Fremder Text bleibt Text:** Gegeben ein Lauf, in dem Befehl, Belegzeile und Ergebnis `"><img src=x onerror=alert(1)>`, `javascript:alert(1)` und U+202E enthalten, und ein Commit der Karte, dessen Titel `<b>x</b>` enthält, dann entsteht kein Element außer den erwarteten, kein `alert`, jedes `href` eines Markers ist genau die Adresse aus `reviewAdresseBilden` mit dem Verweis der Karte, und kein `href`, `title`, `data-*` und keine Anfrage enthält eine Zeichenkette aus dem Transkript; U+202E steht als sichtbare Marke. Eine Belegzeile `ABC1234X [DOC] Anforderung angelegt` (kein Hex) ergibt einen Text-Marker ohne Hash. Ein Karteneintrag mit `zustand` `fehlt` oder einem Verweis außerhalb von `VERWEIS_FORM` (`../x`, Leerzeichen) ergibt nie einen Link.
+- [ ] **AK 10 Grenzen und Zähler:** Gegeben 5.000 Bash-Schritte und 500 Commits der Karte, davon je Schritt höchstens 2 im Fenster, dann prüft die Zuordnung höchstens so viele Titel, wie Paare (Schritt, Commit im Fenster) bestehen (Zähler am einzigen Prüfort, gezählt in der Unit-Probe), höchstens 10.000; ein Befehl über 64 KiB wird nicht durchsucht (Zähler 0 für ihn). Gegeben 1.200 zuordenbare Commit-Schritte (Unit, 500 Commits der Karte und 700 Belegzeilen), dann entstehen genau 1.000 Marker und der Kopf trägt den Satz der Grenze. Rechenbeispiel Zähler: 3 Schritte mit 0, 1, 2 Commits im Fenster → 3 Titelprüfungen.
+
+Grenz- und Leerfälle, bedacht: Lauf ohne Commit-Aufruf (keine Marker, kein Strich, Lesetext ohne Commits, keine Legende „Commit“ nötig — Frage 2), Karte ohne Commits (Anfrage liefert `[]`, Text-Marker aus Belegzeilen bleiben, kein Satz im Kopf), Lauf ohne Zeitachse (FA 4 von R00239: Marker-Zeilen ja, Striche nein), Lauf an der Lesegrenze (nur die gelesenen Schritte werden zugeordnet), Live-Ereignis bei offener Laufansicht (Insel samt Markern bleibt stehen, `el.__probe`). Verworfen: Hash des Transkripts als Schlüssel (Z1), Zweig `karte/<nr>` (Z2), Trailer (Z3) — N7 Optionen.
+
+## Betroffene Verzeichnisstruktur
+
+- `web/lauf-commits.js` (neu): `commitMarker(schritte, karte)`, Belegzeile, Grenzen.
+- `web/lauf.js`: `schrittHtml` (Marker-Zeile), `laufZeitachseHtml`, `LEGENDE`, Lesetext, `laufKopfHtml` (Satz); `web/app.js`: `laufLesen`, `transkriptLesen` (zweite Anfrage, Frist, Abbruch), Marke `REVIEW_AUS_DER_LISTE` mit Herkunft; `web/index.html` (Skript einbinden); `web/kd-app.css` nur mit Tokens.
+- `src/modell/commit_eintrag.rs`, `src/dienst/commits_lesen.rs`, `src/web/openapi.rs`: Feld `autordatum`.
+- Tests: `e2e/einheit/lauf-commits.test.js`, `e2e/tests/laufansicht-t17.js` (Fixture), `e2e/tests/r00251-laufansicht-commit-marker.spec.js`, Rust-Test zu `autordatum`, `tests/openapi.rs`.
+
+## Technische Überlegungen
+
+### Ablauf (Vorplanung; welche Bubbles es am Ende werden, entscheidet der entwickler)
+
+1. **B1322** `autordatum` in der Antwort (Rust, parallel zu 2).
+2. **B1323** Zuordnung rein, mit T17 und Zähler.
+3. **B1324** Belegzeile, Text-Marker, Grenzen rein.
+4. **B1325** zweite Anfrage, Frist, Abbruch, Satz im Kopf.
+5. **B1326** Marker-Zeile, Link nur aus der Karte, Rückweg.
+6. **B1327** Striche, Verdichtung, Sprung, Lesetext.
+7. **B1328** Stil, Zielflächen, Kontrast, 320 px.
+8. **B1329** Probe im echten Programm, Sicherheit, Messprobe, Mutanten, Gate.
+
+### Grobentwurf
+
+- `commitMarker(schritte, karte)` → `Map<Schrittnummer, Marker[]>`, Marker `{art: 'link'|'text', verweis?, kurzhash?, titel, zeit}`; die Karte geht nach `autordatum` sortiert hinein.
+- `belegzeileLesen(ergebnis, befehl)` → `{hash?, titel}` oder null.
+- `COMMIT_GRENZEN = { commits: 500, marker: 1000, striche: 100, befehl: 65536, titel: 60 }`.
+
+### Hinweise
+
+- **Späte Antwort nach der Frist** wird verworfen (einmal zeichnen, ADR-0041 Punkt 4); N7 sagt das nicht wörtlich — Empfehlung des planers, Frage an den architekt nur, wenn der entwickler ein Nachzeichnen für nötig hält.
+- **Kennzahl „Commits“ im Kopf** (R00234, aus der Zeile `Commits:` des Berichts) bleibt unverändert; sie zählt, was die Rolle meldet, die Zeitachse zählt Marker (Frage 2).
+- Zuschnitt: an der Schwelle von acht Bubbles; erster Schnitt, wenn die Zählung wächst: Zeitachse (B1327) als Ausbaustufe.
+
+## Tests
+
+Nach `~/.claude/skills/test-pyramide/SKILL.md`, Test zuerst je Bubble.
+
+- **Unit (Node):** Zuordnung und Belegzeile mit den Fällen aus N7 „Durchsetzung“ und T17; Zähler (AK 10); Sicherheitsprobe rein (AK 9).
+- **Rust:** `autordatum` je Zustand, gleich nach Rebase, Antwortform sonst gleich; OpenAPI.
+- **E2E (Chromium, headless):** AK 1, 3–9 an T17, hell und dunkel, 320 und 1280 px; Fristprobe mit verzögert antwortender Route.
+- **Mutanten** (in eigener Kopie, je von einem benannten Test getötet): m1 `autordatum` aus dem Commit-Datum (AK 3); m2 Fenster ohne `+ 1` (AK 1, C1); m3 Fenster ohne `floor` unten (AK 1, C5b); m4 Titel-Treffer entfernt, nur Fenster (AK 2, Parallelfenster); m5 ein Commit mehreren Schritten (AK 2); m6 Hash der Belegzeile ohne Hex-Prüfung (AK 9); m7 Grenze 1.000 Marker fehlt (AK 10); m8 Fehler der Commits-Anfrage als Fehlerbild der Laufansicht (AK 6); m9 Hash des Transkripts im Link (AK 3, 9); m10 Titel aus dem Befehl statt aus der Karte im Marker (AK 4); m11 Filter „nur Fehler“ blendet Marker aus (AK 7); m12 keine Verdichtung an gleicher Stelle (AK 7); m13 lineare Suche über alle Commits je Schritt (AK 10, Zähler).
+- **Regression:** R00221, R00234, R00237–R00244 bleiben grün; ein Lauf ohne Marker ist byte-gleich zum Stand vorher (Legende nach Frage 2).
+
+## Abhängigkeiten
+
+- Abhängig von: [R00221](R00221-laufansicht-transkript-eines-agentenlaufs-lesen.md) (I0211), [R00239](R00239-laufansicht-zeitachse-filter-blaettern.md) (I0229, Zeitachse), [R00240](R00240-laufansicht-satz-der-eintraege.md) (I0230, `web/lauf-satz.js`, `sichtbarText`), [R00245](R00245-review-seite-commit-leiste-und-verdichteter-commit-kopf.md) (I0235, Review-Seite „Ein Commit“); alle grün. Zeichnung D0009 `#laufansicht` Bild 15 (freigegeben mit Änderung, Z. 664).
+- Blockiert: nichts.
+
+## Offene Fragen
+
+Keine, die den Bau aufhält; je Frage gilt bis zur Antwort die Empfehlung.
+
+- **Frage 1 (product-owner) — Wortlaut des Satzes über der Grenze von 1.000 Markern** (N7 Punkt 8 nennt keinen): Empfehlung „Mehr als 1.000 Commits im Lauf, markiert sind die ersten 1.000.“, gedämpft wie „Commits der Karte nicht lesbar“, an derselben Stelle.
+- **Frage 2 (product-owner) — Legende „Commit“ ohne Commits**: Empfehlung: die Legende nennt „Commit“ nur, wenn der Lauf mindestens einen Strich hat; so bleibt ein Lauf ohne Commits wie heute.
+
+## Manuelle Vorbereitungstätigkeiten
+
+- Keine. T17 und die Commits entstehen im Test.
+
+## Manuelle Nachbereitungstätigkeiten
+
+- Modell A00009 (Modul `web/lauf-commits.js`) und die API-Beschreibung (`autordatum`) nachführen (architekt, N7 Folgeaufgaben).
+
+## Warum löst diese Anforderung das Problem?
+
+Auslöser ist die Frage des Betreibers, ob er aus dem Transkript gleich ins Diff springen kann. Wirkungskette: eine Rolle committet mit `-q` → im Transkript steht nur der Befehl → Titel und Autordatum finden den Commit unter den Commits der Karte, auch nach dem Rebase der Wache → der Marker steht an der Stelle des Schritts und führt mit einem Klick auf „Ein Commit“ → wer den Lauf liest, sieht, was der Schritt geändert hat, ohne zu suchen. Wo der Commit nicht an der Karte steht, sagt der Text das ehrlich, statt einen toten oder falschen Link zu zeigen (Q1 „richtig oder still“).
+
+## Missing-Docs
+
+- Keine.
+
+## Notizen
+
+- Priorität: Mittel (verbindet #253 und #256; keine Funktion fällt aus; PO Z. 645: kein `vorrang`).
+- Quellen: Karte #269; ADR-0041 N7 (`e66cb07c`, nach Rebase `5cba9c01`); `AI-Team/po-entscheidungen.md` Z. 645, 658–664; D0009 `#laufansicht` Bild 15 (`3eb327b8`, nach Rebase `bb81b797`).
+- Nicht Teil (Z. 645, 659): Commits früherer Phasen als Link (Factory, Vorschlag an den Director), Commits ohne Transkript, `--amend`, `rebase`, `cherry-pick`, Diff-Vorschau, Sprung zurück an die Stelle im Lauf, eigener Filter für Commits, Stufe 2 `?felder=zuordnung`.
+- Entscheidungen des planers: eine Interaction mit acht Bubbles (eine Karte, ein Dialogstück, PO-Zuschnitt Z. 645); Gate der Leistung als Zähler statt Wanduhr (gemeinsames Gelerntes); späte Antwort verworfen (Hinweise).
