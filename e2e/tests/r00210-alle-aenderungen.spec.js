@@ -12,6 +12,11 @@ const AGENT = { 'X-KanbanD-Wer': 'cl' };
 /* ── Treiber: Adressen, Zähler, gehaltene und feste Antworten ── */
 const reviewAdresse = (k, nr, commit = null) => `${k.adresse}#/aufgaben/aufgabe/${nr}/review${commit == null ? '' : `?commit=${encodeURIComponent(commit)}`}`;
 const istDiff = (url, nr) => url.pathname === `/api/aufgaben/${nr}/diff`;
+// umgestellt mit R00245 (FA 1): der Umschalter „Alle Änderungen | Ein Commit“ ist der Leiste gewichen; „Ein Commit“ heißt jetzt ein
+// bestimmter Eintrag der Leiste, das Ziel „zuletzt gezeigter Commit“ entfällt (jeder Eintrag ist sein eigenes Ziel)
+const LEISTE = '#rv-ls';
+const eintragVon = verweis => `#rv-ls li > a[data-arg="${verweis}"]`;
+const ERSTER_COMMIT = '#rv-l1';
 
 /** Zählt die GET-Anfragen an `…/diff` der Seite in Reihenfolge (Suchteil) und die höchste Zahl gleichzeitig offener. */
 function zaehlen(page) {
@@ -199,6 +204,9 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await page.goto(reviewAdresse(k, 11));
     await expect(page.locator('#rv-summe')).toHaveText(/Anwendung langname lädt noch …$/);
     await page.locator('#rv-d0-0-1 .fs-k').evaluate(e => e.scrollIntoView({ block: 'start' }));
+    // R00245: erst messen, wenn die Blöcke mit `content-visibility: auto` nach dem Rollen gezeichnet sind (zwei Bilder) — sonst misst
+    // die Probe die Kante vor ihrer eigenen Verschiebung um die echte Höhe des ersten Schritts (Testseiten-Rennen, 19 px)
+    await page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
     const hoehe = () => page.locator('.rv-leiste').evaluate(e => e.getBoundingClientRect().height);
     const kante = () => page.locator('#rv-d0-0-1 .fs-k').evaluate(e => e.getBoundingClientRect().top);
     const [h0, k0] = [await hoehe(), await kante()];
@@ -217,12 +225,12 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await page.goto(reviewAdresse(k, 2));
     await page.locator('#rv-dk0-0').click();
     await expect(page.locator('#rv-dk0-0')).toHaveAttribute('aria-expanded', 'false');
-    await page.locator('#rv-u-commit').click();
+    await page.locator(ERSTER_COMMIT).click();
     await expect(page.locator('#rv-pos')).toBeVisible();
     await page.locator('#rv-u-alle').click();
     await expect(page.locator('#rv-dk0-0')).toHaveAttribute('aria-expanded', 'false');
     mitNeuer = true;
-    await page.locator('#rv-u-commit').click();
+    await page.locator(ERSTER_COMMIT).click();
     await expect(page.locator('#rv-pos')).toBeVisible();
     await page.locator('#rv-u-alle').click();
     await expect(page.locator('#rv-dk0-2')).toBeVisible();
@@ -276,22 +284,25 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('#rv-ansage')).toHaveText('Alle Änderungen der Aufgabe #2: 2 Dateien, 5 Zeilen hinzugefügt, 2 entfernt.');
   });
 
-  test('AK 15 (Tab-Folge der ganzen Seite): #12 — Rückweg, Umschalter, Alle einklappen, Hinweis-Verweise, Commit-Liste, Dateiliste, Dateien mit Code', async ({ page }) => {
+  test('AK 15 (Tab-Folge der ganzen Seite): #12 — Rückweg, Leiste, Alle einklappen, Hinweis-Verweise, Commit-Liste, Dateiliste, Dateien mit Code', async ({ page }) => {
     await page.goto(reviewAdresse(k, 12));
     await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
+    // umgestellt mit R00245 (FA 1, AK 3): statt „Alle Änderungen | Ein Commit“ stehen alle Einträge der Leiste in ihrer Reihenfolge
+    const leiste = await page.locator(`${LEISTE} li > a`).evaluateAll(as => as.map(a => a.id));
+    expect(leiste[0]).toBe('rv-u-alle');
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
     // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 16 + leiste.length; i++) {
       folge.push(await page.evaluate(() => { const e = document.activeElement; return e.closest('#review, #kopf') ? (e.id || e.className) : 'aus'; }));
       await page.keyboard.press('Tab');
     }
-    expect(folge).toEqual(['rv-rueckweg', 'rv-u-alle', 'rv-u-commit', 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'rv-pk0-0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'df-sc', 'aus']);
+    expect(folge).toEqual(['rv-rueckweg', ...leiste, 'rv-alle', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'rv-pk0-0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'df-sc', 'aus']);
   });
 
   /* ── AK 1 Adresse, Umschalter, Titel, Ansage ── */
 
-  test('AK 1: aus der Liste geöffnet — Adresse bleibt, Titel und Ansage in Worten, Umschalter ersetzt den Eintrag, Ziel ist der zuletzt gezeigte Commit', async ({ page }) => {
+  test('AK 1: aus der Liste geöffnet — Adresse bleibt, Titel und Ansage in Worten, die Leiste ersetzt den Eintrag (R00245 umgestellt)', async ({ page }) => {
     await page.goto(`${k.adresse}#/board/entwicklung/aufgabe/2`);
     await liveBereit(page);
     await reiter(page, 'Commits');
@@ -303,12 +314,12 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('#rv-u-alle')).toHaveAttribute('aria-current', 'page');
     await expect(page).toHaveTitle('Review #2 · Alle Änderungen — kanbanD');
     await expect(page.locator('#rv-ansage')).toHaveText('Alle Änderungen der Aufgabe #2: 2 Dateien, 5 Zeilen hinzugefügt, 2 entfernt.');
-    expect(await page.locator('#rv-u-alle, #rv-u-commit').evaluateAll(t => t.map(e => e.tagName + (e.hasAttribute('href') ? '[href]' : '')))).toEqual(['A[href]', 'A[href]']);
+    expect(await page.locator(`${LEISTE} li > a`).evaluateAll(t => t.map(e => e.tagName + (e.hasAttribute('href') ? '[href]' : '')))).toEqual(['A[href]', 'A[href]', 'A[href]']);
     const nachListe = laenge + 1;
-    await page.locator('#rv-u-commit').click();
+    await page.locator(eintragVon(`kd:${rep.k1}`)).click();
     await expect(page.locator('#rv-pos')).toHaveText('1 von 2');
     expect(decodeURIComponent(page.url())).toContain(`review?commit=kd:${rep.k1}`);
-    await expect(page.locator('#rv-u-commit')).toBeFocused();
+    await expect(page.locator(eintragVon(`kd:${rep.k1}`))).toBeFocused();
     await expect(page).toHaveTitle(`Review #2 · ${kurz(rep.k1)} — kanbanD`);
     await page.locator('#rv-vor').click();
     await expect(page.locator('#rv-pos')).toHaveText('2 von 2');
@@ -316,7 +327,8 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('#rv-a0')).toBeVisible();
     await expect(page.locator('#rv-u-alle')).toBeFocused();
     expect(page.url()).toMatch(/\/aufgabe\/2\/review$/);
-    expect(decodeURIComponent(await page.locator('#rv-u-commit').getAttribute('href'))).toContain(`review?commit=kd:${rep.k2}`);
+    // das Ziel „zuletzt gezeigter Commit“ entfällt (R00245 Notizen): K2 hat seinen eigenen Eintrag
+    expect(decodeURIComponent(await page.locator(eintragVon(`kd:${rep.k2}`)).getAttribute('href'))).toContain(`review?commit=kd:${rep.k2}`);
     expect(await page.evaluate(() => history.length)).toBe(nachListe);
     // ein Schrittkopf ersetzt den Eintrag ebenfalls (S4)
     await page.locator('#rv-a0 .fs-l').first().click();
@@ -326,11 +338,11 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.getByRole('dialog', { name: 'Aufgabe #2' })).toBeVisible();
   });
 
-  test('AK 1: Mittelklick auf „Ein Commit“ öffnet einen Tab, die Seite bleibt bei „Alle Änderungen“', async ({ page, context }) => {
+  test('AK 1: Mittelklick auf den ersten Commit der Leiste öffnet einen Tab, die Seite bleibt bei „Alle Änderungen“ (R00245 umgestellt)', async ({ page, context }) => {
     await page.goto(reviewAdresse(k, 2));
-    await expect(page.locator('#rv-u-commit[href]')).toBeVisible();
+    await expect(page.locator(`${ERSTER_COMMIT}[href]`)).toBeVisible();
     const neu = context.waitForEvent('page');
-    await page.locator('#rv-u-commit').click({ button: 'middle' });
+    await page.locator(ERSTER_COMMIT).click({ button: 'middle' });
     const tab = await neu;
     await tab.waitForLoadState();
     expect(decodeURIComponent(tab.url())).toContain(`review?commit=kd:${rep.k1}`);
@@ -338,7 +350,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await tab.close();
   });
 
-  test('AK 1 (S8): der Umschalter steht beim Laden der ersten Antwort und beim Seitenfehler; „Erneut versuchen“ liest genau einmal', async ({ page }) => {
+  test('AK 1 (S8): die Leiste steht beim Laden der ersten Antwort und beim Seitenfehler; „Erneut versuchen“ liest genau einmal', async ({ page }) => {
     const z = zaehlen(page);
     const h = await halten(page, url => istDiff(url, 2));
     await page.goto(reviewAdresse(k, 2));
@@ -435,12 +447,13 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
 
   /* ── AK 4 Leere und Fehler ── */
 
-  test('AK 4: #13 nichts einbezogen — „Keine Änderungen zu zeigen.“ mit dem Satz zum Gesamtbild, verwaist mit „einzeln ansehen“; „Ein Commit“ führt auf N1\'', async ({ page }) => {
+  test('AK 4: #13 nichts einbezogen — „Keine Änderungen zu zeigen.“ mit dem Satz zum Gesamtbild, verwaist mit „einzeln ansehen“; die Leiste führt auf N1\'', async ({ page }) => {
     await page.goto(reviewAdresse(k, 13));
     await expect(page.locator('#rv-a0 .rv-abs-leer')).toHaveText('Keine Änderungen zu zeigen. Kein Commit dieser Anwendung ist in das Gesamtbild einbezogen. Die Commits lassen sich einzeln ansehen.');
     await expect(page.locator('#rv-a0 .rv-hw').getByRole('link', { name: `Commit ${kurz(rep.n1s)} einzeln ansehen` })).toBeVisible();
-    await expect(page.locator('#rv-u-commit[href]')).toBeVisible();
-    expect(decodeURIComponent(await page.locator('#rv-u-commit').getAttribute('href'))).toContain(`review?commit=kd:${rep.n1s}`);
+    // umgestellt mit R00245: statt „Ein Commit“ führt der Eintrag von N1' der Leiste auf N1'
+    await expect(page.locator(`${eintragVon(`kd:${rep.n1s}`)}[href]`)).toBeVisible();
+    expect(decodeURIComponent(await page.locator(eintragVon(`kd:${rep.n1s}`)).getAttribute('href'))).toContain(`review?commit=kd:${rep.n1s}`);
   });
 
   test('AK 4: gemischt — verwaist und fehlt (#15) bzw. Merge und fehlt (feste Antwort): weiter der Satz zum Gesamtbild, nie „… keinen Diff.“', async ({ page }) => {
@@ -454,26 +467,25 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await expect(page.locator('#rv-a0 .rv-abs-leer')).toHaveText(`Keine Änderungen zu zeigen. ${EINBEZOGEN}`);
   });
 
-  test('AK 4: #14 ohne Verweise — „Keine Änderungen zu zeigen“ mit Satz und Rückweg, ohne Umschalter', async ({ page }) => {
+  test('AK 4: #14 ohne Verweise — „Keine Änderungen zu zeigen“ mit Satz und Rückweg, ohne Leiste', async ({ page }) => {
     await page.goto(reviewAdresse(k, 14));
     await expect(page.locator('.rv-meld')).toContainText('Keine Änderungen zu zeigen. An dieser Aufgabe sind keine Commit-Verweise hinterlegt.');
     await expect(page.getByRole('button', { name: 'Zurück zur Liste der Commits' })).toBeVisible();
-    await expect(page.locator('.umsch')).toHaveCount(0);
+    await expect(page.locator(LEISTE)).toHaveCount(0);
   });
 
-  test('AK 4: #6 keine Einträge mit Diff — „Ein Commit“ gedämpft ohne href und role, kein Tab-Stopp, nicht als Verweis im Baum; eingetippte Adresse wie R00207', async ({ page }) => {
+  test('AK 4: #6 keine Einträge mit Diff — die Leiste nur mit „Alle Änderungen“, kein weiterer Tab-Stopp, kein Commit als Verweis im Baum; eingetippte Adresse wie R00207 (R00245 umgestellt)', async ({ page }) => {
     await page.goto(reviewAdresse(k, 6));
     await expect(page.locator('#rv-a0 .rv-abs-leer')).toHaveText('Keine Änderungen zu zeigen. Zu den Verweisen dieser Anwendung gibt es keinen Diff.');
     await expect(page.locator('#rv-a0 .rv-aus')).toContainText('nicht mehr im Repository');
     await expect(page.locator('#rv-seite-hw')).toContainText('Anwendung unbekannt');
-    const teil = page.locator('#rv-u-commit');
-    await expect(teil).toHaveText('Ein Commit');
-    expect(await teil.evaluate(e => [e.tagName, e.hasAttribute('href'), e.getAttribute('role'), e.tabIndex])).toEqual(['SPAN', false, null, -1]);
+    // umgestellt mit R00245 (FA 7): statt eines gedämpften „Ein Commit“ steht in der Leiste nur „Alle Änderungen“ ohne Zahlen
+    await expect(page.locator(`${LEISTE} li > a`)).toHaveCount(1);
     await page.locator('#rv-u-alle').focus();
     await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => document.activeElement.id)).not.toBe('rv-u-commit');
-    const baum = await page.locator('.umsch').ariaSnapshot();
-    expect(baum).not.toMatch(/link "Ein Commit"/);
+    expect(await page.evaluate(() => Boolean(document.activeElement.closest('#rv-ls')))).toBe(false);
+    const baum = await page.locator(LEISTE).ariaSnapshot();
+    expect(baum).not.toMatch(/link "(Ein )?Commit/);
     await page.goto(reviewAdresse(k, 6, `kd:${rep.v2}`));
     // umgestellt mit R00224 FA 6: die Überschrift nennt den Verweis („Zu kd:<kurz> gibt es keinen Diff.“)
     await expect(page.locator('.rv-meld h2')).toHaveText(`Zu ${kurz(rep.v2)} gibt es keinen Diff.`);
@@ -684,7 +696,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     const wb = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'wb');
     await page.goto(reviewAdresse(k, 11));
     await expect(page.locator('#rv-a1 .zw')).toHaveText('lädt …');
-    await page.locator('#rv-u-commit').click();
+    await page.locator(ERSTER_COMMIT).click();
     await expect(page.locator('#rv-pos')).toBeVisible();
     await expect.poll(() => z.abgebrochen).toEqual(['?anwendung=wb']);
     const vorher = z.diff.filter(s => s === '').length;
@@ -709,7 +721,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     await page.goto(reviewAdresse(k, 2));
     await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
     for (let i = 0; i < 3; i++) {
-      await page.locator('#rv-u-commit').click();
+      await page.locator(ERSTER_COMMIT).click();
       await expect(page.locator('#rv-pos')).toBeVisible();
       await page.locator('#rv-u-alle').click();
       await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
@@ -761,28 +773,29 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
         }
       }
       if (breite === 320) {
-        const umsch = await page.locator('.umsch').evaluate(e => { const [a, b] = e.children; return a.getBoundingClientRect().top === b.getBoundingClientRect().top && e.getBoundingClientRect().right <= document.documentElement.clientWidth; });
-        expect(umsch).toBe(true);
+        // umgestellt mit R00245 (FA 10): unter 600 px stehen die Einträge der Leiste untereinander, keiner ragt aus der Breite
+        const leiste = await page.locator(LEISTE).evaluate(e => [...e.querySelectorAll('li > a')].every(a => a.getBoundingClientRect().right <= document.documentElement.clientWidth));
+        expect(leiste).toBe(true);
       }
     });
   }
 
-  test('AK 9: feiner Zeiger — Umschalter, Schrittköpfe, „einzeln ansehen“ und Verweise der Commit-Liste ≥ 24 × 24 px', async ({ page }) => {
+  test('AK 9: feiner Zeiger — Leiste, Schrittköpfe, „einzeln ansehen“ und Verweise der Commit-Liste ≥ 24 × 24 px', async ({ page }) => {
     await page.goto(reviewAdresse(k, 12));
     await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
-    const klein = await page.evaluate(() => [...document.querySelectorAll('.umsch > *, .rv-einzeln, .rv-cv, .fs-l')].map(e => { const r = e.getBoundingClientRect(); return [e.className || e.id, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 24 || h < 24));
+    const klein = await page.evaluate(() => [...document.querySelectorAll('#rv-ls li > a, .rv-einzeln, .rv-cv, .fs-l')].map(e => { const r = e.getBoundingClientRect(); return [e.className || e.id, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 24 || h < 24));
     expect(klein).toEqual([]);
     expect(await zieleMessen(page, { zeiger: 'fein', ansicht: 'Alle 12' })).toEqual([]);
   });
 
   test.describe('grober Zeiger', () => {
     test.use({ viewport: { width: 414, height: 900 }, isMobile: true, hasTouch: true });
-    test('AK 9: grober Zeiger — Umschalter, Schrittköpfe, „einzeln ansehen“ und Verweise der Commit-Liste ≥ 48 × 48 px', async ({ page }) => {
+    test('AK 9: grober Zeiger — Leiste, Schrittköpfe, „einzeln ansehen“ und Verweise der Commit-Liste ≥ 48 × 48 px', async ({ page }) => {
       for (const nr of [2, 12]) {
         await page.goto(reviewAdresse(k, nr));
         await aufklapperOeffnen(page);
         await expect(page.locator('#rv-a0 .rv-cl')).toBeVisible();
-        const klein = await page.evaluate(() => [...document.querySelectorAll('.umsch > a, .rv-einzeln, .rv-cv, .fs-l')].map(e => { const r = e.getBoundingClientRect(); return [e.className || e.id, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 48 || h < 48));
+        const klein = await page.evaluate(() => [...document.querySelectorAll('#rv-ls li > a, .rv-einzeln, .rv-cv, .fs-l')].map(e => { const r = e.getBoundingClientRect(); return [e.className || e.id, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 48 || h < 48));
         expect(klein).toEqual([]);
         expect(await zieleMessen(page, { zeiger: 'touch', ansicht: `Alle ${nr} 414` })).toEqual([]);
       }
@@ -790,7 +803,7 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
   });
 
   for (const farbe of ['light', 'dark']) {
-    test(`AK 9: Kontrast ${farbe} — Umschalter in Ruhe, Hover, Fokus, gewählt, gewählt + Hover; Verweise in Ruhe und Hover; lädt, wartet, Hinweise, Fehler amber und rot`, async ({ page }) => {
+    test(`AK 9: Kontrast ${farbe} — Leiste in Ruhe, Hover, Fokus, gewählt, gewählt + Hover; Verweise in Ruhe und Hover; lädt, wartet, Hinweise, Fehler amber und rot`, async ({ page }) => {
       const wb = await halten(page, url => istDiff(url, 11) && url.searchParams.get('anwendung') === 'wb');
       await page.goto(reviewAdresse(k, 11));
       await thema(page, farbe);
@@ -809,19 +822,19 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
       };
       await textPruefen('lädt und wartet');
       await symbolePruefen('lädt und wartet');
-      await randPruefen('.umsch', 'Umschalter');
-      // Rand ist --kd-muted, eine andere .seg der Anwendung behält ihren
-      const [umschRand, muted, segRand, segBasis] = await page.evaluate(() => {
+      // umgestellt mit R00245 (FA 5, PO Z. 542): der Rand der Einträge der Leiste ist --kd-muted, eine .seg der Anwendung behält ihren
+      await randPruefen(ERSTER_COMMIT, 'Leiste');
+      const [leistenRand, muted, segRand, segBasis] = await page.evaluate(() => {
         const probe = (stil, klasse = '') => { const p = document.createElement('div'); if (klasse) p.className = klasse; Object.assign(p.style, stil); document.body.append(p); const f = getComputedStyle(p).borderTopColor; const c = getComputedStyle(p).color; p.remove(); return [f, c]; };
         const seg = probe({}, 'seg');
         const basis = probe({ border: '1px solid var(--kd-line-strong)' });
-        return [getComputedStyle(document.querySelector('.umsch')).borderTopColor, probe({ color: 'var(--kd-muted)' })[1], seg[0], basis[0]];
+        return [getComputedStyle(document.querySelector('#rv-l1')).borderTopColor, probe({ color: 'var(--kd-muted)' })[1], seg[0], basis[0]];
       });
-      expect(umschRand).toBe(muted);
+      expect(leistenRand).toBe(muted);
       expect(segRand).toBe(segBasis);
-      for (const [zustand, handlung] of [['Hover', () => page.locator('#rv-u-commit').hover()], ['gewählt + Hover', () => page.locator('#rv-u-alle').hover()], ['Fokus', () => page.locator('#rv-u-commit').focus()]]) {
+      for (const [zustand, handlung] of [['Hover', () => page.locator(ERSTER_COMMIT).hover()], ['gewählt + Hover', () => page.locator('#rv-u-alle').hover()], ['Fokus', () => page.locator(ERSTER_COMMIT).focus()]]) {
         await handlung();
-        await textPruefen(`Umschalter ${zustand}`);
+        await textPruefen(`Leiste ${zustand}`);
       }
       wb.frei(0, { status: 503, body: { fehler: 'Antwortbudget von 64 MB belegt' } });
       await expect(page.locator('#rv-a1 .rv-abs-f.warn')).toBeVisible();
@@ -834,10 +847,10 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
         const [tinte, hover] = await page.locator(sel).first().evaluate(e => [getComputedStyle(e).color, (() => { const p = document.createElement('p'); p.style.color = 'var(--kd-link-hover)'; document.body.append(p); const f = getComputedStyle(p).color; p.remove(); return f; })()]);
         if (tinte === hover && farbe === 'light') fehler.push(`Hover ${sel}: Farbe aus a:hover`);
       }
-      // Fokusring des Umschalters ≥ 3:1
-      await page.locator('#rv-u-commit').focus();
-      const [ring, grund] = await page.locator('#rv-u-commit').evaluate(e => { const s = getComputedStyle(e); return [s.outlineColor, getComputedStyle(e.closest('.rv-leiste')).backgroundColor]; });
-      if ((await kontrastFarben(page, ring, grund)) < 3) fehler.push('Fokusring Umschalter');
+      // Fokusring eines Eintrags der Leiste ≥ 3:1
+      await page.locator(ERSTER_COMMIT).focus();
+      const [ring, grund] = await page.locator(ERSTER_COMMIT).evaluate(e => { const s = getComputedStyle(e); return [s.outlineColor, getComputedStyle(e.closest('.rv-ls')).backgroundColor]; });
+      if ((await kontrastFarben(page, ring, grund)) < 3) fehler.push('Fokusring Leiste');
       await page.goto(reviewAdresse(k, 12));
       await thema(page, farbe);
       await expect(page.locator('#rv-a0 .rv-hw')).toBeVisible();
@@ -850,17 +863,19 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
 
   /* ── AK 10 Tastatur, Fokus, Ansage ── */
 
-  test('AK 10: Tabulatorfolge Rückweg, Umschalter, Alle einklappen, dann je Abschnitt Hinweis-Verweise, Commit-Liste, Dateien; Fokus bleibt bei Ankunft', async ({ page }) => {
+  test('AK 10: Tabulatorfolge Rückweg, Leiste, Alle einklappen, dann je Abschnitt Hinweis-Verweise, Commit-Liste, Dateien; Fokus bleibt bei Ankunft', async ({ page }) => {
     await page.goto(reviewAdresse(k, 11));
     await expect(page.locator('#rv-a2 .rv-cl')).toBeVisible();
+    // umgestellt mit R00245 (AK 3): statt „Alle Änderungen | Ein Commit“ folgen alle Einträge der Leiste in ihrer Reihenfolge
+    const leiste = await page.locator(`${LEISTE} li > a`).evaluateAll(as => as.map(a => a.id));
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6 + leiste.length; i++) {
       folge.push(await page.evaluate(() => { const e = document.activeElement; return e.id || e.className || e.tagName; }));
       await page.keyboard.press('Tab');
     }
-    expect(folge.slice(0, 4)).toEqual(['rv-rueckweg', 'rv-u-alle', 'rv-u-commit', 'rv-alle']);
-    expect(folge[4]).toBe('rv-cv');
+    expect(folge.slice(0, 2 + leiste.length)).toEqual(['rv-rueckweg', ...leiste, 'rv-alle']);
+    expect(folge[2 + leiste.length]).toBe('rv-cv');
   });
 
   test('AK 10: Fokus auf einem Schrittkopf von kd bleibt, während wb und xx ankommen; „Nachladen“ an einer wartenden Datei → Fokus auf ihrem Kopf, nie body', async ({ page }) => {

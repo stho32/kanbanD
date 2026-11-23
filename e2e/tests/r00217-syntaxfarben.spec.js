@@ -116,8 +116,9 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     await page.goto(reviewAdresse(k, 2));
     for (const ansicht of ['Alle Änderungen', 'Ein Commit']) {
       if (ansicht === 'Ein Commit') {
-        await page.locator('#rv-u-commit').click();
-        await expect(page.locator('#rv-u-commit')).toHaveAttribute('aria-current', 'page');
+        // umgestellt mit R00245 (FA 1): „Ein Commit“ ist der erste Commit der Leiste
+        await page.locator('#rv-l1').click();
+        await expect(page.locator('#rv-l1')).toHaveAttribute('aria-current', 'page');
       }
       expect(await aufklappenUndWarten(page, 'src/main.rs'), ansicht).toBe('ja');
       const z = await rollenJeZeile(page, 'src/main.rs');

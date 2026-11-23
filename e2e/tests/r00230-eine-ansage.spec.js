@@ -168,7 +168,8 @@ test.describe('R00230 Ein gescheiterter Abschnitt, eine Ansage', () => {
     await page.goto(reviewAdresse(k, 11));
     await expect.poll(() => h.angehalten()).toBe(1);
     await expect(page.locator('.rv-laedt')).toHaveText('Liest die Änderungen der Aufgabe …');
-    await expect(page.locator('#rv-u-commit')).toHaveAttribute('href', /commit=/);
+    // umgestellt mit R00245 (FA 1): die Liste ist da, wenn der erste Commit der Leiste steht
+    await expect(page.locator('#rv-l1')).toHaveAttribute('href', /commit=/);
     h.frei(0, 'weiter');
     await expect(page.locator('#rv-ansage')).toHaveText(/^Alle Änderungen der Aufgabe #11: /);
     const seite = (await zaehler.eintraege()).filter(e => e.text.startsWith('Liest die Änderungen der Aufgabe'));

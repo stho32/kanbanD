@@ -120,13 +120,79 @@ test('R00230 AK 2: jede Fehlerform eines Abschnitts (Antwortbudget, 404 reposito
   }
 });
 
-test('Umschalter: zwei Verweise, der gezeigte mit aria-current; ohne Ziel „Ein Commit“ ohne href, ohne role, ohne tabindex', () => {
-  const mit = g.umschalterHtml({ ansicht: 'alle', alleHref: '#/a/review', commitHref: '#/a/review?commit=kd%3A1', commitZiel: 'kd:1' }, esc);
-  assert.match(mit, /<a href="#\/a\/review" id="rv-u-alle" data-act="review-alle-zeigen" aria-current="page">Alle Änderungen<\/a>/);
-  assert.match(mit, /<a href="#\/a\/review\?commit=kd%3A1" id="rv-u-commit" data-act="review-umschalten" data-arg="kd:1">Ein Commit<\/a>/);
-  const ohne = g.umschalterHtml({ ansicht: 'alle', alleHref: '#/a/review', commitHref: null }, esc);
-  assert.match(ohne, /<span class="umsch-aus" id="rv-u-commit">Ein Commit<\/span>/);
-  assert.doesNotMatch(ohne, /role=|tabindex|href="[^"]*commit/);
+/* ── R00245 B1281: die Commit-Leiste ersetzt den Umschalter (umgestellt: der Umschalter entfällt, R00245 FA 1) ── */
+
+const u = require('../../web/review-uebersicht.js');
+const listenEintrag = (c, zustand, plus, minus, titel, zeit = '03:19') => ({ verweis: v(c), anwendung: 'kd', hash: hash(c), zustand, titel, datum: `2026-11-22T${zeit}:00+01:00`, plus, minus });
+const K_LEISTE = [listenEintrag('a', 'auf_zweig', 302, 7, '[R00229] B1187: Sperrform je Komponente'), listenEintrag('b', 'auf_zweig', 14, 12, 'Zwei', '03:31'), listenEintrag('c', 'auf_zweig', 2, 1, '[DOC] R00229 AK 5: Fokusring', '04:34')];
+const leiste = (liste, gezeigt, ansage = '') => g.leisteHtml({ liste, gezeigt, alleHref: '#/a/review', adresse: ctx.adresse, ansage }, esc);
+const folgeDa = eintraege => ({ status: 'da', folge: u.leistenFolge(eintraege) });
+const eintraegeVon = html => [...html.matchAll(/<li><a [^>]*>/g)].map(m => m[0]);
+
+test('Leiste: Navigation „Ansicht der Review-Seite“ mit einer Liste aus 1 + 3 Einträgen; kein Umschalter, kein „Ein Commit“', () => {
+  const html = leiste(folgeDa(K_LEISTE), hash('b'));
+  assert.match(html, /^<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite"><ul>/);
+  assert.strictEqual(eintraegeVon(html).length, 4);
+  assert.doesNotMatch(html, /Ein Commit|umsch|rv-u-commit|aria-busy/);
+});
+
+test('Leiste: „Alle Änderungen“ mit „3 Commits · +318 −20“ und Namen in Worten; je Commit Chips, Titel ohne Chips, Kurz-Hash, Zeit, Zahlen', () => {
+  const html = leiste(folgeDa(K_LEISTE), hash('b'));
+  assert.match(html, /<a class="rv-ce rv-ce-alle" id="rv-u-alle" href="#\/a\/review" data-act="review-alle-zeigen" aria-label="Alle Änderungen, 3 Commits, 318 Zeilen hinzugefügt, 20 entfernt"><span class="z1"><span class="t">Alle Änderungen<\/span><\/span><span class="z2">3 Commits · <span class="pl">\+318<\/span> <span class="mi">−20<\/span><\/span><\/a>/);
+  const c1 = eintraegeVon(html)[1];
+  assert.match(c1, /id="rv-l1" href="#\/aufgaben\/aufgabe\/2\/review\?commit=kd%3Aa{40}" data-act="review-leiste" data-arg="kd:a{40}" title="\[R00229\] B1187: Sperrform je Komponente" aria-label="Commit kd:aaaaaaa, \[R00229\] B1187: Sperrform je Komponente, 22.11. 03:19, 302 Zeilen hinzugefügt, 7 entfernt"/);
+  assert.match(html, /<span class="z1"><span class="rv-chip">R00229<\/span><span class="rv-chip">B1187<\/span><span class="t">Sperrform je Komponente<\/span><\/span><span class="z2"><span class="mono">kd:aaaaaaa<\/span> · <span class="rv-zeit">22.11. 03:19<\/span> · <span class="pl">\+302<\/span> <span class="mi">−7<\/span><\/span>/);
+  assert.match(html, /<span class="rv-chip">DOC<\/span><span class="t">R00229 AK 5: Fokusring<\/span>/);
+});
+
+test('Leiste: aria-current nur am gezeigten Eintrag — Commit, „alle“, nichts (fremd oder beim Laden)', () => {
+  const gezeigt = html => eintraegeVon(html).flatMap((a, i) => (/aria-current="page"/.test(a) ? [i] : []));
+  assert.deepStrictEqual(gezeigt(leiste(folgeDa(K_LEISTE), hash('b'))), [2]);
+  assert.deepStrictEqual(gezeigt(leiste(folgeDa(K_LEISTE), hash('B'))), [2]);
+  assert.deepStrictEqual(gezeigt(leiste(folgeDa(K_LEISTE), 'alle')), [0]);
+  assert.deepStrictEqual(gezeigt(leiste(folgeDa(K_LEISTE), null)), []);
+  assert.deepStrictEqual(gezeigt(leiste(folgeDa(K_LEISTE), hash('f'))), []);
+});
+
+test('Leiste: lädt — nur „Alle Änderungen“ mit „Commits werden gelesen …“ und aria-busy; Fehler „Commits nicht gelesen“; leer ohne Zeile; nie Zahlen', () => {
+  const laedt = leiste({ status: 'laedt' }, null);
+  assert.match(laedt, /<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite" aria-busy="true">/);
+  assert.strictEqual(eintraegeVon(laedt).length, 1);
+  assert.match(laedt, /<span class="t">Alle Änderungen<\/span><\/span><span class="z2 rv-ls-zust">Commits werden gelesen …<\/span><\/a>/);
+  const fehler = leiste({ status: 'fehler' }, null);
+  assert.doesNotMatch(fehler, /aria-busy/);
+  assert.match(fehler, /<span class="z2 rv-ls-zust">Commits nicht gelesen<\/span>/);
+  const leer = leiste(folgeDa([{ verweis: 'kd:x', zustand: 'fehlt' }]), null);
+  assert.match(leer, /<span class="t">Alle Änderungen<\/span><\/span><\/a><\/li><\/ul>/);
+  for (const html of [laedt, fehler, leer]) {
+    assert.doesNotMatch(html, /aria-current|aria-label="Alle|Commits ·|class="pl"/);
+    assert.strictEqual(eintraegeVon(html).length, 1);
+  }
+  assert.match(leiste({ status: 'laedt' }, 'alle'), /id="rv-u-alle" href="#\/a\/review" data-act="review-alle-zeigen" aria-current="page"/);
+});
+
+test('Leiste: verwaist mit der Marke „auf keinem Zweig“ nach dem Kurz-Hash und im Namen, zählt nicht; fehlt steht nicht darin', () => {
+  const html = leiste(folgeDa([K_LEISTE[0], K_LEISTE[1], listenEintrag('d', 'verwaist', 1, 0, 'V'), { verweis: v('e'), zustand: 'fehlt' }]), null);
+  assert.strictEqual(eintraegeVon(html).length, 4);
+  assert.match(html, /2 Commits · <span class="pl">\+316<\/span> <span class="mi">−19<\/span>/);
+  assert.match(html, /<span class="mono">kd:ddddddd<\/span> · <span class="rv-ls-marke">auf keinem Zweig<\/span> · <span class="rv-zeit">/);
+  assert.match(html, /aria-label="Commit kd:ddddddd, V, 22.11. 03:19, 1 Zeile hinzugefügt, 0 entfernt, auf keinem Zweig, zählt nicht in den Zahlen von Alle Änderungen"/);
+});
+
+test('Leiste: „Zum Code“ erst ab 9 Einträgen, als erstes Element der Leiste', () => {
+  const viele = n => Array.from({ length: n }, (_, i) => listenEintrag(String.fromCharCode(97 + i), 'auf_zweig', 1, 0, `T${i}`));
+  assert.doesNotMatch(leiste(folgeDa(viele(7)), null), /Zum Code/);
+  assert.match(leiste(folgeDa(viele(8)), null), /<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite"><a class="rv-zc" id="rv-zc" href="#rv-insel" data-act="review-zum-code">Zum Code<\/a><ul>/);
+});
+
+test('Leiste: Chip über 16 Zeichen gekürzt mit vollem title; fremder Text nur als Text; die Ansage im einen Statusbereich', () => {
+  const html = leiste(folgeDa([listenEintrag('a', 'auf_zweig', 1, 0, `[${'A'.repeat(40)}] Rest`), listenEintrag('b', 'auf_zweig', 1, 0, BOESE), listenEintrag('c', 'auf_zweig', 1, 0, 'x‮y')]), null, 'Commit 2 von 3: kd:bbbbbbb');
+  assert.match(html, new RegExp(`<span class="rv-chip" title="${'A'.repeat(40)}">${'A'.repeat(15)}…</span>`));
+  assert.doesNotMatch(html, /<img/);
+  assert.match(html, /<span class="t">&lt;img src=x onerror=window.pwn=1&gt; &quot;x&quot;<\/span>/);
+  assert.match(html, /mk-bidi/);
+  assert.match(html, /<p class="vh" id="rv-wahl" role="status">Commit 2 von 3: kd:bbbbbbb<\/p>$/);
+  assert.strictEqual((html.match(/role="status"/g) || []).length, 1);
 });
 
 test('Summe der Leiste: über geladene Abschnitte, „· Anwendung wb lädt noch …“ solange einer lädt', () => {

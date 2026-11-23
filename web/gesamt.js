@@ -4,7 +4,7 @@
   'use strict';
   const diff = typeof module !== 'undefined' ? require('./diff.js') : window;
   const { kurzVerweis, tausender, zuordnen, STATUSWORT } = diff;
-  const { dateiGruppen } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
+  const { dateiGruppen, commitsWort, leistenAlleName, leistenEintragName } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
   const { zustandsmarke, zustandSatz, zustandsSymbol } = typeof module !== 'undefined' ? require('./commits.js') : window;
 
   /* ── Folge-Dateien (N1.4): eine Datei als Reihe der Schritte der Aufgabe, ohne Netto-Zustand ── */
@@ -170,14 +170,47 @@
      Fremder Text nur über `esc` bzw. `sichtbarHtml` in feste Elemente. `ctx`: `esc`, `adresse(verweis)` → `href` der Seite eines
      Commits, `titelVon(verweis)` → Titel aus der Liste der Commits oder null. ── */
 
-  /** Umschalter „Alle Änderungen | Ein Commit“ (N1.1): zwei echte Verweise, der gezeigte mit `aria-current`; ohne Ziel steht
-      „Ein Commit“ gedämpft ohne `href`, ohne `role` und ohne Tab-Stopp da (PO Z. 442). */
-  function umschalterHtml({ ansicht, alleHref, commitHref, commitZiel }, esc) {
-    const gewaehlt = teil => (ansicht === teil ? ' aria-current="page"' : '');
-    const alle = `<a href="${esc(alleHref)}" id="rv-u-alle" data-act="review-alle-zeigen"${gewaehlt('alle')}>Alle Änderungen</a>`;
-    let commit = '<span class="umsch-aus" id="rv-u-commit">Ein Commit</span>';
-    if (commitHref) commit = `<a href="${esc(commitHref)}" id="rv-u-commit" data-act="review-umschalten" data-arg="${esc(commitZiel)}"${gewaehlt('commit')}>Ein Commit</a>`;
-    return `<nav class="seg umsch" aria-label="Ansicht der Review-Seite">${alle}${commit}</nav>`;
+  /** Mehr Einträge verträgt die Leiste ohne den Verweis „Zum Code“ nicht (PO Z. 639): bis 8 Einträge gibt es ihn nicht. */
+  const LEISTE_OHNE_SPRUNG = 8;
+
+  /** Commit-Leiste (R00245 FA 1–5, 7, 12, 14; D0009 `#review-uebersicht`): die Navigation „Ansicht der Review-Seite“ mit einer Liste,
+      erster Eintrag „Alle Änderungen“, danach je Commit mit Diff ein echter Verweis. `liste`: `{status: 'laedt' | 'fehler'}` oder
+      `{status: 'da', folge}` (`leistenFolge`); `gezeigt`: `'alle'`, der volle Hash des gezeigten Commits oder null; `ansage` steht im
+      einen Statusbereich der Wahl. */
+  function leisteHtml({ liste, gezeigt, alleHref, adresse, ansage }, esc) {
+    let busy = '', zeile = '', name = '', commits = [];
+    if (liste.status === 'laedt') {
+      busy = ' aria-busy="true"';
+      zeile = '<span class="z2 rv-ls-zust">Commits werden gelesen …</span>';
+    } else if (liste.status === 'fehler') {
+      zeile = '<span class="z2 rv-ls-zust">Commits nicht gelesen</span>';
+    } else if (liste.folge.commits.length) {
+      const f = liste.folge;
+      commits = f.commits;
+      zeile = `<span class="z2">${esc(commitsWort(f.n))} · ${zahlenSpannen(f, esc)}</span>`;
+      name = ` aria-label="${esc(leistenAlleName(f))}"`;
+    }
+    const alle = `<li><a class="rv-ce rv-ce-alle" id="rv-u-alle" href="${esc(alleHref)}" data-act="review-alle-zeigen"${aktuell(gezeigt === 'alle')}${name}><span class="z1"><span class="t">Alle Änderungen</span></span>${zeile}</a></li>`;
+    const eintraege = commits.map((c, i) => leistenEintragHtml(c, i, gezeigt, adresse, esc)).join('');
+    let sprung = '';
+    if (1 + commits.length > LEISTE_OHNE_SPRUNG) sprung = '<a class="rv-zc" id="rv-zc" href="#rv-insel" data-act="review-zum-code">Zum Code</a>';
+    return `<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite"${busy}>${sprung}<ul>${alle}${eintraege}</ul></nav><p class="vh" id="rv-wahl" role="status">${esc(ansage || '')}</p>`;
+  }
+
+  const aktuell = ja => (ja ? ' aria-current="page"' : '');
+  const zahlenSpannen = (z, esc) => `<span class="pl">+${esc(tausender(z.plus))}</span> <span class="mi">−${esc(tausender(z.minus))}</span>`;
+
+  /** Ein Eintrag eines Commits (FA 3, 4, 12): Chips und Titel ohne Chips, darunter Kurz-Hash, die Marke „auf keinem Zweig“, Zeit, Zeilen. */
+  function leistenEintragHtml(c, i, gezeigt, adresse, esc) {
+    const chips = c.chips.map(k => diff.chipHtml(k, esc)).join('');
+    let marke = '';
+    if (c.verwaist) marke = ' · <span class="rv-ls-marke">auf keinem Zweig</span>';
+    const ist = Boolean(gezeigt) && gezeigt !== 'alle' && gezeigt.toLowerCase() === c.hash.toLowerCase();
+    const voll = diff.sichtbarText(c.titel);
+    const name = leistenEintragName({ ...c, titel: voll });
+    return `<li><a class="rv-ce" id="rv-l${i + 1}" href="${esc(adresse(c.verweis))}" data-act="review-leiste" data-arg="${esc(c.verweis)}"${aktuell(ist)} title="${esc(voll)}" aria-label="${esc(name)}">`
+      + `<span class="z1">${chips}<span class="t">${diff.sichtbarHtml(c.rest, esc)}</span></span>`
+      + `<span class="z2"><span class="mono">${diff.sichtbarHtml(c.kurz, esc)}</span>${marke} · <span class="rv-zeit">${esc(c.zeit)}</span> · ${zahlenSpannen(c, esc)}</span></a></li>`;
   }
 
   /** Ein Verweis auf die Seite eines Commits; ersetzt bei einfachem Klick den Verlaufseintrag (data-act `review-commit`). */
@@ -187,11 +220,6 @@
   }
 
   const kurzHtml = (verweis, esc) => `<span class="mono">${diff.sichtbarHtml(kurzVerweis(verweis), esc)}</span>`;
-
-  function commitsWort(n) {
-    if (n === 1) return '1 Commit';
-    return `${tausender(n)} Commits`;
-  }
 
   /** Kopf eines Abschnitts: „Anwendung <kürzel>“ als h2 (Fokusziel nach „Erneut versuchen“, S3), dazu Zahlen oder Zustandswort. */
   function abschnittKopfHtml(a, kuerzel, zusatz, esc) {
@@ -401,5 +429,5 @@
     return `${diff.dateienWort(s.dateien)} · <span class="pl">+${tausender(s.plus)}</span> <span class="mi">−${tausender(s.minus)}</span>${noch}`;
   }
 
-  Object.assign(ziel, { umschalterHtml, abschnittHtml, abschnittDateiHtml, abschnittGruppeHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
+  Object.assign(ziel, { leisteHtml, abschnittHtml, abschnittDateiHtml, abschnittGruppeHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
 })(typeof module !== 'undefined' ? module.exports : window);

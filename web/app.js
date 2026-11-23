@@ -1161,13 +1161,14 @@ function reviewAnstossen() {
   const gleicheSeite = Boolean(r) && r.nr === a.nummer && r.basis === a.basis && r.slug === adresse.slug;
   if (r) { reviewNachladenAbbrechen(r); reviewAlleAbbrechen(r); }
   if (!gleicheSeite) {
-    r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, alle: null, zuletzt: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null };
+    r = S.ui.review = { nr: a.nummer, basis: a.basis, slug: adresse.slug, liste: null, diff: null, alle: null, klappenJe: {}, herkunft: S.ui.reviewHerkunft || null, richtung: null };
     S.ui.reviewHerkunft = null;
   }
   let ansicht = 'commit';
   if (!a.commit && !a.ungueltig) ansicht = 'alle';
   // jede Adresse beginnt wie beim Laden: die linke Spalte hinter dem Aufklapper zu (R00235 FA 11)
-  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, ansicht, fokusOffen: true, laufend: null, schlange: [], railOffen: false });
+  // die Ansage der Wahl gilt nur für die Adresse, die die Leiste gewählt hat (R00245 FA 6); die Zweigliste beginnt zu (FA 9)
+  Object.assign(r, { adresse: hash, commit: a.commit, ungueltig: a.ungueltig, ansicht, fokusOffen: true, laufend: null, schlange: [], railOffen: false, zweigeOffen: false, wahlAnsage: r.wahlNaechste || '', wahlNaechste: null });
   if (a.ungueltig) { r.diff = null; reviewFokus(r); return; }
   if (!gleicheSeite) reviewListeLesen(r);
   r.diff = null;
@@ -1313,6 +1314,8 @@ async function reviewListeLesen(r) {
     ergebnis = { status: 'fehler', fehler: fehlerVon(g) };
   }
   if (S.ui.review !== r || r.liste !== lauf) return;
+  // die Leiste wächst mit der Liste (R00245): nichts unterhalb springt (Leseposition wie R00210 FA 8)
+  const merk = reviewLesepositionMerken();
   r.liste = ergebnis;
   reviewPraefixAufloesen(r);
   // wartet „Alle Änderungen“ nach einer 404 der ersten Anwendung auf die Liste, geht es jetzt weiter (R00224 FA 3)
@@ -1322,22 +1325,7 @@ async function reviewListeLesen(r) {
   }
   reviewFokus(r);
   render();
-}
-
-/** Ziel von „Ein Commit“ (R00210 FA 2, ADR-0033 N1.1): der zuletzt auf dieser Seite gezeigte Commit, sonst der erste mit Diff aus der
-    Liste (Weg aus B2); scheitert die Liste, der erste einbezogene aus der Diff-Antwort (UX-Vorprüfung S1). null, solange es noch
-    keins gibt oder die Aufgabe keinen Commit mit Diff hat (PO Z. 442) — dann steht der Teil gedämpft ohne Verweis. */
-function reviewCommitZiel(r) {
-  if (r.zuletzt) return r.zuletzt;
-  const liste = r.liste;
-  if (liste && liste.status === 'da') {
-    const f = folge(liste.eintraege, null);
-    if (f.art === 'erster') return f.erster;
-    return null;
-  }
-  const erster = r.alle && r.alle.abschnitte.find(ab => ab.status === 'da' && ab.antwort.commits.length);
-  if (liste && liste.status === 'fehler' && erster) return erster.antwort.commits[0].verweis;
-  return null;
+  reviewLesepositionHalten(merk);
 }
 
 /** Ersetzt die Adresse der Seite durch die mit `verweis`, ohne Verlaufseintrag; die Marke „aus der Liste“ bleibt. */
@@ -1358,10 +1346,7 @@ async function reviewDiffLesen(r, verweis) {
   }
   if (S.ui.review !== r || r.diff !== lauf) return;
   r.diff = ergebnis;
-  if (ergebnis.status === 'da') {
-    reviewDateienAufbauen(r, ergebnis.antwort);
-    r.zuletzt = (antwortKuerzel(ergebnis.antwort)) + ergebnis.antwort.commits[0].hash;
-  }
+  if (ergebnis.status === 'da') reviewDateienAufbauen(r, ergebnis.antwort);
   reviewFokus(r);
   render();
 }
@@ -1583,8 +1568,6 @@ async function reviewDateiLaden(r, i) {
 }
 
 /* ── Alle Änderungen der Aufgabe (R00210, ADR-0033 N1): Abschnitte je Anwendung, eine Reihe für alle Anfragen an `…/diff` ── */
-
-const antwortKuerzel = antwort => (antwort.anwendung ? `${antwort.anwendung}:` : '');
 
 /** Ort einer Datei des Gesamtbilds aus `data-arg` „<a>:<i>“; null in „Ein Commit“ oder ohne geladenen Abschnitt. */
 function reviewOrt(r, arg) {
@@ -1956,13 +1939,9 @@ function reviewLesepositionHalten(merk) {
   if (verschiebung) document.getElementById('review').scrollTop += verschiebung;
 }
 
-/** Die Seite „Alle Änderungen“ (Hauptbereich): Leiste mit Umschalter, Summe und Ansage, darunter die Insel oder ein Zustand. */
+/** Die Seite „Alle Änderungen“ (Hauptbereich): Commit-Leiste, darunter Summe und Ansage, dann die Insel oder ein Zustand. */
 function vReviewAlle(r, b) {
   const alle = r.alle;
-  const ziel = reviewCommitZiel(r);
-  let commitHref = null;
-  if (ziel) commitHref = reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: ziel });
-  const umschalter = umschalterHtml({ ansicht: 'alle', alleHref: reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: null }), commitHref, commitZiel: ziel }, esc);
   const ansage = `<p class="vh" id="rv-ansage" aria-live="polite" aria-atomic="true">${esc((alle && alle.ansage) || '')}</p>`;
   if (b.art === 'alle_ohne_verweise') return meldungHtml({ rolle: 'status', kopf: 'Keine Änderungen zu zeigen.', text: 'An dieser Aufgabe sind keine Commit-Verweise hinterlegt.', knoepfe: knopf('Zurück zur Liste der Commits', 'review-liste') });
   let inhalt;
@@ -1981,7 +1960,7 @@ function vReviewAlle(r, b) {
     const mitListe = alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da' && ab.antwort.dateien.length);
     if (mitListe.length) summe += reviewAufklapperHtml(r, abschnittSummen(alle.abschnitte).dateien, mitListe.map(([, a]) => `rv-a${a}-rail`).join(' '));
   }
-  return `<div class="rv-leiste">${umschalter}${summe}${ansage}</div>${inhalt}`;
+  return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${summe}${ansage}</div>${inhalt}`;
 }
 
 /** Die erste Anwendung ist nicht erreichbar und die Liste der Commits scheitert (R00224 FA 5, PO Z. 511): eine Seitenmeldung mit dem
@@ -2007,18 +1986,43 @@ function vReview() {
   if (b.art === 'unbekannt') return seite(meldungHtml({ rolle: 'status', kopf: `Aufgabe #${r.nr} gibt es nicht.`, knoepfe: knopf(r.basis === 'board' ? 'Zum Board' : 'Zu den Aufgaben', 'review-weg') }));
   if (r.ansicht === 'alle') return seite(vReviewAlle(r, b));
   if (b.art === 'diff') return seite(reviewDiffHtml(r, b));
-  // der Umschalter steht auch beim Laden und bei Fehlern (R00210 FA 2, S8)
-  const leiste = `<div class="rv-leiste">${reviewUmschalterCommit(r)}</div>`;
+  // die Leiste steht auch beim Laden und bei Fehlern (R00210 FA 2, S8; R00245 FA 7)
+  const leiste = reviewLeisteHtml(r, b);
   if (b.art === 'liste_fehler') return seite(leiste + meldungHtml({ ton: 'fehl', rolle: 'alert', zeichen: 'achtung', kopf: esc(listeFehlerText(r.liste.fehler)), knoepfe: erneut('liste') + zurListe }));
   if (b.art === 'diff_fehler') return seite(leiste + diffFehlerHtml(r.diff.fehler, r.diff.verweis, esc));
   return seite(leiste + `<p class="rv-laedt" id="rv-laedt" role="status" aria-busy="true">Liest den Diff von ${esc(kurzVerweis(r.commit))} …</p>`);
 }
 
-/** Der Umschalter in „Ein Commit“ (R00210 FA 2): „Ein Commit“ ist gewählt und führt auf die gezeigte Adresse. */
-function reviewUmschalterCommit(r) {
-  const alleHref = reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: null });
-  const ziel = r.commit;
-  return umschalterHtml({ ansicht: 'commit', alleHref, commitHref: reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: ziel }), commitZiel: ziel }, esc);
+/** Die Commit-Leiste beider Ansichten (R00245 FA 1–7): aus der schon gelesenen Liste, ohne eigene Anfrage (ADR-0042 Punkt 5). */
+function reviewLeisteHtml(r, b) {
+  const liste = r.liste || { status: 'laedt' };
+  let werte = { status: liste.status };
+  if (liste.status === 'da') werte = { status: 'da', folge: leistenFolge(liste.eintraege) };
+  const seite = commit => reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit });
+  return leisteHtml({ liste: werte, gezeigt: reviewGezeigt(r, b), alleHref: seite(null), adresse: seite, ansage: r.wahlAnsage }, esc);
+}
+
+/** Fokusziel und Ansage der Wahl von `verweis` in der Leiste (FA 6): der Eintrag und „Commit <i> von <n>: <kurz>“ wie beim Blättern. */
+function reviewLeistenWahl(r, verweis) {
+  if (!r.liste || r.liste.status !== 'da') return null;
+  const commits = leistenFolge(r.liste.eintraege).commits;
+  const i = commits.findIndex(c => c.verweis === verweis);
+  if (i < 0) return null;
+  return { fokus: `#rv-l${i + 1}`, ansage: `Commit ${i + 1} von ${commits.length}: ${commits[i].kurz}` };
+}
+
+/** Was die Leiste als gezeigt kennzeichnet (FA 5, 7): `'alle'`, den vollen Hash des gezeigten Commits der Folge oder null — beim
+    Laden des Diffs den Eintrag, dessen Verweis die Adresse wörtlich nennt; ein Commit außerhalb der Folge (Rand b) keinen. */
+function reviewGezeigt(r, b) {
+  if (r.ansicht === 'alle') return 'alle';
+  if (b.art === 'diff') {
+    if (b.folge && b.folge.art === 'folge') return b.commit.hash;
+    return null;
+  }
+  const liste = r.liste;
+  if (!liste || liste.status !== 'da') return null;
+  const genannt = liste.eintraege.find(e => e.verweis === r.commit && e.hash);
+  return genannt ? genannt.hash : null;
 }
 
 function reviewDiffHtml(r, b) {
@@ -2026,7 +2030,7 @@ function reviewDiffHtml(r, b) {
   const kurz = (antwort.anwendung ? `${antwort.anwendung}:` : '') + c.hash.slice(0, 7);
   let navigation = '';
   if (b.liste.status === 'fehler') navigation = `<div class="rv-lfehl" role="alert"><p>Die Liste der Commits ließ sich nicht lesen; das Blättern ist nicht möglich.</p>${knopf('Erneut versuchen', 'review-erneut', 'liste', 'rv-erneut')}</div>`;
-  else if (b.folge && b.folge.art === 'folge') navigation = blaetternHtml(b.folge, esc(kurz), reviewSchmal());
+  else if (b.folge && b.folge.art === 'folge') navigation = blaetternHtml(b.folge, esc(kurz), reviewSchmal(), Boolean(r.wahlAnsage));
   else if (b.folge) navigation = fremdHtml(kurz, esc);
   const offen = r.staende.some(s => s.offen);
   const alle = r.dateien.length ? knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') : '';
@@ -2039,11 +2043,26 @@ function reviewDiffHtml(r, b) {
     liste = `<div class="rv-liste" id="rv-liste">${dateilisteHtml(r.dateien, esc)}</div>`;
     aufklapper = reviewAufklapperHtml(r, r.dateien.length, 'rv-liste');
   }
-  const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc) + liste;
+  const rail = commitKopfHtml(c, antwort.anwendung, eintrag, esc, r.zweigeOffen) + liste;
   const schluessel = reviewInselSchluessel();
   const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen, reviewQuelle(r));
-  return `<div class="rv-leiste">${reviewUmschalterCommit(r)}${navigation}${summe}${aufklapper}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
+  return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${navigation}${summe}${aufklapper}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
 }
+
+/** Nach jedem Zeichnen liegt der gezeigte Eintrag der Leiste samt Fokusring ganz in ihrem sichtbaren Teil (R00245 FA 13): gerollt wird
+    nur die Leiste über `scrollTop`, nie die Seite (kein `scrollIntoView`). */
+function reviewLeisteEinpassen() {
+  const leiste = document.getElementById('rv-ls');
+  const gezeigt = leiste && leiste.querySelector('li > a[aria-current="page"]');
+  if (!gezeigt) return;
+  const sicht = leiste.getBoundingClientRect().top + leiste.clientTop, e = gezeigt.getBoundingClientRect();
+  const stand = leiste.scrollTop;
+  const lage = { stand, hoehe: leiste.clientHeight, oben: e.top - sicht + stand, unten: e.bottom - sicht + stand };
+  const neu = leistenRollstand(lage, LEISTE_RING);
+  if (neu !== stand) leiste.scrollTop = neu;
+}
+/** Platz des Fokusrings eines Eintrags: 2 px Linie und 2 px Abstand (kd-app.css `.rv-ce:focus-visible`). */
+const LEISTE_RING = 4;
 
 /** Aufklapper „Dateien (<n>) und Commits“ (R00235 FA 11, PO Z. 549): bis 1099 px stehen Dateiliste und Commits dahinter, beim Öffnen
     der Seite zu; ab 1100 px blendet das CSS ihn aus, die Liste steht links. `steuert` sind die Kennungen der Listen. */
@@ -2901,6 +2920,7 @@ function render() {
   const laufKnotenVorher = S.ui.view === 'lauf' ? LAUF_KNOTEN.map(id => document.getElementById(id)).filter(Boolean) : [];
   const reviewPosVorher = document.getElementById('rv-pos');
   const reviewAnsageVorher = document.getElementById('rv-ansage');
+  const reviewWahlVorher = document.getElementById('rv-wahl');
   const reviewLaedtVorher = document.getElementById('rv-laedt');
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
   if ($('#main').dataset.sicht !== sicht) auswahlAufheben();
@@ -2927,6 +2947,7 @@ function render() {
     laeufeKnotenBehalten(schalterStatusVorher);
     ansageBehalten(reviewPosVorher, 'rv-pos');
     ansageBehalten(reviewAnsageVorher, 'rv-ansage');
+    ansageBehalten(reviewWahlVorher, 'rv-wahl');
     // der Ladesatz der Seite ist ein Start-Ereignis: ein Neuzeichnen während des Ladens sagt ihn nicht ein zweites Mal an (R00230 S2)
     ansageBehalten(reviewLaedtVorher, 'rv-laedt');
   } finally {
@@ -2937,6 +2958,7 @@ function render() {
   hinweisEinpassen();
   gezogeneHoehenSetzen(gezogen);
   rollstaendeSetzen(rollen);
+  reviewLeisteEinpassen();
   sperrenMarkieren();
   document.querySelectorAll('#zuweisen [data-gemischt]').forEach(x => { x.indeterminate = true; });
   menueEinpassen();
@@ -3798,19 +3820,35 @@ async function aktion(a, arg, wert) {
         break;
       }
       case 'review-commit':
-      case 'review-umschalten':
+      case 'review-leiste':
       case 'review-alle-zeigen': {
-        // Umschalter, Commit-Liste, Schrittköpfe, „einzeln ansehen“ (R00210 FA 2): ersetzt den Verlaufseintrag, die Marke bleibt;
-        // nach dem Umschalten steht der Fokus auf dem gewählten Teil (N1.1)
+        // Leiste, Commit-Liste, Schrittköpfe, „einzeln ansehen“ (R00210 FA 2, R00245 FA 6): ersetzt den Verlaufseintrag, die Marke
+        // bleibt; nach der Wahl in der Leiste steht der Fokus auf dem gewählten Eintrag der neuen Leiste, und die Wahl eines Commits
+        // sagt „Commit <i> von <n>: <kurz>“ an
         const r = u.review;
         if (!r) break;
         reviewKlappenMerken(r);
         reviewAlleKlappenMerken(r);
-        if (a !== 'review-commit') {
-          u.fokus = a === 'review-umschalten' ? '#rv-u-commit' : '#rv-u-alle';
-          r.fokusZiel = u.fokus;
+        if (a === 'review-alle-zeigen') r.fokusZiel = u.fokus = '#rv-u-alle';
+        if (a === 'review-leiste') {
+          const wahl = reviewLeistenWahl(r, arg);
+          if (wahl) { r.fokusZiel = u.fokus = wahl.fokus; r.wahlNaechste = wahl.ansage; }
         }
         reviewAdresseErsetzen(r, a === 'review-alle-zeigen' ? null : arg);
+        break;
+      }
+      case 'review-zweige': {
+        // „+<k> Zweige“ (R00245 FA 9): öffnet und schließt die Liste aller Namen, der Fokus bleibt auf dem Knopf
+        const r = u.review;
+        if (!r) break;
+        r.zweigeOffen = !r.zweigeOffen;
+        u.fokus = '#rv-zw-mehr';
+        break;
+      }
+      case 'review-zum-code': {
+        // „Zum Code“ (R00245 FA 14): der Fokus geht auf den Anfang der Dateien, nicht auf den Kopf
+        const erstes = [...document.querySelectorAll('#rv-insel :is(a[href], button, [tabindex="0"])')].find(e => e.id && e.getClientRects().length);
+        if (erstes) u.fokus = '#' + CSS.escape(erstes.id);
         break;
       }
       case 'review-abschnitt-erneut': {
@@ -4844,7 +4882,9 @@ document.addEventListener('click', e => {
     return;
   }
   // Ein Review-Verweis mit Umschalt-, Strg- oder Meta-Taste bleibt ein Link (neuer Tab, neues Fenster; ADR-0033 Punkt 2)
-  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-umschalten', 'review-alle-zeigen', 'lauf-oeffnen', 'lauf-zurueck', 'lauf-blaettern'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
+  // Der gezeigte Eintrag der Leiste führt auf die eigene Adresse: sein Klick bewirkt nichts, auch keine Zeichnung (R00245 FA 6)
+  if (el.tagName === 'A' && el.closest('#rv-ls') && el.getAttribute('aria-current') === 'page' && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) { e.preventDefault(); return; }
+  if (el.tagName === 'A' && ['review-oeffnen', 'review-commit', 'review-leiste', 'review-alle-zeigen', 'lauf-oeffnen', 'lauf-zurueck', 'lauf-blaettern'].includes(el.dataset.act) && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0)) return;
   if (el.tagName === 'A') e.preventDefault();
   act(el.dataset.act, el.dataset.arg, undefined, el, e.detail);
 });

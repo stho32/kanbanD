@@ -201,10 +201,11 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
     expect(seite).not.toContain('Keine Änderungen zu zeigen.');
     expect(seite).not.toContain('An dieser Aufgabe sind keine Commit-Verweise hinterlegt.');
     const ersterMitDiff = liste.find(e => ['auf_zweig', 'verwaist'].includes(e.zustand)).verweis;
-    await expect(page.locator('#rv-u-commit')).toHaveAttribute('href', new RegExp(`commit=${encodeURIComponent(ersterMitDiff)}`));
+    // umgestellt mit R00245 (FA 1): statt „Ein Commit“ führt der erste Commit der Leiste auf den ersten mit Diff
+    await expect(page.locator('#rv-l1')).toHaveAttribute('href', new RegExp(`commit=${encodeURIComponent(ersterMitDiff)}`));
   });
 
-  test('AK 3: #21 — nur wb: ein Abschnitt mit Satz und grund, darüber der Hinweis zu xy:<K1>, „Ein Commit“ gedämpft ohne href', async ({ page }) => {
+  test('AK 3: #21 — nur wb: ein Abschnitt mit Satz und grund, darüber der Hinweis zu xy:<K1>, die Leiste ohne Commit (R00245 umgestellt)', async ({ page }) => {
     const grund = await erwarteterGrund(page, k, rep);
     await page.goto(reviewAdresse(k, 21));
     await expect(page.locator('section.rv-abs')).toHaveCount(1);
@@ -216,8 +217,8 @@ test.describe('R00224 Grund bei 404 in Worten', () => {
     await expect(hinweis).toContainText(kurz(rep.k1, 'xy'));
     await expect(hinweis).toContainText('Anwendung unbekannt');
     expect(await page.locator('#rv-seite-hw').evaluate(h => Boolean(h.compareDocumentPosition(document.querySelector('section.rv-abs')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-    const teil = page.locator('#rv-u-commit');
-    expect(await teil.evaluate(e => [e.tagName, e.hasAttribute('href')])).toEqual(['SPAN', false]);
+    // umgestellt mit R00245 (FA 7): statt eines gedämpften „Ein Commit“ steht in der Leiste nur „Alle Änderungen“
+    await expect(page.locator('#rv-ls li > a')).toHaveCount(1);
     await expect(page.locator('#review')).not.toContainText('Keine Änderungen zu zeigen.');
   });
 

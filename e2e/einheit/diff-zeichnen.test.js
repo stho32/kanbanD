@@ -97,6 +97,12 @@ test('Blättern: breit Text im Namen, schmal Symbol mit Namen; am Rand fehlt der
   assert.ok(!d.blaetternHtml({ i: 4, n: 4, zurueck: 'kd:c', vor: null }, 'k', false).includes('id="rv-vor"'));
 });
 
+test('Blättern (R00245 FA 6): nach einer Wahl in der Leiste ist die Stelle still — die Wahl sagt „Commit <i> von <n>“ einmal an', () => {
+  const mitte = { i: 3, n: 4, zurueck: 'kd:b', vor: 'kd:d' };
+  assert.ok(d.blaetternHtml(mitte, 'k', false, true).includes('<b id="rv-pos">3 von 4</b>'));
+  assert.ok(d.blaetternHtml(mitte, 'k', false, false).includes('<b id="rv-pos" aria-live="polite">3 von 4</b>'));
+});
+
 test('Seitenfehler: Antwortbudget nach Text mit Server, sonst 503 Zeitgrenze mit Uhr, 404 mit Zustandswort, anderer mit Status 0', () => {
   const budget = d.diffFehlerHtml({ status: 503, fehler: 'Antwortbudget von 64 MB belegt' }, 'kd:' + 'a'.repeat(40), esc);
   assert.ok(budget.includes('role="alert"') && ohneTags(budget).startsWith('Server ausgelastet (Antwortbudget). Der Diff wurde nicht gelesen, weil der Server gerade zu viele große Antworten ausliefert. Es wird nicht von selbst wiederholt.'));
@@ -159,11 +165,57 @@ test('Nacharbeit 1 (Security S2): Titel, Autor und Zweige im Commit-Kopf zeigen 
 test('Nacharbeit 1 (Rechtschreibung S1): Lesetext „auf Zweig: “ bei genau einem Zweig, „auf Zweigen: “ ab zwei (auch mit nicht aufgeführten)', () => {
   const c = { hash: 'c'.repeat(40), titel: 't', autor: 'a', datum: '2026-03-03T09:00:00+00:00', plus: 1, minus: 0, dateien: 1 };
   const lesetext = (zweige, mehr = {}) => /<span class="vh">(.*?)<\/span>/.exec(d.commitKopfHtml(c, 'kd', { zustand: 'auf_zweig', zweige, ...mehr }, esc))[1];
-  assert.strictEqual(lesetext(['main']), 'auf Zweig: ');
+  // umgestellt mit R00245 (FA 9): mit `main` verdichtet der Kopf zu „auf main“; der Lesetext gilt der Liste ohne `main` und `master`
+  assert.strictEqual(lesetext(['karte/9']), 'auf Zweig: ');
   assert.strictEqual(lesetext([], { entfernte_zweige: ['origin/main'] }), 'auf Zweig: ');
-  assert.strictEqual(lesetext(['main', 'karte/1']), 'auf Zweigen: ');
-  assert.strictEqual(lesetext(['main'], { entfernte_zweige: ['origin/main'] }), 'auf Zweigen: ');
-  assert.strictEqual(lesetext(['main'], { zweige_weitere: 1 }), 'auf Zweigen: ');
+  assert.strictEqual(lesetext(['karte/9', 'karte/1']), 'auf Zweigen: ');
+  assert.strictEqual(lesetext(['karte/9'], { entfernte_zweige: ['origin/main'] }), 'auf Zweigen: ');
+  assert.strictEqual(lesetext(['karte/9'], { zweige_weitere: 1 }), 'auf Zweigen: ');
+});
+
+/* ── R00245 B1283: Commit-Kopf verdichtet — Chips, Überschrift ohne Chips, „auf main“ mit „+<k> Zweige“ ── */
+
+const kopfCommit = titel => ({ hash: 'c'.repeat(40), titel, autor: 'Ada', datum: '2026-11-22T03:19:00+01:00', plus: 302, minus: 7, dateien: 1 });
+const aufZweig = (zweige, entfernte = [], weitere) => ({ zustand: 'auf_zweig', zweige, entfernte_zweige: entfernte, ...(weitere ? { zweige_weitere: weitere } : {}) });
+const C1_ZWEIGE = aufZweig(['karte/247', 'karte/a', 'karte/b', 'karte/c', 'karte/d', 'main']);
+
+test('Commit-Kopf: Kurz-Hash, Kennungen als Liste mit unsichtbarem Vorspann, Überschrift ohne Chips; Autor, Datum, Zeilen und Dateien wie bisher', () => {
+  const html = d.commitKopfHtml(kopfCommit('[R00229] B1187: Sperrform je Komponente'), 'kd', C1_ZWEIGE, esc);
+  assert.match(html, /<div class="z1"><span class="mono">kd:ccccccc<\/span><span class="vh">Kennungen:<\/span><ul class="rv-chips"><li class="rv-chip">R00229<\/li><li class="rv-chip">B1187<\/li><\/ul><span class="rv-zweige">/);
+  assert.match(html, /<h2 id="rv-ctitel" tabindex="-1">Sperrform je Komponente<\/h2>/);
+  assert.ok(ohneTags(html).includes('Ada · 22.11.2026 03:19 · +302 −7 · 1 Datei'));
+});
+
+test('Commit-Kopf: ohne Form, nur Kennung, [Factory] — Überschrift unverändert, keine Kennungen; Chip über 16 Zeichen gekürzt mit title', () => {
+  for (const titel of ['Ohne Form', '[R00229]', '[Factory] director: Text', 'x [R00229] y']) {
+    const html = d.commitKopfHtml(kopfCommit(titel), 'kd', null, esc);
+    assert.ok(html.includes(`<h2 id="rv-ctitel" tabindex="-1">${esc(titel)}</h2>`), titel);
+    assert.doesNotMatch(html, /rv-chip|Kennungen/, titel);
+  }
+  const lang = d.commitKopfHtml(kopfCommit(`[${'A'.repeat(40)}] Rest`), 'kd', null, esc);
+  assert.ok(lang.includes(`<li class="rv-chip" title="${'A'.repeat(40)}">${'A'.repeat(15)}…</li>`));
+});
+
+test('Commit-Kopf: C1 „auf main“ mit „+5 Zweige“ zu, die Liste aller Namen dahinter verborgen; offen sichtbar', () => {
+  const zu = d.commitKopfHtml(kopfCommit('t'), 'kd', C1_ZWEIGE, esc);
+  assert.match(zu, /<span class="rv-zweige"><span class="rv-zw-auf">auf main<\/span><button type="button" class="btn rv-mehr" id="rv-zw-mehr" data-act="review-zweige" aria-expanded="false" aria-controls="rv-zw-liste">\+5 Zweige<\/button><span class="rv-zw-liste" id="rv-zw-liste" hidden><span class="vh">auf Zweigen: <\/span><span class="rv-br">karte\/247<\/span>/);
+  const offen = d.commitKopfHtml(kopfCommit('t'), 'kd', C1_ZWEIGE, esc, true);
+  assert.match(offen, /aria-expanded="true" aria-controls="rv-zw-liste">\+5 Zweige<\/button><span class="rv-zw-liste" id="rv-zw-liste"><span class="vh">/);
+});
+
+test('Commit-Kopf: C3 „+1 Zweig“, C4 ohne Knopf, C8 „auf master“, C9 „+11 Zweige“, ohne main die heutige Liste, verwaist bleibt', () => {
+  const kopf = e => d.commitKopfHtml(kopfCommit('t'), 'kd', e, esc);
+  assert.match(kopf(aufZweig(['main'], ['origin/main'])), /auf main<\/span><button [^>]*>\+1 Zweig<\/button>/);
+  const c4 = kopf(aufZweig(['main']));
+  assert.match(c4, /<span class="rv-zweige"><span class="rv-zw-auf">auf main<\/span><\/span>/);
+  assert.doesNotMatch(c4, /<button/);
+  assert.match(kopf(aufZweig(['master', 'x'])), /auf master<\/span><button [^>]*>\+1 Zweig<\/button>/);
+  assert.match(kopf(aufZweig(['master', 'main'])), /auf main<\/span>/);
+  assert.match(kopf(aufZweig(['main', ...Array.from({ length: 9 }, (_, i) => `zz0${i + 1}`)], [], 2)), />\+11 Zweige<\/button>/);
+  const c2 = kopf(aufZweig(['karte/247'], ['origin/karte/247']));
+  assert.doesNotMatch(c2, /auf main|<button|rv-zw-/);
+  assert.ok(ohneTags(c2).includes('auf Zweigen: karte/247origin/karte/247'));
+  assert.ok(kopf({ zustand: 'verwaist' }).includes('<span class="rv-kz">auf keinem Zweig</span>'));
 });
 
 /* ── R00224 B1169: „Ein Commit“ bei 404 mit zustand — Überschrift, Satz, Hinweiszeile als eigene Blöcke ── */

@@ -38,13 +38,13 @@ function seite(page) {
 async function commitOeffnen(page, k, nr, hash, kuerzel = 'kd') {
   await page.goto(adresse(k, nr, hash, kuerzel));
   await page.locator('.rv-commit h2').waitFor();
-  await page.locator('#rv-ls li > a .z2').first().waitFor();
+  await page.locator('#rv-u-alle[aria-label]').waitFor();
 }
 
 /** Öffnet „Alle Änderungen“ und wartet auf die Leiste mit Zahlen. */
 async function alleOeffnen(page, k, nr) {
   await page.goto(adresse(k, nr));
-  await page.locator('#rv-ls li > a .z2').first().waitFor();
+  await page.locator('#rv-u-alle[aria-label]').waitFor();
 }
 
 /** Öffnet die Review-Seite von `hash` aus der Liste „Commits“ der Aufgabe (Marke „aus der Liste geöffnet“). */
@@ -110,7 +110,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   /* ── AK 1 Leiste statt Umschalter, Zahlen (US-1) ── */
 
   test('AK 1/US-1: K-Leiste, C2 gezeigt — „Alle Änderungen · 3 Commits · +318 −20“, C1, C2, C3; nur C2 gezeigt; kein Umschalter', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c2);
     expect(await s.texte()).toEqual([
@@ -137,7 +136,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 1: Aufgabe #6 mit nur C10 — „1 Commit · +1.240 −0“', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     await alleOeffnen(page, k, 6);
     expect((await seite(page).texte())[0]).toBe('Alle Änderungen · 1 Commit · +1.240 −0');
     await expect(seite(page).alle()).toHaveAttribute('aria-label', 'Alle Änderungen, 1 Commit, 1.240 Zeilen hinzugefügt, 0 entfernt');
@@ -147,7 +145,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   /* ── AK 2 Eintrag und Chips (US-2) ── */
 
   test('AK 2/US-2: C1 mit den Chips R00229 und B1187, C3 mit DOC; Titel einzeilig, `title` mit dem ganzen Titel', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c1);
     const c1 = s.eintrag(h.c1), c3 = s.eintrag(h.c3);
@@ -166,7 +163,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   /* ── AK 3 Wahl, Blättern, Tastatur (US-1) ── */
 
   test('AK 3/US-1: aus der Liste C2, Klick auf C3 — C3 gezeigt, Fokus auf C3, Verlauf ersetzt, „←“ in die Liste, keine neue Anfrage', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     const anfragen = listeZaehlen(page, 5);
     await ausDerListe(page, k, 5, h.c2);
@@ -195,7 +191,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 3: Strg-Klick öffnet C3 in einem neuen Tab, die Seite bleibt bei C2', async ({ page, context }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c2);
     const neu = context.waitForEvent('page');
@@ -209,7 +204,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 3: Tab-Folge — Rückweg, die Einträge der Leiste, Zurück, Vor, Alle einklappen; Enter wählt', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c2);
     await page.locator('#rv-rueckweg').focus();
@@ -226,7 +220,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 3: Klick auf den gezeigten Eintrag bewirkt nichts — kein Verlaufseintrag, keine neue Zeichnung, Rollstand und Fokus bleiben', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c2);
     await s.eintrag(h.c2).focus();
@@ -250,7 +243,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 3: nach der Wahl eines anderen Eintrags genau ein role=status „Commit 3 von 3: kd:<kurz>“, kein zweiter', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c2);
     const ansagen = await ansagenZaehlen(page);
@@ -265,7 +257,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 3: „Zum Code“ — 30 Commits: erster Tab-Halt, nur bei Fokus sichtbar, setzt den Fokus auf den Anfang der Dateien; 7 Commits kein Verweis, 8 Commits Verweis', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 11, h.dreissig[0]);
     await expect(s.eintraege).toHaveCount(31);
@@ -278,7 +269,8 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
     expect(await zc.evaluate(e => e.getBoundingClientRect().width > 1 && e.getBoundingClientRect().height > 1)).toBe(true);
     await page.keyboard.press('Enter');
     const ziel = await page.evaluate(() => ({ id: document.activeElement.id, imCode: Boolean(document.activeElement.closest('#rv-insel')), imKopf: Boolean(document.activeElement.closest('.rv-commit')) }));
-    expect(ziel).toEqual({ id: 'rv-gk-code', imCode: true, imKopf: false });
+    // die Dateien der 30 Commits sind Doku (`.txt`): der Anfang der Dateien ist der Kopf der Gruppe „Doku und Planung“
+    expect(ziel).toEqual({ id: 'rv-gk-doku', imCode: true, imKopf: false });
     for (const [nr, anzahl, da] of [[12, 8, 0], [13, 9, 1]]) {
       await commitOeffnen(page, k, nr, h.dreissig[0]);
       await expect(s.eintraege).toHaveCount(anzahl);
@@ -289,7 +281,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   /* ── AK 4 Kopf mit Chips (US-3) ── */
 
   test('AK 4/US-3: C1 — Kopf mit kd:<kurz>, Kennungen R00229 und B1187 als Liste, Überschrift ohne Chips; C4 und C6 ohne Chips', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c1);
     await expect(s.kopf().locator('.z1 > .mono')).toHaveText(kurz(h.c1));
@@ -306,7 +297,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 4: ein Chip über 16 Zeichen ist im Kopf gekürzt, der volle Text steht im title', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 9, h.c3a);
     // der Titel aus nur einer Kennung hat keinen Rest: unverändert ohne Chips
@@ -319,7 +309,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   /* ── AK 5 Zweige verdichtet (US-4) ── */
 
   test('AK 5/US-4: C1 „auf main“ mit „+5 Zweige“ — Klick öffnet die Liste, Fokus bleibt, zweiter Klick schließt, Wechsel beginnt zu', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 5, h.c1);
     await expect(s.zweige()).toContainText('auf main');
@@ -346,7 +335,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 5: C3 „+1 Zweig“, C2 die heutige Liste, C4 ohne Knopf, C8 „auf master“, C9 „+11 Zweige“, V „auf keinem Zweig“, main nicht genannt → Liste', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     const zweigtext = async () => leer(await s.zweige().evaluate(e => [...e.childNodes].filter(n => !(n.nodeType === 1 && (n.hidden || n.tagName === 'BUTTON'))).map(n => n.textContent).join(' ')));
     await commitOeffnen(page, k, 5, h.c3);
@@ -354,7 +342,7 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
     await expect(s.mehr()).toHaveText('+1 Zweig');
     await commitOeffnen(page, k, 5, h.c2);
     await expect(s.mehr()).toHaveCount(0);
-    expect(await zweigtext()).toBe('auf Zweigen: karte/247origin/karte/247');
+    expect(await zweigtext()).toBe('auf Zweigen: karte/247 origin/karte/247');
     await expect(s.zweige()).not.toContainText('auf main');
     const faelle = [[h.c4, 'auf main', null], [h.c8, 'auf master', '+1 Zweig'], [h.c9, 'auf main', '+11 Zweige']];
     for (const [hash, text, knopf] of faelle) {
@@ -365,7 +353,7 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
     }
     await commitOeffnen(page, k, 10, h.a12);
     await expect(s.mehr()).toHaveCount(0);
-    expect(await zweigtext()).toBe('auf Zweigen: a01a02a03a04a05a06a07a08a09a10+3');
+    expect(await zweigtext()).toBe('auf Zweigen: a01 a02 a03 a04 a05 a06 a07 a08 a09 a10 +3');
     await commitOeffnen(page, k, 7, h.v);
     await expect(s.zweige()).toHaveText('auf keinem Zweig');
     await expect(s.mehr()).toHaveCount(0);
@@ -375,7 +363,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   /* ── AK 6 Ränder der Leiste (US-7) ── */
 
   test('AK 6/US-7: Aufgabe #7 — V „auf keinem Zweig“ in der Leiste, „2 Commits · +316 −19“, kein Eintrag für fehlt; die Wahl von V zeigt das Band', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 7, h.c1);
     const texte = await s.texte();
@@ -390,7 +377,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 6/US-7: Liste gehalten — nur „Alle Änderungen“ mit „Commits werden gelesen …“, aria-busy, ohne aria-current; 503 → „Commits nicht gelesen“; Erneut versuchen', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     const tor = await listeHalten(page, 5);
     await page.goto(adresse(k, 5, h.c2));
@@ -414,23 +400,27 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 6: Aufgabe ohne Commit mit Diff — nur „Alle Änderungen“ ohne Zahlen, „Keine Änderungen zu zeigen.“; fremde Adresse ohne aria-current', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await page.goto(adresse(k, 14));
     await expect(page.getByText('Keine Änderungen zu zeigen.')).toBeVisible();
     await expect(s.eintraege).toHaveCount(1);
     expect(await s.texte()).toEqual(['Alle Änderungen']);
-    // Adresse mit einem Commit außerhalb der Folge (R00207 Rand b)
-    await page.goto(adresse(k, 5, h.c4));
+    // Adresse mit einem Commit außerhalb der Folge (R00207 Rand b): die Liste nennt C3 nicht
+    await page.route(url => istListe(url, 5), async route => {
+      const echt = await route.fetch();
+      const json = await echt.json();
+      json.commits = json.commits.filter(e => e.hash !== h.c3);
+      await route.fulfill({ response: echt, body: JSON.stringify(json) });
+    });
+    await page.goto(adresse(k, 5, h.c3));
     await expect(page.locator('.rv-randb')).toBeVisible();
-    await expect(s.eintraege).toHaveCount(4);
+    await expect(s.eintraege).toHaveCount(3);
     expect(await s.gezeigt()).toEqual([]);
   });
 
   /* ── AK 7 Alle Änderungen, mehrere Anwendungen (US-5) ── */
 
   test('AK 7/US-5: Aufgabe #8 — kd und wb in der Reihenfolge der Liste, „Alle Änderungen“ gezeigt, Seitenleiste bleibt; W1 zeigt „Ein Commit“ von wb', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await alleOeffnen(page, k, 8);
     expect(await s.eintraege.locator('.mono').allTextContents()).toEqual([kurz(h.dreissig[0]), kurz(h.w1, 'wb'), kurz(h.dreissig[1])]);
@@ -457,7 +447,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
 
   for (const breite of [320, 414, 599, 600, 980, 1280]) {
     test(`AK 8: ${breite} px hell und dunkel — kein Querscrollen; ${breite < 600 ? 'untereinander in voller Breite, Titel gekürzt, Überschrift bricht um' : 'nebeneinander, kein Eintrag breiter als die Leiste'}`, async ({ page }) => {
-      test.fail(); // erwartet rot (R00245), fällt mit dem Bau
       const s = seite(page);
       await breiteSetzen(page, breite, 900);
       for (const hash of [h.c2lang, h.c3a]) {
@@ -492,7 +481,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   }
 
   test('AK 8: Kennung des Titels in C3 auf 16 Zeichen gekürzt (15 und „…“) — in einem Titel mit Rest', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     // C3a besteht nur aus der Kennung und hat keine Chips; die Kürzung zeigt ein Chip mit Rest (per page.route)
     await page.route(url => istListe(url, 9), async route => {
       const echt = await route.fetch();
@@ -509,7 +497,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
 
   for (const [b, hoehe] of [[320, 568], [1280, 720]]) {
     test(`AK 8: 30 Commits bei ${b} x ${hoehe} — Leiste ≤ 40 % der Höhe und rollt; Wahl des 25. per Tastatur: Ring in der Leiste, Seite rollt nicht, kein Rücksprung`, async ({ page }) => {
-      test.fail(); // erwartet rot (R00245), fällt mit dem Bau
       const s = seite(page);
       await breiteSetzen(page, b, hoehe);
       await commitOeffnen(page, k, 11, h.dreissig[0]);
@@ -537,7 +524,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   }
 
   test('AK 8: Neuzeichnen hält den Rollstand, ein gezeigter Eintrag unten wird beim Öffnen in den Blick gerollt', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await breiteSetzen(page, 1280, 720);
     await commitOeffnen(page, k, 11, h.dreissig[29]);
@@ -553,7 +539,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   test.describe('grober Zeiger', () => {
     test.use({ hasTouch: true, isMobile: true, viewport: { width: 640, height: 360 } });
     test('AK 8: 640 x 360 — Leiste ≤ 144 px und bricht in Zeilen um; jeder Eintrag ≥ 44 px', async ({ page }) => {
-      test.fail(); // erwartet rot (R00245), fällt mit dem Bau
       const s = seite(page);
       await commitOeffnen(page, k, 11, h.dreissig[0]);
       const m = await s.leiste.evaluate(l => ({ hoehe: l.getBoundingClientRect().height, tops: new Set([...l.querySelectorAll('li > a')].map(a => Math.round(a.getBoundingClientRect().top))).size, klein: [...l.querySelectorAll('li > a')].filter(a => a.getBoundingClientRect().height < 44).length }));
@@ -564,7 +549,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   });
 
   test('AK 8: feiner Zeiger — jeder Eintrag ≥ 24 px hoch', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     await commitOeffnen(page, k, 5, h.c1);
     const klein = await seite(page).eintraege.evaluateAll(as => as.filter(a => a.getBoundingClientRect().height < 24).length);
     expect(klein).toBe(0);
@@ -574,7 +558,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
 
   for (const farbe of ['light', 'dark']) {
     test(`AK 9: ${farbe} — Rand --kd-muted ≥ 3:1, gewählt mit --kd-accent-weak und 3 px --kd-accent, Text und Chips ≥ 4,5:1 in allen Zuständen, Ring sichtbar`, async ({ page }) => {
-      test.fail(); // erwartet rot (R00245), fällt mit dem Bau
       const s = seite(page);
       await commitOeffnen(page, k, 5, h.c2);
       await thema(page, farbe);
@@ -618,7 +601,6 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   /* ── AK 10 Fremder Text ── */
 
   test('AK 10: C7 — Titel und Zweigname zeichengleich als Text bzw. mit Marke, kein img, window.pwn nicht gesetzt, kein Chip', async ({ page }) => {
-    test.fail(); // erwartet rot (R00245), fällt mit dem Bau
     const s = seite(page);
     await commitOeffnen(page, k, 10, h.c7);
     const c7 = s.eintrag(h.c7);
@@ -629,7 +611,7 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
     await expect(page.locator('#review img')).toHaveCount(0);
     expect(await page.evaluate(() => window.pwn)).toBeUndefined();
     await expect(s.zweige().locator('.mk-bidi')).toHaveCount(1);
-    expect(await s.zweige().locator('.rv-br').first().textContent()).toContain(BIDI_ZWEIG);
+    expect(await s.zweige().locator('.rv-br').first().textContent()).toBe(BIDI_ZWEIG.replace('\u202e', '⟨U+202E⟩'));
     expect(LANGER_TITEL.length).toBe(120);
   });
 });

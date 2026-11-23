@@ -4,16 +4,13 @@
   'use strict';
   const { ZUSTANDSWOERTER, anwendungName, zustandSatz, zustandsSymbol, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
   const { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, grosseNeueDatei, testHinweis, groessteSumme, balkenTeile } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
-  const { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, patchAdresse, patchName } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
-
-  /** Zustände der Liste, zu denen es einen Diff gibt (ADR-0033 Punkt 2). */
-  const MIT_DIFF = ['auf_zweig', 'verwaist'];
+  const { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, patchAdresse, patchName, mitDiff: mitDiffVon, commitChips, chipText, zweigVerdichtung, zweigeWort } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
 
   /** Folge der Review-Seite aus der Liste `GET …/commits` und dem vollen Hash der Diff-Antwort (ADR-0033 Punkte 2 und 9):
       gezählt wird über die Einträge mit Diff in der Reihenfolge der Antwort, „i“ nie aus dem Text der Adresse (Rand a).
       Arten: `folge` {i, n, zurueck, vor}, `fremd` (Rand b), `keine` (Rand c), `erster` (Adresse ohne Verweis). */
   function folge(eintraege, vollerHash) {
-    const mitDiff = eintraege.filter(e => MIT_DIFF.includes(e.zustand) && e.hash);
+    const mitDiff = mitDiffVon(eintraege);
     if (!mitDiff.length) return { art: 'keine', eintraege };
     const erster = mitDiff[0].verweis;
     if (!vollerHash) return { art: 'erster', erster };
@@ -535,19 +532,42 @@
     return `<span class="vh">${lesetext}</span>${namen.map(n => `<span class="rv-br">${sichtbarHtml(n, esc)}</span>`).join('')}${weitere ? `<span class="rv-kz">+${weitere}</span>` : ''}`;
   }
 
-  /** Commit-Kopf (FA 5): Kurz-Hash, Zweige oder „auf keinem Zweig“, voller Titel als h2, Autor, Datum, Zeilen und Dateien; fremder
-      Text sichtbar gemacht (ADR-0033 Punkt 8). */
-  function commitKopfHtml(c, anwendung, eintrag, esc) {
+  /** Ein Chip (R00245 FA 8): höchstens 16 Zeichen, die volle Kennung im `title`, wenn gekürzt; in der Leiste ein `span`, im Kopf ein `li`. */
+  function chipHtml(kennung, esc, element = 'span') {
+    const text = chipText(kennung);
+    const titel = text === kennung ? '' : ` title="${esc(kennung)}"`;
+    return `<${element} class="rv-chip"${titel}>${esc(text)}</${element}>`;
+  }
+
+  /** Zweige des Kopfs verdichtet (R00245 FA 9): „auf main“ bzw. „auf master“ und ein Knopf „+<k> Zweige“, der die Liste aller Namen
+      öffnet; ohne `main` und `master` unter den genannten lokalen Zweigen die Liste aller Namen. */
+  function zweigeKopfHtml(eintrag, esc, offen) {
+    const v = zweigVerdichtung(eintrag);
+    if (!v) return zweigeHtml(eintrag, esc);
+    const genannt = `<span class="rv-zw-auf">auf ${v.name}</span>`;
+    if (!v.weitere) return genannt;
+    const knopf = `<button type="button" class="btn rv-mehr" id="rv-zw-mehr" data-act="review-zweige" aria-expanded="${offen}" aria-controls="rv-zw-liste">${zweigeWort(v.weitere)}</button>`;
+    return `${genannt}${knopf}<span class="rv-zw-liste" id="rv-zw-liste"${offen ? '' : ' hidden'}>${zweigeHtml(eintrag, esc)}</span>`;
+  }
+
+  /** Commit-Kopf (FA 5, R00245 FA 9): Kurz-Hash, Kennungen aus dem Titel als Liste, Zweige verdichtet oder „auf keinem Zweig“, der Titel
+      ohne Kennungen als h2, Autor, Datum, Zeilen und Dateien; fremder Text sichtbar gemacht (ADR-0033 Punkt 8). `zweigeOffen`: die
+      Liste hinter „+<k> Zweige“ ist offen. */
+  function commitKopfHtml(c, anwendung, eintrag, esc, zweigeOffen = false) {
     const kurz = (anwendung ? `${anwendung}:` : '') + c.hash.slice(0, 7);
     let zweige = '';
     if (eintrag && eintrag.zustand === 'verwaist') zweige = '<span class="rv-kz">auf keinem Zweig</span>';
-    else if (eintrag && eintrag.zustand === 'auf_zweig') zweige = zweigeHtml(eintrag, esc);
+    else if (eintrag && eintrag.zustand === 'auf_zweig') zweige = zweigeKopfHtml(eintrag, esc, zweigeOffen);
     const band = eintrag && eintrag.zustand === 'verwaist' ? `<p class="rv-band" role="note">${BAND_VERWAIST}</p>` : '';
-    return `<section class="rv-commit"><div class="z1"><span class="mono">${esc(kurz)}</span><span class="rv-zweige">${zweige}</span></div><h2 id="rv-ctitel" tabindex="-1">${sichtbarHtml(c.titel, esc)}</h2><p class="m">${sichtbarHtml(c.autor, esc)} · <span title="${esc(sichtbarText(c.datum))}">${sichtbarHtml(datumText(c.datum), esc)}</span> · ${zahlenHtml(c)} · ${dateienWort(c.dateien)}</p>${band}</section>`;
+    const { chips, rest } = commitChips(c.titel);
+    let kennungen = '';
+    if (chips.length) kennungen = `<span class="vh">Kennungen:</span><ul class="rv-chips">${chips.map(k => chipHtml(k, esc, 'li')).join('')}</ul>`;
+    return `<section class="rv-commit"><div class="z1"><span class="mono">${esc(kurz)}</span>${kennungen}<span class="rv-zweige">${zweige}</span></div><h2 id="rv-ctitel" tabindex="-1">${sichtbarHtml(rest, esc)}</h2><p class="m">${sichtbarHtml(c.autor, esc)} · <span title="${esc(sichtbarText(c.datum))}">${sichtbarHtml(datumText(c.datum), esc)}</span> · ${zahlenHtml(c)} · ${dateienWort(c.dateien)}</p>${band}</section>`;
   }
 
-  /** Blättern (FA 3): fehlende Nachbarn hinterlassen leeren Platz, nie einen deaktivierten Knopf. */
-  function blaetternHtml(f, kurz, schmal) {
+  /** Blättern (FA 3): fehlende Nachbarn hinterlassen leeren Platz, nie einen deaktivierten Knopf. `still`: die Stelle sagt nichts an,
+      weil die Wahl in der Leiste den Wechsel schon ansagt (R00245 FA 6, genau eine Ansage). */
+  function blaetternHtml(f, kurz, schmal, still = false) {
     const seite = (richtung, ziel, k) => {
       if (!ziel) return '<span class="bl-leer"></span>';
       const zurueck = richtung === 'zurueck';
@@ -556,7 +576,7 @@
       const zeichen = `<span class="bl-s" aria-hidden="true">${zurueck ? '‹' : '›'}</span>`;
       return `<button type="button" class="btn bl-k" id="rv-${richtung}" data-act="review-blaettern" data-arg="${richtung}" aria-label="${name}">${zurueck ? zeichen + text : text + zeichen}</button>`;
     };
-    return `<nav class="bl" aria-label="Commits der Aufgabe, ältester zuerst">${seite('zurueck', f.zurueck, f.i - 1)}<span class="pos"><b id="rv-pos" aria-live="polite">${f.i} von ${f.n}</b> <span class="mono">${kurz}</span></span>${seite('vor', f.vor, f.i + 1)}</nav>`;
+    return `<nav class="bl" aria-label="Commits der Aufgabe, ältester zuerst">${seite('zurueck', f.zurueck, f.i - 1)}<span class="pos"><b id="rv-pos"${still ? '' : ' aria-live="polite"'}>${f.i} von ${f.n}</b> <span class="mono">${kurz}</span></span>${seite('vor', f.vor, f.i + 1)}</nav>`;
   }
 
   /** Meldung einer ganzen Seite: die erste Zeile ist die Überschrift mit `tabindex="-1"` (Fokusziel, FA 13). `zeilen` setzt Überschrift
@@ -622,7 +642,7 @@
   }
 
   Object.assign(ziel, { kopfMitAktionenHtml, pfadFeldHtml, sprungBasis });
-  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, chipHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });
 

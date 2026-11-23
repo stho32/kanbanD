@@ -354,7 +354,8 @@ test.describe('R00236 Pfad, VS Code und Patch je Datei', () => {
       await page.locator('#rv-u-alle').click();
       await page.locator('#rv-insel .rv-abs .rv-gk').first().waitFor();
       await expect(s.alleFelder()).toHaveCount(0);
-      await page.locator('#rv-u-commit').click();
+      // umgestellt mit R00245 (FA 1): zurück über den Eintrag von K-Pfad in der Leiste statt „Ein Commit“
+      await page.locator(`#rv-ls li > a[data-arg="kd:${h.kPfad}"]`).click();
       await page.locator('#rv-insel > .rv-gr .rv-gk').first().waitFor();
       await expect(s.alleFelder()).toHaveCount(0);
     });

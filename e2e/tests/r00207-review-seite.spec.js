@@ -637,11 +637,12 @@ test.describe('R00207 Review-Seite eines Commits', () => {
   });
 
   // umgestellt mit R00210 (FA 1, 2): „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; „Ein Commit“ führt auf den ersten mit Diff
-  test('AK 1/US-2: „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; „Ein Commit“ zeigt K3 „1 von 4“ ohne Zurück mit vollem Verweis (R00210 umgestellt)', async ({ page }) => {
+  // umgestellt mit R00245 (FA 1): der Umschalter entfällt; der erste Commit-Eintrag der Leiste ist der erste mit Diff
+  test('AK 1/US-2: „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; der erste Commit der Leiste zeigt K3 „1 von 4“ ohne Zurück mit vollem Verweis (R00210, R00245 umgestellt)', async ({ page }) => {
     await listeOeffnen(page);
     await page.getByRole('link', { name: 'Alle Änderungen ansehen' }).click();
     await expect(page.locator('#rv-u-alle')).toHaveAttribute('aria-current', 'page');
-    await page.locator('#rv-u-commit').click();
+    await page.locator('#rv-l1').click();
     await expect(page.locator(POS)).toHaveText('1 von 4');
     await expect(page.locator('#rv-zurueck')).toHaveCount(0);
     expect(page.url()).toContain(`/review?commit=kd%3A${rep.k3}`);
@@ -859,16 +860,17 @@ test.describe('R00207 Review-Seite eines Commits', () => {
   /* ── AK 10 Tastatur und Bedienhilfe ── */
 
   // umgestellt mit R00210 (FA 2): der Umschalter steht auch in „Ein Commit“, zwischen Rückweg und Blättern
-  test('AK 10: Tab-Folge Rückweg, Umschalter, Zurück, Vor, Alle einklappen, Dateiliste, Kopf und Code je Datei; Enter und Leertaste klappen, Fokus bleibt, Fokusring (R00210 umgestellt)', async ({ page }) => {
+  // umgestellt mit R00245 (FA 1, AK 3): statt des Umschalters stehen dort alle Einträge der Leiste (Alle Änderungen und vier Commits)
+  test('AK 10: Tab-Folge Rückweg, Leiste, Zurück, Vor, Alle einklappen, Dateiliste, Kopf und Code je Datei; Enter und Leertaste klappen, Fokus bleibt, Fokusring (R00210, R00245 umgestellt)', async ({ page }) => {
     await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
     await expect(page.locator('#rv-rueckweg')).toBeFocused();
     const reihe = [];
     // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 15; i++) {
       await page.keyboard.press('Tab');
       reihe.push(await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); return { id: e.id || e.className, ring: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0 }; }));
     }
-    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-u-commit', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-gk-code', 'rv-dk0', 'rv-pk0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'df-sc']);
+    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-l1', 'rv-l2', 'rv-l3', 'rv-l4', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-gk-code', 'rv-dk0', 'rv-pk0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'df-sc']);
     for (const r of reihe) expect(r.ring, `Fokusring an ${r.id}`).toBe(true);
     await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
     await expect(page.locator(POS)).toHaveAttribute('aria-live', 'polite');
