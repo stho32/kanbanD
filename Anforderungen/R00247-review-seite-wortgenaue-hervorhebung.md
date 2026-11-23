@@ -1,6 +1,6 @@
 ---
 id: R00247
-status: Neu
+status: Erledigt
 datum: 2026-11-23
 ---
 
@@ -70,7 +70,7 @@ Heute (Stand `03dda757`) steht keine Marke, die ganze Zeile ist rot oder grün. 
 
 ### Leistung, Bestand, Mutanten
 
-- [ ] **AK 9 Last:** Gegeben eine Datei mit 10.000 geänderten Zeilen (5.000 gelöschte, 5.000 hinzugefügte, gleich lange Läufe, Zeilen zu etwa 80 Zeichen) in „Ein Commit“, dann ergeben im Einheitentest zwei Zeilen zu je 1.000 Zeichen höchstens 2.000 Vergleiche (Zähler; Rechnung 2 × 1.000), und die Zeit wächst bei doppelter Zeilenzahl auf etwa das Doppelte (linear, keine Rechnung über das Paar hinaus). Zähler und Linearität sind die harten Prüfungen. Die längste Aufgabe ab dem Klick „Änderungen anzeigen“ wird mit `PerformanceObserver` (`longtask`, ereignisgenau, ohne Polling im Raster des Testwerkzeugs) allein (ein Worker) gemessen und mit dem Wert ohne Marke im Bericht genannt, ohne Grenze; sie gehört zum Einsetzen der nachgeladenen Datei (R00207, ADR-0033 Punkt 5). Heute rot (Zähler fehlt). (PO Z. 676)
+- [x] **AK 9 Last:** Gegeben eine Datei mit 10.000 geänderten Zeilen (5.000 gelöschte, 5.000 hinzugefügte, gleich lange Läufe, Zeilen zu etwa 80 Zeichen) in „Ein Commit“, dann ergeben im Einheitentest zwei Zeilen zu je 1.000 Zeichen höchstens 2.000 Vergleiche (Zähler; Rechnung 2 × 1.000), und die Zeit wächst bei doppelter Zeilenzahl auf etwa das Doppelte (linear, keine Rechnung über das Paar hinaus). Zähler und Linearität sind die harten Prüfungen. Die längste Aufgabe ab dem Klick „Änderungen anzeigen“ wird mit `PerformanceObserver` (`longtask`, ereignisgenau, ohne Polling im Raster des Testwerkzeugs) allein (ein Worker) gemessen und mit dem Wert ohne Marke im Bericht genannt, ohne Grenze; sie gehört zum Einsetzen der nachgeladenen Datei (R00207, ADR-0033 Punkt 5). Heute rot (Zähler fehlt). (PO Z. 676)
 - [x] **AK 10 Bestand und Mutanten:** Ohne Marke (alle Fälle ohne Paar) verhält sich die Seite wie vor S5: Gruppen, Größenbalken, Aufklapper „Dateien (<n>) und Commits“, „Pfad“, „VS Code“, „Patch“, Leiste der Commits, „Gesehen“, soweit sie dann auf main stehen, und die Syntaxfarbe (R00217); bestehende Tests behalten ihre Erwartungen, jede geänderte Erwartung nennt der entwickler im Bericht mit Grund. Mutanten, je von einem benannten Test getötet, in einer eigenen Kopie:
   - (m1) Läufe ungleicher Länge werden trotzdem gepaart → AK 3 rot (g)
   - (m2) keine Erweiterung auf Wortgrenzen → AK 2 rot
