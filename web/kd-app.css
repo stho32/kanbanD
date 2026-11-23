@@ -1805,10 +1805,11 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv .du i.w{background:var(--kd-accent)}.lv .du i.d{background:var(--kd-agent)}
 .lv .du i.t{background:repeating-linear-gradient(135deg,var(--kd-mensch) 0 4px,var(--kd-mensch-weak) 4px 6px)}
 .par{font-size:10px;font-weight:600;line-height:14px;padding:0 3px;border:1px solid var(--kd-line-strong);color:var(--kd-muted);letter-spacing:.02em}
-.lv-s.fehl{border-color:var(--kd-status-error);background:var(--kd-status-error-bg)}
+.lv-s.fehl{border-color:var(--kd-status-error);background:var(--kd-status-error-bg);color:var(--kd-status-error-ink);font-size:inherit}
 .lv-s.fehl>summary:hover{background:var(--kd-status-error-bg)}
 .lv-s.fehl .nm,.lv-s.fehl .eg,.lv-s.fehl .ab,.lv-s.fehl .du{color:var(--kd-status-error-ink)}
-.lv-s-ganz{border-top:1px solid var(--kd-line);background:var(--kd-bg);padding:4px var(--kd-s3) 8px 36px}
+.lv-s-ganz{border-top:1px solid var(--kd-line);background:var(--kd-bg);padding:4px var(--kd-s3) 8px 36px;color:var(--kd-text)}
+.lv-s.fehl .lv-erg{color:var(--kd-status-error-ink)}
 .lv-s-ganz .k{display:block;margin-top:4px;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted)}
 .lv-s-ganz pre{margin:2px 0 0;font:12px/1.5 var(--kd-mono);white-space:pre-wrap;overflow-wrap:anywhere}
 /* Denk- und Wartezeile ab 5 s (FA 8) */
