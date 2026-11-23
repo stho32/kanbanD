@@ -1,4 +1,4 @@
-# ADR-0043: Sammelwege lesen den Aufgabenordner einmal je Anfrage — Verzeichnis der Dateinamen unter der Sperre, Grenze je Sammelanfrage
+# ADR-0044: Sammelwege lesen den Aufgabenordner einmal je Anfrage — Verzeichnis der Dateinamen unter der Sperre, Grenze je Sammelanfrage
 
 **Status**: Akzeptiert (E1, E3). E2 (Grenze je Sammelanfrage) Vorgeschlagen — Höhe und Wortlaut fragt der Bericht beim product-owner an; bis zur Antwort gilt die Empfehlung (5.000 Einträge, 400).
 **Datum**: 2026-11-23
