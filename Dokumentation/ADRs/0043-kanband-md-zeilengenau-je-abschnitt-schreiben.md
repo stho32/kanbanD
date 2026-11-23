@@ -1,8 +1,8 @@
-# ADR-0043: `kanbanD.md` zeilengenau je Abschnitt schreiben — nur geänderte Schlüssel ersetzen, Textkörper nie, Rücklese-Prüfung mit Verweigerung als Sicherung
+# ADR-0043: `kanbanD.md` zeilengenau je Abschnitt schreiben — nur geänderte Schlüssel ersetzen, Textkörper nie, Handform im geänderten Abschnitt wird verweigert, Rücklese-Prüfung als zweite Sicherung
 
-**Status**: Vorgeschlagen — wartet auf den product-owner (Frage 1 „Bug oder Umfang“, Frage 2 „zeilengenau oder Hinweis“). Technisch durch Code-Lesen getragen; nichts gebaut.
+**Status**: Akzeptiert — product-owner 2026-11-23 (po-entscheidungen Z. 665–668, Lauf 248-product-owner-1): Bug; V4 mit geänderter Regel 6 (Verweigerung statt Normalform); Wortlaut der 409 wörtlich. Technisch durch Code-Lesen getragen; nichts gebaut.
 **Datum**: 2026-11-23
-**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #248, Lauf 248-architekt-1)
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #248, Läufe 248-architekt-1 und -2); product-owner (Z. 665–668)
 **Kontext-Anforderung**: — (Karte #248, entstanden im Entwicklertest von #218, R00220). Bezug: ADR-0036 Nachtrag „Umschalten“ Regel 4 (Schalter zeilengenau), ADR-0034 N2 Regel 2 (alte Form des Registers wird beim `PUT` umgestellt), ADR-0031 Regel 1 (ein Schreiber für `classes`), PO Z. 492, Vision „Git-freundliche Form“ und „Die Dateien sind der einzige Speicher“
 **Erprobt durch**: — (am Code gelesen, Stand `d79b70f2`; sechs echte `kanbanD.md` unter `~/Projekte/Kanban-Boards/*/` und ihre Git-Geschichte nur lesend geprüft)
 
@@ -31,34 +31,43 @@
 
 ## Entscheidung
 
-Gewählt **V4** (V1 mit Rücklese-Prüfung), weil sie die Linie aus ADR-0036 Regel 4 und PO Z. 492 auf alle Schlüssel von `kanbanD.md` ausdehnt, mit dem vorhandenen Muster und einem kleinen Preis. Regeln:
+Gewählt **V4** (V1 mit Rücklese-Prüfung), mit der Änderung des product-owner an Regel 6 (Z. 666: kein stiller Verlust innerhalb eines geänderten Abschnitts), weil sie die Linie aus ADR-0036 Regel 4 und PO Z. 492 auf alle Schlüssel von `kanbanD.md` ausdehnt, mit dem vorhandenen Muster und einem kleinen Preis. Regeln:
 
 1. **Ein Blockschreiber im Format**: `format::einstellungen` (oder `format::frontmatter`) bekommt `abschnitt_im_text(text, schluessel, block: Option<&str>) -> String`. Ein Abschnitt ist eine Zeile `<schluessel>:` in Spalte 0 innerhalb des Frontmatters samt den folgenden Zeilen, die mit Leerzeichen oder Tab beginnen (Blockregel von `schalter_im_text`). `Some(block)` ersetzt ihn an Ort und Stelle; fehlt er, kommt der Block vor das schließende `---`. `None` entfernt ihn. Zeilen in Spalte 0 hinter dem Abschnitt (Kommentar, Leerzeile, nächster Schlüssel) gehören nicht dazu und bleiben. BOM und Zeilenende (`\r\n` oder `\n`) folgen der Datei, auch in den neuen Blockzeilen. Ohne Frontmatter entsteht einer vor dem Text (wie beim Schalter). `schalter_im_text` wird zum Aufruf dieser Funktion mit dem einzeiligen Block `record-transcripts: <wert>`; ihre Tests bleiben unverändert grün.
 2. **Blöcke in Normalform aus den vorhandenen Schreibern**: `schreiben` wird in Abschnittsschreiber zerlegt (`personen_schreiben`, `klassen_schreiben` vorhanden, `signale_schreiben`, `quellen_schreiben`), die genau die heutigen Zeilen liefern; `schreiben` setzt sie für `einrichten` wie bisher zusammen. Leere Sätze: `people: {}`, `classes: {}`, `signals` → Abschnitt entfällt (wie heute).
 3. **Nur geänderte Abschnitte**: `einstellungen_aendern` liest unter derselben Sperre neben dem Modell den Text der Datei und vergleicht je Abschnitt `alt` mit `neu` (Personen, Klassen, Signale, Quellen). Nur Abschnitte mit Unterschied gehen durch `abschnitt_im_text`, in der Reihenfolge `people`, `classes`, `signals`, `sources`. Die Umstellung der alten Registerform (ADR-0034 N2 Regel 2, `Altform::Umstellen`) ist ein Unterschied in `sources`; `Altform::Stehenlassen` bleibt wie gebaut. Ohne Unterschied kein Commit (wie heute).
 4. **Textkörper, Reihenfolge, Fremdes**: Der Text nach dem Frontmatter, unbekannte Schlüssel, Kommentare außerhalb geänderter Abschnitte und die Reihenfolge der Schlüssel werden von keinem Schreibweg außer `einrichten` erzeugt oder verändert. Der Standard-Textkörper entsteht nur beim Einrichten.
-5. **Rücklese-Prüfung (Sicherung)**: Vor dem Commit wird der neue Text mit `einstellungen::lesen` gelesen; er muss `neu` ergeben (Schalter aus der Datei). Sonst kein Commit, `Fehler::Konflikt` (409) mit dem Arbeitswortlaut „kanbanD.md lässt sich im Abschnitt „<schluessel>“ nicht zeilengenau ändern. Bitte die Datei von Hand anpassen.“ Der Wortlaut ist Sache des product-owner (Frage 3).
-6. **Bewusster Verlust innerhalb eines geänderten Abschnitts**: Wer einen Eintrag eines Abschnitts ändert, bekommt diesen Abschnitt in Normalform; eingerückte Kommentare und Handform darin gehen verloren. Unberührte Abschnitte bleiben in jeder Form. V2 (je Eintrag) wird nur gebaut, wenn ein echter Bestand oder der product-owner es verlangt.
-7. **Gilt für alle Schreibwege über `einstellungen_aendern`**: `PUT /api/einstellungen`, `POST /api/personen`, `PATCH /api/personen/{kürzel}`, Stilllegen. Der Schalter bleibt auf seiner eigenen Route (ADR-0036 „Umschalten“), nutzt aber dieselbe Funktion.
+5. **Rücklese-Prüfung (zweite Sicherung) und Wortlaut**: Vor dem Commit wird der neue Text mit `einstellungen::lesen` gelesen; er muss `neu` ergeben (Schalter aus der Datei). Sonst kein Commit, Datei zeichengleich, `Fehler::Konflikt` (409) mit dem Wortlaut des product-owner (Z. 667, wörtlich):
+   „Nicht gespeichert: Der Abschnitt „<schluessel>“ in kanbanD.md ist von Hand gestaltet und lässt sich nicht zeilengenau ändern. Bitte die Änderung direkt in kanbanD.md eintragen.“
+   - `<schluessel>` ist der Schlüssel, wie er in der Datei steht: `people`, `classes`, `signals`, `sources`; beim Schalter `record-transcripts`.
+   - Genannt wird der **erste** betroffene Abschnitt in der Reihenfolge `people`, `classes`, `signals`, `sources`. Lässt sich ein Fehler beim Rücklesen keinem Abschnitt zuordnen, wird der erste geänderte genannt.
+   - Derselbe Text für alle Schreibwege und für beide Sicherungen (Regel 5 und 6), ohne Statuscode, ohne Text des YAML-Lesers. In „Einrichten“ steht er in `#einr-fehler`, der Entwurf bleibt stehen (wie gebaut, R00209 AK 12).
+6. **Kein stiller Verlust — Handform im geänderten Abschnitt wird verweigert** (PO Z. 666, ersetzt den Vorschlag „bewusster Verlust“): Ein geänderter Abschnitt wird nur ersetzt, wenn sein **bisheriger Text** genau der Normalform seines **bisherigen Werts** entspricht, also dem, was der Abschnittsschreiber aus Regel 2 für `alt` liefert. Beim Register (`sources`) gilt zusätzlich die **alte Form**, die frühere kanbanD-Versionen geschrieben haben (`wbs`/`requirements`, ADR-0034 N2 Regel 2; maßgeblich ist die Form der sechs echten Bestände) — sie wird beim Speichern wie gebaut auf `repository` umgestellt. Verglichen wird ohne Zeilenende (`\r\n` = `\n`); ein fehlender Abschnitt gilt als Normalform, wenn sein bisheriger Wert leer ist. Trägt der Abschnitt etwas von Hand (eingerückter Kommentar, Block- statt Flussform, eigene Anführung, Leerzeile), wird **nichts** geschrieben: 409 mit dem Wortlaut aus Regel 5, kein Commit, Datei zeichengleich. Die Prüfung läuft für alle geänderten Abschnitte, bevor einer geschrieben wird. Unberührte Abschnitte bleiben in jeder Form erhalten. V2 (je Eintrag) wird erst gebaut, wenn eine solche Verweigerung im Betrieb auftritt (PO Z. 666).
+7. **Gilt für alle Schreibwege über `einstellungen_aendern`**: `PUT /api/einstellungen`, `POST /api/personen`, `PATCH /api/personen/{kürzel}`, Stilllegen. Der Schalter bleibt auf seiner eigenen Route (ADR-0036 „Umschalten“), nutzt aber dieselbe Funktion; für ihn gilt Regel 6 nicht (er ersetzt nur seine eine Zeile, ADR-0036 Regel 4). Scheitert beim Schalter das Rücklesen (`vorgabe_transkripte_setzen`, heute `Fehler::Intern`), antwortet kanbanD mit **409 und demselben Wortlaut** (`<schluessel>` = `record-transcripts`), kein Commit, Datei zeichengleich (PO Z. 667).
 
 ## Konsequenzen
 
-- **Positiv**: „Speichern“ erzeugt den Diff, den die Vision verlangt. Der echte Fall `kanbanD-Kanbanboard` (Schalter hinter `sources`) bleibt beim Speichern unberührt. Ein Schreibmuster für die ganze Datei statt Modell-Neuschreiben plus Ausnahme.
-- **Inkauf**: Regel 6; die Rücklese-Prüfung verweigert seltene YAML-Formen (zitierte Schlüssel, Anker), statt sie zu schreiben — sichtbar, nie still. Ein unbekannter Schlüssel, der zufällig `people` heißt, gibt es nicht: die vier Namen gehören dem Format.
+- **Positiv**: „Speichern“ erzeugt den Diff, den die Vision verlangt; Handgepflegtes geht nie still verloren, weder zwischen noch in Abschnitten. Der echte Fall `kanbanD-Kanbanboard` (Schalter hinter `sources`) bleibt beim Speichern unberührt. Ein Schreibmuster für die ganze Datei statt Modell-Neuschreiben plus Ausnahme.
+- **Inkauf**: Regel 6 — wer in einem Abschnitt von Hand gestaltet hat, kann diesen Abschnitt nicht mehr über „Einrichten“ ändern, sondern trägt die Änderung in der Datei ein (sichtbar, mit Wortlaut). Der Bestand (sechs Ordner in Normalform bzw. alter Registerform) wird nie verweigert. Die Rücklese-Prüfung verweigert zusätzlich seltene YAML-Formen (zitierte Schlüssel, Anker). Ein unbekannter Schlüssel, der zufällig `people` heißt, gibt es nicht: die vier Namen gehören dem Format.
 - **Board-Datei unverändert**: Für Board-Dateien gilt weiter die Normalform (PO Z. 492); diese ADR ändert dort nichts.
 - **Lastprofil**: ein zusätzliches Lesen des Textes derselben kleinen Datei unter der Sperre; vernachlässigbar.
 - **Durchsetzung**: Rundlauf-Test „Datei mit Kommentar, fremdem Schlüssel vor den bekannten, eigenem Textkörper, CRLF und BOM; je Schreibweg eine Änderung → Diff genau die erwarteten Zeilen“; Legacy-Test gegen Kopien der sechs echten `kanbanD.md` (Fixtures ohne Personendaten außer den vorhandenen Rollennamen, sonst anonymisiert); Review-Punkt für den architektur-reviewer: kein Aufruf von `einstellungen::schreiben` außerhalb von `einrichten`.
 
 ## Folgeentscheidungen / Aufgaben
 
-- [ ] Anforderung über den planer (Bug, siehe Bericht): Regeln 1–7, Abnahme-Ideen unten
-- [ ] nach dem Bau: Modell A00005 (Schreiber `kanbanD.md`) und A00004 (`einstellungen_aendern`) nachführen, Status auf Akzeptiert
+- [x] product-owner: Bug, V4 mit Regel 6 als Verweigerung, Wortlaut (Z. 665–668) — Status Akzeptiert
+- [ ] Anforderung über den planer (Bug): Regeln 1–7, Abnahme-Ideen unten
+- [ ] nach dem Bau: Modell A00005 (Schreiber `kanbanD.md`) und A00004 (`einstellungen_aendern`) von Soll auf Ist nachführen
 
 ### Abnahme-Ideen für den planer
 
 - **Probe der Karte**: `kanbanD.md` mit `# von Hand` als erster Frontmatter-Zeile, `eigener-schluessel: 1` vor `people`, eigenem Textkörper; `PUT /api/einstellungen` mit umbenannter Person → `git show HEAD -- kanbanD.md` ändert genau die Zeile der Person; Rest zeichengleich (heute rot).
 - **Varianten**: neue Person über `POST /api/personen` (eine Zeile mehr, an das Ende von `people`); Stilllegen (eine Zeile geändert); letztes Signal entfernen (Abschnitt `signals` entfällt, sonst nichts); erstes Signal anlegen (Abschnitt vor `---`, hinter `eigener-schluessel`); Kommentarzeile in Spalte 0 zwischen `people` und `classes` bleibt bei Änderung in `people`; CRLF-Datei bleibt CRLF; BOM bleibt; `record-transcripts` hinter `sources` bleibt dort bei Änderung in `sources`; alte Registerform → nur der Block `sources` ändert sich (plus die eigentliche Änderung).
+- **Handform verweigert (Regel 6, PO Z. 666)**: eingerückte Kommentarzeile `  # Vertretung` innerhalb von `people`; `PUT` benennt eine Person um → 409 mit dem Wortlaut aus Regel 5 (`<schluessel>` = `people`), kein Commit, Datei zeichengleich. Dasselbe über `PATCH /api/personen/{kürzel}`. Mutant „Normalform-Vergleich entfernt“ macht diesen Test rot.
+- **Handform bleibt, wo nichts geändert wird (Regel 6)**: eingerückte Kommentarzeile innerhalb von `classes`; `PUT` benennt eine Person um → Commit, Diff genau die Zeile der Person, der Abschnitt `classes` samt Kommentar zeichengleich.
+- **Reihenfolge im Wortlaut**: Handform in `classes` und in `sources`, beide geändert → 409 nennt `classes`.
 - **Sicherung**: `"people":` zitiert → `PUT` 409 mit Wortlaut, kein Commit, Datei zeichengleich. Mutant „Rücklese-Prüfung entfernt“ macht diesen Test rot.
+- **Schalter (Regel 7)**: Rücklesen scheitert beim Umschalten (z. B. `"record-transcripts":` zitiert) → 409 mit Wortlaut, `<schluessel>` = `record-transcripts`, kein Commit, Datei zeichengleich (heute `Fehler::Intern`, 500).
 - **Legacy**: Kopien der sechs echten `kanbanD.md`; je Datei eine Person umbenennen über `PUT` → Diff = diese Zeile + Block `sources` (alte Form); über `PATCH /api/personen` → Diff = genau eine Zeile. Für `kanbanD-Kanbanboard`: `record-transcripts: true` bleibt die letzte Frontmatter-Zeile (heute rot).
 - Zweites `PUT` ohne Änderung: kein Commit.
 
@@ -66,5 +75,5 @@ Gewählt **V4** (V1 mit Rücklese-Prüfung), weil sie die Linie aus ADR-0036 Reg
 
 - `src/dienst/einstellungen.rs:172–195`, `src/format/einstellungen.rs:115–142`, `src/format/board.rs:102–135`, `src/dienst/schalter.rs:55–72`, `src/dienst/einrichten.rs:108–121`, `src/modell/einstellungen.rs:88–97`, `web/app.js:4548` (Stand `d79b70f2`)
 - ADR-0036 Nachtrag „Umschalten“ Regel 4–5; ADR-0034 N2; ADR-0031 Regel 1
-- po-entscheidungen Z. 492; Vision „Git-freundliche Form“, „Die Dateien sind der einzige Speicher“
+- po-entscheidungen Z. 492, Z. 665–668; Vision „Git-freundliche Form“, „Die Dateien sind der einzige Speicher“
 - Bestand: `~/Projekte/Kanban-Boards/{Entwicklungsprozess,goaltreetoolA,JoinPuyaApp,kanbanD-Demo,kanbanD,localchatA}-*/kanbanD.md` und `git log -p -- kanbanD.md` dort (nur gelesen, 2026-11-23)
