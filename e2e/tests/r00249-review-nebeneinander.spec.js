@@ -314,6 +314,11 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
     expect(await zeichenFarben(kontext.nth(0)), 'links gefärbt wie bei „aus“').toEqual(kontextAus);
     expect(await zeichenFarben(kontext.nth(1)), 'rechts gefärbt wie links').toEqual(kontextAus);
     expect(await kontext.nth(0).locator('[class^="tk-"]').count()).toBeGreaterThan(0);
+    // ohne bekannte Endung: ohne Farbe, mit derselben Marke wie bei „aus“ (die Auflage überdeckt hier nichts)
+    await expect(s.bereich('src/n.xyz')).toHaveAttribute('data-farbe', 'nein');
+    const ohne = s.zeile('src/n.xyz', 'let a = 1;').locator('td.c');
+    expect([await marken(ohne.nth(0)), await marken(ohne.nth(1))]).toEqual([['1'], ['2']]);
+    expect(await ohne.nth(0).locator('mark.wm').evaluate(m => m.parentElement.textContent)).toBe('entfernt: let a = 1;');
   });
 
   /* ── AK 4 Text, Sprung, Ansage (US-2) ── */

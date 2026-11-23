@@ -727,7 +727,8 @@ function aufgabenVorbereiten(h, aufgaben) {
 }
 
 
-/* ── Ausgangslage von R00249 (Nebeneinander): N1 in `kd` mit K-Lauf (src/n.rs), K-Datei (neu, weg, ende, enden) und K-Lang (src/l.rs);
+/* ── Ausgangslage von R00249 (Nebeneinander): N1 in `kd` mit K-Lauf (src/n.rs, Fall (a) auch in src/n.xyz ohne Farbe), K-Datei (neu, weg,
+   ende, enden) und K-Lang (src/l.rs);
    N2 K-Block (src/g.rs), N4 K-Last (src/gross.rs), N5 ohne Dateien; N3 in `wb` (K-Zwei, Fall (a) in docs/n.md) ── */
 
 /** src/n.rs als [alt, neu]: die Fälle (a)–(d), je durch acht unveränderte Zeilen getrennt, damit jeder Fall ein eigener Hunk ist. */
@@ -763,8 +764,8 @@ function nebeneinanderBauen(basis) {
   }
   const n = nebeneinanderN(), l = nebeneinanderL(), block = blockDatei(), last = lastDatei(5000, UM_LAST);
   const h = { r, s };
-  aenderungsCommit(r, 'N0 Vorgänger', { 'src/n.rs': n[0], 'src/weg.rs': 'w1\nw2\nw3\n', 'src/ende.rs': 'e\nx = 1;', 'src/enden.rs': 'e\nx', 'src/l.rs': l[0], 'src/g.rs': block[0], 'src/gross.rs': last[0] });
-  h.n1 = aenderungsCommit(r, 'N1 Nebeneinander', { 'src/n.rs': n[1], 'src/neu.rs': 'n1\nn2\nn3\nn4\n', 'src/weg.rs': null, 'src/ende.rs': 'e\nx = 2;', 'src/enden.rs': 'e\nx\n', 'src/l.rs': l[1] });
+  aenderungsCommit(r, 'N0 Vorgänger', { 'src/n.xyz': '// x\nlet a = 1;\n// y\n', 'src/n.rs': n[0], 'src/weg.rs': 'w1\nw2\nw3\n', 'src/ende.rs': 'e\nx = 1;', 'src/enden.rs': 'e\nx', 'src/l.rs': l[0], 'src/g.rs': block[0], 'src/gross.rs': last[0] });
+  h.n1 = aenderungsCommit(r, 'N1 Nebeneinander', { 'src/n.xyz': '// x\nlet a = 2;\n// y\n', 'src/n.rs': n[1], 'src/neu.rs': 'n1\nn2\nn3\nn4\n', 'src/weg.rs': null, 'src/ende.rs': 'e\nx = 2;', 'src/enden.rs': 'e\nx\n', 'src/l.rs': l[1] });
   h.n2 = aenderungsCommit(r, 'N2 Blockgrenze', { 'src/g.rs': block[1] });
   h.n4 = aenderungsCommit(r, 'N4 Last', { 'src/gross.rs': last[1] });
   h.leer = aenderungsCommit(r, 'N5 ohne Dateien', {});
