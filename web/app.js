@@ -2144,30 +2144,56 @@ function reviewUmbrechenSetzen(an) {
 }
 
 /** Der Schalter „Nebeneinander“ (R00249 FA 5, ADR-0042 N6.1, N6.2): je offener Datei wird nur ihr Code-Bereich `.df-sc` neu gezeichnet,
-    ohne Anfrage; Köpfe, Gruppen, „Gesehen“ und der Fokus am Schalter bleiben dieselben Knoten. Die Lesezeile bleibt an ihrem Platz,
-    sofort und im nächsten Bild. */
+    ohne Anfrage; Köpfe, Gruppen, „Gesehen“ und der Fokus am Schalter bleiben dieselben Knoten. Die neuen Bereiche entstehen abseits
+    des Dokuments in Scheiben (je Datei das HTML, dann Block für Block, AK 9: kein Long Task über 150 ms bei 10.000 Zeilen) und
+    werden in einer Aufgabe eingesetzt; die Lesezeile wird erst dann gemerkt und bleibt an ihrem Platz, sofort und im nächsten Bild.
+    Ein neuer Klick vor dem Einsetzen verwirft den laufenden Bau. */
+let reviewNebenLauf = 0;
 function reviewNebeneinanderSetzen(an) {
   S.ui.nebeneinander = an;
   schalterSchreiben(gesehenSpeicher(), NEBENEINANDER_SCHLUESSEL, an);
   const r = S.ui.review;
   if (!r || !document.getElementById('review')) return;
-  const merk = reviewLeseZeileNachKennung();
-  reviewCodeBereicheNeu(r);
-  reviewLeseZeileNachKennungHalten(merk);
-  requestAnimationFrame(() => reviewLeseZeileNachKennungHalten(merk));
+  const lauf = ++reviewNebenLauf;
+  const ersatz = [];
+  const schritte = Array.from(document.querySelectorAll('#rv-insel section.df'), abschnitt => () => reviewCodeVorbereiten(r, abschnitt, ersatz, schritte));
+  reviewInScheiben(schritte, () => lauf === reviewNebenLauf, () => reviewCodeEinsetzen(ersatz));
 }
 
-/** Ersetzt in jeder Datei der Insel die Code-Bereiche durch die aus dem Zustand neu gezeichneten (gleiche Zahl, gleiche Reihenfolge). */
-function reviewCodeBereicheNeu(r) {
-  const vorlage = document.createElement('template');
-  for (const abschnitt of document.querySelectorAll('#rv-insel section.df')) {
-    const alt = abschnitt.querySelectorAll('.df-sc');
-    if (!alt.length) continue;
-    vorlage.innerHTML = reviewDateiHtmlZu(r, abschnitt.id);
-    const neu = vorlage.content.querySelectorAll('.df-sc');
-    if (neu.length !== alt.length) continue;
-    alt.forEach((bereich, k) => bereich.replaceWith(neu[k]));
-  }
+/** Baut die Code-Bereiche einer Datei aus dem Zustand: der leere Bereich sofort, seine Blöcke als weitere Schritte. */
+function reviewCodeVorbereiten(r, abschnitt, ersatz, schritte) {
+  const alt = abschnitt.querySelectorAll('.df-sc');
+  if (!alt.length) return;
+  const teile = codeBereicheTeilen(reviewDateiHtmlZu(r, abschnitt.id));
+  if (teile.length !== alt.length) return;
+  teile.forEach((teil, k) => {
+    const huelle = document.createElement('div');
+    huelle.innerHTML = teil.kopf + '</div>';
+    const bereich = huelle.firstElementChild;
+    ersatz.push([alt[k], bereich]);
+    for (const block of teil.bloecke) schritte.push(() => bereich.insertAdjacentHTML('beforeend', block));
+  });
+}
+
+/** Arbeitet die Schritte in Aufgaben zu etwa 30 ms ab, solange `gilt()`; danach `fertig()`. */
+function reviewInScheiben(schritte, gilt, fertig) {
+  const scheibe = () => {
+    if (!gilt()) return;
+    const beginn = performance.now();
+    while (schritte.length && performance.now() - beginn < 30) schritte.shift()();
+    if (schritte.length) setTimeout(scheibe, 0);
+    else fertig();
+  };
+  setTimeout(scheibe, 0);
+}
+
+/** Setzt die fertigen Bereiche ein (nur, wo der alte noch im Dokument steht) und hält die Lesezeile. */
+function reviewCodeEinsetzen(ersatz) {
+  if (!document.getElementById('review')) return;
+  const merk = reviewLeseZeileNachKennung();
+  for (const [alt, neu] of ersatz) if (alt.isConnected) alt.replaceWith(neu);
+  reviewLeseZeileNachKennungHalten(merk);
+  requestAnimationFrame(() => reviewLeseZeileNachKennungHalten(merk));
 }
 
 /** Das HTML der Datei zum Abschnitt `rv-d<i>` („Ein Commit“) bzw. `rv-d<a>-<i>` („Alle Änderungen“) aus dem Zustand der Seite. */
@@ -2183,12 +2209,20 @@ function reviewLeseZeileNachKennung() {
   const rolle = document.getElementById('review');
   const r = rolle.getBoundingClientRect();
   const getroffen = document.elementFromPoint(reviewNummernSpalte(rolle, r), r.top + 1);
-  const zeile = getroffen && getroffen.closest('.df-sc tr');
+  const zeile = getroffen && (getroffen.closest('.df-sc tr') || reviewRandZeile(getroffen, r.top + 1));
   const kennungen = zeile ? Array.from(zeile.querySelectorAll('[data-z]'), zelle => Number(zelle.dataset.z)) : [];
   if (!kennungen.length) return { rueckfall: reviewLeseZeileMerken() };
   const bereich = zeile.closest('.df-sc');
   const kopf = bereich.closest('section.df').querySelector('.df-k');
   return { n: Array.from(rolle.querySelectorAll('.df-sc')).indexOf(bereich), z: Math.min(...kennungen), oben: zeile.getBoundingClientRect().top, rueckfall: { anker: kopf, oben: kopf.getBoundingClientRect().top } };
+}
+
+/** Trifft der Punkt den Rand einer Tabelle (Innenabstand), gilt ihre erste bzw. letzte Zeile, je nachdem, welcher Kante er näher liegt. */
+function reviewRandZeile(getroffen, y) {
+  const tabelle = getroffen.closest('.df-sc table');
+  if (!tabelle || !tabelle.tBodies.length) return null;
+  const zeilen = tabelle.tBodies[0].rows, t = tabelle.getBoundingClientRect();
+  return y < t.top + t.height / 2 ? zeilen[0] : zeilen[zeilen.length - 1];
 }
 
 /** Waagerecht in der Spalte der Nummern: kurze Zeilen reichen nicht bis zur Mitte der Rolle, die Nummernzelle steht in jeder Zeile.

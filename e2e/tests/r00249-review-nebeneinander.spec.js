@@ -557,20 +557,21 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
 
   /* ── AK 8 Budget, Alle Änderungen und Blockgrenze ── */
 
-  test('AK 8: Alle Änderungen — (a) in kd und wb je eine Zeile mit Marke „1“/„2“; dieselben Dateien offen wie bei „aus“', async ({ page }) => {
+  test('AK 8: Alle Änderungen — dieselben Dateien offen wie bei „aus“; (a) in kd und wb je eine Zeile mit Marke „1“/„2“', async ({ page }) => {
     const s = seite(page);
     await s.alleOeffnen(k, 9);
     const offenAus = (await s.zustand()).dateien;
     await s.schalter.click();
     await expect.poll(() => s.nebeneinander('src/n.rs')).toBe(true);
+    await page.reload();
+    await page.locator('#rv-insel section.df').first().waitFor();
+    await expect(s.eingabe).toBeChecked();
+    expect((await s.zustand()).dateien, 'Budget zählt die Zeilen der Liste').toEqual(offenAus);
     await s.dokuOeffnen();
     for (const pfad of ['src/n.rs', 'docs/n.md']) {
       const zeile = s.zeile(pfad, 'let a = 1;');
       expect([await marken(zeile.locator('td.c').nth(0)), await marken(zeile.locator('td.c').nth(1))], pfad).toEqual([['1'], ['2']]);
     }
-    await page.reload();
-    await page.locator('#rv-insel section.df').first().waitFor();
-    expect((await s.zustand()).dateien, 'Budget zählt die Zeilen der Liste').toEqual(offenAus);
   });
 
   test('AK 8: K-Block — der Lauf über die Blockgrenze steht in drei Tabellenzeilen, alle sechs tragen eine Marke', async ({ page }) => {
@@ -639,6 +640,53 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
     expect(Math.max(...versatz), 'Lesezeile ≤ 36 px').toBeLessThanOrEqual(36);
     expect(Math.max(umschalten, scrollen, zurueck), 'Long Task').toBeLessThanOrEqual(150);
   });
+
+  /* ── ADR-0042 N7.4 P8: Hinaufrollen nach frischem Laden in „Nebeneinander“, „Umbrechen“ an und aus ── */
+
+  for (const [breite, umbr] of [[980, true], [320, true], [980, false]]) {
+    test(`N7.4 P8: K-Last frisch geladen nebeneinander, „Umbrechen“ ${umbr ? 'an' : 'aus'}, ${breite} px — ans Ende gesprungen, in 400-px-Schritten hinauf: größter Sprung ≤ 36 px`, async ({ page }) => {
+      test.setTimeout(240000);
+      const s = seite(page);
+      await breiteSetzen(page, breite, 800);
+      await page.addInitScript(wert => { localStorage.setItem('kanbanD.nebeneinander', '1'); localStorage.setItem('kanbanD.umbrechen', wert); }, umbr ? '1' : '0');
+      await s.commitOeffnen(k, 11, N().n4);
+      await expect(s.eingabe).toBeChecked();
+      await s.datei('src/gross.rs').getByRole('button', { name: 'Änderungen anzeigen' }).click();
+      await expect(s.bereich('src/gross.rs').locator('table.ru-nb').first()).toBeAttached();
+      await farbeAbwarten(page, s.bereich('src/gross.rs'));
+      await zweiBilder(page);
+      await page.evaluate(async () => {
+        const r = document.getElementById('review');
+        const bild = () => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig)));
+        r.scrollTop = r.scrollHeight; await bild();
+        r.scrollTop = r.scrollHeight; await bild();
+      });
+      const m = await page.evaluate(async () => {
+        const r = document.getElementById('review');
+        const bild = () => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig)));
+        const mitte = () => {
+          const q = r.getBoundingClientRect(), b = document.querySelector('#review .dz-b');
+          const z = document.elementFromPoint(b.getBoundingClientRect().left + 20, q.top + q.height / 2);
+          const tr = z && z.closest('#rv-insel tr');
+          return tr ? { tr, top: tr.getBoundingClientRect().top - q.top } : null;
+        };
+        let groesster = 0, schritte = 0, gemessen = 0;
+        while (schritte < 450 && r.scrollTop > 400) {
+          const vorher = mitte();
+          r.scrollTop -= 400;
+          await bild();
+          schritte++;
+          if (!vorher) continue;
+          gemessen++;
+          groesster = Math.max(groesster, Math.abs(vorher.tr.getBoundingClientRect().top - r.getBoundingClientRect().top - vorher.top - 400));
+        }
+        return { groesster: Math.round(groesster), schritte, gemessen };
+      });
+      console.log(`N7.4 P8 ${JSON.stringify({ breite, umbr, ...m })}`);
+      expect(m.gemessen, 'genug Schritte mit Zeuge').toBeGreaterThanOrEqual(umbr ? 100 : 150);
+      expect(m.groesster, 'größter Sprung der Zeile in der Fenstermitte').toBeLessThanOrEqual(36);
+    });
+  }
 
   /* ── AK 10 Bestand bei „aus“ ── */
 

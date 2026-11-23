@@ -411,6 +411,28 @@
     return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${ziel}${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;
   }
 
+  /** HTML mit Code-Bereichen (`dateiHtml`) → je `.df-sc` der Anfangstag `kopf` und die Blöcke `bloecke` als eigene Zeichenketten;
+      `kopf + bloecke.join('') + '</div>'` ist wieder der Bereich. So lässt sich ein großer Bereich in mehreren Aufgaben zusammensetzen
+      (R00249 AK 9). Fremder Text ist maskiert und enthält darum weder Tag noch `>`. */
+  function codeBereicheTeilen(html) {
+    const ANFANG = '<div class="df-sc"', BLOCK = '<div class="dz-b"', BLOCK_ENDE = '</table></div>';
+    const bereiche = [];
+    let bei = html.indexOf(ANFANG);
+    while (bei >= 0) {
+      const kopfEnde = html.indexOf('>', bei) + 1;
+      const bloecke = [];
+      let b = kopfEnde;
+      while (html.startsWith(BLOCK, b)) {
+        const ende = html.indexOf(BLOCK_ENDE, b) + BLOCK_ENDE.length;
+        bloecke.push(html.slice(b, ende));
+        b = ende;
+      }
+      bereiche.push({ kopf: html.slice(bei, kopfEnde), bloecke });
+      bei = html.indexOf(ANFANG, b);
+    }
+    return bereiche;
+  }
+
   /** Die Zeilen mit ihrer Wortmarke `wm` (R00247 FA 7): gepaart vorab über die ganze Liste, damit ein Lauf über eine Blockgrenze wie
       ohne sie gilt; der Farbauftrag bekommt dieselben Zeilen, die Auflage zeichnet also dieselbe Marke. */
   function mitWortmarken(zeilen) {
@@ -784,7 +806,7 @@
   }
 
   Object.assign(ziel, { kopfMitAktionenHtml, pfadFeldHtml, sprungBasis, gesehenZeileHtml, gesehenAnsage });
-  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, chipHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, codeBereicheTeilen, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, chipHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });
 

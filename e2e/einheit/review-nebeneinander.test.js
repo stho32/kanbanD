@@ -330,3 +330,19 @@ test('Alle Änderungen: ctx.nebeneinander zeichnet Netto-Dateien und Schritte ei
   assert.deepStrictEqual(tabellen(g.abschnittHtml(ab, 0, ctx)), ['<table class="dz"', '<table class="dz"', '<table class="dz"']);
   assert.match(g.abschnittDateiHtml(ab, 0, 0, { ...ctx, nebeneinander: true }), /class="dz ru-nb"/);
 });
+
+/* ── B1312 Tempo: das Umschalten setzt die Blöcke in mehreren Aufgaben zusammen (AK 9, ADR-0042 N6.5) ── */
+
+test('codeBereicheTeilen: je Code-Bereich der Anfangstag und die Blöcke einzeln; zusammengesetzt wieder genau der Bereich (auch mit fremdem Text)', () => {
+  const patch = '@@ -1,600 +1,600 @@\n' + Array.from({ length: 600 }, (_, i) => `-</table></div><div class="dz-b" ${i}\n`).join('') + Array.from({ length: 600 }, (_, i) => `+b${i}\n`).join('');
+  for (const nebeneinander of [false, true]) {
+    const html = d.codeHtml(patch, 'src/<b>.rs', esc, SPRUNG, nebeneinander);
+    const teile = d.codeBereicheTeilen(`<section>${html}<p>x</p>${html}</section>`);
+    assert.strictEqual(teile.length, 2);
+    assert.match(teile[0].kopf, /^<div class="df-sc" [^]*>$/);
+    assert.strictEqual(teile[0].bloecke.length, nebeneinander ? 2 : 3);
+    assert.ok(teile[0].bloecke.every(b => b.startsWith('<div class="dz-b"') && b.endsWith('</table></div>')));
+    assert.strictEqual(teile[0].kopf + teile[0].bloecke.join('') + '</div>', html);
+  }
+  assert.deepStrictEqual(d.codeBereicheTeilen('<section><p>ohne Code</p></section>'), []);
+});
