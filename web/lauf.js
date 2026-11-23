@@ -416,16 +416,20 @@
   }
   const KEIN_BERICHT = 'Kein Bericht erkannt: Keine Nachricht des Agenten enthält eine Zeile „Ergebnis:“.';
 
-  /** Die Gliederung links: „Längste Schritte“ (R00234 FA 10) und darunter „Teuerste Schritte“ (R00238 FA 8), beide aus
-      `schrittListeHtml`, darunter `zeigen` (R00239 FA 8). Ohne Dauer entfällt die erste, ohne `tokens` die zweite; ohne beide steht
-      `zeigen` allein, ohne alles entfällt der Abschnitt. */
-  function laufTopHtml(a, esc, zeigen = '') {
+  /** Die Gliederung links: „Längste Schritte“ (R00234 FA 10), „Teuerste Schritte“ (R00238 FA 8) und `zeigen` (R00239 FA 8). Ab
+      641 px steht `zeigen` als erstes Kind, damit es ohne Rollen erreichbar ist (R00243 FA 4, löst R00239 FA 8 ab); bis 640 px, im Fluss
+      der Seite, steht es nach den Listen (PO Z. 590) — `zeigenZuerst` ist `false`. Lese- und Tab-Reihenfolge sind die sichtbare: ein
+      Baum, keine Umordnung im CSS. Ohne Dauer entfällt die erste Liste, ohne `tokens` die zweite; ohne beide steht `zeigen` allein,
+      ohne alles entfällt der Abschnitt. */
+  function laufTopHtml(a, esc, zeigen = '', zeigenZuerst = true) {
     const listen = [];
     if (a.top3.length) listen.push(laengsteListe(a.top3, esc));
     if (a.teuer3 && a.teuer3.length) listen.push(teuersteListe(a.teuer3, esc));
     if (!listen.length && !zeigen) return '';
     if (!listen.length) return `<section class="lv-gl">${zeigen}</section>`;
-    return `<section class="lv-gl" aria-labelledby="${listen.map(l => `${l.praefix}-t`).join(' ')}">${listen.map(schrittListeHtml).join('')}${zeigen}</section>`;
+    let teile = listen.map(schrittListeHtml).join('') + zeigen;
+    if (zeigenZuerst) teile = zeigen + listen.map(schrittListeHtml).join('');
+    return `<section class="lv-gl" aria-labelledby="${listen.map(l => `${l.praefix}-t`).join(' ')}">${teile}</section>`;
   }
 
   /* ── Filter „Zeigen“ (R00239 FA 5–7, FA 9; PO Z. 520 (10), 587, 588): Stand `{n, w, h, f}`, gewirkt wird über ein Attribut ── */

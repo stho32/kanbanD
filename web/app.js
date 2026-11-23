@@ -2271,6 +2271,15 @@ function vLaufKopf() {
   return `<header class="kz rv-kz lv-kz" data-stufe="${S.ui.stufe}"><div class="kz-reihe">${zurueck}<h1 class="rv-h1" id="lv-h1" tabindex="-1">Lauf</h1>${titel}<span class="rv-liest">liest nur</span></div></header>`;
 }
 
+/** Ab 641 px steht „Zeigen“ als erstes Kind des Seitenfelds, darunter bis 640 px (R00243 FA 4); der Wechsel zeichnet neu. */
+const laufSeitenfeldBreit = () => matchMedia('(min-width:641px)').matches;
+/** Steht „Zeigen“ im gezeichneten Seitenfeld als erstes Kind? Ohne Seitenfeld oder ohne Listen (nichts zu ordnen) so wie verlangt. */
+function laufFeldZuerst() {
+  const feld = document.querySelector('.lv-gl');
+  if (!feld || feld.childElementCount === 1) return laufSeitenfeldBreit();
+  return feld.firstElementChild.matches('fieldset.lv-filt');
+}
+
 /** Die Einträge des letzten Zeichnens, wenn sie zum gezeigten Ergebnis gehören: sie bleiben derselbe Knoten (ADR-0041 Punkt 5). */
 let laufInselGehalten = null;
 const LAUF_INSEL_PLATZHALTER = '<ol class="lv-l" id="lv-insel" data-ohne-rollstand></ol>';
@@ -2284,7 +2293,7 @@ function vLauf() {
   let insel = '';
   // der Bericht steht vor der Insel, nicht in ihr: ein Filter der Einträge verbirgt ihn nie (R00234 FA 5)
   // der Bericht steht im Dokument vor der Gliederung: unter 641 px liest er sich zuerst (PO Z. 590); daneben ordnet ihn das Raster
-  if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter))}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
+  if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter), laufSeitenfeldBreit())}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
   const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten }, esc);
   let zeitachse = '';
   if (e && e.art === 'eintraege') zeitachse = laufZeitachseHtml(e.auswertung);
@@ -4950,7 +4959,9 @@ window.addEventListener('resize', () => {
   const stufeGewechselt = stufeAusBreite(innerWidth) !== S.ui.stufe;
   // Die Blätterknöpfe der Review-Seite wechseln bei 640 px zwischen Text und Symbol samt Namen (R00207 FA 3)
   const reviewGewechselt = S.ui.view === 'review' && Boolean(document.querySelector('#review .bl-k .t')) === reviewSchmal();
-  if (stufeGewechselt || reviewGewechselt) render();
+  // „Zeigen“ wechselt bei 641 px den Platz im Seitenfeld, im Dokument und damit in der Tab-Reihenfolge (R00243 FA 4)
+  const laufGewechselt = S.ui.view === 'lauf' && laufFeldZuerst() !== laufSeitenfeldBreit();
+  if (stufeGewechselt || reviewGewechselt || laufGewechselt) render();
   else { popPlatzieren(); tippPlatzieren(); }
 });
 document.addEventListener('keydown', e => {
