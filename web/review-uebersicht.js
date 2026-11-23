@@ -269,6 +269,104 @@
     return stand;
   }
 
+  /* ── „Gesehen“ je Karte im Browser-Speicher (R00246 FA 7, 9, 10; ADR-0042 N1.4, N4): der Speicher hat die Schnittstelle von
+     `localStorage` und kommt als Parameter; fehlt er oder wirft er, gilt das Ergebnis nur bis zum Neuladen (`fehler`). ── */
+
+  const GESEHEN_PRAEFIX = 'kanbanD.gesehen.';
+  /** Mehr Karten behält ein Browser nicht (FA 9, PO Z. 534). */
+  const GESEHEN_HOECHSTENS = 200;
+
+  function gesehenSchluessel(slug, nr) {
+    return `${GESEHEN_PRAEFIX}${slug}.${nr}`;
+  }
+
+  /** Wert → `{zeit, gesehen}`; null, wenn er sich nicht lesen lässt. */
+  function gesehenWert(text) {
+    let wert;
+    try { wert = JSON.parse(text); } catch (_) { return null; }
+    const lesbar = wert !== null && typeof wert === 'object' && typeof wert.zeit === 'number' && Array.isArray(wert.gesehen);
+    if (!lesbar) return null;
+    return wert;
+  }
+
+  /** Die gesehenen Schlüssel einer Karte; ein unlesbarer Wert gilt als leer, ein Speicher, der fehlt oder wirft, als `fehler`. */
+  function gesehenLesen(speicher, slug, nr) {
+    try {
+      const wert = gesehenWert(speicher.getItem(gesehenSchluessel(slug, nr)));
+      if (!wert) return { gesehen: [], fehler: false };
+      return { gesehen: wert.gesehen.slice(), fehler: false };
+    } catch (_) {
+      return { gesehen: [], fehler: true };
+    }
+  }
+
+  /** Liest frisch, wendet `aenderungen` (`[schlüssel, gesehen]` in dieser Reihenfolge) an, schreibt `{zeit: jetzt, gesehen}` zurück
+      und räumt auf (FA 9, 10). Scheitert der Speicher, gilt die Änderung nur im Ergebnis, mit `fehler`. */
+  function gesehenSchreiben(speicher, slug, nr, aenderungen, jetzt) {
+    const vorher = gesehenLesen(speicher, slug, nr);
+    const gesehen = gesehenAnwenden(vorher.gesehen, aenderungen);
+    if (vorher.fehler) return { gesehen, fehler: true };
+    try {
+      speicher.setItem(gesehenSchluessel(slug, nr), JSON.stringify({ zeit: jetzt, gesehen }));
+      gesehenAufraeumen(speicher);
+      return { gesehen, fehler: false };
+    } catch (_) {
+      return { gesehen, fehler: true };
+    }
+  }
+
+  function gesehenAnwenden(gesehen, aenderungen) {
+    const menge = new Set(gesehen);
+    aenderungen.forEach(([schluessel, ja]) => {
+      if (ja) menge.add(schluessel);
+      else menge.delete(schluessel);
+    });
+    return [...menge];
+  }
+
+  /** Über der Obergrenze fällt der Wert mit der kleinsten `zeit`; ein unlesbarer zählt als der älteste. Fremde Schlüssel bleiben. */
+  function gesehenAufraeumen(speicher) {
+    const karten = [];
+    for (let i = 0; i < speicher.length; i++) {
+      const schluessel = speicher.key(i);
+      if (!schluessel || !schluessel.startsWith(GESEHEN_PRAEFIX)) continue;
+      const wert = gesehenWert(speicher.getItem(schluessel));
+      let zeit = -Infinity;
+      if (wert) zeit = wert.zeit;
+      karten.push({ schluessel, zeit });
+    }
+    karten.sort((a, b) => a.zeit - b.zeit);
+    karten.slice(0, Math.max(0, karten.length - GESEHEN_HOECHSTENS)).forEach(k => speicher.removeItem(k.schluessel));
+  }
+
+  /* ── Schlüssel einer Datei (FA 7, 8; ADR-0042 N3): in „Ein Commit“ über den vollen Hash, in „Alle Änderungen“ über den Fingerabdruck ── */
+
+  function commitDateiSchluessel(hash, d) {
+    return `${hash}\u0000${dateiPfad(d)}`;
+  }
+
+  function alleDateiSchluessel(anwendung, d) {
+    return `alle\u0000${anwendung}\u0000${dateiPfad(d)}\u0000${fingerabdruck(d)}`;
+  }
+
+  /** FNV-1a (32 Bit, hexadezimal) über Felder, die in jeder Antwort stehen — nie über `patch`, der je nach Laden fehlt (N3.1). */
+  function fingerabdruck(d) {
+    let felder = [d.status, d.alt, d.neu, d.plus, d.minus, d.binaer];
+    if (Array.isArray(d.schritte)) felder = [d.plus, d.minus, d.binaer, d.schritte.map(s => s.commit)];
+    return fnv1a(JSON.stringify(felder));
+  }
+
+  function fnv1a(text) {
+    let streuwert = 0x811c9dc5;
+    for (const byte of new TextEncoder().encode(text)) {
+      streuwert ^= byte;
+      streuwert = Math.imul(streuwert, 0x01000193) >>> 0;
+    }
+    return streuwert.toString(16).padStart(8, '0');
+  }
+
+  Object.assign(ziel, { GESEHEN_HOECHSTENS, gesehenSchluessel, gesehenLesen, gesehenSchreiben, commitDateiSchluessel, alleDateiSchluessel, fingerabdruck });
+
   Object.assign(ziel, { commitChips, chipText, zweigVerdichtung, zweigeWort, commitsWort, mitDiff, zeitKurz, leistenFolge, leistenRollstand, leistenAlleName, leistenEintragName });
 
   Object.assign(ziel, { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, testHinweis, grosseNeueDatei, groessteSumme, balkenTeile });
