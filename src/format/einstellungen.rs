@@ -112,31 +112,50 @@ fn pfad(repository: &str) -> String {
     format!("repository: {}", yaml::skalar(repository))
 }
 
-pub fn schreiben(e: &Einstellungen) -> String {
-    let mut s = String::from("---\npeople:");
-    if e.personen.is_empty() {
+/// Der Abschnitt `people:` ohne Zeilenende in Normalform (ADR-0043 Regel 2); ein leerer Satz ist `people: {}`.
+pub(crate) fn personen_schreiben(personen: &[Person]) -> String {
+    let mut s = String::from("people:");
+    if personen.is_empty() {
         s.push_str(" {}");
     }
-    for p in &e.personen {
+    for p in personen {
         let art = if p.art == Art::Agent { "agent" } else { "human" };
         let aktiv = if p.aktiv { "" } else { ", active: false" };
         s.push_str(&format!("\n  {}: {{name: {}, kind: {art}{aktiv}}}", yaml::skalar(&p.kuerzel), yaml::skalar(&p.name)));
     }
-    s.push('\n');
-    s.push_str(&klassen_schreiben(&e.klassen));
-    if !e.signale.is_empty() {
-        s.push_str("\nsignals:");
+    s
+}
+
+/// Der Abschnitt `signals:` ohne Zeilenende in Normalform; ohne Signale gibt es ihn nicht.
+pub(crate) fn signale_schreiben(signale: &[Signal]) -> Option<String> {
+    if signale.is_empty() {
+        return None;
     }
-    for g in &e.signale {
+    let mut s = String::from("signals:");
+    for g in signale {
         s.push_str(&format!("\n  {}: {{label: {}, color: {}}}", yaml::skalar(&g.schluessel), yaml::skalar(&g.bezeichnung), yaml::skalar(&g.farbe)));
+    }
+    Some(s)
+}
+
+/// Der Abschnitt `sources:` ohne Zeilenende in Normalform (ADR-0034 N2 Regel 4): nur `repository`, je Anwendung auch.
+pub(crate) fn quellen_schreiben(q: &Quellen) -> String {
+    format!("sources:\n  {}{}", pfad(&q.repository), anwendungen_schreiben(&q.anwendungen))
+}
+
+/// Setzt `kanbanD.md` aus den Abschnitten neu zusammen — nur für eine neue Datei (`einrichten`, ADR-0043 Regel 2);
+/// jeder andere Schreibweg ändert nur die geänderten Abschnitte im vorhandenen Text.
+pub fn schreiben(e: &Einstellungen) -> String {
+    let mut s = format!("---\n{}\n{}", personen_schreiben(&e.personen), klassen_schreiben(&e.klassen));
+    if let Some(signale) = signale_schreiben(&e.signale) {
+        s.push_str(&format!("\n{signale}"));
     }
     if let Some(b) = e.transkripte_erfassen {
         s.push_str(&format!("\n{}: {b}", super::board::SCHALTER));
     }
     s.push_str(&format!(
-        "\nsources:\n  {}{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
-        pfad(&e.quellen.repository),
-        anwendungen_schreiben(&e.quellen.anwendungen)
+        "\n{}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n",
+        quellen_schreiben(&e.quellen)
     ));
     s
 }
@@ -157,6 +176,35 @@ mod tests {
             quellen: Quellen { repository: "Dokumentation/Planung".into(), ..Default::default() },
             transkripte_erfassen: None,
         }
+    }
+
+    const KOERPER: &str = "---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (`people`), Klassen (`classes`), Signale (`signals`) und Quellpfade (`sources`).\nPersonen werden stillgelegt (`active: false`), nicht entfernt.\n";
+
+    /// R00250 B1314 (ADR-0043 Regel 2): je Abschnitt der Block in Normalform, ohne Zeilenende.
+    #[test]
+    fn abschnitte_in_normalform() {
+        let e = beispiel();
+        assert_eq!(personen_schreiben(&[]), "people: {}");
+        assert_eq!(personen_schreiben(&e.personen), "people:\n  st: {name: Stefan Hoffmann, kind: human}\n  cl: {name: Claude, kind: agent}\n  ab: {name: \"Anna: Gast\", kind: human, active: false}");
+        assert_eq!(klassen_schreiben(&e.klassen), "classes:\n  bug: {label: Fehler, color: \"#b04a8c\"}");
+        assert_eq!(signale_schreiben(&[]), None, "ohne Signale kein Abschnitt");
+        assert_eq!(signale_schreiben(&e.signale).as_deref(), Some("signals:\n  mail: {label: Neue E-Mail, color: blue}"));
+        assert_eq!(quellen_schreiben(&Quellen::default()), "sources:\n  repository: \"\"");
+        assert_eq!(quellen_schreiben(&e.quellen), "sources:\n  repository: Dokumentation/Planung");
+    }
+
+    /// R00250 AK 10 (Einrichten byte-gleich): `schreiben` aus den Abschnitten ergibt dieselben Bytes wie vor dem Umbau.
+    #[test]
+    fn schreiben_ist_byte_gleich_wie_vor_dem_umbau() {
+        let mut e = beispiel();
+        assert_eq!(
+            schreiben(&e),
+            format!("---\npeople:\n  st: {{name: Stefan Hoffmann, kind: human}}\n  cl: {{name: Claude, kind: agent}}\n  ab: {{name: \"Anna: Gast\", kind: human, active: false}}\nclasses:\n  bug: {{label: Fehler, color: \"#b04a8c\"}}\nsignals:\n  mail: {{label: Neue E-Mail, color: blue}}\nsources:\n  repository: Dokumentation/Planung\n{KOERPER}")
+        );
+        e.transkripte_erfassen = Some(true);
+        e.signale.clear();
+        assert!(schreiben(&e).contains("\nclasses:\n  bug: {label: Fehler, color: \"#b04a8c\"}\nrecord-transcripts: true\nsources:\n  repository: Dokumentation/Planung\n---\n"));
+        assert_eq!(schreiben(&Einstellungen::default()), format!("---\npeople: {{}}\nclasses: {{}}\nsources:\n  repository: \"\"\n{KOERPER}"));
     }
 
     #[test]
