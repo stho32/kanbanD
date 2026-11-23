@@ -2325,8 +2325,16 @@ function laufInselNachher(gehalten, gehaltenGeblieben) {
   const knoten = document.getElementById('lv-insel');
   v.insel = knoten ? { knoten, ergebnis: e } : null;
   if (knoten) laufFilterAnInsel(knoten, v.filter);
+  laufSeitenfeldOhneRollstand();
   // eingesetzt: der Text fällt aus dem Zustand (ADR-0041 Punkt 5); muss die Insel neu entstehen, wird er aus den Einträgen gebaut
   if (knoten && e && e.art === 'eintraege') e.html = null;
+}
+
+/** Das Seitenfeld rollt ab 641 px innen und steht nach jedem Zeichnen oben, damit „Zeigen“ sichtbar ist (R00243 FA 5): die Marke nimmt es
+    aus dem Merken der Rollstände (`sichtzustand.js`), das beim nächsten Zeichnen den alten Stand sonst zurücklegte. */
+function laufSeitenfeldOhneRollstand() {
+  const feld = document.querySelector('#lauf .lv-gl');
+  if (feld && !feld.hasAttribute('data-ohne-rollstand')) feld.setAttribute('data-ohne-rollstand', '');
 }
 
 /** Der Stand der Filter als Attribute an der Insel (R00239 FA 6): nach jedem Zeichnen gesetzt — nach frischem Aufbau, Live und Wechsel;

@@ -671,12 +671,12 @@ test.describe('R00221 Laufansicht', () => {
       await page.keyboard.press('Tab');
       await expect(page.locator(ziel)).toBeFocused();
     }
-    // R00234 FA 10: vor den Einträgen steht „Längste Schritte“ (L1 hat genau einen Schritt mit Dauer), danach der erste summary
-    await page.keyboard.press('Tab');
-    await expect(page.locator('#lauf .lv-top button')).toBeFocused();
-    // R00239 FA 8: darunter die vier Kästchen von „Zeigen“
+    // R00243 FA 4 (löst R00239 FA 8 ab): ab 641 px zuerst die vier Kästchen von „Zeigen“ ...
     for (let i = 0; i < 4; i++) await page.keyboard.press('Tab');
     await expect(page.locator('#lv-f-f')).toBeFocused();
+    // ... R00234 FA 10: dann „Längste Schritte“ (L1 hat genau einen Schritt mit Dauer), danach der erste summary
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#lauf .lv-top button')).toBeFocused();
     await page.keyboard.press('Tab');
     const summary = page.locator(`${EINTRAEGE} summary`).first();
     await expect(summary).toBeFocused();

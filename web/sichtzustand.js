@@ -65,7 +65,8 @@
 
   /** Teilbäume, die selbst nie scrollen und so groß werden, dass das Lesen von `scrollTop` je Element den Hauptfaden blockiert: die
       Blöcke einer offenen Datei der Review-Seite (bis 10.000 Zeilen × 4 Zellen, R00217 AK 1); ihr Codebereich `.df-sc` zählt weiter;
-      dazu die Einträge der Laufansicht (`data-ohne-rollstand`, bis 16.000 mit `content-visibility`, R00221). */
+      dazu die Einträge der Laufansicht (`data-ohne-rollstand`, bis 16.000 mit `content-visibility`, R00221) und, aus anderem Grund, ihr
+      Seitenfeld: es rollt zwar, steht aber nach jedem Zeichnen oben, damit „Zeigen“ sichtbar ist (R00243 FA 5). */
   const NIE_GEROLLT = '.dz-b, [data-ohne-rollstand]';
 
   /** Scrollstände aller gescrollten Flächen im Bereich, je mit Schlüssel; Flächen ohne Schlüssel fallen weg. */
