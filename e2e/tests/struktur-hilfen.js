@@ -15,6 +15,8 @@ function arbeitMitWbs() {
   return arbeitsRepository(WBS);
 }
 
+// Register in der Form, die kanbanD schreibt (ohne eigene Anführung): sonst ist sources von Hand gestaltet, und der Trockenlauf
+// der Vorschau in „Einrichten“ antwortet 409 wie „Speichern“ (R00250 Regel 6, ADR-0043 N1)
 const einstellungen = arbeit => `---
 people:
   st: {name: Stefan, kind: human}
@@ -28,7 +30,7 @@ sources:
   wbs: ""
   requirements: ""
   applications:
-    kd: {name: kanbanD, wbs: "${arbeit.wbs}", requirements: "${arbeit.wurzel}/Anforderungen"}
+    kd: {name: kanbanD, wbs: ${arbeit.wbs}, requirements: ${arbeit.wurzel}/Anforderungen}
 ---
 `;
 
