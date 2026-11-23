@@ -4,7 +4,7 @@
   'use strict';
   const { ZUSTANDSWOERTER, anwendungName, zustandSatz, zustandsSymbol, zeilenwerte, datumText, fehlerText: commitsFehlerText } = typeof module !== 'undefined' ? require('./commits.js') : window;
   const { dateiArt, dateiPfad, dateiGruppen, gruppierteFolge, grosseNeueDatei, testHinweis, groessteSumme, balkenTeile } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
-  const { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, patchAdresse, patchName, mitDiff: mitDiffVon, commitChips, chipText, zweigVerdichtung, zweigeWort, wortMarken } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
+  const { vscodeLink, vscodeTitel, sprungZeile, linkErlaubt, patchAdresse, patchName, mitDiff: mitDiffVon, commitChips, chipText, zweigVerdichtung, zweigeWort, wortMarken, gegenueberstellen } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
 
   /** Folge der Review-Seite aus der Liste `GET …/commits` und dem vollen Hash der Diff-Antwort (ADR-0033 Punkte 2 und 9):
       gezählt wird über die Einträge mit Diff in der Reihenfolge der Antwort, „i“ nie aus dem Text der Adresse (Rand a).
@@ -330,10 +330,42 @@
 
   /** Die Nummer der neuen Seite; springt sie, trägt sie den Tooltip des Sprungs, bleibt aber `aria-hidden` (über die Tastatur führt
       der Knopf „VS Code“, ADR-0042 Punkt 6). */
-  function nummerNeuHtml(neu, springt) {
-    if (neu === null) return '<td class="n" aria-hidden="true"></td>';
-    if (!springt) return `<td class="n" aria-hidden="true">${neu}</td>`;
-    return `<td class="n ru-nk" aria-hidden="true" title="${vscodeTitel(neu)}">${neu}</td>`;
+  function nummerNeuHtml(neu, springt, klasse = '') {
+    if (neu === null) return `<td class="n${klasse}" aria-hidden="true"></td>`;
+    if (!springt) return `<td class="n${klasse}" aria-hidden="true">${neu}</td>`;
+    return `<td class="n${klasse} ru-nk" aria-hidden="true" title="${vscodeTitel(neu)}">${neu}</td>`;
+  }
+
+  /* ── „Nebeneinander“ (R00249 FA 2–4, 9; ADR-0042 N6; D0009 Bild 8 `.ru-nb`): ein zweiter Zeichenweg aus der Gegenüberstellung
+     (`gegenueberstellen`), vier Spalten je Tabellenzeile; Marke und Lesetexte aus derselben Zeile wie bei „aus“. ── */
+
+  const NEBEN_KOPF = '<colgroup><col class="cn"><col class="cc"><col class="cn"><col class="cc"></colgroup><thead><tr><th scope="col" colspan="2">alte Fassung</th><th scope="col" colspan="2">neue Fassung</th></tr></thead>';
+  const LEERE_SEITE = '<td class="n lz" aria-hidden="true"></td><td class="c lz" aria-hidden="true"></td>';
+  const SEITENKLASSE = { minus: ' del', plus: ' add', kontext: '' };
+
+  /** Eine Tabellenzeile `t` der Gegenüberstellung mit den Zeilen der Liste. Eine Kontextzeile ist rechts `aria-hidden` (einmal gelesen). */
+  function nebenZeileHtml(t, zeilen, esc, springt) {
+    if (t.art === 'kopf') return `<tr class="hk"><td colspan="4" data-z="${t.z}">${sichtbarHtml(zeilen[t.z].text, esc)}</td></tr>`;
+    if (t.art === 'hinweis') return `<tr class="nn">${nebenHinweisHtml(t, zeilen, esc)}</tr>`;
+    let alt = LEERE_SEITE, neu = LEERE_SEITE;
+    if (t.links !== null) {
+      const z = zeilen[t.links], klasse = SEITENKLASSE[z.art];
+      alt = `<td class="n${klasse}" aria-hidden="true">${z.alt}</td><td class="c${klasse}" data-z="${t.links}">${zelleHtml(z, esc)}</td>`;
+    }
+    if (t.rechts !== null) {
+      const z = zeilen[t.rechts], klasse = SEITENKLASSE[z.art];
+      const verborgen = t.rechts === t.links ? ' aria-hidden="true"' : '';
+      neu = `${nummerNeuHtml(z.neu, springt, klasse)}<td class="c${klasse}" data-z="${t.rechts}"${verborgen}>${zelleHtml(z, esc)}</td>`;
+    }
+    return `<tr>${alt}${neu}</tr>`;
+  }
+
+  /** Die Hinweiszeile: Text in der Spalte seiner Seite mit Seitenbezug für Bildschirmleser; in beiden Spalten wird er einmal gelesen. */
+  function nebenHinweisHtml(t, zeilen, esc) {
+    const zelle = (z, lesen, verborgen) => `<td class="n" aria-hidden="true"></td><td class="c" data-z="${z}"${verborgen}>${lesen ? `<span class="vh">${lesen}</span>` : ''}${esc(zeilen[z].text)}</td>`;
+    if (t.links !== null && t.rechts !== null) return zelle(t.links, 'beide Fassungen: ', '') + zelle(t.rechts, '', ' aria-hidden="true"');
+    if (t.links !== null) return zelle(t.links, 'alte Fassung: ', '') + LEERE_SEITE;
+    return LEERE_SEITE + zelle(t.rechts, 'neue Fassung: ', '');
   }
 
   const NUR_ASCII = /^[\x20-\x7E]*$/;
@@ -342,20 +374,37 @@
       Quer-Rolle nach `contain-intrinsic-inline-size` (die Stilvorlage setzt sie aus `--bb`), nicht nach dem Inhalt (geprobt in Chromium aus e2e/node_modules); ohne
       Schätzung schnitte der Block lange Zeilen ab. Großzügig: 8 px je Zeichen (Monospace 12 px, ein Tab 4), dazu die Nummern. */
   function blockBreite(zeilen) {
-    const breiteJeZeichen = z => sichtbarTeile(z.text).reduce((n, t) => n + Array.from(t.text).reduce((m, c) => m + (c === '\t' ? 4 : c.codePointAt(0) > 0x2E7F ? 2 : 1), 0), 0);
-    // druckbares ASCII ohne Tab ist ein Zeichen je Einheit, ohne Gang über jedes Zeichen (R00247 AK 9)
-    const zeichen = z => (NUR_ASCII.test(z.text) ? z.text.length : breiteJeZeichen(z));
-    return Math.ceil(Math.max(0, ...zeilen.map(zeichen)) * 8 + 140);
+    return Math.ceil(Math.max(0, ...zeilen.map(zeichenBreite)) * 8 + 140);
+  }
+
+  /** Breite einer Zeile in Zeichen (Tab 4, breite Zeichen 2); druckbares ASCII ohne Tab ohne Gang über jedes Zeichen (R00247 AK 9). */
+  function zeichenBreite(z) {
+    if (NUR_ASCII.test(z.text)) return z.text.length;
+    return sichtbarTeile(z.text).reduce((n, t) => n + Array.from(t.text).reduce((m, c) => m + (c === '\t' ? 4 : c.codePointAt(0) > 0x2E7F ? 2 : 1), 0), 0);
+  }
+
+  /** „Nebeneinander“ (FA 8): beide Code-Spalten gleich breit, je so breit wie die längste Zeile beider Seiten (PO Z. 657); ein Hunk-Kopf,
+      der länger ist als beide zusammen, gilt mit seiner Länge. */
+  function nebenBlockBreite(zeilen, block) {
+    let seite = 0, kopf = 0;
+    for (const t of block) {
+      if (t.art === 'kopf') kopf = Math.max(kopf, zeichenBreite(zeilen[t.z]));
+      else for (const z of [t.links, t.rechts]) if (z !== null) seite = Math.max(seite, zeichenBreite(zeilen[z]));
+    }
+    return Math.ceil(Math.max(2 * seite, kopf) * 8 + 140);
   }
 
   /** Der Code-Bereich einer offenen Datei: Blöcke zu 500 Zeilen mit `content-visibility: auto` (ADR-0033 Punkt 5), je Block
       eine Tabelle mit dem Namen der Datei; der Bereich ist per Tab erreichbar und scrollt quer. `sprung` ist der Link nach VS Code
       ohne Zeile (`data-vsc`), an den ein Klick auf eine Nummer der neuen Seite ihre Zeile hängt; ohne ihn springt keine Nummer. */
-  function codeHtml(patch, pfad, esc, sprung = null) {
+  function codeHtml(patch, pfad, esc, sprung = null, nebeneinander = false) {
     const name = `Änderungen in ${esc(sichtbarText(pfad))}`;
     const zeilen = mitWortmarken(patchZeilen(patch));
     const springt = Boolean(sprung);
-    const teile = bloecke(zeilen).map(b => `<div class="dz-b" style="--bb:${blockBreite(b)}px;contain-intrinsic-block-size:auto ${b.length * 18}px"><table class="dz" aria-label="${name}">${b.map(z => zeileHtml(z, esc, springt)).join('')}</table></div>`);
+    const block = (stil, n, klasse, inhalt) => `<div class="dz-b" style="--bb:${stil}px;contain-intrinsic-block-size:auto ${n * 18}px"><table class="${klasse}" aria-label="${name}">${inhalt}</table></div>`;
+    let teile;
+    if (nebeneinander) teile = bloecke(gegenueberstellen(zeilen)).map(b => block(nebenBlockBreite(zeilen, b), b.length, 'dz ru-nb', NEBEN_KOPF + b.map(t => nebenZeileHtml(t, zeilen, esc, springt)).join('')));
+    else teile = bloecke(zeilen).map(b => block(blockBreite(b), b.length, 'dz', b.map(z => zeileHtml(z, esc, springt)).join('')));
     let ziel = '';
     if (springt) ziel = ` data-vsc="${esc(sprung)}"`;
     return `<div class="df-sc" tabindex="0" role="region" aria-label="${name}"${ziel}${farbeAttribute(patch, pfad, zeilen)}>${teile.join('')}</div>`;

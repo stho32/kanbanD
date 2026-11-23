@@ -1196,3 +1196,4 @@ Nie vom User erfragen.
 | 2026-11-23 | Karte #248 R00250 | B1336 Nacharbeit: R00250 AK 11–15, Mutanten (6, eigenes Build-Ziel, alle getötet), volles Gate | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
 | 2026-11-23 | Karte #260 R00249 | B1306 Gegenüberstellung der Zeilen rein (`gegenueberstellen`), 16 Unit-Tests rot mit Stub, dann grün | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-23 | Karte #260 R00249 | B1307 Zustand des Schalters rein: `schalterLesen`/`schalterSchreiben` für beide Schlüssel, `nebeneinanderSchalterHtml`, 4 Unit-Tests | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-23 | Karte #260 R00249 | B1308 Zeichnen der Tabelle: zweiter Zeichenweg in `codeHtml` (vier Spalten, `lz`, Lesetexte, Hinweiszeile mit Seitenbezug, Sprung nur rechts), 9 Unit-Tests | Standard | 1-2h | 0,3h | 0,3h | autonom |

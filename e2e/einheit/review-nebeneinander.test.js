@@ -169,3 +169,113 @@ test('nebeneinanderSchalterHtml: label.ru-sch mit input[checkbox][role=switch], 
   assert.ok(/ checked>/.test(an) && !/checked/.test(aus));
   assert.ok(!u.umbrechenSchalterHtml(false).includes('rv-nb'));
 });
+
+/* ── B1308 Zeichnen der Tabelle (FA 2–4, 9): vier Spalten, leere Zellen, Lesetexte, Sprung, Marke ── */
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/** Die Tabellenzeilen `<tr …>…</tr>` des gezeichneten Bereichs (ohne Kopf `thead`). */
+const zeilenVon = html => (html.split('</thead>').slice(1).join('').match(/<tr[^>]*>.*?<\/tr>/g) || []);
+/** Die Zellen einer Tabellenzeile als `{klasse, attribute, inhalt}`. */
+const zellenVon = tr => Array.from(tr.matchAll(/<td([^>]*)>(.*?)<\/td>/g), m => ({ attribute: m[1], klasse: (m[1].match(/class="([^"]*)"/) || [])[1] || '', inhalt: m[2] }));
+const text = html => html.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+const K_LAUF_A = '@@ -1,3 +1,3 @@\n vor\n-let a = 1;\n+let a = 2;\n nach\n';
+const SPRUNG = 'vscode://file/w/src/n.rs';
+
+test('codeHtml nebeneinander: jede Tabellenzeile hat vier Zellen — Nummer alt, Code alt, Nummer neu, Code neu; ohne Spalte „+/−“ (AK 2, FA 3)', () => {
+  const html = d.codeHtml(K_LAUF_A, 'src/n.rs', esc, null, true);
+  const zeilen = zeilenVon(html).filter(tr => !tr.startsWith('<tr class="hk"'));
+  assert.strictEqual(zeilen.length, 3);
+  for (const tr of zeilen) assert.deepStrictEqual(zellenVon(tr).map(z => z.klasse.split(' ')[0]), ['n', 'c', 'n', 'c'], tr);
+  assert.ok(!/class="m"/.test(html) && !/>[+−]</.test(html), 'Zeichen + und − entfallen');
+  const paar = zellenVon(zeilen[1]);
+  assert.strictEqual(text(paar[0].inhalt), '2');
+  assert.strictEqual(text(paar[1].inhalt), 'entfernt: let a = 1;');
+  assert.strictEqual(text(paar[2].inhalt), '2');
+  assert.strictEqual(text(paar[3].inhalt), 'hinzugefügt: let a = 2;');
+  assert.match(paar[1].klasse, /\bdel\b/);
+  assert.match(paar[3].klasse, /\badd\b/);
+});
+
+test('codeHtml nebeneinander: die Kontextzeile steht links und rechts mit beiden Nummern und demselben data-z; die rechte Code-Zelle ist aria-hidden (FA 3, m2, m16)', () => {
+  const [kontext] = zeilenVon(d.codeHtml(K_LAUF_A, 'src/n.rs', esc, null, true)).filter(tr => !tr.startsWith('<tr class="hk"'));
+  const z = zellenVon(kontext);
+  assert.deepStrictEqual(z.map(x => text(x.inhalt)), ['1', 'vor', '1', 'vor']);
+  assert.match(z[1].attribute, /data-z="1"/);
+  assert.match(z[3].attribute, /data-z="1"/);
+  assert.ok(!/aria-hidden/.test(z[1].attribute), 'links lesbar');
+  assert.match(z[3].attribute, /aria-hidden="true"/);
+});
+
+test('codeHtml nebeneinander: die leere Seite hat Nummer- und Code-Zelle ohne Text, ohne Nummer, ohne data-z, aria-hidden, Klasse lz (AK 2 c, d, m3)', () => {
+  const patch = '@@ -1,2 +1,2 @@\n k\n+z = 0;\n-y = 0;\n';
+  const zeilen = zeilenVon(d.codeHtml(patch, 'src/n.rs', esc, null, true)).filter(tr => !tr.startsWith('<tr class="hk"'));
+  const nurNeu = zellenVon(zeilen[1]), nurAlt = zellenVon(zeilen[2]);
+  for (const leer of [nurNeu[0], nurNeu[1], nurAlt[2], nurAlt[3]]) {
+    assert.strictEqual(leer.inhalt, '');
+    assert.match(leer.klasse, /\blz\b/);
+    assert.match(leer.attribute, /aria-hidden="true"/);
+    assert.ok(!/data-z/.test(leer.attribute));
+  }
+  assert.strictEqual(text(nurNeu[3].inhalt), 'hinzugefügt: z = 0;');
+  assert.strictEqual(text(nurAlt[1].inhalt), 'entfernt: y = 0;');
+});
+
+test('codeHtml nebeneinander: der Hunk-Kopf steht über allen vier Spalten mit data-z; der Kopf thead nennt „alte Fassung“ und „neue Fassung“ (FA 2)', () => {
+  const html = d.codeHtml(K_LAUF_A, 'src/n.rs', esc, null, true);
+  assert.match(html, /<tr class="hk"><td colspan="4" data-z="0">@@ -1,3 \+1,3 @@<\/td><\/tr>/);
+  assert.match(html, /<thead><tr><th scope="col" colspan="2">alte Fassung<\/th><th scope="col" colspan="2">neue Fassung<\/th><\/tr><\/thead>/);
+  assert.match(html, /<table class="dz ru-nb"/);
+});
+
+test('codeHtml nebeneinander: nur die Nummer der neuen Seite springt (ru-nk, Tooltip), die alte nie (FA 9, m12)', () => {
+  const [kontext, paar] = zeilenVon(d.codeHtml(K_LAUF_A, 'src/n.rs', esc, SPRUNG, true)).filter(tr => !tr.startsWith('<tr class="hk"'));
+  for (const tr of [kontext, paar]) {
+    const z = zellenVon(tr);
+    assert.ok(!/ru-nk|title=/.test(z[0].attribute), `alt springt nicht: ${z[0].attribute}`);
+    assert.match(z[2].klasse, /\bru-nk\b/);
+    assert.match(z[2].attribute, /title="In VS Code an Zeile \d+ öffnen"/);
+  }
+  assert.match(d.codeHtml(K_LAUF_A, 'src/n.rs', esc, SPRUNG, true), /data-vsc="vscode:\/\/file\/w\/src\/n\.rs"/);
+  assert.ok(!/ru-nk/.test(d.codeHtml(K_LAUF_A, 'src/n.rs', esc, null, true)), 'ohne Sprung springt nichts');
+});
+
+test('codeHtml nebeneinander: die Wortmarke steht links „1“ und rechts „2“, gleich wie bei „aus“ (FA 4, AK 3, m4)', () => {
+  const marken = html => Array.from(html.matchAll(/<mark class="wm">(.*?)<\/mark>/g), m => m[1]);
+  assert.deepStrictEqual(marken(d.codeHtml(K_LAUF_A, 'src/n.rs', esc, null, true)), ['1', '2']);
+  assert.deepStrictEqual(marken(d.codeHtml(K_LAUF_A, 'src/n.rs', esc, null, false)), ['1', '2']);
+  const ungleich = '@@ -1,2 +1,3 @@\n-p = 10;\n-q = 20;\n+p = 11;\n+q = 21;\n+r = 31;\n';
+  assert.deepStrictEqual(marken(d.codeHtml(ungleich, 'src/n.rs', esc, null, true)), [], 'ungleich lange Läufe ohne Marke');
+});
+
+test('codeHtml nebeneinander: Hinweis bei „-x \\ +x \\“ ist eine Hinweiszeile tr.nn mit „beide Fassungen: “ links, rechts aria-hidden (AK 2 ende.rs, m15)', () => {
+  const patch = '@@ -1 +1 @@\n-x\n\\ No newline at end of file\n+y\n\\ No newline at end of file\n';
+  const zeilen = zeilenVon(d.codeHtml(patch, 'src/ende.rs', esc, null, true)).filter(tr => !tr.startsWith('<tr class="hk"'));
+  assert.strictEqual(zeilen.length, 2, 'eine Tabellenzeile und eine Hinweiszeile, nicht drei');
+  assert.ok(zeilen[1].startsWith('<tr class="nn">'));
+  const z = zellenVon(zeilen[1]);
+  assert.match(z[0].attribute, /aria-hidden="true"/);
+  assert.match(z[2].attribute, /aria-hidden="true"/);
+  assert.strictEqual(text(z[1].inhalt), 'beide Fassungen: \\ No newline at end of file');
+  assert.match(z[1].attribute, /data-z="2"/);
+  assert.strictEqual(text(z[3].inhalt), '\\ No newline at end of file');
+  assert.match(z[3].attribute, /aria-hidden="true"/);
+  assert.match(z[3].attribute, /data-z="4"/);
+});
+
+test('codeHtml nebeneinander: Hinweis bei „-x \\ +x“ steht nur links mit „alte Fassung: “, rechts leer; bei „-x +x \\“ nur rechts mit „neue Fassung: “ (AK 2 enden.rs)', () => {
+  const links = zeilenVon(d.codeHtml('@@ -1 +1 @@\n-x\n\\ No newline at end of file\n+x\n', 'src/enden.rs', esc, null, true)).filter(tr => tr.startsWith('<tr class="nn">'));
+  assert.strictEqual(links.length, 1);
+  const l = zellenVon(links[0]);
+  assert.strictEqual(text(l[1].inhalt), 'alte Fassung: \\ No newline at end of file');
+  assert.ok(l[3].inhalt === '' && /\blz\b/.test(l[3].klasse));
+  const rechts = zellenVon(zeilenVon(d.codeHtml('@@ -1 +1 @@\n-x\n+x\n\\ No newline at end of file\n', 'src/enden.rs', esc, null, true)).find(tr => tr.startsWith('<tr class="nn">')));
+  assert.ok(rechts[1].inhalt === '' && /\blz\b/.test(rechts[1].klasse));
+  assert.strictEqual(text(rechts[3].inhalt), 'neue Fassung: \\ No newline at end of file');
+  assert.ok(!/aria-hidden/.test(rechts[3].attribute));
+});
+
+test('codeHtml nebeneinander: fremder Text bleibt Text (FA Sicherheit) — Tags in einer Zeile werden maskiert', () => {
+  const html = d.codeHtml('@@ -1 +1 @@\n-<img src=x onerror=alert(1)>\n+<b>neu</b>\n', 'a.txt', esc, null, true);
+  assert.ok(!/<img|<b>/.test(html));
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+});
