@@ -1,6 +1,6 @@
 # ADR-0044: Sammelwege lesen den Aufgabenordner einmal je Anfrage — Verzeichnis der Dateinamen unter der Sperre, Grenze je Sammelanfrage
 
-**Status**: Akzeptiert (E1, E3). E2 (Grenze je Sammelanfrage) Vorgeschlagen — Höhe und Wortlaut fragt der Bericht beim product-owner an; bis zur Antwort gilt die Empfehlung (5.000 Einträge, 400).
+**Status**: Akzeptiert (E1, E2, E3). E2 (Grenze je Sammelanfrage) akzeptiert nach Entscheidung des product-owner 2026-11-23 (`AI-Team/po-entscheidungen.md` Z. 669–672): 5000 Einträge, 400, Wortlaut wörtlich, Oberfläche teilt nicht auf.
 **Datum**: 2026-11-23
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #241, Lauf 241-architekt-1)
 **Kontext-Anforderung**: — (Karte #241, Bug, Labels `bug`, `sicherheit`, `leistung`; Befund des security-reviewer aus Lauf 228-security-reviewer-2). Bezug: ADR-0004 (Suche unter der Sperre, kein Index), #131 (`aufgabenpfad` liest nur Dateinamen), R00123/B0573 (Pfadregel), R00214 (Kreisprüfung im Sammelweg)
@@ -99,11 +99,17 @@
 - `board_text` schlägt den Dateinamen über eine Map Nummer → Datei nach.
 - Das Verhalten ändert sich an keiner der beiden Stellen.
 
-**E2 (Vorgeschlagen): Grenze je Sammelanfrage als zweite Sicherung.**
+**E2 (Akzeptiert, product-owner 2026-11-23, `AI-Team/po-entscheidungen.md` Z. 669–672): Grenze je Sammelanfrage als zweite Sicherung.**
 
-- Höchstens **5.000 Einträge** je Sammelanfrage. Das ist das Lastprofil: so viele Aufgaben, wie ein Ordner tragen soll.
-- Die Grenze gilt gleich für alle Sammelwege: `PATCH /api/aufgaben/mehrere`, `POST /api/aufgaben/archivieren`, `…/zurueckholen`, `POST /api/aufgaben/mehrere`, `POST /api/boards/{slug}/aufgaben/mehrere`, `POST /api/boards/{slug}/bewegen-mehrere` und `POST /api/aufgaben/{nr}/teilaufgaben/mehrere`.
-- Geprüft wird **vor** `gesperrt()` und vor `ohne_doppelte`. Darüber gibt es 400 `{fehler}`, die Meldung nennt Grenze und Anzahl, und nichts wird gelesen oder geschrieben.
+- Höchstens **5000 Einträge** je Sammelanfrage: 5000 ist erlaubt, 5001 wird abgewiesen. Das ist das Lastprofil: so viele Aufgaben, wie ein Ordner tragen soll.
+- Die Grenze ist eine Konstante im Code, keine Einstellung.
+- Die Grenze gilt gleich für alle sieben Sammelwege: `PATCH /api/aufgaben/mehrere`, `POST /api/aufgaben/archivieren`, `…/zurueckholen`, `POST /api/aufgaben/mehrere`, `POST /api/boards/{slug}/aufgaben/mehrere`, `POST /api/boards/{slug}/bewegen-mehrere` und `POST /api/aufgaben/{nr}/teilaufgaben/mehrere`.
+- Geprüft wird **vor** `gesperrt()`, vor jedem Lesen und vor `ohne_doppelte`. Nichts wird gelesen oder geschrieben, kein Commit.
+- Antwort: 400 `{fehler}`, gleicher Wortlaut auf allen sieben Wegen, wörtlich (Z. 670):
+  „Zu viele Einträge in einer Sammelanfrage: <n>, höchstens 5000 sind erlaubt. Bitte in Teilen senden.“
+  - `<n>` ist die Anzahl der Einträge der Anfrage, ohne Tausendertrenner; kein Vorsatz `#<nummer>: `, weil kein einzelner Eintrag scheitert.
+  - Nicht 413: 413 steht in kanbanD für die Größe des Körpers in Bytes (`Fehler::ZuGross`, ADR-0036 Regel 5).
+- Die Oberfläche teilt die Anfrage nicht auf: Sie sendet wie heute in einer Anfrage und zeigt die 400 wie jeden anderen Fehler der Sammelwege, ohne eigenen Zähler (Z. 671).
 - Begründung:
   - Nach E1 begrenzt bei Ändern, Archivieren und Legen schon der Ordner die Arbeit, denn eine unbekannte Nummer bricht ab.
   - Anlegen (`POST /api/aufgaben/mehrere`) und Teilaufgaben haben diese natürliche Grenze nicht. Bis zu 10⁶ Titel aus 50 MB Rumpf würden je eine Datei und einen Pfad im Commit unter der Sperre erzeugen.
@@ -136,10 +142,10 @@
 4. **E3**:
    - Die Meldungen zu doppelten Nummern sind wörtlich gleich, Test mit drei Dateien derselben Nummer.
    - `board_text` liefert für ein Board mit 3 Aufgaben dieselbe Datei wie vorher, eine davon von Hand benannt.
-5. **E2 (nach Freigabe)**:
-   - Je Sammelweg 5.000 Einträge → normales Verhalten, 5.001 → 400 mit Grenze und Anzahl in der Meldung.
+5. **E2**:
+   - Je Sammelweg (alle sieben) 5000 Einträge → normales Verhalten, 5001 → 400 mit dem Wortlaut aus E2, wörtlich verglichen (`<n>` = 5001).
    - Kein Commit, kein Listing: Zähler = 0.
-   - Mutanten „Grenze 4.999“, „Grenze 50.000“ und „Prüfung entfernt“ müssen rot werden (Spanne, `gemeinsam/gelerntes.md`).
+   - Mutanten „Grenze 4999 statt 5000“, „Grenze 50000 statt 5000“ und „Prüfung entfernt“ müssen rot werden (Spanne, `gemeinsam/gelerntes.md`).
 
 ## Messprobe (Lastbeobachtung, kein Gate; nur auf Ansage des Betreibers)
 
@@ -166,10 +172,10 @@
 
 - Die Lebensdauerregel der Momentaufnahme ist Konvention (Prüfliste 3), nicht vom Typ erzwungen.
 - Externe Schreiber können weiter dazwischenkommen, wie heute.
-- E2 macht 5.001 Einträge zum Fehler. Ein Client mit „alle markieren“ über mehr als 5.000 Karten muss in Teilen senden.
+- E2 macht 5001 Einträge zum Fehler. Ein Client mit „alle markieren“ über mehr als 5000 Karten muss in Teilen senden; die Oberfläche tut das nicht, sie zeigt die 400. Kommt der Fall im Gebrauch vor, ist das eine neue Karte.
 
 ## Folgeentscheidungen / Aufgaben
 
 - [ ] Umsetzung E1 + E3 mit Prüfliste 1–4 (Vorschlag für eine Anforderung an den planer)
-- [ ] E2 nach Antwort des product-owner (Höhe, Status 400 oder 413, Wortlaut der Meldung), Prüfliste 5
+- [ ] Umsetzung E2 mit Prüfliste 5 (entschieden: 5000, 400, Wortlaut Z. 670, keine Teilung in der Oberfläche)
 - [ ] Messprobe auf Ansage des Betreibers; bei Rest im Commit neue Karte
