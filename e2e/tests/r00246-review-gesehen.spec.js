@@ -135,8 +135,8 @@ async function liveZaehlen(page) {
 test.describe('R00246 Dateien als gesehen markieren', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
   let k, h, fehler;
-  test.beforeEach(async ({ page }) => {
-    await mutanteEinsetzen(page);
+  test.beforeEach(async ({ page, context }) => {
+    await mutanteEinsetzen(context);
     fehler = [];
     page.on('pageerror', f => fehler.push(String(f)));
     page.on('console', m => { if (m.type() === 'error') fehler.push(m.text()); });
@@ -228,6 +228,7 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     await tab.close();
 
     const fremd = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await mutanteEinsetzen(fremd);
     const andere = await fremd.newPage();
     await alsPerson(andere, 'sh');
     await commitOeffnen(andere, k, 1, h.kArt, board);
