@@ -96,46 +96,11 @@ pub(crate) fn schalter_lesen(m: &serde_yaml::Mapping) -> Result<Option<bool>, Fo
 }
 
 /// Setzt `record-transcripts` im Text einer Datei mit Frontmatter und lässt alles andere zeichengleich (R00220 FA 4,
-/// Nacharbeit 1): eine Zeile `record-transcripts:` oben im Frontmatter wird ersetzt (samt eingerückter Folgezeilen) bzw. bei
-/// `None` entfernt; fehlt sie, kommt sie vor das schließende `---`. Ohne Frontmatter entsteht einer. Das Zeilenende folgt
-/// der Datei. Ob danach wirklich der Wert gilt, prüft der Aufrufer beim Lesen.
+/// Nacharbeit 1): der einzeilige Abschnitt über `frontmatter::abschnitt_im_text` (ADR-0043 Regel 1, R00250 B1316).
+/// Ob danach wirklich der Wert gilt, prüft der Aufrufer beim Lesen.
 pub fn schalter_im_text(text: &str, wert: Option<bool>) -> String {
-    let ende = if text.contains("\r\n") { "\r\n" } else { "\n" };
-    let zeile = wert.map(|b| format!("{SCHALTER}: {b}{ende}")).unwrap_or_default();
-    let (bom, ohne_bom) = text.strip_prefix('\u{feff}').map_or(("", text), |rest| ("\u{feff}", rest));
-    let zeilen: Vec<&str> = ohne_bom.split_inclusive('\n').collect();
-    let mit_kopf = zeilen.first().is_some_and(|z| z.trim_end() == "---");
-    let schluss = mit_kopf.then(|| zeilen.iter().skip(1).position(|z| z.trim_end() == "---").map(|i| i + 1)).flatten();
-    let Some(schluss) = schluss else {
-        if zeile.is_empty() {
-            return text.to_string();
-        }
-        return format!("{bom}---{ende}{zeile}---{ende}{ende}{ohne_bom}");
-    };
-    let ist_schluessel = |z: &str| z.strip_prefix(SCHALTER).is_some_and(|rest| rest.trim_start().starts_with(':'));
-    let folgezeile = |z: &str| z.starts_with(' ') || z.starts_with('\t');
-    let mut neu = String::from(bom);
-    let mut gesetzt = false;
-    let mut i = 0;
-    while i < zeilen.len() {
-        let z = zeilen[i];
-        if i > 0 && i < schluss && !gesetzt && ist_schluessel(z) {
-            neu.push_str(&zeile);
-            gesetzt = true;
-            i += 1;
-            while i < schluss && folgezeile(zeilen[i]) {
-                i += 1;
-            }
-            continue;
-        }
-        if i == schluss && !gesetzt {
-            neu.push_str(&zeile);
-            gesetzt = true;
-        }
-        neu.push_str(z);
-        i += 1;
-    }
-    neu
+    let zeile = wert.map(|b| format!("{SCHALTER}: {b}"));
+    frontmatter::abschnitt_im_text(text, SCHALTER, zeile.as_deref())
 }
 
 /// Der Schalter als Zeile mit Zeilenende, oder nichts.
