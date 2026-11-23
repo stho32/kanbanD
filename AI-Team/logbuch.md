@@ -2203,3 +2203,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-23 | #269 | Detailplanung | ux-reviewer | befund | 2 min | M1 Abstand/Verdichtung, M2 Strich außerhalb role=img · claude · sonnet · Lauf 269-ux-reviewer-1 · 0,41 $ · Karte gesamt 7,66 $ |
 | 2026-11-23 | #248 | Nacharbeit | architekt | bestanden | 4 min | ADR-0043 N1 Vorschau-Trockenlauf · claude · opus · Lauf 248-architekt-3 · 1,65 $ · Karte gesamt 17,72 $ |
 | 2026-11-23 | #248 | Nacharbeit | product-owner | bestanden | 1 min | Wortlaute Statuszeile, 4xx-Fehler · claude · opus · Lauf 248-product-owner-3 · 0,65 $ · Karte gesamt 18,37 $ |
+| 2026-11-23 | #269 | Detailplanung | planer | bestanden | 6 min | UX-Befunde eingearbeitet, Zeitachse als Ausbaustufe 2 · claude · opus · Lauf 269-planer-2 · 2,02 $ · Karte gesamt 9,68 $ |
+| 2026-11-23 | #269 | Detailplanung | product-owner | bestanden | 1 min | Commit im Link, Zeitachse eigene Karte · claude · opus · Lauf 269-product-owner-5 · 0,59 $ · Karte gesamt 10,27 $ |
