@@ -55,7 +55,7 @@ Ein Rust-Prozess (axum, tokio) bedient je gestartetem Ordner alle Kanäle — Ob
 
 ## Entscheidungen
 
-- [ADR-0001: Logging-Konzept](../ADRs/0001-logging-konzept.md) (Vorgeschlagen)
+- [ADR-0001: Logging-Konzept](../ADRs/0001-logging-konzept.md) (Akzeptiert mit Nachtrag N1, 2026-11-23)
 
 ## Offene Fragen
 
