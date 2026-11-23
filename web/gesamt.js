@@ -270,11 +270,17 @@
   }
 
   /** Dateiliste des Abschnitts, gruppiert wie der Hauptteil (R00235 FA 10): Folge-Dateien mit „Folge · n Commits“ statt Statuswort. */
-  function dateilisteHtml(a, dateien, esc) {
+  function dateilisteHtml(a, dateien, esc, staende) {
     return diff.gruppierteListeHtml(dateien, (d, i) => {
-      if (istFolge(d)) return { arg: `${a}:${i}`, pfad: d.pfad, wort: folgeWort(d.schritte.length) };
-      return { arg: `${a}:${i}`, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0] };
+      const gesehen = Boolean(staende[i] && staende[i].gesehen);
+      if (istFolge(d)) return { arg: `${a}:${i}`, pfad: d.pfad, wort: folgeWort(d.schritte.length), gesehen };
+      return { arg: `${a}:${i}`, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0], gesehen };
     }, esc);
+  }
+
+  /** Die Dateiliste des geladenen Abschnitts `a` mit eigenem Knoten: nach einem Haken wird nur sie in der stehenden Insel neu gezeichnet (R00246). */
+  function abschnittListeHtml(ab, a, esc) {
+    return `<div id="rv-a${a}-liste">${dateilisteHtml(a, ab.antwort.dateien, esc, ab.staende)}</div>`;
   }
 
   /** Eine Folge-Datei (N1.4): Kopf mit Pfad, „Folge · n Commits“ und Summe, ohne Statuswort; offen der Satz zur Folge, dann je
@@ -388,7 +394,7 @@
     if (sicht.ganz) ganz = `<p class="rv-ganz" role="note">${esc(sicht.ganz)}</p>`;
     const dateien = dateiGruppen(antwort.dateien).map(g => abschnittGruppeHtml(ab, a, g.art, ctx)).join('');
     let liste = '';
-    if (antwort.dateien.length) liste = dateilisteHtml(a, antwort.dateien, esc);
+    if (antwort.dateien.length) liste = abschnittListeHtml(ab, a, esc);
     const rail = `<div class="rv-abs-rail" id="rv-a${a}-rail">${commitlisteHtml(antwort, ctx)}${liste}</div>`;
     return huelle(abschnittKopfHtml(a, antwort.anwendung, zahlen, esc) + leer + hinweislisteHtml(sicht.saetze, ctx) + ausgelassen + `<div class="rv-abs-rumpf">${rail}<div class="rv-abs-haupt">${ganz}${dateien}</div></div>`);
   }
@@ -432,5 +438,5 @@
     return `${diff.dateienWort(s.dateien)} · <span class="pl">+${tausender(s.plus)}</span> <span class="mi">−${tausender(s.minus)}</span>${noch}`;
   }
 
-  Object.assign(ziel, { leisteHtml, abschnittHtml, abschnittDateiHtml, abschnittGruppeHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
+  Object.assign(ziel, { leisteHtml, abschnittListeHtml, abschnittHtml, abschnittDateiHtml, abschnittGruppeHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
 })(typeof module !== 'undefined' ? module.exports : window);

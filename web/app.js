@@ -1805,6 +1805,8 @@ function reviewAlleAbbrechen(r) {
 function reviewAlleLesen(r) {
   reviewAlleAbbrechen(r);
   const alle = r.alle = { erste: { status: 'laedt' }, abschnitte: [], vonListe: [], reihe: { laufend: null, wartend: [], anwendungen: [] }, plan: { rest: BUDGET_ZEILEN, gesperrt: false, erste: true }, ansage: '' };
+  r.gesehenFuer = 'alle';
+  r.gesehenAnsage = '';
   reviewAlleAnfragen(r, alle, { art: 'erste' });
 }
 
@@ -1891,15 +1893,18 @@ function reviewAlleAusListe(r, alle) {
 /** Ein geladener Abschnitt: Klappen aus dem Plan des seitenweiten Budgets, oder wie zuletzt bei gleicher Dateiliste (`alle:<kürzel>`). */
 function reviewAbschnittAufbauen(r, alle, antwort) {
   const dateien = antwort.dateien;
-  const { offen, budgetZu, stand } = aufklappPlanSeite(dateien, antwort.hinweise, alle.plan);
+  reviewGesehenLesen(r);
+  const gesehen = dateien.map(d => r.gesehen.has(alleDateiSchluessel(antwort.anwendung, d)));
+  const { offen, budgetZu, stand } = aufklappPlanSeite(dateien, antwort.hinweise, alle.plan, gesehen);
   alle.plan = stand;
   const gemerkt = r.klappenJe[`alle:${antwort.anwendung}`];
   const namen = dateien.map(d => (istFolge(d) ? d.pfad : d.neu ?? d.alt)).join('\n');
   const ohnePatch = d => !istFolge(d) && d.status !== 'D' && dateiZustand(d, antwort.hinweise) !== 'patch';
   const staende = dateien.map((d, i) => {
-    let auf = offen[i] || ohnePatch(d) || (istFolge(d) && !d.schritte.some(s => dateiZustand(s, antwort.hinweise) === 'patch'));
+    // gesehene beginnen zu (R00246 FA 5)
+    let auf = offen[i] || (!gesehen[i] && (ohnePatch(d) || (istFolge(d) && !d.schritte.some(s => dateiZustand(s, antwort.hinweise) === 'patch'))));
     if (gemerkt && gemerkt.namen === namen) auf = gemerkt.offen[i];
-    return { offen: auf, budgetZu: budgetZu[i], laden: null, fehler: null, wartetAuf: null };
+    return { offen: auf, budgetZu: budgetZu[i], laden: null, fehler: null, wartetAuf: null, gesehen: gesehen[i] };
   });
   return { status: 'da', kuerzel: antwort.anwendung, antwort: { ...antwort, dateien: dateien.slice(), hinweise: (antwort.hinweise || []).slice() }, staende, namen, gruppen: gruppenAnfang() };
 }
@@ -2080,6 +2085,8 @@ function vReviewAlle(r, b) {
     summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span>${knopfAlle}</div>`;
     const mitListe = alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da' && ab.antwort.dateien.length);
     if (mitListe.length) summe += reviewAufklapperHtml(r, abschnittSummen(alle.abschnitte).dateien, mitListe.map(([, a]) => `rv-a${a}-rail`).join(' '));
+    const z = reviewAlleGesehen(alle);
+    summe += gesehenZeileHtml({ ...z, ansage: r.gesehenAnsage, fuer: r.gesehenFuer, speicherFehlt: r.gesehenFehler }, esc);
   }
   return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${summe}${ansage}</div>${inhalt}`;
 }

@@ -289,4 +289,110 @@ test.describe('R00246 Dateien als gesehen markieren', () => {
     await tabB.close();
   });
 
+
+  /* ── AK 5 Alle Änderungen, Änderung der Datei, Nachladen (US-5) ── */
+
+  test('AK 5: Aufgabe #7 — wb mit 503: „5 von 5 gesehen · 1 Abschnitt nicht geladen“; nach „Erneut versuchen“ „5 von 8“, die Live-Region schweigt', async ({ page }) => {
+    const s = seite(page);
+    const wb = url => url.pathname === '/api/aufgaben/7/diff' && url.searchParams.get('anwendung') === 'wb' && !url.searchParams.has('datei');
+    await page.route(wb, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ fehler: 'Zeitgrenze' }) }));
+    await alleOeffnen(page, k, 7);
+    await expect(page.locator('#rv-a1 .rv-abs-f')).toBeVisible();
+    await expect(s.zeileText()).toHaveText('0 von 5 gesehen');
+    await expect(s.ganzeZeile()).toHaveText('0 von 5 gesehen · 1 Abschnitt nicht geladen');
+    for (const pfad of ['src/a.rs', 'src/k5-1.rs', 'src/k5-2.rs', 'src/k5-3.rs', 'src/k5-4.rs']) {
+      await s.kaestchen(pfad).click();
+      expect(await s.fokusIstKaestchenVon(pfad), pfad).toBe(true);
+      expect(await s.fokusGanzSichtbar(), pfad).toBe(true);
+    }
+    await expect(s.ganzeZeile()).toHaveText('5 von 5 gesehen · 1 Abschnitt nicht geladen');
+    expect(await s.balkenAnteil()).toBe(1);
+    await expect(s.live()).toHaveText('5 von 5 gesehen');
+    await expect(s.zeile('src/a.rs')).toHaveAccessibleName(/gesehen/);
+    const live = await liveZaehlen(page);
+    await page.unroute(wb);
+    await page.locator('#rv-a1').getByRole('button', { name: 'Erneut versuchen' }).click();
+    await expect(s.ganzeZeile()).toHaveText('5 von 8 gesehen');
+    expect(await live.texte()).toEqual([]);
+    expect(await live.derselbe()).toBe(true);
+    await expect(s.live()).toHaveText('5 von 5 gesehen');
+    await expect(page.locator('#rv-gesehen-n')).toHaveText('8');
+    expect(await page.locator('#rv-gesehen-n').evaluate(e => Boolean(e.closest('[aria-hidden="true"]')) && !e.closest('#rv-gesehen'))).toBe(true);
+    const wbDatei = page.locator('#rv-a1 section.df').filter({ has: page.locator('.df-k .p', { hasText: exakt('src/a.rs') }) });
+    await expect(wbDatei.locator('input.ru-ges-k')).not.toBeChecked();
+    await wbDatei.locator('input.ru-ges-k').click();
+    await expect(s.zeileText()).toHaveText('6 von 8 gesehen');
+    expect(await live.texte()).toEqual(['6 von 8 gesehen']);
+    expect(fehler.filter(f => !f.includes('503'))).toEqual([]);
+  });
+
+  test('AK 5: der Fokus bleibt auf dem Kästchen, während ein anderer Abschnitt nachlädt; ein Commit ohne Dateien zeigt keine Zeile', async ({ page }) => {
+    const s = seite(page);
+    let freigeben;
+    const gehalten = new Promise(ok => { freigeben = ok; });
+    const wb = url => url.pathname === '/api/aufgaben/7/diff' && url.searchParams.get('anwendung') === 'wb' && !url.searchParams.has('datei');
+    await page.route(wb, async route => { await gehalten; await route.continue(); });
+    await alleOeffnen(page, k, 7);
+    await s.kaestchen('src/k5-2.rs').click();
+    await expect(s.ganzeZeile()).toHaveText('1 von 5 gesehen · 1 Abschnitt nicht geladen');
+    freigeben();
+    await expect(s.ganzeZeile()).toHaveText('1 von 8 gesehen');
+    expect(await s.fokusIstKaestchenVon('src/k5-2.rs')).toBe(true);
+    expect(await s.fokusGanzSichtbar()).toBe(true);
+    await s.kaestchen('src/k5-2.rs').click();
+    expect(await s.fokusIstKaestchenVon('src/k5-2.rs')).toBe(true);
+    expect(await s.fokusGanzSichtbar()).toBe(true);
+    await expect(s.zeileText()).toHaveText('0 von 8 gesehen');
+
+    await page.goto(commitAdresse(k, 8, h.leer));
+    await expect(page.locator('.rv-leer')).toHaveText('Dieser Commit ändert keine Dateien.');
+    await expect(s.zeileText()).toHaveCount(0);
+    await expect(s.balken()).toHaveCount(0);
+    await expect(page.locator('#rv-ges')).not.toContainText('0 von 0');
+  });
+
+  test('AK 5/US-5: Aufgabe #3 — src/a.rs gesehen überlebt das Neuladen; K3b ändert sie: wieder ungesehen und offen, README.md behält ihren Haken', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 3);
+    await expect(s.zeileText()).toHaveText('0 von 5 gesehen');
+    await s.kaestchen('src/a.rs').click();
+    await expect(s.zeileText()).toHaveText('1 von 5 gesehen');
+    expect(await s.offen('src/a.rs')).toBe(false);
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText('1 von 5 gesehen');
+    expect(await s.offen('src/a.rs')).toBe(false);
+    await s.gruppenkopf('doku', 0).click();
+    await s.kaestchen('README.md').click();
+    await expect(s.zeileText()).toHaveText('2 von 5 gesehen');
+    await k3bAnhaengen(page, k, h);
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText('1 von 5 gesehen');
+    await expect(s.kaestchen('src/a.rs')).not.toBeChecked();
+    expect(await s.offen('src/a.rs')).toBe(true);
+    await expect(s.kaestchen('README.md')).toBeChecked();
+  });
+
+  test('AK 5: K-Rand in „Alle Änderungen“ — src/grosse-antwort.json angehakt, „Änderungen anzeigen“ lässt den Haken', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 2);
+    await s.kaestchen('src/grosse-antwort.json').click();
+    await s.datei('src/grosse-antwort.json').getByRole('button', { name: 'Änderungen anzeigen' }).click();
+    expect(await s.offen('src/grosse-antwort.json')).toBe(true);
+    await expect(s.kaestchen('src/grosse-antwort.json')).toBeChecked();
+    await expect(s.zeileText()).toHaveText(/^1 von \d+ gesehen$/);
+  });
+
+  test('AK 5/m7: KG — eine große Datei nachgeladen, dann angehakt: der Haken überlebt das Neuladen ohne patch', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 6);
+    const riesig = s.datei('src/riesig.rs');
+    await riesig.getByRole('button', { name: 'Änderungen anzeigen' }).click();
+    await expect(riesig.locator('table.dz').first()).toBeVisible();
+    await s.kaestchen('src/riesig.rs').click();
+    await expect(s.zeileText()).toHaveText('1 von 1 gesehen');
+    await neuLaden(page);
+    await expect(s.kaestchen('src/riesig.rs')).toBeChecked();
+    await expect(s.zeileText()).toHaveText('1 von 1 gesehen');
+  });
+
 });
