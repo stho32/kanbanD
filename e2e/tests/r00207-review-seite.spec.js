@@ -638,7 +638,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
 
   // umgestellt mit R00210 (FA 1, 2): „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; „Ein Commit“ führt auf den ersten mit Diff
   // umgestellt mit R00245 (FA 1): der Umschalter entfällt; der erste Commit-Eintrag der Leiste ist der erste mit Diff
-  test('AK 1/US-2: „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; der erste Commit der Leiste zeigt K3 „1 von 4“ ohne Zurück mit vollem Verweis (R00210, R00245 umgestellt)', async ({ page }) => {
+  test('AK 1/US-2: „Alle Änderungen ansehen“ zeigt „Alle Änderungen“; der erste Commit der Leiste zeigt K3 „1 von 4“ ohne Zurück mit vollem Verweis (R00210, R00245, R00248 umgestellt: der Schalter „Umbrechen“ folgt „Alle einklappen“)', async ({ page }) => {
     await listeOeffnen(page);
     await page.getByRole('link', { name: 'Alle Änderungen ansehen' }).click();
     await expect(page.locator('#rv-u-alle')).toHaveAttribute('aria-current', 'page');
@@ -866,11 +866,11 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page.locator('#rv-rueckweg')).toBeFocused();
     const reihe = [];
     // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch; R00246: Gesehen
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 17; i++) {
       await page.keyboard.press('Tab');
       reihe.push(await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); return { id: e.id || e.className, ring: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0 }; }));
     }
-    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-l1', 'rv-l2', 'rv-l3', 'rv-l4', 'rv-zurueck', 'rv-vor', 'rv-alle', 'dn-e', 'rv-gk-code', 'rv-dk0', 'rv-pk0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'rv-gs0', 'df-sc']);
+    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-l1', 'rv-l2', 'rv-l3', 'rv-l4', 'rv-zurueck', 'rv-vor', 'rv-alle', 'rv-umbr', 'dn-e', 'rv-gk-code', 'rv-dk0', 'rv-pk0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'rv-gs0', 'df-sc']);
     for (const r of reihe) expect(r.ring, `Fokusring an ${r.id}`).toBe(true);
     await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
     await expect(page.locator(POS)).toHaveAttribute('aria-live', 'polite');

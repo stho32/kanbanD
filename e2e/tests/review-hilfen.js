@@ -680,9 +680,10 @@ function umbrechenBauen(basis) {
   const u = umbrechenU();
   const kurz = ziffer => ['// k anfang', '// k 2', '// k 3', '// k 4', `let a = ${ziffer};`, '// k 5', '// k 6', '// k 7', '// k ende'].join('\n') + '\n';
   const last = lastDatei(5000, UM_LAST);
+  const breit = faelleDatei([[[WM_BREIT('1')], [WM_BREIT('2')]]], 'breit');
   const h = { r, s };
-  aenderungsCommit(r, 'U0 Vorgänger', { 'src/u.rs': u[0], 'src/kurz.rs': kurz(1), 'src/gross.rs': last[0] });
-  h.u1 = aenderungsCommit(r, 'U1 Lange Zeilen', { 'src/u.rs': u[1], 'src/kurz.rs': kurz(2) });
+  aenderungsCommit(r, 'U0 Vorgänger', { 'src/u.rs': u[0], 'src/kurz.rs': kurz(1), 'src/gross.rs': last[0], 'src/breit.rs': breit[0] });
+  h.u1 = aenderungsCommit(r, 'U1 Lange Zeilen', { 'src/u.rs': u[1], 'src/kurz.rs': kurz(2), 'src/breit.rs': breit[1] });
   h.u3 = aenderungsCommit(r, 'U3 Last', { 'src/gross.rs': last[1] });
   h.leer = aenderungsCommit(r, 'U4 ohne Dateien', {});
   aenderungsCommit(s, 'U2 Vorgänger', { 'docs/u.md': '# u\n\nEnde\n' });
