@@ -2218,3 +2218,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-23 | #273 | Architektur | architekt | bestanden | 7 min | Fehler im Test, ADR-0033 N2 · claude · opus · Lauf 273-architekt-1 · 1,49 $ · Karte gesamt 1,49 $ |
 | 2026-11-23 | #273 | Detailplanung | planer | bestanden | 2 min | R00252, I0242, B1337–B1338 · claude · opus · Lauf 273-planer-1 · 0,86 $ · Karte gesamt 2,35 $ |
 | 2026-11-23 | #259 | Entwicklertest | entwicklertester | bestanden | 4 h 1 min | Szenarien 1–6 bestanden · claude · sonnet · Lauf 259-entwicklertester-1 · 1,32 $ · Karte gesamt 16,38 $ |
+| 2026-11-23 | #248 | Nacharbeit | code-reviewer | bestanden | 20 min | Nachprüfung ohne Muss · claude · sonnet · Lauf 248-code-reviewer-2 · 0,98 $ · Karte gesamt 34,52 $ |
+| 2026-11-23 | #248 | Entwicklertest | entwicklertester | bestanden | 10 min | Szenarien 1–6 bestanden · claude · sonnet · Lauf 248-entwicklertester-1 · 1,05 $ · Karte gesamt 35,57 $ |
