@@ -42,8 +42,11 @@ Das Format wandelt Markdown mit YAML-Frontmatter rein in Modelldaten um, in beid
 - [ADR-0034: kanbanD ohne WBS — Register mit Repository, Phasen werden Spalten](../ADRs/0034-kanband-ohne-wbs-register-mit-repository-phasen-werden-spalten.md) (Akzeptiert, #224–#228) — Soll: Register `{name, repository}` mit Lese-Rückfall auf `wbs`/`requirements`; `wbs-effects`/`phases` werden unbekannte Schlüssel der Aufgabe, `column-phases`/`column-checks` entfallen beim Schreiben des Boards
 - [ADR-0035: `Braucht` zwischen Karten — das Label `braucht:<nr>` ist der eine Träger](../ADRs/0035-braucht-zwischen-karten-als-label.md) — gebaut S1 (#228, R00214): **kein Formatwechsel, kein neuer Schlüssel.** `labels` bleibt eine Textliste; das Label `braucht:<n>` trägt Bedeutung, die das Modell deutet (A00006). Lesen und Schreiben der Datei bleiben zeichengleich, auch für Labels mit dem Präfix in anderer Form
 - [ADR-0036: Transkripte der Agentenläufe — gzip unversioniert unter `transkripte/<nr>/`, Eintrag `transcripts` an der Karte, Schalter `record-transcripts`](../ADRs/0036-transkripte-unversioniert-im-ordner-eintrag-an-der-karte.md) (Akzeptiert, Karte #208, Nachtrag 2026-11-21 „Gebaut“) — gebaut (#208, R00216, auf main seit `c37b74cc`): `transcripts` hinter `commits` als Flusszeilen `{at, role, column, bytes}`, formwidrig ≠ defekt; `record-transcripts: true|false` in Board-Datei und `kanbanD.md`, bei jedem Schreiben mitgeführt; die Dateien unter `transkripte/` gehören nicht zum versionierten Format — Einzelheiten unter Notizen
+- [ADR-0043: `kanbanD.md` zeilengenau je Abschnitt schreiben](../ADRs/0043-kanband-md-zeilengenau-je-abschnitt-schreiben.md) (Vorgeschlagen, Karte #248) — Soll: ein Blockschreiber `abschnitt_im_text` (Verallgemeinerung von `schalter_im_text`) ersetzt nur geänderte Abschnitte `people`/`classes`/`signals`/`sources`; Textkörper, Kommentare, fremde Schlüssel und Reihenfolge bleiben; `einstellungen::schreiben` nur noch für `einrichten`
 
 ## Offene Fragen
+
+- #248: Bug oder Umfang, zeilengenau (ADR-0043 V4) oder Hinweis — liegt beim product-owner
 
 ## Notizen / Quellen
 
