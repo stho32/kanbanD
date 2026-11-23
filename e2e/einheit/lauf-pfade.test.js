@@ -208,8 +208,13 @@ test('AK 6: U+202E, U+001B oder ein Teil .. ergibt keinen Link, absolut wie rela
 
 test('AK 6: Projekt: /w/<b>x</b> ergibt kein Element b', () => {
   const w = satz.pfadMarken('Projekt: /w/<b>x</b>');
-  const html = satz.pfadLinkHtml(`${w.length ? w[0].wurzel : '/w/<b>x</b>'}/a.js`, null, w, true, zeile);
-  assert.doesNotMatch(html, /<b>/);
+  assert.strictEqual(w.length, 1, 'die Wurzel mit Tags wird gelesen, sonst prüfte der Test nichts');
+  assert.strictEqual(w[0].wurzel, '/w/<b>x</b>');
+  const html = satz.pfadLinkHtml('/w/<b>x</b>/a.js', null, w, true, zeile);
+  assert.match(html, /data-marke="‹b&gt;›"/, 'die Marke ist der letzte Teil der Wurzel, maskiert');
+  assert.doesNotMatch(html, /<b>|<\/b>/);
+  assert.ok(html.includes('/w/&lt;b&gt;x&lt;/b&gt;'), 'der volle Anfang steht maskiert im DOM');
+  assert.ok(sichtbar(html).startsWith('‹b>›/a.js'), sichtbar(html));
 });
 
 test('AK 6: in der ganzen Insel von T14 beginnt jedes href mit vscode://file/, http(s):// oder mailto:, kein summary und kein Ergebnis trägt ein a', () => {
@@ -256,4 +261,84 @@ test('AK 9: laengsteListe zeigt Write ohne Absicht voll und ohne Marke', () => {
   const top = lauf.laufTopHtml(a, esc);
   assert.ok(top.includes('Write /w/fab/ablage/plan-7/notiz.md'), top);
   assert.doesNotMatch(top, /lv-mk|<a /);
+});
+
+/* ── Nacharbeit 1 (R00242): M1 Wurzelfälschung, M2 Rückwärtsstrich, Zeile:Spalte, Linktext, ~ und @, Fitness Function ── */
+
+test('M1: ein Teil nach · gilt nur in einer Zeile, die selbst mit Projekt:, Arbeitsort: oder Ablage: beginnt, nie in Karte:', () => {
+  const w = satz.pfadMarken('Projekt: /w/proj\nKarte: #9 Fix · Arbeitsort: /home/evil/geheim\nArbeitsort: /w/wt/karte-9');
+  assert.deepStrictEqual(w.map(x => x.wurzel).sort(), ['/w/proj', '/w/wt/karte-9']);
+  assert.deepStrictEqual(satz.pfadMarken('Karte: #9 · Ablage: /evil · Projekt: /evil2'), []);
+  const kopf = satz.pfadMarken('Projekt: /w/proj  ·  Factory: /w/fab');
+  assert.deepStrictEqual(kopf.map(x => [x.wurzel, x.marke]), [['/w/proj', '‹proj›']], 'der echte Kopf bleibt gültig');
+  const gemeinsam = satz.pfadMarken('Projekt: /a/p · Arbeitsort: /a/wt/karte-2');
+  assert.deepStrictEqual(gemeinsam.map(x => x.wurzel).sort(), ['/a/p', '/a/wt/karte-2'], 'ein Teil nach · in einer Zeile mit Schlüssel gilt');
+  assert.strictEqual(sichtbar(satz.pfadLinkHtml('/home/evil/geheim/a.js', null, w, false, zeile)), '/home/evil/geheim/a.js', 'keine Marke für die gefälschte Wurzel');
+});
+
+test('M1: je Art gilt die erste Zeile; ein relativer Pfad löst gegen die erste Arbeitsort-Zeile auf, auch wenn eine spätere länger ist', () => {
+  const w = satz.pfadMarken('Arbeitsort: /w/a\nArbeitsort: /w/viel/laenger/karte-1\nProjekt: /p/eins\nProjekt: /p/zwei\nAblage: /x/eins\nAblage: /x/zwei');
+  assert.deepStrictEqual(w.map(x => x.wurzel).sort(), ['/p/eins', '/w/a', '/x/eins']);
+  const html = markdownInline('siehe web/a.js', { pfade: nachrichtPfade(w) });
+  assert.deepStrictEqual(links(html).map(l => l.href), ['vscode://file/w/a/web/a.js']);
+});
+
+test('M1: laufAuswerten liest die gefälschte Wurzel aus einem Kartentitel nicht', () => {
+  const kopf = 'Projekt: /w/proj\nKarte: #9 Fix · Arbeitsort: /home/evil/geheim\nArbeitsort: /w/wt/karte-9';
+  const a = lauf.laufAuswerten(alsZeilen([{ zeit: null, art: 'nachricht', wer: 'mensch', text: kopf }]), false);
+  assert.deepStrictEqual(a.wurzeln.map(x => x.wurzel).sort(), ['/w/proj', '/w/wt/karte-9']);
+});
+
+const RUECKWAERTS = ['/w/proj\\..\\x/y.js', '/w/proj/..\\..\\x/y.js', '/w/proj\\a.js'];
+
+test('M2: ein Pfad mit Rückwärtsstrich bekommt keinen Link — pfadLinkHtml, markdownInline, markdownHtml und das Pfadfeld von Read', () => {
+  const w = satz.pfadMarken('Projekt: /w/proj');
+  for (const pfad of RUECKWAERTS) {
+    assert.doesNotMatch(satz.pfadLinkHtml(pfad, null, w, true, zeile), /<a /, pfad);
+    assert.doesNotMatch(markdownInline(`siehe ${pfad} hier`, { pfade: nachrichtPfade(w) }), /<a /, pfad);
+    assert.doesNotMatch(markdownInline(`siehe \`${pfad}\` hier`, { pfade: nachrichtPfade(w) }), /<a /, pfad);
+    assert.doesNotMatch(markdownHtml(`- ${pfad}`, 1, { pfade: nachrichtPfade(w) }), /<a /, pfad);
+    assert.doesNotMatch(satz.aufrufSatz('Read', JSON.stringify({ file_path: pfad }), zeile, { wurzeln: w, ergebnis: null }), /<a /, pfad);
+  }
+  assert.deepStrictEqual(links(satz.pfadLinkHtml('/w/proj/ok.js', null, w, true, zeile)).map(l => l.href), ['vscode://file/w/proj/ok.js'], 'Schutz: ohne Rückwärtsstrich bleibt es ein Link');
+});
+
+test('Zeile:Spalte: src/a.rs:12:5 und /w/demo/a.rs:12:5 ergeben das Ziel Zeile 12, nie %3A', () => {
+  const pfade = nachrichtPfade(wurzelnT14());
+  const html = markdownInline('siehe /w/demo/a.rs:12:5 und `/w/demo/b.rs:7:3` und src/c.rs:9:1.', { pfade });
+  const l = links(html);
+  assert.deepStrictEqual(l.map(x => x.href), ['vscode://file/w/demo/a.rs:12', 'vscode://file/w/demo/b.rs:7', 'vscode://file/w/wt/demo/karte-7/src/c.rs:9']);
+  assert.ok(sichtbar(html).includes('‹demo›/a.rs:12:5'), 'sichtbar steht, was geschrieben ist');
+  assert.doesNotMatch(html, /%3A/);
+  assert.deepStrictEqual(links(markdownInline('src/a.rs:12', { pfade })).map(x => x.href), ['vscode://file/w/wt/demo/karte-7/src/a.rs:12'], 'Schutz: nur Zeile');
+});
+
+test('Linktext: ein Pfad im Text eines Markdown-Links wird nicht verlinkt, kein a im a', () => {
+  const pfade = nachrichtPfade(wurzelnT14());
+  for (const md of ['[siehe /w/demo/a.js](https://e.com)', '[siehe web/a.js hier](https://e.com)', '[`/w/demo/a.js`](https://e.com)', '[a](https://e.com) und [/w/demo/b.js:3](https://e.org)']) {
+    const html = markdownInline(md, { pfade });
+    assert.doesNotMatch(html, /vscode:/, md);
+    assert.doesNotMatch(html, /<a [^>]*>(?:(?!<\/a>)[\s\S])*<a /, `a im a: ${md}`);
+    assert.ok(links(html).length >= 1, md);
+  }
+  assert.deepStrictEqual(links(markdownInline('[x](https://e.com) und /w/demo/a.js', { pfade })).map(l => l.href), ['https://e.com', 'vscode://file/w/demo/a.js'], 'Schutz: ein Pfad neben dem Link bleibt einer');
+});
+
+test('~ und @: ~/x/y.js, @types/node/index.d.ts und Node.js/Express.js werden weder gegen den Arbeitsort aufgelöst noch verlinkt', () => {
+  const pfade = nachrichtPfade(wurzelnT14());
+  for (const text of ['~/x/y.js', '@types/node/index.d.ts', 'Node.js/Express.js', 'v1.2/x.js']) {
+    assert.doesNotMatch(markdownInline(`siehe ${text} hier`, { pfade }), /<a /, text);
+    assert.doesNotMatch(markdownInline(`siehe \`${text}\` hier`, { pfade }), /<a /, `${text} im Code`);
+  }
+  assert.deepStrictEqual(links(markdownInline('siehe web/a.js, ./b.js, .github/w/x.yml und src/@types/c.d.ts', { pfade })).map(l => l.href),
+    ['vscode://file/w/wt/demo/karte-7/web/a.js', 'vscode://file/w/wt/demo/karte-7/./b.js', 'vscode://file/w/wt/demo/karte-7/.github/w/x.yml', 'vscode://file/w/wt/demo/karte-7/src/%40types/c.d.ts'], 'Schutz: echte relative Pfade bleiben Links');
+});
+
+test('Fitness Function A00009: lauf-satz.js ist rein — 0 DOM und Netz, genau 2 require(, genau 1 <a ', () => {
+  const quelle = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../web/lauf-satz.js'), 'utf8');
+  const zaehlen = muster => (quelle.match(muster) || []).length;
+  assert.strictEqual(zaehlen(/innerHTML|fetch|document|window\./g), 0, 'kein DOM, kein Netz');
+  assert.strictEqual(zaehlen(/require\(/g), 2, 'diff.js und review-uebersicht.js');
+  assert.strictEqual(zaehlen(/<a /g), 1, 'der eine Link-Erzeuger linkHtml');
+  assert.strictEqual(zaehlen(/href=/g), 1, 'href nur im Link-Erzeuger');
 });

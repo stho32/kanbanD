@@ -94,9 +94,13 @@
    *  setzt einen Inline-Code, den ein Pfad ganz füllt, `pfade.finden` liefert die Pfade eines Textstücks; ein Durchlauf. */
   function pfadeUndCode(roh, pfade, schuetze) {
     const sichtbar = t => esc(pfade.sichtbar(t).replace(/\u0000/g, ''));
-    const textMitPfaden = stueck => {
+    /* Der Text eines Markdown-Links `[text](adresse)` wird nie verlinkt: ein Link im Link gibt es nicht. */
+    const imLinkText = von => linkTexte.some(([a, b]) => von >= a && von < b);
+    const linkTexte = [...roh.matchAll(/\[[^\]]*\]\([^)\s]*\)/g)].map(m => [m.index, m.index + m[0].indexOf('](')]);
+    const textMitPfaden = (stueck, versatz) => {
       let aus = '', ab = 0;
       for (const fund of pfade.finden(stueck)) {
+        if (imLinkText(versatz + fund.von)) continue;
         aus += sichtbar(stueck.slice(ab, fund.von)) + schuetze(fund.html);
         ab = fund.bis;
       }
@@ -104,12 +108,12 @@
     };
     let s = '', ab = 0;
     for (const m of roh.matchAll(/`([^`]+)`/g)) {
-      let code = pfade.code(m[1]);
+      let code = imLinkText(m.index) ? null : pfade.code(m[1]);
       if (code === null) code = `<code>${sichtbar(m[1])}</code>`;
-      s += textMitPfaden(roh.slice(ab, m.index)) + schuetze(code);
+      s += textMitPfaden(roh.slice(ab, m.index), ab) + schuetze(code);
       ab = m.index + m[0].length;
     }
-    return s + textMitPfaden(roh.slice(ab));
+    return s + textMitPfaden(roh.slice(ab), ab);
   }
 
   /** Der Text einer Zeile ohne Markdown-Zeichen, maskiert wie die Ausgabe von `markdownInline` — für zugängliche Namen;

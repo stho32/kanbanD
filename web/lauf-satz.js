@@ -595,14 +595,17 @@
   /** Satzzeichen und `/` am Ende gehören nicht zum Pfad. */
   const PFAD_ENDE = /[.,;:)/]+$/;
 
-  /** Text des Auftrags → Wurzeln `[{wurzel, marke, art}]`, die längste zuerst: je Zeile und je durch `·` getrennten Teil, der mit
-      `Projekt:`, `Arbeitsort:` oder `Ablage:` beginnt, dessen erster absoluter Pfad. Eine Wurzel mit Bidi- oder Steuerzeichen entfällt. */
+  /** Text des Auftrags → Wurzeln `[{wurzel, marke, art}]`, die längste zuerst. Nur eine Zeile, die selbst mit `Projekt:`, `Arbeitsort:`
+      oder `Ablage:` beginnt, gibt Wurzeln her — sie und die durch `·` getrennten Teile darin, die wieder so beginnen; in einer anderen
+      Zeile (etwa `Karte:` mit dem Titel) gilt kein Teil nach `·`. Je Art gilt die erste Wurzel, eine spätere derselben Art entfällt.
+      Eine Wurzel mit Bidi- oder Steuerzeichen entfällt. */
   function pfadMarken(auftrag) {
     const wurzeln = [];
     for (const zeile of String(auftrag).split('\n')) {
+      if (!WURZEL_SCHLUESSEL.test(zeile)) continue;
       for (const teil of zeile.split('·')) {
         const wurzel = wurzelAus(teil);
-        if (wurzel !== null) wurzeln.push(wurzel);
+        if (wurzel !== null && !wurzeln.some(w => w.art === wurzel.art)) wurzeln.push(wurzel);
       }
     }
     return wurzeln.sort((a, b) => b.wurzel.length - a.wurzel.length);
@@ -640,9 +643,9 @@
   const { vscodeLink } = typeof module !== 'undefined' ? require('./review-uebersicht.js') : window;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  /** Ein Pfad trägt Marke oder Link nur, wenn das Sichtbarmachen ihn nicht ändert und kein Teil `..` ist — sonst täuschte das
-      Sichtbare über das Ziel. */
-  const pfadSauber = pfad => unveraendertSichtbar(pfad) && !pfad.split('/').includes('..');
+  /** Ein Pfad trägt Marke oder Link nur, wenn das Sichtbarmachen ihn nicht ändert, kein Teil `..` ist und kein `\` vorkommt (unter
+      Windows trennt es wie `/`, `\..\` wäre ein verdecktes `..`) — sonst täuschte das Sichtbare über das Ziel. */
+  const pfadSauber = pfad => unveraendertSichtbar(pfad) && !pfad.includes('\\') && !pfad.split('/').includes('..');
   /** Ein Link braucht einen absoluten Pfad aus mindestens zwei Teilen. */
   const linkfaehig = pfad => /^\/[^/]+\/./.test(pfad) && pfadSauber(pfad);
 
@@ -714,7 +717,7 @@
   /* ── Pfade in Nachrichten (R00242 FA 3): für die Option `pfade` von markdownInline, gesucht im rohen Text ── */
 
   /** Absolut (`/…`) oder relativ (Teile aus Wortzeichen, `.`, `~`, `@`, `+`, `-` mit mindestens einem `/`, auch mit `:<zeile>`). */
-  const PFAD_QUELLE = String.raw`\/[^\s\`<>"'*()\[\]]+|[\w.~@+-]+(?:\/[\w.~@+-]+)+(?::\d+)?`;
+  const PFAD_QUELLE = String.raw`\/[^\s\`<>"'*()\[\]]+|[\w.~@+-]+(?:\/[\w.~@+-]+)+(?::\d+){0,2}`;
   /** Ein Pfad beginnt am Anfang, nach Leerraum oder nach `(`, nie als Adresse eines Markdown-Links `](…)`. */
   const PFAD_IM_TEXT = new RegExp(String.raw`(?<![^\s(])(?<!\]\()(?:${PFAD_QUELLE})`, 'g');
   const PFAD_GANZ = new RegExp(`^(?:${PFAD_QUELLE})$`);
@@ -738,13 +741,19 @@
     return stelleHtml(stelle, wurzeln, zeile, inhalt => `<code>${inhalt}</code>`);
   }
 
-  /** Treffer → `{geschrieben, pfad, sprung}`: Satzzeichen und `/` am Ende gehören nicht dazu, `:<zeile>` am Ende ist die Zeile. */
+  /** Treffer → `{geschrieben, pfad, sprung}`: Satzzeichen und `/` am Ende gehören nicht dazu, `:<zeile>` am Ende ist die Zeile, eine
+      Spalte dahinter (`:<zeile>:<spalte>`) fällt aus dem Ziel, steht aber in `geschrieben`. */
   function pfadStelle(treffer) {
     const geschrieben = treffer.replace(PFAD_ENDE, '');
-    const mitZeile = /^(.+):(\d+)$/.exec(geschrieben);
+    const mitZeile = /^(.+?):(\d+)(?::\d+)?$/.exec(geschrieben);
     if (mitZeile === null) return { geschrieben, pfad: geschrieben, sprung: null };
     return { geschrieben, pfad: mitZeile[1], sprung: Number(mitZeile[2]) };
   }
+
+  /** Ein relativer Pfad braucht eine Endung und einen ersten Teil, der ein Verzeichnisname sein kann: Wortzeichen, `+`, `-`, höchstens ein
+      führender Punkt (`.github`, `.`). `~/…` (Heimat) und `@…` (Paketname) lösen nicht gegen den Arbeitsort auf, `Node.js/Express.js`
+      oder `v1.2/x.js` mit Punkt mitten im ersten Teil sind keine Pfade. */
+  const relativLinkfaehig = pfad => /\.[A-Za-z]\w*$/.test(pfad) && /^\.?[\w+-]+$|^\.$/.test(pfad.split('/')[0]) && pfadSauber(pfad);
 
   /** Link einer Stelle oder null: absolut mit Marke, relativ nur mit Endung, gegen die Wurzel „Arbeitsort“ und so, wie geschrieben,
       der volle Anfang davor unsichtbar. Sichtbar steht der Text, wie er geschrieben ist, samt `:<zeile>`. */
@@ -754,7 +763,7 @@
       return linkHtml(pfad, sprung, huelle(pfadInhaltHtml(geschrieben, wurzeln, zeile)));
     }
     const arbeitsort = wurzeln.find(w => w.art === 'arbeitsort');
-    if (arbeitsort === undefined || !/\.[A-Za-z]\w*$/.test(pfad) || !pfadSauber(pfad)) return null;
+    if (arbeitsort === undefined || !relativLinkfaehig(pfad)) return null;
     const anfang = `<span class="lv-anf"><span class="vh">${zeile(`${arbeitsort.wurzel}/`)}</span></span>`;
     return linkHtml(`${arbeitsort.wurzel}/${pfad}`, sprung, huelle(anfang + zeile(geschrieben)));
   }
