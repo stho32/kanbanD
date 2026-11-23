@@ -2595,8 +2595,8 @@ function laufCommitsLesen(nr, abbruchSignal) {
 
 /** Die Marker des Laufs und die Sätze im Kopf: ohne lesbare Commits der Karte bleiben die Text-Marker, der Kopf sagt es. */
 function laufCommitMarker(zeilen, auswertung, karte, adresse) {
-  const { marker, mehrAlsGrenze } = commitMarker(zeilen, auswertung.schritte, karte || []);
-  return { marker, mehrAlsGrenze, nichtLesbar: karte === null, adresse };
+  const { marker, mehrAlsGrenze, teilweise } = commitMarker(zeilen, auswertung.schritte, karte || []);
+  return { marker, mehrAlsGrenze, teilweise, nichtLesbar: karte === null, adresse };
 }
 
 /** Die Bytes des Rumpfs entpackt, als Folge von Stücken für `zeilenLesen`. Ein Fehler der Verbindung ist in `quelle.netz` vermerkt,

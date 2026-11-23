@@ -227,21 +227,22 @@
 
   function commitZeilenHtml(marker, z) {
     if (!marker) return '';
-    return marker.map(m => (m.art === 'link' ? commitLinkHtml(m, z) : commitTextHtml(m, z.esc))).join('');
+    return marker.map(m => (m.art === 'link' ? commitLinkHtml(m, z) : commitTextHtml(m, z))).join('');
   }
+
+  /** Der Titel eines Markers, gebucht gegen das Budget des Laufs wie jeder andere fremde Text (Security-Review #269 Muss 1). */
+  const commitTitelHtml = (titel, { esc, budget }) => gebuchtHtml(zeichenBuchen(titel, budget), t => zeileHtml(t, esc), esc);
 
   /** Link-Fassung: das `<a>` umschließt Wort, Kurzhash und Titel aus der Karte (PO Z. 697); die Adresse kommt nur aus dem Verweis der
       Karte über `adresse`, nie aus dem Transkript. */
   function commitLinkHtml(m, z) {
     const { esc } = z;
-    return `<li class="lv-cm" tabindex="-1">${COMMIT_SYMBOL}<a class="m" href="${esc(z.commitAdresse(m.verweis))}" data-act="lauf-commit" data-arg="${esc(m.verweis)}"><span class="k">Commit</span> <span class="mono">${esc(m.kurzhash)}</span> <span class="ti">${zeileHtml(m.titel, esc)}</span></a></li>`;
+    return `<li class="lv-cm" tabindex="-1">${COMMIT_SYMBOL}<a class="m" href="${esc(z.commitAdresse(m.verweis))}" data-act="lauf-commit" data-arg="${esc(m.verweis)}"><span class="k">Commit</span> <span class="mono">${esc(m.kurzhash)}</span> <span class="ti">${commitTitelHtml(m.titel, z)}</span></a></li>`;
   }
 
   /** Text-Fassung aus der Belegzeile: Kurzhash (nur als Hex), Titel und „Commit nicht an der Karte“, ohne Link (PO Z. 658). */
-  function commitTextHtml(m, esc) {
-    let hash = '';
-    if (m.kurzhash !== null) hash = `<span class="mono">${esc(m.kurzhash)}</span> `;
-    return `<li class="lv-cm text" tabindex="-1">${COMMIT_SYMBOL}<span class="k">Commit</span> <span class="m">${hash}<span class="ti">${zeileHtml(m.titel, esc)}</span></span> <span class="n">${NICHT_AN_DER_KARTE}</span></li>`;
+  function commitTextHtml(m, z) {
+    return `<li class="lv-cm text" tabindex="-1">${COMMIT_SYMBOL}<span class="k">Commit</span> <span class="m"><span class="mono">${z.esc(m.kurzhash)}</span> <span class="ti">${commitTitelHtml(m.titel, z)}</span></span> <span class="n">${NICHT_AN_DER_KARTE}</span></li>`;
   }
 
   const LUECKE_WORT = { denken: 'denkt', warten: 'wartet' };
@@ -1125,8 +1126,8 @@
   const ohneWert = lesetext => `<span class="lv-leerwert" aria-hidden="true">–</span><span class="vh">${lesetext}</span>`;
 
   /** Kopf aus `{zustand, auswertung, kosten, commits}`: `zustand` ist `eintraege` (mit Auswertung), `liest` oder `ohne` (fehlt, Fehler);
-      `kosten` ist der Kosteneintrag der Karte mit dieser Kennung (`{amount, currency}`) oder null; `commits` trägt `nichtLesbar` und
-      `mehrAlsGrenze` für die Sätze unter der Gesamtdauer (R00251 FA 5, FA 9). */
+      `kosten` ist der Kosteneintrag der Karte mit dieser Kennung (`{amount, currency}`) oder null; `commits` trägt `nichtLesbar`,
+      `teilweise` und `mehrAlsGrenze` für die Sätze unter der Gesamtdauer (R00251 FA 5, FA 9). */
   function laufKopfHtml({ zustand, auswertung, kosten, commits }, esc) {
     const a = zustand === 'eintraege' ? auswertung : null;
     const leer = ohneWert(LESETEXT[zustand]);
@@ -1172,11 +1173,13 @@
 
   const COMMITS_NICHT_LESBAR = 'Commits der Karte nicht lesbar';
   const MEHR_ALS_GRENZE = 'Mehr als 1.000 Commits im Lauf, markiert sind die ersten 1.000.';
-  /** Die Sätze zu den Commit-Markern unter der Aufteilung (PO Z. 660, 690): gedämpft, ohne Ansage, je eine Zeile. */
+  const TEILWEISE = 'Commits nur teilweise zugeordnet — der Lauf ist zu groß.';
+  /** Die Sätze zu den Commit-Markern unter der Aufteilung (PO Z. 660, 690, 710): gedämpft, ohne Ansage, je eine Zeile. */
   function commitSaetzeHtml(commits) {
     if (!commits) return '';
     let html = '';
     if (commits.nichtLesbar) html += `<span class="lv-cn">${COMMITS_NICHT_LESBAR}</span>`;
+    if (commits.teilweise) html += `<span class="lv-cn">${TEILWEISE}</span>`;
     if (commits.mehrAlsGrenze) html += `<span class="lv-cn">${MEHR_ALS_GRENZE}</span>`;
     return html;
   }

@@ -1989,6 +1989,11 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .lv-l>li.lv-cm{margin-left:12px}
   .lv-cm .ti{white-space:normal;overflow-wrap:anywhere}
   .lv-cm .m,.lv-cm .n{flex:1 1 100%;padding-left:calc(12px + var(--kd-s3))}
+  /* Link-Marker (UX-Review #269 S1): Symbol in der Zeile mit „Commit“ — Symbol und Link auf der ersten Grundlinie, der Inhalt des
+     Links in seiner Zielfläche mittig, der Titel bricht neben Wort und Kurzhash um */
+  .lv-l>li.lv-cm:not(.text){align-items:baseline}
+  .lv-cm a.m{flex:1 1 0;padding-left:0;flex-wrap:wrap;align-items:baseline;align-content:center}
+  .lv-cm a.m .ti{flex:1 1 0}
 }
 /* „Längste Schritte“ links, Bericht und Einträge rechts (FA 10; ohne Scheibe B steht die Liste allein in der linken Spalte) */
 /* Rumpf (R00239 FA 8): Gliederung links über beide Zeilen, rechts der Bericht und darunter die Einträge; im Dokument steht der Bericht

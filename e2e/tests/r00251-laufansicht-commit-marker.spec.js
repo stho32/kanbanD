@@ -76,6 +76,7 @@ const INSEL = '#lv-insel';
 const adresse = (kennung, nr = 1) => `#/board/fabrik/aufgabe/${nr}/lauf?kennung=${encodeURIComponent(kennung)}`;
 const istCommits = url => new URL(url).pathname === '/api/aufgaben/1/commits';
 const istTranskript = (url, kennung) => new URL(url).pathname === `/api/aufgaben/1/transkripte/${encodeURIComponent(kennung)}`;
+const TEILWEISE = 'Commits nur teilweise zugeordnet — der Lauf ist zu groß.';
 const NICHT_LESBAR = 'Commits der Karte nicht lesbar';
 
 const sprache = (page, k) => ({
@@ -130,6 +131,13 @@ const sprache = (page, k) => ({
   ziel: () => page.evaluate(() => { const p = document.createElement('i'); p.style.blockSize = 'var(--kd-ziel)'; p.style.display = 'block'; document.body.appendChild(p); const h = p.getBoundingClientRect().height; p.remove(); return h; }),
   titelStil: () => page.locator(`${INSEL} > li.lv-cm .ti`).first().evaluate(t => { const st = getComputedStyle(t); return { umbruch: st.whiteSpace, kuerzung: st.textOverflow }; }),
   quer: () => page.evaluate(() => document.scrollingElement.scrollWidth > window.innerWidth),
+  /** Je Link-Marker: Oberkante des Symbols minus Oberkante der ersten Zeile des Links (Textzeilen des Links, die oberste). */
+  symbolZuErsterLinkzeile: () => page.locator(`${INSEL} > li.lv-cm:not(.text)`).evaluateAll(lis => lis.map(li => {
+    const r = document.createRange();
+    r.selectNodeContents(li.querySelector('a'));
+    const zeilen = [...r.getClientRects()].filter(q => q.width > 0 && q.height > 0);
+    return li.querySelector('.ic').getBoundingClientRect().top - Math.min(...zeilen.map(q => q.top));
+  })),
   zeitachse: () => page.locator('.lv-za').evaluate(el => el.outerHTML),
   async reviewSchliessen() {
     await page.locator('#rv-rueckweg').click();
@@ -287,6 +295,23 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
     });
   });
 
+  for (const breite of [375, 320]) {
+    test.describe(`${breite} px, grober Zeiger (Nacharbeit 1 Punkt 7, UX S1)`, () => {
+      test.use({ viewport: { width: breite, height: 800 }, isMobile: true, hasTouch: true });
+
+      test('UX S1: das Symbol steht in der Zeile mit „Commit“ — Oberkante höchstens 8 px neben der ersten Linkzeile, Zielfläche bleibt', async ({ page }) => {
+        await s.oeffnen();
+        await s.gelesen();
+        const abstaende = await s.symbolZuErsterLinkzeile();
+        expect(abstaende.length).toBe(5);
+        console.log(`Beobachtung ${breite} px: Symbol minus erste Linkzeile ${abstaende.map(d => d.toFixed(1)).join(', ')} px`);
+        for (const d of abstaende) expect(Math.abs(d), `Symbol ${d} px neben der ersten Linkzeile`).toBeLessThanOrEqual(8);
+        for (const h of await s.zielflaechen()) expect(h).toBeGreaterThanOrEqual(await s.ziel());
+        expect(await s.quer()).toBe(false);
+      });
+    });
+  }
+
   /* ── B1329: Sicherheit im echten Programm ── */
 
   test('AK 9 · US-6: fremder Text bleibt Text — kein alert, kein fremdes Element, jedes href aus dem Verweis der Karte, keine Anfrage mit Transkripttext', async ({ page }) => {
@@ -314,10 +339,9 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
     await s.oeffnen(kennung);
     await s.gelesen();
     const marker = await s.marker();
-    expect(marker.map(m => m.link)).toEqual([null, null, reviewAdresse(hash)]);
+    expect(marker.map(m => m.link), 'Belegzeile ohne Hex-Wort: kein Marker (PO Z. 713)').toEqual([null, reviewAdresse(hash)]);
     expect(marker[0].text).toMatch(/^Commit e5f6a7b Titel "><img src=x onerror=alert\(1\)> javascript:alert\(1\) .* umgekehrt Commit nicht an der Karte$/);
-    expect(marker[1].text, 'Belegzeile ohne Hex: ohne Hash').toMatch(/^Commit Titel "><img src=x onerror=alert\(1\)> javascript:alert\(1\) .* umgekehrt Commit nicht an der Karte$/);
-    expect(marker[2].text).toBe(`Commit ${kurz(hash)} ${KARTENTITEL}`);
+    expect(marker[1].text).toBe(`Commit ${kurz(hash)} ${KARTENTITEL}`);
     const fremd = await page.locator(`${INSEL} > li.lv-cm`).evaluateAll(lis => lis.flatMap(li => [...li.querySelectorAll('*')].map(e => e.tagName.toLowerCase())).filter(t => !['span', 'svg', 'circle', 'path', 'a'].includes(t)));
     expect(fremd).toEqual([]);
     await expect(page.locator(`${INSEL} img, ${INSEL} b`)).toHaveCount(0);
@@ -340,10 +364,33 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
     for (const breite of [320, 1280]) {
       await page.setViewportSize({ width: breite, height: 800 });
       await expect(s.satzImKopf()).toBeVisible();
-      const lage = await s.satzLage();
-      expect(lage, `${breite} px`).toMatchObject({ davorKlasse: 'auf', role: false, live: false, unter: true, position: 'static', order: '0', float: 'none' });
-      expect(lage.davorText).toMatch(/^Werkzeuge /);
+      // der Wechsel über 641 px zeichnet die Seite neu (R00243 FA 4): gemessen wird am Satz nach dem Neuzeichnen, nie am abgelösten
+      await expect.poll(() => s.satzLage(), `${breite} px`).toMatchObject({ davorKlasse: 'auf', role: false, live: false, unter: true, position: 'static', order: '0', float: 'none' });
+      expect((await s.satzLage()).davorText).toMatch(/^Werkzeuge /);
     }
+  });
+
+  test('Nacharbeit 1 Punkt 2: über der Grenze der Vergleiche steht „Commits nur teilweise zugeordnet — der Lauf ist zu groß.“, genau an der Grenze nicht', async ({ page }) => {
+    const { COMMIT_GRENZEN } = require('../../web/lauf-commits.js');
+    const commits = Array.from({ length: COMMIT_GRENZEN.commits }, (_, i) => {
+      const hash = (i + 1).toString(16).padStart(40, '0');
+      return { verweis: `kd:${hash}`, hash, zustand: 'auf_zweig', titel: `Titel ${i}`, autordatum: Date.parse('2026-11-22T11:20:00+01:00') / 1000 };
+    });
+    await page.route(url => istCommits(url.href), route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ commits }) }));
+    const lauf = schritte => Array.from({ length: schritte }, (_, i) => [
+      { zeit: '2026-11-22T11:20:00+01:00', art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', id: `a${i}`, text: JSON.stringify({ command: 'git commit -q -m x' }) },
+      { zeit: '2026-11-22T11:20:00+01:00', art: 'werkzeugergebnis', wer: 'werkzeug', zu: `a${i}`, text: '' },
+    ]).flat();
+    const genau = COMMIT_GRENZEN.vergleiche / COMMIT_GRENZEN.commits;
+    for (const [kennung, schritte, saetze] of [['grenze@2026-11-22T11:20+01:00', genau, []], ['darueber@2026-11-22T11:20+01:00', genau + 1, [TEILWEISE]]]) {
+      await lv.hochladen(k.adresse, 1, kennung, 'Entwicklung', lv.gz(lauf(schritte).map(lv.zeile).join('')));
+      await s.oeffnen(kennung);
+      await s.gelesen();
+      await expect(s.satzImKopf(), `${schritte} Schritte × ${COMMIT_GRENZEN.commits} Commits`).toHaveText(saetze);
+    }
+    expect(await s.farbe(s.satzImKopf())).toBe(await s.token('--kd-muted'));
+    const lage = await s.satzLage();
+    expect(lage).toMatchObject({ davorKlasse: 'auf', role: false, live: false });
   });
 
   test('AK 6 · US-5: GET …/commits antwortet erst nach der Frist — der Lauf steht nach 2 s mit dem Satz, die späte Antwort ändert nichts', async ({ page }) => {

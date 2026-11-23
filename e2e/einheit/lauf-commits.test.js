@@ -216,12 +216,14 @@ test('AK 5: Belegzeile [zweig hash] titel und hash titel; Titel unter 12 Zeichen
   assert.strictEqual(mit('cat log.txt # Zähler zeichnen jetzt', 'abc1234 Zähler zeichnen jetzt'), undefined, 'nur Bash-Aufrufe mit „commit“ im Befehl');
 });
 
-test('AK 9: Hash der Belegzeile nur bei ^[0-9a-f]{7,40}$ — Großbuchstaben, Nicht-Hex und < ergeben einen Text-Marker ohne Hash', () => {
+test('AK 9 (Nacharbeit 1, PO Z. 713): Belegzeile nur mit Hex-Wort ^[0-9a-f]{7,40}$ — Großbuchstaben, Nicht-Hex und < ergeben keinen Marker', () => {
   const befehl = 'git commit -q -m "[DOC] Anforderung angelegt" && git log --oneline -1';
-  for (const zeile of ['ABC1234X [DOC] Anforderung angelegt', 'ABC1234 [DOC] Anforderung angelegt', 'abc<123 [DOC] Anforderung angelegt', '[main ABC1234X] [DOC] Anforderung angelegt']) {
+  for (const zeile of ['ABC1234X [DOC] Anforderung angelegt', 'ABC1234 [DOC] Anforderung angelegt', 'abc<123 [DOC] Anforderung angelegt', '[main ABC1234X] [DOC] Anforderung angelegt', 'Changes [DOC] Anforderung angelegt']) {
     const r = rechnen(paar([aufruf(T(10), befehl), ergebnis(T(12), zeile)], { 1: 0 }), []);
-    assert.deepStrictEqual(r.marker.get(1), [{ art: 'text', kurzhash: null, titel: '[DOC] Anforderung angelegt' }], zeile);
+    assert.strictEqual(r.marker.get(1), undefined, zeile);
   }
+  const r = rechnen(paar([aufruf(T(10), befehl), ergebnis(T(12), 'abc1234 [DOC] Anforderung angelegt')], { 1: 0 }), []);
+  assert.deepStrictEqual(r.marker.get(1), [{ art: 'text', kurzhash: 'abc1234', titel: '[DOC] Anforderung angelegt' }], 'Kontrolle: mit Hex-Wort');
 });
 
 test('AK 9: ein Schritt mit Commit der Karte bekommt keinen Text-Marker; Hash und Titel kommen aus der Karte, nie aus dem Transkript', () => {
@@ -358,4 +360,179 @@ test('AK 9: fremder Text bleibt Text — kein Element aus Befehl, Belegzeile, Er
   assert.ok(!marker[0].includes('‮'.repeat(1) + ' umgekehrt') || marker[0].includes('mk-bidi'));
   const hrefs = [...html.matchAll(/<li class="lv-cm[^]*?href="([^"]*)"/g)].map(x => x[1]);
   assert.deepStrictEqual(hrefs, [escHtml(ADRESSE(karte[0].verweis))], 'genau die Adresse aus reviewAdresseBilden mit dem Verweis der Karte');
+});
+
+/* ── Nacharbeit 1 (PO Z. 709–717): Budget der Titel, Grenze der Vergleiche, --amend, Text-Marker eng ── */
+
+const RLO = '‮';
+const markenIn = html => [...html.matchAll(/class="mk-z mk-(bidi|st)"/g)].length;
+const restIn = html => [...html.matchAll(/<span class="mk-rest">([^<]*)<\/span>/g)].map(m => m[1]);
+const { ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF, laufHtml: laufHtmlRoh } = require('../../web/lauf.js');
+
+/** Probe des security-reviewer (srev-269/p1.js) als Treiber: ein `git commit` mit `länge` × U+202E im Titel, im Ergebnis `anzahl`
+    Belegzeilen `[main <hex>] <Titel>` mit verschiedenen Hashes. */
+function steuerzeichenLauf(anzahl, laenge) {
+  const titel = RLO.repeat(laenge);
+  const zeilen = Array.from({ length: anzahl }, (_, i) => `[main ${(0x1000000 + i).toString(16).padStart(7, '0')}] ${titel}`);
+  return paar([aufruf(T(0), `git commit -m "${titel}"`), ergebnis(T(1), zeilen.join('\n'))], { 1: 0 });
+}
+/** Gezeichnet mit und ohne Marker: Marken, Länge und die Marker-Zeilen. */
+function mitUndOhne(eintraege, karte) {
+  const zeilen = eintraege.map((o, i) => ({ nr: i + 1, eintrag: eintragPruefen(o) }));
+  const auswertung = laufAuswerten(zeilen, false);
+  const { marker } = commitMarker(zeilen, auswertung.schritte, karte);
+  const mit = laufHtmlRoh(zeilen, false, escHtml, auswertung, { marker, adresse: ADRESSE });
+  const ohne = laufHtmlRoh(zeilen, false, escHtml, auswertung, null);
+  return { mit, ohne, markerZeilen: mit.match(/<li class="lv-cm[^]*?<\/li>/g) || [], anzahl: [...marker.values()].flat().length };
+}
+
+test('Nacharbeit 1 Punkt 1: Titel der Text-Marker gehen durch zeichenBuchen — gezeichnete Marken ≤ gebuchte bei 1, 100 und 1.000 Markern', () => {
+  for (const anzahl of [1, 100, 1000]) {
+    const { mit, ohne, markerZeilen } = mitUndOhne(steuerzeichenLauf(anzahl, 4000), []);
+    assert.strictEqual(markerZeilen.length, anzahl, `${anzahl}: je Belegzeile ein Text-Marker`);
+    const basis = markenIn(ohne);
+    const gebucht = Math.min(ZEICHEN_JE_LAUF, basis + anzahl * Math.min(ZEICHEN_JE_TEXT, 4000));
+    assert.strictEqual(markenIn(mit), gebucht, `${anzahl}: gezeichnet = gebucht (Lauf ${ZEICHEN_JE_LAUF}, Text ${ZEICHEN_JE_TEXT})`);
+    for (const m of markerZeilen) {
+      assert.ok(markenIn(m) <= ZEICHEN_JE_TEXT, `${anzahl}: höchstens 1.000 Marken je Titel`);
+      assert.strictEqual(restIn(m).length, 1, `${anzahl}: der Rest steht als Zusammenfassung`);
+      assert.strictEqual(restIn(m)[0], `… und ${(4000 - markenIn(m)).toLocaleString('de-DE')} weitere Steuerzeichen`);
+      assert.ok(!m.includes(RLO), 'kein Steuerzeichen roh');
+    }
+    assert.ok(mit.length - ohne.length <= anzahl * 1000 + ZEICHEN_JE_LAUF * 300, `${anzahl}: ${mit.length - ohne.length} Zeichen HTML mehr durch die Marker`);
+  }
+});
+
+test('Nacharbeit 1 Punkt 1: Titel der Link-Marker aus der Karte gehen durch dasselbe Budget des Laufs (1 und 100 Marker)', () => {
+  for (const anzahl of [1, 100]) {
+    const lauf = [], karte = [];
+    for (let i = 0; i < anzahl; i++) {
+      const titel = `Titel ${String(i).padStart(3, '0')} ${RLO.repeat(4000)}`;
+      lauf.push(aufruf(new Date((EPOCH_11 + i * 10) * 1000).toISOString(), `git commit -q -m "${titel}"`), ergebnis(new Date((EPOCH_11 + i * 10 + 1) * 1000).toISOString()));
+      karte.push(karteneintrag(titel, EPOCH_11 + i * 10 + 1, { name: `L${i}` }));
+    }
+    const { mit, ohne, markerZeilen } = mitUndOhne(paar(lauf, Object.fromEntries(lauf.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1))), karte);
+    assert.strictEqual(markerZeilen.filter(m => m.includes('<a ')).length, anzahl);
+    const basis = markenIn(ohne);
+    assert.strictEqual(markenIn(mit), Math.min(ZEICHEN_JE_LAUF, basis + anzahl * ZEICHEN_JE_TEXT), `${anzahl}: gezeichnet = gebucht`);
+    for (const m of markerZeilen) assert.ok(markenIn(m) <= ZEICHEN_JE_TEXT && restIn(m).length === 1 && !m.includes(RLO), m.slice(0, 200));
+  }
+});
+
+/** Probe des security-reviewer (srev-269/p2.js) als Treiber: `commits` Commits der Karte mit demselben Titel `a…ab` in derselben
+    Sekunde, `schritte` Bash-Schritte in dieser Sekunde, deren Befehl aus `laenge` × „a“ besteht. */
+function gleicheTitel(schritte, commits, laenge = 4000) {
+  const lauf = [];
+  for (let i = 0; i < schritte; i++) lauf.push(aufruf(T(0), `git commit -m ${'a'.repeat(laenge)}`), ergebnis(T(0), 'ok'));
+  const karte = Array.from({ length: commits }, (_, i) => karteneintrag(`${'a'.repeat(59)}b`, EPOCH_11, { name: `g${i}` }));
+  return rechnen(paar(lauf, Object.fromEntries(lauf.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1))), karte);
+}
+
+test('Nacharbeit 1 Punkt 2: Vergleiche ≤ Obergrenze bei 1, 10, 500 und 2.000 gleichen Titeln; teilweise genau, wenn mehr nötig wäre', () => {
+  const { vergleiche, vergleichsZeichen } = COMMIT_GRENZEN;
+  for (const n of [1, 10, 500, 2000]) {
+    const commits = Math.min(n, COMMIT_GRENZEN.commits);
+    const start = process.hrtime.bigint();
+    const r = gleicheTitel(n, commits);
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    const befehl = `git commit -m ${'a'.repeat(4000)}`.length;
+    const noetig = n * commits;
+    assert.ok(r.titelpruefungen <= vergleiche, `${n}: ${r.titelpruefungen} Vergleiche ≤ ${vergleiche}`);
+    assert.ok(r.verglicheneZeichen <= vergleichsZeichen, `${n}: ${r.verglicheneZeichen} Zeichen ≤ ${vergleichsZeichen}`);
+    const zuViel = noetig > vergleiche || noetig * befehl > vergleichsZeichen;
+    assert.strictEqual(r.teilweise, zuViel, `${n}: teilweise`);
+    if (!zuViel) assert.strictEqual(r.titelpruefungen, noetig, `${n}: unter der Grenze jeder Vergleich`);
+    console.log(`Beobachtung: ${n} gleiche Titel → ${r.titelpruefungen} Vergleiche, ${r.verglicheneZeichen} Zeichen, ${ms.toFixed(1)} ms`);
+  }
+});
+
+test('Nacharbeit 1 Punkt 2: teilweise genau ab der Grenze — Vergleiche und Zeichen je bei Grenze und Grenze + 1', () => {
+  const { vergleiche, vergleichsZeichen } = COMMIT_GRENZEN;
+  // Vergleiche: kurze Befehle, `vergleiche` bzw. eins mehr Paare (Schritt, Commit im Fenster)
+  const paareLauf = paare => {
+    const commits = Math.min(paare, COMMIT_GRENZEN.commits);
+    const schritte = Math.ceil(paare / commits);
+    const lauf = [];
+    for (let i = 0; i < schritte; i++) lauf.push(aufruf(T(0), 'git commit -q -m x'), ergebnis(T(0)));
+    let rest = paare - (schritte - 1) * commits;
+    // der letzte Schritt (Fenster ab Sekunde 1) sieht nur die `rest` Commits in Sekunde 1, die übrigen alle
+    lauf[lauf.length - 2] = aufruf(T(1), 'git commit -q -m x');
+    lauf[lauf.length - 1] = ergebnis(T(1));
+    const karte = Array.from({ length: commits }, (_, i) => karteneintrag(`Titel ${i}`, EPOCH_11 + (i < rest ? 1 : 0), { name: `p${i}` }));
+    return rechnen(paar(lauf, Object.fromEntries(lauf.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1))), karte);
+  };
+  const genau = paareLauf(vergleiche);
+  assert.deepStrictEqual([genau.titelpruefungen, genau.teilweise], [vergleiche, false], 'genau an der Grenze: vollständig');
+  const darueber = paareLauf(vergleiche + 1);
+  assert.deepStrictEqual([darueber.titelpruefungen, darueber.teilweise], [vergleiche, true], 'eins darüber: teilweise');
+  // Zeichen: ein Schritt, Befehl so lang, dass `k` Commits genau `vergleichsZeichen` Zeichen brauchen
+  const zeichenLauf = (k, laenge) => rechnen(paar([aufruf(T(0), 'x'.repeat(laenge - 18) + 'git commit -q -m y'), ergebnis(T(0))], { 1: 0 }),
+    Array.from({ length: k }, (_, i) => karteneintrag(`Titel ${i}`, EPOCH_11, { name: `z${i}` })));
+  const laenge = COMMIT_GRENZEN.befehl, k = vergleichsZeichen / laenge;
+  assert.ok(Number.isInteger(k) && k < COMMIT_GRENZEN.commits, `${k} Commits zu je ${laenge} Zeichen`);
+  const zGenau = zeichenLauf(k, laenge);
+  assert.deepStrictEqual([zGenau.verglicheneZeichen, zGenau.teilweise], [vergleichsZeichen, false], 'Zeichen genau an der Grenze');
+  const zDarueber = zeichenLauf(k + 1, laenge);
+  assert.deepStrictEqual([zDarueber.verglicheneZeichen, zDarueber.titelpruefungen, zDarueber.teilweise], [vergleichsZeichen, k, true], 'ein Vergleich mehr: teilweise');
+});
+
+test('Nacharbeit 1 Punkt 2: nach dem Abbruch bleiben die übrigen Schritte ohne Link — Belegzeilen werden Text-Marker, kein Rückfall', () => {
+  const { vergleiche } = COMMIT_GRENZEN;
+  const commits = COMMIT_GRENZEN.commits;
+  const voll = Math.ceil(vergleiche / (commits - 1));
+  const lauf = [];
+  for (let i = 0; i < voll; i++) lauf.push(aufruf(T(0), 'git commit -q -m x'), ergebnis(T(0)));
+  lauf.push(aufruf(T(0), 'git commit -m "Titel 3 nach der Grenze" && git log --oneline -1'), ergebnis(T(0), 'abc1234 Titel 3 nach der Grenze'));
+  lauf.push(aufruf(T(30), 'git commit -q -F nachricht'), ergebnis(T(31)));
+  const karte = Array.from({ length: commits - 1 }, (_, i) => karteneintrag(`Titel ${i}`, EPOCH_11, { name: `q${i}` }));
+  karte.push(karteneintrag('Allein im Fenster', EPOCH_11 + 30, { name: 'allein' }));
+  const r = rechnen(paar(lauf, Object.fromEntries(lauf.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1))), karte);
+  assert.strictEqual(r.teilweise, true);
+  assert.deepStrictEqual(r.marker.get(voll * 2 + 1), [{ art: 'text', kurzhash: 'abc1234', titel: 'Titel 3 nach der Grenze' }], 'Titel 3 stünde in der Karte, verglichen wird nach der Grenze nicht mehr');
+  assert.strictEqual(r.marker.get(voll * 2 + 3), undefined, 'kein Rückfall nach dem Abbruch');
+});
+
+test('Nacharbeit 1 Punkt 2: Satz „Commits nur teilweise zugeordnet — der Lauf ist zu groß.“ unter der Aufteilung, gedämpft, ohne role, je eine Zeile', () => {
+  const { laufKopfHtml } = require('../../web/lauf.js');
+  const zeilen = T17.map((o, i) => ({ nr: i + 1, eintrag: eintragPruefen(o) }));
+  const auswertung = laufAuswerten(zeilen, false);
+  const kopf = commits => laufKopfHtml({ zustand: 'eintraege', auswertung, kosten: null, commits }, t => String(t));
+  const kachel = html => /<div class="lv-gd">(.*?)<\/div>/.exec(html)[1];
+  const ohne = kachel(kopf({ nichtLesbar: false, mehrAlsGrenze: false, teilweise: false }));
+  const TEILWEISE = '<span class="lv-cn">Commits nur teilweise zugeordnet — der Lauf ist zu groß.</span>';
+  const GRENZE = '<span class="lv-cn">Mehr als 1.000 Commits im Lauf, markiert sind die ersten 1.000.</span>';
+  assert.strictEqual(kachel(kopf({ nichtLesbar: false, mehrAlsGrenze: false, teilweise: true })), ohne + TEILWEISE);
+  assert.strictEqual(kachel(kopf({ nichtLesbar: false, mehrAlsGrenze: true, teilweise: true })), ohne + TEILWEISE + GRENZE);
+  assert.ok(!/role=|aria-live/.test(kachel(kopf({ nichtLesbar: false, mehrAlsGrenze: true, teilweise: true }))));
+});
+
+test('Nacharbeit 1 Punkt 3: ein --amend-Aufruf erzeugt keinen Marker — weder Link noch Text (Probe „amend same title -m“)', () => {
+  const lauf = paar([
+    aufruf(T(10), 'git commit -m "[R1] B1: Erster Titel"'), ergebnis(T(12), '[karte/1 abc1234] [R1] B1: Erster Titel'),
+    aufruf(T(20), 'git commit --amend -m "[R1] B1: Erster Titel"'), ergebnis(T(21), '[karte/1 abc1235] [R1] B1: Erster Titel'),
+  ], { 1: 0, 3: 2 });
+  const karte = [karteneintrag('[R1] B1: Erster Titel', EPOCH_11 + 11)];
+  assert.deepStrictEqual(uebersicht(rechnen(lauf, karte)), { 1: ['[R1] B1: Erster Titel'] });
+  assert.deepStrictEqual(uebersicht(rechnen(lauf, [])), { 1: ['[R1] B1: Erster Titel (Text)'] }, 'ohne Karte: nur der erste Aufruf');
+  for (const befehl of ['git commit --amend -m "[R1] B1: Erster Titel"', 'git commit -q --amend --no-edit -m "[R1] B1: Erster Titel"', 'git -C /w commit --amend\t-m "[R1] B1: Erster Titel"']) {
+    const nurAmend = paar([aufruf(T(20), befehl), ergebnis(T(21), '[karte/1 abc1235] [R1] B1: Erster Titel')], { 1: 0 });
+    assert.deepStrictEqual(uebersicht(rechnen(nurAmend, [karteneintrag('[R1] B1: Erster Titel', EPOCH_11 + 20)])), {}, befehl);
+  }
+  const heredoc = 'cat >> d.md <<\'EOF\'\n| x | `git commit --amend -m` ohne -q |\nEOF\ngit add d.md && git commit -q -m "Titel aus dem echten Lauf" && git log --oneline -1';
+  assert.deepStrictEqual(uebersicht(rechnen(paar([aufruf(T(10), heredoc), ergebnis(T(11), '87fc16cd Titel aus dem echten Lauf')], { 1: 0 }), [])), { 1: ['Titel aus dem echten Lauf (Text)'] }, '--amend nur unter den Argumenten eines git commit, nicht im Heredoc');
+  const reword = paar([aufruf(T(10), 'git commit -q -m "[R1] B1: Erster Titel"'), ergebnis(T(12)), aufruf(T(20), 'git commit --amend -m "[R1] B1: Zweiter Titel"'), ergebnis(T(21), '[karte/1 abc1234] [R1] B1: Zweiter Titel\n Date: x')], { 1: 0, 3: 2 });
+  assert.deepStrictEqual(uebersicht(rechnen(reword, [karteneintrag('[R1] B1: Zweiter Titel', EPOCH_11 + 11)])), { 1: ['[R1] B1: Zweiter Titel'] }, 'amend reword: der Commit am ersten Aufruf, kein Text-Marker am zweiten');
+});
+
+test('Nacharbeit 1 Punkt 4: Text-Marker nur aus der Bestätigung eines git commit mit Hex-Wort (Proben „log false positive“, pre-commit, Hook-Ausgabe)', () => {
+  const mit = (befehl, text) => rechnen(paar([aufruf(T(10), befehl), ergebnis(T(11), text)], { 1: 0 }), []).marker.get(1);
+  assert.strictEqual(mit('git log -1 --format=%B # commit Änderung am Zähler prüfen', 'Changes am Zähler prüfen\nVerifiziert am Zähler prüfen'), undefined, 'log false positive');
+  assert.strictEqual(mit('cat .git/hooks/pre-commit # Zähler zeichnen jetzt', 'abc1234 Zähler zeichnen jetzt'), undefined, 'pre-commit');
+  assert.strictEqual(mit('git commit -m "Tests laufen durch alle Module" ', 'Running checks...\nformatting Tests laufen durch alle Module\n'), undefined, 'Ausgabe eines Hooks');
+  assert.strictEqual(mit('echo commit && echo "Zähler zeichnen jetzt"', 'abc1234 Zähler zeichnen jetzt'), undefined, 'bloßes Wort commit');
+  assert.strictEqual(mit('git log --grep commit --oneline # Zähler zeichnen jetzt', 'abc1234 Zähler zeichnen jetzt'), undefined, 'git log mit dem Wort commit');
+  const erwartet = [{ art: 'text', kurzhash: 'abc1234', titel: 'Zähler zeichnen jetzt' }];
+  for (const befehl of ['git commit -m "Zähler zeichnen jetzt"', 'git -C /w/karte-7 commit -m "Zähler zeichnen jetzt"', 'cd /w && git add -A && git commit -m "Zähler zeichnen jetzt"', 'git -c user.name=x commit -m "Zähler zeichnen jetzt"', 'git --no-pager commit -m "Zähler zeichnen jetzt"']) {
+    assert.deepStrictEqual(mit(befehl, '[karte/7 abc1234] Zähler zeichnen jetzt'), erwartet, befehl);
+  }
 });
