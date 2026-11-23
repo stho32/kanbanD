@@ -47,4 +47,13 @@ const T16 = OHNE_KENNUNG.map((e, i) => {
   return e;
 });
 
-module.exports = { T16, T16_KENNUNG, ERGEBNIS_3, ERGEBNIS_5, ERGEBNIS_14, ERGEBNIS_19 };
+/** Flut aus AK 4 / US-6 an #2: je ein Bash-Schritt mit 1.200 erlaubten, 1.200 verbotenen, 3.000 roten Spannen und 3 MiB `ESC[31m`
+    ohne Text. Aufrufe Nr 1, 3, 5, 7. */
+const T16_FLUT_KENNUNG = 'planer@2026-11-22T11:00+01:00';
+const FLUT = [`${E}[2mx${E}[22m`.repeat(1200), `${E}[8mx`.repeat(1200), `${E}[31mx${E}[0m`.repeat(3000), `${E}[31m`.repeat(3 * 1048576 / 5)];
+const T16_FLUT = FLUT.flatMap((text, i) => [
+  { zeit: um(`11:0${i}:00`), art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', id: `f${i}`, text: json({ command: 'ls', description: `Flut ${i + 1}` }) },
+  { zeit: um(`11:0${i}:01`), art: 'werkzeugergebnis', wer: 'werkzeug', zu: `f${i}`, text },
+]);
+
+module.exports = { T16, T16_KENNUNG, ERGEBNIS_3, ERGEBNIS_5, ERGEBNIS_14, ERGEBNIS_19, T16_FLUT, T16_FLUT_KENNUNG };

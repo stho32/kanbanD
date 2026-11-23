@@ -342,7 +342,8 @@
     const ergebnis = s.aufruf ? (s.ergebnisNr === null ? null : z.eintragAm.get(s.ergebnisNr)) : eintrag;
     const name = nameHtml(s.name, esc, budget) + (s.parallel ? '<span class="par">parallel</span>' : '');
     const aufrufGebucht = aufruf ? zeichenBuchen(aufruf.text, budget) : null;
-    const ergebnisGebucht = ergebnis ? zeichenBuchen(ergebnis.text, budget) : null;
+    const farbig = Boolean(ergebnis) && satz.farbenErlaubt(ergebnis.text);
+    const ergebnisGebucht = ergebnis ? zeichenBuchen(ergebnis.text, budget, farbig) : null;
     const zeile = t => zeileHtml(t, esc);
     let ergebnisGesetzt = null;
     if (ergebnisGebucht && !ergebnisGebucht.rest) ergebnisGesetzt = satz.ergebnisSatz(ergebnis.text, zeile, { wurzeln: z.wurzeln });
@@ -354,7 +355,7 @@
     if (aufruf) angabe = tokenAngabeHtml(s.nr, aufruf, z.tokens);
     if (aufruf && aufruf.wer === 'agent' && aufruf.tokens) tokensGanz = `<span class="k">Tokens</span><p class="lv-tk4">${vierWerteHtml(aufruf.tokens)}</p>`;
     const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span>${angabe}</summary>`;
-    const ganz = tokensGanz + aufrufBlockHtml(aufruf, aufrufGebucht, s, ergebnis, z) + ergebnisBlockHtml(aufruf, ergebnisGebucht, ergebnisGesetzt, esc);
+    const ganz = tokensGanz + aufrufBlockHtml(aufruf, aufrufGebucht, s, ergebnis, z) + ergebnisBlockHtml(aufruf, ergebnisGebucht, ergebnisGesetzt, esc, farbig);
     const klasse = `lv-s${s.fehler ? ' fehl' : ''}${s.absicht === null ? ' ohne-ab' : ''}`;
     let marken = artAttribut('w');
     if (s.fehler) marken += ' data-fehler';
@@ -362,7 +363,7 @@
   }
 
   /** Text, wie er heute aufgeklappt steht: gebucht, je Zeile sichtbar gemacht, in einem `pre` — der Rückfall jedes Satzes. */
-  const rohHtml = (b, esc) => `<pre>${gebuchtHtml(b, t => zeilenHtml(t, esc), esc)}</pre>`;
+  const rohHtml = (b, esc, vorher = t => t) => `<pre>${gebuchtHtml(b, t => zeilenHtml(vorher(t), esc), esc)}</pre>`;
 
   /** Block „Aufruf“ (FA 1, 13): Fläche, Rand, Kante und das Wort als erstes Kind; der Satz nur, wenn das Budget den ganzen Text trägt
       und die Grenzen ihn erlauben, sonst der Text wie heute. Ein fehlgeschlagener Schritt zeigt seinen Diff als „nicht angewendet“. */
@@ -376,15 +377,20 @@
     return `<div class="lv-auf"><span class="k">Aufruf</span>${inhalt}</div>`;
   }
 
-  /** „Ergebnis“ ohne Fläche darunter; ohne Ergebnis im Transkript unter dem Aufruf gedämpft der Satz dazu (PO Z. 612). */
-  function ergebnisBlockHtml(aufruf, gebucht, gesetzt, esc) {
+  /** „Ergebnis“ ohne Fläche darunter; ohne Ergebnis im Transkript unter dem Aufruf gedämpft der Satz dazu (PO Z. 612). Im Rückfall
+      eines `farbig` gebuchten Ergebnisses fallen die erlaubten Farbfolgen weg: sie sind nicht gebucht und dürfen keine Marke werden. */
+  function ergebnisBlockHtml(aufruf, gebucht, gesetzt, esc, farbig) {
     if (!gebucht && aufruf) return `<p class="lv-gedaempft">${KEIN_ERGEBNIS}</p>`;
     if (!gebucht) return '';
-    let inhalt = rohHtml(gebucht, esc);
-    if (gesetzt !== null) inhalt = gesetzt.html;
-    return `<div class="lv-erg"><span class="k">Ergebnis</span>${inhalt}</div>`;
+    return `<div class="lv-erg"><span class="k">Ergebnis</span>${ergebnisInhalt(gebucht, gesetzt, esc, farbig)}</div>`;
   }
   const KEIN_ERGEBNIS = 'Kein Ergebnis im Transkript.';
+
+  function ergebnisInhalt(gebucht, gesetzt, esc, farbig) {
+    if (gesetzt !== null) return gesetzt.html;
+    if (farbig) return rohHtml(gebucht, esc, satz.ohneFarbfolgen);
+    return rohHtml(gebucht, esc);
+  }
 
   /** Kürzel des Ergebnisses in der Zusammenfassung (PO Z. 604, 605): „Von Claude Code gekürzt“ mit Symbol, gedämpft „Systemhinweis“
       oder die erste Zeile. */

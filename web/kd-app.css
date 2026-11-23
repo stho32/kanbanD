@@ -1810,6 +1810,11 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-s.fehl .nm,.lv-s.fehl .eg,.lv-s.fehl .ab,.lv-s.fehl .du{color:var(--kd-status-error-ink)}
 .lv-s-ganz{border-top:1px solid var(--kd-line);background:var(--kd-bg);padding:4px var(--kd-s3) 8px 36px;color:var(--kd-text)}
 .lv-s.fehl .lv-erg{color:var(--kd-status-error-ink)}
+.lv-erg .sgr1{font-weight:600}
+.lv-erg .sgr2{color:var(--kd-muted)}
+.lv-erg .sgr31{color:var(--kd-status-error-ink)}
+.lv-erg .sgr32{color:var(--kd-status-ok-ink)}
+.lv-erg .sgr33{color:var(--kd-status-warn-ink)}
 .lv-s-ganz .k{display:block;margin-top:4px;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--kd-muted)}
 .lv-s-ganz pre{margin:2px 0 0;font:12px/1.5 var(--kd-mono);white-space:pre-wrap;overflow-wrap:anywhere}
 /* Denk- und Wartezeile ab 5 s (FA 8) */

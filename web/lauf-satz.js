@@ -378,18 +378,42 @@
 
   /** Text eines Ergebnisses → `{html, kurz, fehlerText, hinweise}`: `kurz` ist die Kurzform der Zusammenfassung (`gekuerzt`,
       `systemhinweis` oder null), `fehlerText` der Text, an dessen Anfang `fehlerErkennen` prüft, `hinweise` die Zahl der eingebetteten.
-      Eine von Claude Code gekürzte Ausgabe trägt die Marke, darunter die Vorschau, gesetzt wie ein Ergebnis. */
+      Eine von Claude Code gekürzte Ausgabe trägt die Marke, darunter die Vorschau, gesetzt wie ein Ergebnis. Die Farbfolgen werden
+      übersetzt (`farbZeilen`), ein Zustand je Ergebnis. */
   function ergebnisSatz(text, zeile, pfade = null) {
+    const farben = farbZeilen(text, zeile);
     const gekuerzt = gekuerztErkennen(text);
-    if (gekuerzt === null) return { ...ergebnisKoerper(text, zeile), fehlerText: text };
+    if (gekuerzt === null) return { ...ergebnisKoerper(text, zeile, farben), fehlerText: text };
     let inhalt = text;
     if (gekuerzt.form) inhalt = gekuerzt.vorschau;
-    const koerper = ergebnisKoerper(inhalt, zeile);
-    return { html: markeHtml(gekuerzt, zeile, pfade) + koerper.html, kurz: 'gekuerzt', fehlerText: inhalt, hinweise: koerper.hinweise };
+    const koerper = ergebnisKoerper(inhalt, zeile, farben);
+    return { html: markeHtml(gekuerzt, farben.ohneFarbe, pfade) + koerper.html, kurz: 'gekuerzt', fehlerText: inhalt, hinweise: koerper.hinweise };
   }
 
-  /** Der Inhalt unter „Ergebnis“: leer, ein JSON-Objekt oder Text mit Testzeile und eingebetteten Hinweisen, gekürzt; nie Markdown. */
-  function ergebnisKoerper(text, zeile) {
+  /** Die Zeilen eines Ergebnisses mit übersetzten Farbfolgen (N6 Punkt 1–5): `fortlaufend` setzt Zeile um Zeile in der Folge des
+      Satzes, der Zustand läuft von Zeile zu Zeile weiter; `ohneFarbe` setzt eine Zeile, die anderswo schon steht (Testzeile, erste
+      Zeile eines Hinweises, Pfad), ohne Spanne und ohne den Zustand zu ändern. Über `farbenErlaubt` hinaus beide wie `zeile`. */
+  function farbZeilen(text, zeile) {
+    if (!farbenErlaubt(text)) return { fortlaufend: zeile, ohneFarbe: zeile };
+    let zustand = GRUNDSCHRIFT;
+    return {
+      fortlaufend: z => {
+        const ergebnis = farbteile(z, zustand);
+        zustand = ergebnis.zustand;
+        return ergebnis.teile.map(t => spanneHtml(t, zeile)).join('');
+      },
+      ohneFarbe: z => farbteile(z, GRUNDSCHRIFT).teile.map(t => zeile(t.text)).join(''),
+    };
+  }
+
+  function spanneHtml(teil, zeile) {
+    if (!teil.klasse) return zeile(teil.text);
+    return `<span class="${teil.klasse}">${zeile(teil.text)}</span>`;
+  }
+
+  /** Der Inhalt unter „Ergebnis“: leer, ein JSON-Objekt oder Text mit Testzeile und eingebetteten Hinweisen, gekürzt; nie Markdown.
+      Ein JSON-Objekt wird nie übersetzt. */
+  function ergebnisKoerper(text, zeile, farben) {
     if (!text.trim()) return { html: LEER, kurz: null, hinweise: 0 };
     const json = jsonErgebnis(text);
     let jsonHtml = null;
@@ -403,7 +427,7 @@
       kurz = 'systemhinweis';
       nachsatz = NUR_HINWEIS;
     }
-    return { html: testzeileHtml(testzeileFinden(text), zeile) + teileHtml(teile, zeile) + nachsatz, kurz, hinweise };
+    return { html: testzeileHtml(testzeileFinden(text), farben.ohneFarbe) + teileHtml(teile, farben) + nachsatz, kurz, hinweise };
   }
 
   /** Ein Ergebnis, das ganz ein JSON-Objekt ist, innerhalb der Grenzen, der Deckelung und des Budgets der Marken; sonst null. */
@@ -418,12 +442,13 @@
   }
 
   /** Text- und Hinweisteile als Posten der Kürzung: je Textzeile einer, je Hinweis einer mit dem Gewicht seiner Zeilen. Offen bleibt,
-      was vor der 21. Zeile beginnt; der Rest steht hinter „weitere <n> Zeilen“, n in Zeilen des Texts. */
-  function teileHtml(teile, zeile) {
+      was vor der 21. Zeile beginnt; der Rest steht hinter „weitere <n> Zeilen“, n in Zeilen des Texts. Gesetzt wird in der Folge
+      des Texts, damit der Zustand der Farben von Zeile zu Zeile weiterläuft. */
+  function teileHtml(teile, farben) {
     const posten = teile.flatMap(t => {
-      if (t.art === 'hinweis') return [{ hinweis: true, html: systemhinweisHtml(t.text, zeile), zeilen: textZeilen(t.text).length }];
+      if (t.art === 'hinweis') return [{ hinweis: true, html: systemhinweisHtml(t.text, farben.fortlaufend, farben.ohneFarbe), zeilen: textZeilen(t.text).length }];
       if (!t.text) return [];
-      return textZeilen(t.text).map(z => ({ hinweis: false, html: zeile(z), zeilen: 1 }));
+      return textZeilen(t.text).map(z => ({ hinweis: false, html: farben.fortlaufend(z), zeilen: 1 }));
     });
     let gezeigt = 0, schnitt = 0;
     while (schnitt < posten.length && gezeigt < OFFENE_ZEILEN) {
@@ -456,11 +481,12 @@
   const ERSTE_ZEILE_ZEICHEN = 200;
 
   /** Eingebetteter Systemhinweis (PO Z. 600, 603), eingeklappt wie die Systemhinweis-Zeile: Wort und erste Zeile des Blocks;
-      aufgeklappt der Block in Festbreite. Der Filter „Systemhinweise“ blendet ihn über die Klasse `lv-ein` aus. */
-  function systemhinweisHtml(text, zeile) {
+      aufgeklappt der Block in Festbreite. Der Filter „Systemhinweise“ blendet ihn über die Klasse `lv-ein` aus. `ersteZeile` setzt
+      die erste Zeile im Kopf, die im Block noch einmal steht. */
+  function systemhinweisHtml(text, zeile, ersteZeile = zeile) {
     const zeilen = textZeilen(text);
     const z1 = Array.from(zeilen[0]).slice(0, ERSTE_ZEILE_ZEICHEN).join('');
-    return `<details class="lv-e sys lv-ein"><summary>${PFEIL}<span class="nm">Systemhinweis</span><span class="z1">${zeile(z1)}</span></summary><pre>${zeilen.map(zeile).join('\n')}</pre></details>`;
+    return `<details class="lv-e sys lv-ein"><summary>${PFEIL}<span class="nm">Systemhinweis</span><span class="z1">${ersteZeile(z1)}</span></summary><pre>${zeilen.map(z => zeile(z)).join('\n')}</pre></details>`;
   }
 
   /* ── Systemhinweise im Text (N4 Nachtrag 261-architekt-2 Punkt 1, PO Z. 603) ── */
@@ -820,6 +846,9 @@
     return true;
   }
 
+  /** Der Text ohne seine erlaubten Farbfolgen, ohne Spannen: für den Rückfall eines übersetzten Ergebnisses über dem Budget. */
+  const ohneFarbfolgen = text => farbteile(text, GRUNDSCHRIFT).teile.map(t => t.text).join('');
+
   /** Die Teile einer Folge der Reihe nach: 0, 22 und leer setzen alles zurück, 1 setzt fett, jede Farbe ersetzt die vorige. */
   function folgeAnwenden(zustand, teileDerFolge) {
     let jetzt = zustand;
@@ -858,6 +887,6 @@
     };
   }
 
-  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR, farbteile, farbenErlaubt, GRUNDSCHRIFT });
+  Object.assign(ziel, { SATZ_GRENZEN, shellUmbruch, kuerzungHtml, jsonZeilen, aufrufSatz, editDiff, ergebnisSatz, systemhinweiseTrennen, systemhinweiseZaehlen, systemhinweisHtml, testzeileFinden, gekuerztErkennen, groesseDeutsch, GEKUERZT_KURZ, MARKIERBAR_SATZ: MARKIERBAR, farbteile, farbenErlaubt, ohneFarbfolgen, GRUNDSCHRIFT });
   Object.assign(ziel, { pfadMarken, pfadKurz, pfadLinkHtml, pfadeFinden, pfadImCodeHtml, markenImText });
 })(typeof module !== 'undefined' ? module.exports : window);

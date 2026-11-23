@@ -637,3 +637,49 @@ test('R00240 AK 8: „Teuerste Schritte“ beschriftet mit der Absicht und nennt
   assert.match(teuer, /<span class="was zw"><span class="wt">Datei lesen<\/span><span class="bf2">Bash cat a<\/span><\/span><span class="nach">nach Ordner ansehen<\/span>/);
   assert.match(teuer, /<span class="vh" id="lv-teu-1-n">Datei lesen, [^<]*, nach Ordner ansehen<\/span>/);
 });
+
+/* ── R00244 (Karte #267): Farbfolgen nur im Ergebnis übersetzt, Budget mit Vorgriff (AK 1–4, ADR-0041 N6 Punkt 1, 4) ── */
+
+const t16 = require('../tests/laufansicht-t16.js');
+const E = '\u001b';
+const T16_EINTRAEGE = t16.T16.map((eintrag, i) => ({ nr: i + 1, eintrag: { zeit: null, name: null, id: null, zu: null, tokens: null, ...eintrag } }));
+const zeileNr = (html, nr) => eintraegeVon(html).find(li => li.startsWith(`<li id="lv-s${nr}"`));
+const spannenIn = html => (html.match(/<span class="sgr/g) || []).length;
+const markenIn = html => (html.match(/class="mk-z/g) || []).length;
+
+test('R00244 AK 1, 3: in T16 übersetzt nur das Ergebnis — Nr 3 gedämpft mit einer Marke, Aufruf Nr 13 und Nachricht Nr 15 mit Marken, Kurzform Nr 16 mit Marke', () => {
+  const html = laufHtml(T16_EINTRAEGE, false, esc);
+  const nr2 = zeileNr(html, 2);
+  assert.strictEqual(spannenIn(nr2), 2);
+  assert.strictEqual(markenIn(nr2), 1);
+  const nr13 = zeileNr(html, 13);
+  assert.strictEqual(spannenIn(nr13.slice(0, nr13.indexOf('class="lv-erg"'))), 0, 'Aufruf ohne Übersetzung');
+  assert.strictEqual(markenIn(nr13.slice(0, nr13.indexOf('class="lv-erg"'))), 2, 'Aufruf: beide ESC Marke');
+  const nachricht = zeileNr(html, 15);
+  assert.strictEqual(spannenIn(nachricht), 0);
+  assert.match(nachricht, /␛ U\+001B\[31mfertig␛ U\+001B\[0m/, 'Nachricht: Marke als Text wie bisher');
+  const nr16 = zeileNr(html, 16);
+  const kurzform = /<span class="eg">([\s\S]*?)<\/span><span class="du">/.exec(nr16)[1];
+  assert.match(kurzform, /U\+001B\[32mgruen/, 'Kurzform behält die Marke');
+  assert.match(nr16, /<span class="sgr32">gruen<\/span> fertig/);
+  assert.ok(!html.includes(E));
+});
+
+test('R00244 AK 4: 1.200 erlaubte Folgen buchen nichts; über dem Budget bleibt kein ESC im HTML und höchstens 1.000 Marken', () => {
+  const aufruf = e(1, 'werkzeugaufruf', 'agent', '{"command":"ls"}', { name: 'Bash' });
+  const html = laufHtml([aufruf, e(2, 'werkzeugergebnis', 'werkzeug', `${E}[2mx${E}[22m`.repeat(1200), { name: 'Bash' })], false, esc);
+  assert.strictEqual(spannenIn(html), 1200);
+  assert.strictEqual(markenIn(html), 0);
+  assert.doesNotMatch(html, /weitere Steuerzeichen/);
+  const ueber = laufHtml([aufruf, e(2, 'werkzeugergebnis', 'werkzeug', `${E}[8mx`.repeat(1200), { name: 'Bash' })], false, esc);
+  assert.strictEqual(markenIn(ueber), 1000);
+  assert.match(ueber, /… und 200 weitere Steuerzeichen/);
+  const gemischt = laufHtml([aufruf, e(2, 'werkzeugergebnis', 'werkzeug', `${E}[8mx`.repeat(1001) + `${E}[31m`.repeat(100000) + `${E}[2my${E}[22m`, { name: 'Bash' })], false, esc);
+  assert.ok(!gemischt.includes(E), 'kein ESC im Rückfall über dem Budget');
+  assert.strictEqual(markenIn(gemischt), 1000);
+  assert.match(gemischt, /… und 1 weiteres Steuerzeichen/);
+  const flut = laufHtml([aufruf, e(2, 'werkzeugergebnis', 'werkzeug', `${E}[31mx${E}[0m`.repeat(3000), { name: 'Bash' })], false, esc);
+  assert.strictEqual(spannenIn(flut), 0, 'über 2.000 Spannen keine Übersetzung');
+  assert.strictEqual(markenIn(flut), 1000);
+  assert.match(flut, /… und 5\.000 weitere Steuerzeichen/, 'gezeigt plus gezählt = 6.000 nicht übersetzte ESC');
+});

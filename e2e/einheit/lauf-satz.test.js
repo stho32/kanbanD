@@ -639,3 +639,84 @@ test('farbenErlaubt: höchstens 2.000 Spannen je Ergebnis — 2.000 ja, 2.001 ne
   assert.strictEqual(farbenErlaubt(`${E}[31m`.repeat(3 * 1048576 / 5)), true);
   assert.ok(Date.now() - beginn < 2000, `${Date.now() - beginn} ms`);
 });
+
+/* ── R00244: Übersetzung im Ergebnis-Satz (AK 1–5, ADR-0041 N6 Punkt 1–5) ── */
+
+const { sichtbarHtml } = require('../../web/diff.js');
+const sichtbar = t => sichtbarHtml(t, esc);
+const spannen = html => [...html.matchAll(/<span class="(sgr[^"]*)">([^<]*)<\/span>/g)].map(m => [m[1], m[2]]);
+const markenIm = html => (html.match(/class="mk-z/g) || []).length;
+
+test('ergebnisSatz Nr 3 (Call log): zwei gedämpfte Spannen, ESC(B bleibt eine Marke, ESC[m übersetzt; kein U+001B im HTML', () => {
+  const html = ergebnisSatz(t16.ERGEBNIS_3, sichtbar).html;
+  assert.deepStrictEqual(spannen(html), [['sgr2', "  - waiting for getByRole('button', { name: 'Speichern' })"], ['sgr2', '  - locator resolved to &lt;button&gt;']]);
+  assert.strictEqual(markenIm(html), 1);
+  assert.ok(!html.includes(E));
+  assert.match(html, /^<pre>Exit code 1\n### Error: locator\.click: Timeout 5000ms exceeded\.\nCall log:\n<span class="sgr2">/);
+  assert.match(html, /<\/span>\(B <\/pre>$/, 'ESC[m dahinter ist übersetzt und nicht vorhanden');
+});
+
+test('ergebnisSatz Nr 5 (rustfmt): rot und grün je bis ESC[0m, 0 Marken; Nr 14: 4 Marken, 0 Spannen, Text lesbar', () => {
+  const fmt = ergebnisSatz(t16.ERGEBNIS_5, sichtbar).html;
+  assert.deepStrictEqual(spannen(fmt), [['sgr31', '-    let x=1;'], ['sgr32', '+    let x = 1;']]);
+  assert.strictEqual(markenIm(fmt), 0);
+  assert.match(fmt, /\nok-Zeile ohne Farbe<\/pre>$/);
+  const verboten = ergebnisSatz(t16.ERGEBNIS_14, sichtbar).html;
+  assert.deepStrictEqual(spannen(verboten), []);
+  assert.strictEqual(markenIm(verboten), 4);
+  assert.strictEqual(ohneTags(verboten).replace(/␛ U\+001B/g, ''), '[8mgeheim [7mumgekehrt [30;40mschwarz [38;5;196mrot');
+});
+
+test('ergebnisSatz: Zustand über Zeilen, Hinweise und die Kürzung hinweg; erste Zeile des Hinweises und Testzeile ohne Spanne', () => {
+  assert.deepStrictEqual(spannen(ergebnisSatz(`${E}[31mrot\nüber zwei${E}[0m\nGrund`, sichtbar).html), [['sgr31', 'rot'], ['sgr31', 'über zwei']]);
+  const lang = ergebnisSatz(`${E}[32m` + zeilen(25).join('\n'), sichtbar).html;
+  assert.strictEqual(spannen(lang).length, 25, 'auch hinter „weitere 5 Zeilen“ grün');
+  const mitHinweis = ergebnisSatz(`a${E}[2m\n<system-reminder>\n${E}[31mh\n</system-reminder>\nb`, sichtbar).html;
+  assert.deepStrictEqual(spannen(mitHinweis), [['sgr2', '&lt;system-reminder&gt;'], ['sgr31', 'h'], ['sgr31', '&lt;/system-reminder&gt;'], ['sgr31', 'b']]);
+  assert.match(mitHinweis, /<span class="z1">&lt;system-reminder&gt;<\/span>/);
+  const test = ergebnisSatz(`${E}[31mx${E}[0m\ntest result: ok. 3 passed; 0 failed; ${E}[2m0 ignored`, sichtbar).html;
+  assert.match(test, /<p class="lv-tz ok">[\s\S]*<span>test result: ok\. 3 passed; 0 failed; 0 ignored<\/span><\/p>/);
+  assert.ok(!test.includes(E));
+});
+
+test('ergebnisSatz: jedes Ergebnis beginnt in Grundschrift; JSON-Ergebnis und leeres Ergebnis ohne Übersetzung', () => {
+  ergebnisSatz(`${E}[31moffen`, sichtbar);
+  assert.deepStrictEqual(spannen(ergebnisSatz('danach', sichtbar).html), []);
+  assert.strictEqual(ergebnisSatz(`${E}[31m${E}[0m`, sichtbar).html, '<pre></pre>');
+  const json = ergebnisSatz('{"a":"\\u001b[31mx"}', sichtbar).html;
+  assert.deepStrictEqual(spannen(json), []);
+  assert.strictEqual(ergebnisSatz(' \n ', sichtbar).html, '<p class="lv-gedaempft">Leeres Ergebnis.</p>');
+});
+
+test('ergebnisSatz: über 2.000 Spannen steht das Ergebnis ganz ohne Übersetzung, jedes ESC eine Marke; 1.200 gedämpfte ohne Marke', () => {
+  const flut = ergebnisSatz(`${E}[31mx${E}[0m`.repeat(3000), sichtbar).html;
+  assert.deepStrictEqual(spannen(flut), []);
+  assert.strictEqual(markenIm(flut), 6000);
+  const gedaempft = ergebnisSatz(`${E}[2mx${E}[22m`.repeat(1200), sichtbar).html;
+  assert.strictEqual(spannen(gedaempft).length, 1200);
+  assert.strictEqual(markenIm(gedaempft), 0);
+});
+
+test('Gleichheit an drei Orten: je Zeichen U+0000–U+FFFF mit Folge dahinter zeigt der Satz genau so viele Marken, wie zeichenBuchen bucht', () => {
+  const abweichend = [];
+  for (let c = 0; c <= 0xffff; c++) {
+    if (c === 0x0a) continue;
+    for (const folge of [`${E}[2m`, `${E}[8m`]) {
+      const text = String.fromCharCode(c) + folge + 'x';
+      const satzZeigt = markenIm(ergebnisSatz(text, sichtbar).html);
+      if (satzZeigt !== gebucht(text, true) || satzZeigt !== markenNachUebersetzung(text)) abweichend.push(`${c.toString(16)} ${JSON.stringify(folge)}`);
+    }
+  }
+  assert.deepStrictEqual(abweichend, []);
+});
+
+test('ergebnisSatz ohne ESC ist byte-gleich zum Stand vor R00244 (T13, T16 ohne Folgen, Hinweise, gekürzt, JSON)', () => {
+  const Modul = require('node:module');
+  const quelle = require('node:child_process').execFileSync('git', ['show', 'c4f49f50:web/lauf-satz.js'], { cwd: __dirname, encoding: 'utf8' });
+  const alt = new Modul('lauf-satz-alt');
+  alt._compile(quelle, require('node:path').join(__dirname, '../../web/lauf-satz-alt.js'));
+  const texte = [...t13.T13, ...t13.T13F, ...t16.T16].filter(e => e.art === 'werkzeugergebnis' && !e.text.includes(E)).map(e => e.text);
+  texte.push(t13.ERGEBNIS_3, t13.ERGEBNIS_5, `a\n<system-reminder>\nh\n</system-reminder>\n${zeilen(30).join('\n')}`, '{"ok":true}', '', 'x‮y');
+  assert.ok(texte.length >= 10);
+  for (const text of texte) assert.strictEqual(ergebnisSatz(text, sichtbar).html, alt.exports.ergebnisSatz(text, sichtbar).html, text.slice(0, 60));
+});
