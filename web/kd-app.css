@@ -1590,6 +1590,16 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .dz .c .tk-number{color:var(--kd-tk-number)}.dz .c .tk-function{color:var(--kd-tk-function)}.dz .c .tk-type{color:var(--kd-tk-type)}.dz .c .tk-macro{color:var(--kd-tk-macro)}
 .mk-z{display:inline-flex;align-items:center;gap:2px;margin:0 1px;padding:0 3px;border:1px solid var(--kd-status-warn-ink);background:var(--kd-status-warn-bg);color:var(--kd-status-warn-ink);font:600 11px/1.3 var(--kd-mono);white-space:nowrap}
 .mk-z svg.i{width:11px;height:11px}
+/* Wortmarke (R00247, D0009 S5): Fläche aus den Tokens gemischt, 2 px Unterkante in der Linienfarbe; inline, ohne Maß und ohne Seitenrand */
+mark.wm{color:inherit;padding:0;background:none}
+.dz tr.del mark.wm{background:color-mix(in oklch,var(--kd-c-red) 85%,var(--kd-c-red-line));box-shadow:inset 0 -2px 0 var(--kd-c-red-line)}
+.dz tr.add mark.wm{background:color-mix(in oklch,var(--kd-c-green) 85%,var(--kd-c-green-line));box-shadow:inset 0 -2px 0 var(--kd-c-green-line)}
+/* ein sichtbar gemachtes Zeichen steht unten bündig mit dem Text; in der Marke führt es deren Kante über seinen Rand hinweg weiter */
+.dz .c .mk-z{vertical-align:text-bottom}
+.dz mark.wm .mk-z{position:relative}
+.dz mark.wm .mk-z::after{content:"";position:absolute;inset:auto -1px -1px;height:2px}
+.dz tr.del mark.wm .mk-z::after{background:var(--kd-c-red-line)}.dz tr.add mark.wm .mk-z::after{background:var(--kd-c-green-line)}
+@media (forced-colors:active){mark.wm{box-shadow:none;text-decoration:underline 2px;text-decoration-skip-ink:none}.dz mark.wm .mk-z::after{display:none}}
 .rv-laedt{display:flex;align-items:center;gap:var(--kd-s3);margin:0;padding:var(--kd-s5);color:var(--kd-muted)}
 .rv-meld{display:flex;align-items:flex-start;gap:var(--kd-s3);margin:var(--kd-s5);padding:var(--kd-s3) var(--kd-s4);border:1px solid var(--kd-line-strong);background:var(--kd-sunken);color:var(--kd-text)}
 .rv-meld.fehl{border-color:var(--kd-status-error-ink);background:var(--kd-status-error-bg);color:var(--kd-status-error-ink)}
