@@ -119,6 +119,15 @@ test('Beim Aufräumen zählt ein unlesbarer Wert als der älteste (FA 9, AK 6)',
   assert.notStrictEqual(speicher.getItem('kanbanD.gesehen.b.1'), null);
 });
 
+test('Nacharbeit S1: Einträge mit Zeit in der Zukunft verdrängen die eben geschriebene Karte nicht (200 Karten mit zeit 1e15, Schreiben bei #999)', () => {
+  const anfang = {};
+  for (let nr = 1; nr <= 200; nr++) anfang[`kanbanD.gesehen.b.${nr}`] = wert(1e15, ['x']);
+  const speicher = speicherAttrappe(anfang);
+  gesehenSchreiben(speicher, 'b', 999, [['x', true]], 5000);
+  assert.deepStrictEqual(gelesen(speicher, 'kanbanD.gesehen.b.999').gesehen, ['x'], 'die gerade geschriebene Karte bleibt');
+  assert.strictEqual(gesehenZahl(speicher), 200);
+});
+
 test('Werfender oder fehlender Speicher: kein Wurf, fehler wahr, die Änderung gilt im Ergebnis (FA 10, m12)', () => {
   for (const speicher of [werfenderSpeicher(), null, undefined]) {
     assert.deepStrictEqual(gesehenLesen(speicher, 'b', 1), { gesehen: [], fehler: true });

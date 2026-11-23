@@ -300,7 +300,7 @@
     }
   }
 
-  /** Liest frisch, wendet `aenderungen` (`[schlüssel, gesehen]` in dieser Reihenfolge) an, schreibt `{zeit: jetzt, gesehen}` zurück
+  /** Liest frisch, wendet `aenderungen` (`[schluessel, gesehen]` in dieser Reihenfolge) an, schreibt `{zeit: jetzt, gesehen}` zurück
       und räumt auf (FA 9, 10). Scheitert der Speicher, gilt die Änderung nur im Ergebnis, mit `fehler`. */
   function gesehenSchreiben(speicher, slug, nr, aenderungen, jetzt) {
     const vorher = gesehenLesen(speicher, slug, nr);
@@ -308,7 +308,7 @@
     if (vorher.fehler) return { gesehen, fehler: true };
     try {
       speicher.setItem(gesehenSchluessel(slug, nr), JSON.stringify({ zeit: jetzt, gesehen }));
-      gesehenAufraeumen(speicher);
+      gesehenAufraeumen(speicher, gesehenSchluessel(slug, nr));
       return { gesehen, fehler: false };
     } catch (_) {
       return { gesehen, fehler: true };
@@ -324,19 +324,20 @@
     return [...menge];
   }
 
-  /** Über der Obergrenze fällt der Wert mit der kleinsten `zeit`; ein unlesbarer zählt als der älteste. Fremde Schlüssel bleiben. */
-  function gesehenAufraeumen(speicher) {
+  /** Über der Obergrenze fällt der Wert mit der kleinsten `zeit`; ein unlesbarer zählt als der älteste. Fremde Schlüssel bleiben,
+      und die eben geschriebene Karte (`behalten`) fällt nie, auch wenn andere Einträge eine spätere `zeit` tragen. */
+  function gesehenAufraeumen(speicher, behalten) {
     const karten = [];
     for (let i = 0; i < speicher.length; i++) {
       const schluessel = speicher.key(i);
-      if (!schluessel || !schluessel.startsWith(GESEHEN_PRAEFIX)) continue;
+      if (!schluessel || !schluessel.startsWith(GESEHEN_PRAEFIX) || schluessel === behalten) continue;
       const wert = gesehenWert(speicher.getItem(schluessel));
       let zeit = -Infinity;
       if (wert) zeit = wert.zeit;
       karten.push({ schluessel, zeit });
     }
     karten.sort((a, b) => a.zeit - b.zeit);
-    karten.slice(0, Math.max(0, karten.length - GESEHEN_HOECHSTENS)).forEach(k => speicher.removeItem(k.schluessel));
+    karten.slice(0, Math.max(0, karten.length + 1 - GESEHEN_HOECHSTENS)).forEach(k => speicher.removeItem(k.schluessel));
   }
 
   /* ── Schlüssel einer Datei (FA 7, 8; ADR-0042 N3): in „Ein Commit“ über den vollen Hash, in „Alle Änderungen“ über den Fingerabdruck ── */
