@@ -215,7 +215,7 @@ async fn ak8_ruecklese_sicherung_auch_beim_schalter() {
 
 // ---- AK 9: Kopien der sechs echten Bestände ----
 
-const BESTAENDE: [&str; 6] = ["Entwicklungsprozess", "goaltreetoolA", "JoinPuyaApp", "kanbanD-Demo", "kanbanD", "localchatA"];
+const BESTAENDE: [&str; 6] = ["bestand-a", "bestand-b", "bestand-c", "bestand-d", "bestand-e", "bestand-f"];
 
 fn bestand(name: &str) -> String {
     std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("tests/altbestaende/kanbanD-md-2026-11-23/{name}.md"))).unwrap()
@@ -245,7 +245,7 @@ async fn ak9_sechs_bestaende_put_und_patch() {
         let neue_form = !block.contains("wbs") && !block.contains("requirements") && block.contains("repository:");
         assert!(block == alter_block || neue_form, "{name}: sources bleibt oder steht in neuer Form\n{block}");
         assert_eq!(neu, alt.replace(&zeile, &neue_zeile).replace(&alter_block, &block), "{name}: nur die Zeile der Person und der Block sources");
-        if name == "kanbanD" {
+        if name == "bestand-e" {
             assert!(neu.contains("record-transcripts: true\n---\n"), "{name}: Schalter bleibt letzte Zeile des Frontmatters");
         }
 
@@ -253,6 +253,41 @@ async fn ak9_sechs_bestaende_put_und_patch() {
         let (s, v) = l.anfrage(Method::PATCH, &format!("api/personen/{kuerzel}"), &kuerzel, json!({"name": neuname})).await;
         assert_eq!(s, 200, "{name}: PATCH: {v}");
         assert_eq!((l.numstat(), l.datei()), ("1\t1\tkanbanD.md".into(), alt.replace(&zeile, &neue_zeile)), "{name}: PATCH");
+    }
+}
+
+/// R00250 Nacharbeit (PO Z. 687, Sollte 4 des legacy-reviewer): `GET` → `PUT` mit unveränderten Werten ergibt je Bestand
+/// genau den Diff der Registerumstellung (ADR-0034 N2 Regel 2) und sonst nichts — gemessen am Original vom
+/// legacy-reviewer (`leg-248/drive-orig.txt`): ohne Anwendungen kein Commit, mit einer Anwendung `2 3` (`wbs`/`requirements`
+/// → `repository`, die Zeile der Anwendung in neuer Form; der Pfad ist der Ordner der WBS).
+#[tokio::test]
+async fn nacharbeit_unveraendertes_put_nur_die_registerumstellung() {
+    let erwartet: [(&str, Option<(&str, &str)>); 6] = [
+        ("bestand-a", None),
+        ("bestand-b", Some(("bb", "/home/nutzer/projekte/beispiel-b/Dokumentation/Planung"))),
+        ("bestand-c", Some(("bc", "/home/nutzer/projekte/beispiel-c/Documentation/Planning"))),
+        ("bestand-d", None),
+        ("bestand-e", Some(("be", "/home/nutzer/projekte/beispiel-e/Dokumentation/Planung"))),
+        ("bestand-f", Some(("bf", "/home/nutzer/projekte/beispiel-f/Dokumentation/Planung"))),
+    ];
+    for (name, umstellung) in erwartet {
+        let alt = bestand(name);
+        let l = lage(&alt);
+        let head = l.head();
+        let (_, wer) = erste_person(&alt);
+        let (s, v) = l.put(&wer, |_| {}).await;
+        let Some((kuerzel, repository)) = umstellung else {
+            assert_eq!((s, v), (200, json!({"geaendert": false})), "{name}");
+            assert_eq!((l.head(), l.datei()), (head, alt), "{name}: kein Commit, Datei zeichengleich");
+            continue;
+        };
+        assert_eq!((s, v), (200, json!({"geaendert": true})), "{name}");
+        let alter_block = frontmatter::abschnitt_lesen(&alt, "sources").unwrap();
+        let app = alter_block.lines().last().unwrap();
+        let app_name = app.split("name: ").nth(1).unwrap().split(',').next().unwrap();
+        let neuer_block = format!("sources:\n  repository: \"\"\n  applications:\n    {kuerzel}: {{name: {app_name}, repository: {repository}}}");
+        assert_eq!(l.numstat(), "2\t3\tkanbanD.md", "{name}");
+        assert_eq!(l.datei(), alt.replace(&alter_block, &neuer_block), "{name}: nur der Block sources");
     }
 }
 

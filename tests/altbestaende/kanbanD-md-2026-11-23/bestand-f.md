@@ -24,7 +24,7 @@ sources:
   wbs: ""
   requirements: ""
   applications:
-    lc: {name: localchatA, wbs: /home/shoff/Projekte/localchatA/Dokumentation/Planung/localchata.md, requirements: /home/shoff/Projekte/localchatA/Anforderungen}
+    bf: {name: Beispiel F, wbs: /home/nutzer/projekte/beispiel-f/Dokumentation/Planung/beispiel-f.md, requirements: /home/nutzer/projekte/beispiel-f/Anforderungen}
 ---
 
 # kanbanD

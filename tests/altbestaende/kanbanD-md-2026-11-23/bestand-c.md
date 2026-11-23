@@ -29,7 +29,7 @@ sources:
   wbs: ""
   requirements: ""
   applications:
-    jopu: {name: JoinPuya, wbs: /home/shoff/Projekte/JoinPuyaApp/Documentation/Planning/joinpuya.md, requirements: /home/shoff/Projekte/JoinPuyaApp/Requirements}
+    bc: {name: Beispiel C, wbs: /home/nutzer/projekte/beispiel-c/Documentation/Planning/beispiel-c.md, requirements: /home/nutzer/projekte/beispiel-c/Requirements}
 ---
 
 # kanbanD

@@ -1,6 +1,6 @@
 ---
 people:
-  sh: {name: Stefan Hoffmann, kind: human}
+  sh: {name: Mensch Eins, kind: human}
   cl: {name: Claude, kind: agent}
   dir: {name: Director (Software-Factory), kind: agent}
   arch: {name: architekt (Software-Factory), kind: agent}
@@ -30,7 +30,7 @@ sources:
   wbs: ""
   requirements: ""
   applications:
-    kd: {name: kanbanD, wbs: /home/shoff/Projekte/kanbanD/Dokumentation/Planung/kanbanD.md, requirements: /home/shoff/Projekte/kanbanD/Anforderungen}
+    kd: {name: kanbanD, wbs: /home/nutzer/projekte/kanbanD/Dokumentation/Planung/kanbanD.md, requirements: /home/nutzer/projekte/kanbanD/Anforderungen}
 ---
 
 # kanbanD

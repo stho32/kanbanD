@@ -27,7 +27,7 @@ sources:
   wbs: ""
   requirements: ""
   applications:
-    zbw: {name: Zielbaum-Werkstatt, wbs: /home/shoff/Projekte/goaltreetoolA/Dokumentation/Planung/zielbaum-werkstatt.md, requirements: /home/shoff/Projekte/goaltreetoolA/Anforderungen}
+    bb: {name: Beispiel B, wbs: /home/nutzer/projekte/beispiel-b/Dokumentation/Planung/beispiel-b.md, requirements: /home/nutzer/projekte/beispiel-b/Anforderungen}
 ---
 
 # kanbanD

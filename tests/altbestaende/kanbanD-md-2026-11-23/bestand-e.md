@@ -30,7 +30,7 @@ sources:
   wbs: ""
   requirements: ""
   applications:
-    kd: {name: kanbanD, wbs: /home/shoff/Projekte/kanbanD/Dokumentation/Planung/kanbanD.md, requirements: /home/shoff/Projekte/kanbanD/Anforderungen}
+    be: {name: Beispiel E, wbs: /home/nutzer/projekte/beispiel-e/Dokumentation/Planung/beispiel-e.md, requirements: /home/nutzer/projekte/beispiel-e/Anforderungen}
 record-transcripts: true
 ---
 

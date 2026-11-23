@@ -347,12 +347,12 @@ mod tests {
 
     /// Die sechs echten Bestände (R00250 AK 9, Stand 2026-11-23), Namen von Menschen durch Platzhalter ersetzt.
     pub(crate) const BESTAENDE: [(&str, &str); 6] = [
-        ("Entwicklungsprozess", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/Entwicklungsprozess.md")),
-        ("goaltreetoolA", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/goaltreetoolA.md")),
-        ("JoinPuyaApp", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/JoinPuyaApp.md")),
-        ("kanbanD-Demo", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/kanbanD-Demo.md")),
-        ("kanbanD", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/kanbanD.md")),
-        ("localchatA", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/localchatA.md")),
+        ("bestand-a", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/bestand-a.md")),
+        ("bestand-b", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/bestand-b.md")),
+        ("bestand-c", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/bestand-c.md")),
+        ("bestand-d", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/bestand-d.md")),
+        ("bestand-e", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/bestand-e.md")),
+        ("bestand-f", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/bestand-f.md")),
     ];
 
     /// R00250 B1315: `lesen` und der Schreiber der alten Registerform ergeben je Bestand den Block `sources` zeichengleich.
