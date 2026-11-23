@@ -143,6 +143,22 @@ pub(crate) fn quellen_schreiben(q: &Quellen) -> String {
     format!("sources:\n  {}{}", pfad(&q.repository), anwendungen_schreiben(&q.anwendungen))
 }
 
+/// Der Abschnitt `sources:` in der alten Registerform, wie frühere kanbanD-Versionen ihn schrieben: `wbs` und
+/// `requirements`, je Anwendung `{name, wbs, requirements}`, nach Kürzel sortiert. Geschrieben wird er nie — die
+/// Normalform-Prüfung (ADR-0043 Regel 6) erkennt an ihm einen Bestand, den ADR-0034 N2 Regel 2 umstellen darf.
+pub(crate) fn quellen_altform_schreiben(q: &Quellen) -> String {
+    let mut s = format!("sources:\n  wbs: {}\n  requirements: {}", yaml::skalar(&q.wbs), yaml::skalar(&q.anforderungen));
+    if !q.anwendungen.is_empty() {
+        s.push_str("\n  applications:");
+    }
+    let mut sortiert: Vec<&Anwendung> = q.anwendungen.iter().collect();
+    sortiert.sort_by(|a, b| a.kuerzel.cmp(&b.kuerzel));
+    for a in sortiert {
+        s.push_str(&format!("\n    {}: {{name: {}, wbs: {}, requirements: {}}}", yaml::skalar(&a.kuerzel), yaml::skalar(&a.name), yaml::skalar(&a.wbs), yaml::skalar(&a.anforderungen)));
+    }
+    s
+}
+
 /// Setzt `kanbanD.md` aus den Abschnitten neu zusammen — nur für eine neue Datei (`einrichten`, ADR-0043 Regel 2);
 /// jeder andere Schreibweg ändert nur die geänderten Abschnitte im vorhandenen Text.
 pub fn schreiben(e: &Einstellungen) -> String {
@@ -205,6 +221,28 @@ mod tests {
         e.signale.clear();
         assert!(schreiben(&e).contains("\nclasses:\n  bug: {label: Fehler, color: \"#b04a8c\"}\nrecord-transcripts: true\nsources:\n  repository: Dokumentation/Planung\n---\n"));
         assert_eq!(schreiben(&Einstellungen::default()), format!("---\npeople: {{}}\nclasses: {{}}\nsources:\n  repository: \"\"\n{KOERPER}"));
+    }
+
+    /// Die sechs echten Bestände (R00250 AK 9, Stand 2026-11-23), Namen von Menschen durch Platzhalter ersetzt.
+    pub(crate) const BESTAENDE: [(&str, &str); 6] = [
+        ("Entwicklungsprozess", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/Entwicklungsprozess.md")),
+        ("goaltreetoolA", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/goaltreetoolA.md")),
+        ("JoinPuyaApp", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/JoinPuyaApp.md")),
+        ("kanbanD-Demo", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/kanbanD-Demo.md")),
+        ("kanbanD", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/kanbanD.md")),
+        ("localchatA", include_str!("../../tests/altbestaende/kanbanD-md-2026-11-23/localchatA.md")),
+    ];
+
+    /// R00250 B1315: `lesen` und der Schreiber der alten Registerform ergeben je Bestand den Block `sources` zeichengleich.
+    #[test]
+    fn alte_registerform_der_sechs_bestaende_zeichengleich() {
+        for (name, text) in BESTAENDE {
+            let e = lesen(text).unwrap();
+            let block = super::super::frontmatter::abschnitt_lesen(text, "sources").unwrap();
+            assert_eq!(quellen_altform_schreiben(&e.quellen), block, "{name}");
+        }
+        let mit = "sources:\n  wbs: plan/wbs.md\n  requirements: anf/\n  applications:\n    kc: {name: \"K: C\", wbs: /c.md, requirements: \"\"}\n    kd: {name: kanbanD, wbs: /a/b.md, requirements: /a}";
+        assert_eq!(quellen_altform_schreiben(&lesen(&format!("---\n{mit}\n---\n")).unwrap().quellen), mit, "Anführung und Sortierung wie im Normalform-Schreiber");
     }
 
     #[test]
