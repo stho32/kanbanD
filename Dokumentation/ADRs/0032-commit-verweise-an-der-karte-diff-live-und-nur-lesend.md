@@ -1,6 +1,6 @@
 # ADR-0032: Commit-Verweise an der Karte — Schlüssel `commits` mit `<kürzel>:<voller Hash>`, Diff live und nur lesend aus dem Arbeits-Repository des Registers, Gesamt-Diff dateiweise ohne fremde Änderungen
 
-**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen, darin Ablage, gzip und Schalter abgelöst durch ADR-0036 (2026-11-21); Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 abgelöst durch ADR-0038 (2026-11-21; dort Vorgeschlagen bis zur Sondierung der Karte #220); Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung; Nachtrag N3 (2026-11-19) Akzeptiert (Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3); Nachtrag N4 (2026-11-19) Akzeptiert (Diff eines Commits: Gesamtgrenze, Zulassung, Zählweise, Lauf mit Teilausgabe, `hinweise`, Befehl `diff-tree`; Kappe der Dateizahl und p95 < 500 ms nur Hypothese bis B1014); Nachtrag N5 (2026-11-20) Akzeptiert (Antwortbudget 64 MB, Schreibfrist 60 s, `GRENZE_EINZELN` 8 MB, Zuordnung über Blob-Hashes, Berichtigung N4 „Belegt“ zu `--ext-diff`, Submodule in `metadaten`); Nachtrag N6 (2026-11-20) Akzeptiert (Gesamt-Diff: Basis, Spanne, netto/Folge je Datei, Merges, Antwortform mit Summen, höchstens 15 Git-Prozesse, `datei=`, `format=patch`, `ETag`; p95 < 500 ms und `GRENZE_NAMEN` Hypothese bis zur Lastprobe der Karte #214; belegt p95 298 ms vor N7); Nachtrag N7 (2026-11-20) Akzeptiert (Gruppen über Umbenennungen der Karte, abgeschlossene Pfadangaben, Namen über 4 MB mit Kappe, `--` hinter Revisionen, `GIT_NO_REPLACE_OBJECTS`, `ETag` über alle Verweise; belegt durch die Nacharbeit 1 an #214 und eine Zufallsprobe über 1.200 Seeds; p95 nach N7.1 259 ms; Zuordnung im Bezug nach Nacharbeit 2; N7.7 Diff je Commit, Karte #229, berichtigt durch N7.8; N7.9 Zeitgrenze und Argumentgrenze; N7.10 Gesamt-Diff ohne 500 bei abweichender Paarung, Karte #230); Nachtrag N8 (2026-11-21) Akzeptiert (Folge nur für belastete Pfade, netto unveränderte Kartenpfade erscheinen nirgends, `fremd_dazwischen` nur mit mindestens einem fremden Commit; Karte #234; N8.6 präzisiert N8.3 Punkt 1 und 4: Folge gruppenweise bis zum Fixpunkt, `datei=` mit Netto-Liste bis 20 MB, eigener 404 hinter dem Schnitt; Abnahme-Proben G1/G2 berichtigt 2026-11-22: `datei=p` 404, `datei=q` und `datei=b` 200)
+**Status**: Akzeptiert (Punkte 1–9; Punkt 5 Zustände, Punkt 6 Zulassung, Punkt 7.1 und Punkt 9 Liste geändert durch Nachtrag N1); Punkt 10 „Vorausschau #208–#210“ Vorgeschlagen, darin Ablage, gzip und Schalter abgelöst durch ADR-0036 (2026-11-21); Nachtrag N1 (2026-11-19) Akzeptiert, darin N1.7 abgelöst durch ADR-0038 (2026-11-21; dort Vorgeschlagen bis zur Sondierung der Karte #220); Nachtrag N2 (2026-11-19) Akzeptiert, darin N2.5 nur Folgerung; Nachtrag N3 (2026-11-19) Akzeptiert (Gesamtgrenze und Cache beim Lesen, Lücken in N1.2, Rückfall zu N1.3); Nachtrag N4 (2026-11-19) Akzeptiert (Diff eines Commits: Gesamtgrenze, Zulassung, Zählweise, Lauf mit Teilausgabe, `hinweise`, Befehl `diff-tree`; Kappe der Dateizahl und p95 < 500 ms nur Hypothese bis B1014); Nachtrag N5 (2026-11-20) Akzeptiert (Antwortbudget 64 MB, Schreibfrist 60 s, `GRENZE_EINZELN` 8 MB, Zuordnung über Blob-Hashes, Berichtigung N4 „Belegt“ zu `--ext-diff`, Submodule in `metadaten`); Nachtrag N6 (2026-11-20) Akzeptiert (Gesamt-Diff: Basis, Spanne, netto/Folge je Datei, Merges, Antwortform mit Summen, höchstens 15 Git-Prozesse, `datei=`, `format=patch`, `ETag`; p95 < 500 ms und `GRENZE_NAMEN` Hypothese bis zur Lastprobe der Karte #214; belegt p95 298 ms vor N7); Nachtrag N7 (2026-11-20) Akzeptiert (Gruppen über Umbenennungen der Karte, abgeschlossene Pfadangaben, Namen über 4 MB mit Kappe, `--` hinter Revisionen, `GIT_NO_REPLACE_OBJECTS`, `ETag` über alle Verweise; belegt durch die Nacharbeit 1 an #214 und eine Zufallsprobe über 1.200 Seeds; p95 nach N7.1 259 ms; Zuordnung im Bezug nach Nacharbeit 2; N7.7 Diff je Commit, Karte #229, berichtigt durch N7.8; N7.9 Zeitgrenze und Argumentgrenze; N7.10 Gesamt-Diff ohne 500 bei abweichender Paarung, Karte #230); Nachtrag N8 (2026-11-21) Akzeptiert (Folge nur für belastete Pfade, netto unveränderte Kartenpfade erscheinen nirgends, `fremd_dazwischen` nur mit mindestens einem fremden Commit; Karte #234; N8.6 präzisiert N8.3 Punkt 1 und 4: Folge gruppenweise bis zum Fixpunkt, `datei=` mit Netto-Liste bis 20 MB, eigener 404 hinter dem Schnitt; Abnahme-Proben G1/G2 berichtigt 2026-11-22: `datei=p` 404, `datei=q` und `datei=b` 200); Nachtrag N10 (2026-11-23) Akzeptiert (sehr große Commits: über 10.000 Einträgen ohne Umbenennungssuche nur genaue Umbenennungen `-M100%`, ein Urteil je Commit für Metadaten und alle Läufe des Diffs je Commit, Zähllauf, Hinweis `umbenennung_eingeschraenkt`, Gesamt-Diff-Körper unverändert; gemessen mit Git 2.48.1, Karte #233)
 **Datum**: 2026-11-19
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #207, Lauf 207-architekt-1)
 **Kontext-Anforderung**: — (Karte #207 „Commits an der Karte und Review-Diff direkt aus dem Board“, Teil A; Anforderung und WBS-Knoten folgen über den planer). Bezug: Karten #208–#210, po-entscheidungen Z. 358–383, R00053, ADR-0003, ADR-0008, ADR-0021, ADR-0028, ADR-0030, ADR-0031
@@ -749,7 +749,7 @@ Entscheider: Claude (autonom, architekt, Lauf 229-architekt-2). Anlass: Git sort
 
 ### N7.9 Sehr große Commits und die Argumentgrenze (ergänzt N7.8, Karte #229, Lauf 229-architekt-3)
 
-- **Zeitgrenze statt 200 bei sehr großen Commits**: Für `datei=` in einem Commit mit 145.000 Dateien unter `x/` (`srev-229/gross2.py`) antwortet A3 mit 503 nach der Gesamtgrenze von 10 s (N4.1, Text der Zeitgrenze). Das ist zulässig: „nie 500“ gilt, eine Teilantwort gibt es nicht. Die Zeit geht vor allem in den Metadaten-Lauf `log --numstat -M` (Bestand R00206, 6,9 s gemessen bei Last 8–10), den auch die Liste und der Gesamt-Diff brauchen. Bei 75.000 Dateien waren es 200 nach 6,4 s. AK 8 der Karte lautet damit: nie 500; bis 75.000 Dateien 200; darüber 200 oder 503 mit dem Text der Zeitgrenze. Den Metadaten-Lauf schneller zu machen (etwa die Umbenennungssuche über einer Zahl von Einträgen auslassen oder für `datei=` ohne `--numstat`) gehört in eine **eigene Karte** (Leistung, kein Vorrang), weil er alle drei Lesewege betrifft. Abnahme dort: `gross2.py` ergibt 200 innerhalb von 10 s bei Last ≤ 6.
+- **Zeitgrenze statt 200 bei sehr großen Commits**: Für `datei=` in einem Commit mit 145.000 Dateien unter `x/` (`srev-229/gross2.py`) antwortet A3 mit 503 nach der Gesamtgrenze von 10 s (N4.1, Text der Zeitgrenze). Das ist zulässig: „nie 500“ gilt, eine Teilantwort gibt es nicht. Die Zeit geht vor allem in den Metadaten-Lauf `log --numstat -M` (Bestand R00206, 6,9 s gemessen bei Last 8–10), den auch die Liste und der Gesamt-Diff brauchen. Bei 75.000 Dateien waren es 200 nach 6,4 s. AK 8 der Karte lautet damit: nie 500; bis 75.000 Dateien 200; darüber 200 oder 503 mit dem Text der Zeitgrenze. Den Metadaten-Lauf schneller zu machen (etwa die Umbenennungssuche über einer Zahl von Einträgen auslassen oder für `datei=` ohne `--numstat`) gehört in eine **eigene Karte** (Leistung, kein Vorrang), weil er alle drei Lesewege betrifft. Abnahme dort: `gross2.py` ergibt 200 innerhalb von 10 s bei Last ≤ 6. *(Karte #233, entschieden in N10)*
 - **Argumentgrenze: E2BIG allein trägt nicht.** (1) Linux meldet E2BIG über `posix_spawn` oder `fork`/`exec` verlässlich als `ArgumentListTooLong`. macOS ebenso, dort ist ARG_MAX aber 1 MB einschließlich Umgebung, also kleiner als die Pfadangabe der Liste. (2) Windows begrenzt die Kommandozeile auf 32.767 UTF-16-Zeichen und meldet das nicht als E2BIG (`ERROR_FILENAME_EXCED_RANGE`), sodass der Rückfall nie ausgelöst würde. (3) Die Liste behandelt `ArgumenteZuLang` heute nicht, sie gäbe dann 500. **Entscheidung**: Der Startort prüft vor dem Start mit einer Vorabgrenze je Plattform. Unter Unix zählt er Σ(Länge + 1 + 8) über alle Argumente; Startwerte sind 1,75 MiB unter Linux und 768 KiB unter macOS. Unter Windows zählt er Σ(Länge + 3) in UTF-16 mit dem Startwert 32.000. Darüber startet er nicht und meldet `ArgumenteZuLang` wie bei E2BIG. E2BIG bleibt als Netz. `lauf_der_liste` zählt weiter nur Bytes (R00206 unverändert, die Abweichung des entwicklers ist damit gedeckt). Behandlung von `ArgumenteZuLang`: Bei `datei=` folgt der Rückfall ohne Angabe (N7.8). In der Liste werden alle Dateien des Laufs `nachladen`, nie 500; jede bleibt über `datei=` ladbar. Unter Linux erreicht die Liste die Grenze praktisch nicht: Die Roh-Liste bis 1 MB fasst höchstens etwa 10.000 Einträge, also etwa 80 KB Zeiger. Unter macOS reichen dafür etwa 250 Pfade mit je 4.000 Byte, unter Windows etwa 300 Pfade mit je 100 Zeichen. Abnahme: ein Modultest der Vorabgrenze je Plattform und ein Integrationstest mit kleiner Grenze, in dem die Liste `ArgumenteZuLang` bekommt. Ergebnis 200 mit `nachladen`, und jede dieser Dateien gibt über `datei=` 200.
 
 ### N7.10 Gesamt-Diff: abweichende Paarung und Argumentgrenze ohne 500 (überträgt N7.8 und N7.9 auf N7.2, Karte #230)
@@ -958,10 +958,160 @@ Mutanten: „jede Zeitgrenze heißt Lesegrenze“ (Z rot); „nur drei Aufrufer 
 
 Pre-Mortem: (l) Eine spätere Karte ergänzt einen fünften Aufrufer von `betreten` und schreibt wieder `abbruch(Arbeitsrepofehler::Zeitgrenze)` — Vorbeugung: Review-Punkt „`betreten` nur zusammen mit der Funktion aus Punkt 2“. (m) `web/commits.js` wird später so geändert, dass jeder 503 den PO-Wortlaut der Zeitgrenze bekommt — dann lügt die Liste wieder; Probe O fängt das.
 
+## Nachtrag 2026-11-23 N10: Sehr große Commits — über 10.000 Einträgen nur genaue Umbenennungen, ein Urteil je Commit für alle Läufe (Karte #233)
+
+Der bisherige Text bleibt stehen; N10 gilt, wo er N4.3, N6.2 und N7.9 widerspricht. Entscheider: Claude (autonom, architekt, Lauf 233-architekt-1). Anlass: N7.9, erster Punkt. Für `datei=` in einem Commit mit 145.000 Dateien braucht der Metadaten-Lauf `log --numstat -M` den größten Teil der Gesamtgrenze von 10 s; der Lauf betrifft Liste, `datei=` und Gesamt-Diff.
+
+### N10.1 Gemessen (belegt)
+
+Gefahren am 2026-11-23 mit Git 2.48.1 bei Last 3–6, `nice -n 10`, Median aus 3 Läufen. Repositories mit `fast-import` erzeugt, Skripte `messen.py`, `umbenannt2.py` und Protokolle `m-*.log`, `e2e-*.log` in `gemeinsam/scratchpad/arch-233/` der Factory. Bauarten:
+- **gross2**: wie `srev-229/gross2.py` — `x` wird zum Ordner `x/` mit N gleichen Dateien;
+- **verschieden**: dasselbe mit verschiedenem Inhalt je Datei;
+- **umbenannt**: N/2 Paare `a/<n> → b/<n>`, je eine von vier Zeilen geändert;
+- **verschoben**: dasselbe ohne Änderung.
+
+| Lauf (145.000 Einträge) | gross2 | verschieden | umbenannt | verschoben |
+|---|---|---|---|---|
+| `log --numstat -M -l1000` (Metadaten heute) | 5,50 s | – | – | – |
+| `log --numstat --no-renames` | 3,91 s | – | 0,48 s | 0,55 s |
+| `log --numstat -M100%` | 3,86 s | – | 0,54 s | 0,68 s |
+| `diff-tree --raw -M50% -l1000` (Liste heute) | 1,86 s | 2,58 s | 3,22 s | – |
+| `diff-tree --raw -M50% -l1` | 0,20 s | 0,18 s | **3,58 s** | – |
+| `diff-tree --raw -M100%` | 0,13 s | – | 0,18 s | 0,19 s (alle 72.500 als `R100`) |
+| `diff-tree --raw --no-renames` | 0,11 s | 0,15 s | 0,17 s | 0,20 s |
+| `diff-tree --numstat -M50% -l1000`, ganz / mit Bytegrenze 1 MB | 5,69 s / **5,62 s** | – | – | – |
+| `diff-tree -p` bis 8 MB (Rückfall `datei=`): `-M50% -l1000` / `-M100%` / `--no-renames` | 3,44 / 1,61 / 1,54 s | – | 3,43 (`-l1`) / 0,26 / 0,25 s | – |
+| Zähllauf `log --no-renames --name-only -z` | 0,07 s | – | – | – |
+
+Bei 75.000 Einträgen (gross2) kostet `log --numstat` mit `-M -l1000` 2,76 s, mit `--no-renames` 2,00 s. Die Dateiliste `--raw` kostet 0,91 s mit `-M50% -l1000` und 0,06 s mit `--no-renames`. Bei 20.000 Einträgen (verschieden) sind es 0,38 s mit `-M50% -l1000` und 0,02 s mit `--no-renames`. 1.000 × 1.000 Kandidaten (umbenannt, 2.000) kosten 0,04 s. Ein Zähllauf über 30 gewöhnliche Commits kostet etwa 10 ms.
+
+**Ganzes Programm heute** (Release-Build `e70df733`):
+- `gross2.py` 75.000: `datei=x` 200 nach 4,98 s; Liste 503 nach 10,02 s (Last 3,3).
+- `gross2.py` 145.000: `datei=x` 200 nach 8,76 s; `datei=x/aaaa` 200 nach 6,90 s; Liste 503 (Last 5,5). Bei Last 8–10 (#229) war `datei=x` 503.
+- `umbenannt2.py` 145.000: Liste 503; `datei=b/aaaa` 200 nach 9,11 s; `format=patch` 503 (Last 5–6).
+
+Erkenntnisse:
+1. **Zwei Kostenblöcke.** Der erste ist die Umbenennungssuche, etwa 12–25 µs je Eintrag und Lauf. Sie kommt in **jedem** Lauf mit `-M` neu, heute in bis zu vier Läufen je Anfrage: Metadaten, Liste, Zähler, Patch. Der zweite ist das Zählen der Zeilen (`--numstat`). Git schreibt es erst, wenn alles gezählt ist; eine Bytegrenze kürzt es deshalb nicht (5,62 s für das erste MB von 1,6 MB).
+2. **`-l` (Grenze der Kandidaten) trägt nicht.** Git rechnet Quellen × Ziele: 1 × 145.000 liegt unter 1.000², die erschöpfende Suche läuft also. `-l1` nimmt sie weg, nicht aber die Paarung über gleiche Dateinamen (Git ≥ 2.33). Bei einer Massenumbenennung mit Änderung kostet `-l1` deshalb 3,58 s je Lauf.
+3. **`-M100%` hört nach der genauen Erkennung auf** (gleicher Blob). Es ist gemessen so billig wie `--no-renames` und erkennt unveränderte Verschiebungen weiter (verschoben: alle 72.500 als `R100`).
+4. **Pfadbegrenzung hilft `datei=x` nicht.** `x` trifft auch `x/…` (N7.2). Der Abschluss nimmt alle 145.000 Pfade mit, die Angabe ist zu lang, und es folgt der Rückfall ohne Angabe (N7.8). Für `datei=x/aaaa` kostet der Lauf mit Angabe schon heute 0,01 s; die Zeit steckt dort in Metadaten und Liste.
+5. **Wiederverwendung**: Metadaten und Zähler-Lauf der Liste zählen dieselben Zeilen zweimal (je etwa 4 s bei gross2 mit 145.000).
+
+### N10.2 Optionen
+
+| Option | Stärke | Schwäche |
+|---|---|---|
+| **U1 — Schwelle; darüber `-M100%` in jedem Lauf des Commits** (gewählt) | spart in jedem Lauf die teure Suche (gross2: Metadaten 5,50 → 3,86 s, Liste 1,86 → 0,13 s, Rückfall 3,44 → 1,61 s; umbenannt: 3,2–3,6 → 0,2–0,5 s); unveränderte Verschiebungen bleiben `R`; ein Commit ist unveränderlich, das Urteil also fest | ein Zähllauf mehr je Anfrage; über der Schwelle erscheint eine Umbenennung mit Änderung als `D` und `A` |
+| U2 — Schwelle; darüber `--no-renames` | gleich schnell | verliert auch unveränderte Verschiebungen, also gerade den häufigen Massenfall (Ordner verschieben, Vendor-Stand) |
+| U3 — kleineres `-l` (überall oder ab Schwelle) | ein Schalter | die Paarung über Dateinamen bleibt teuer (3,58 s je Lauf); überall gesetzt, verlöre es unscharfe Umbenennungen auch in gewöhnlichen Commits |
+| U4 — `datei=` ohne `--numstat` in den Metadaten | spart bei gross2 etwa 3,9 s | `commits[0]` ohne `plus`/`minus`, oder anders gezählt als die Liste von R00204 (FA 4); umbenannt spart nichts |
+| U5 — Wiederverwendung: Cache der Metadaten je vollem Hash, oder Zähler der Liste aus dem Metadaten-Lauf | spart den zweiten Zähllauf der Liste (etwa 4 s bei gross2) | Cache: Der erste Aufruf bleibt gleich teuer (`gross2.py` fragt zuerst `datei=x`), die Annahme der Attribut-Dateien (N4.6) gilt dann auch für die Liste. Zähler aus `log`: Porcelain (`diff.orderFile`, `diff.algorithm`, N4.6), die Verbindung nach Position (N4.3) würde brüchig. Für diese Karte verworfen, als eigene Karte möglich |
+| U6 — Pfadbegrenzung für `datei=` | ist schon gebaut (N7.7) | bringt für `x` nichts (Erkenntnis 4) |
+
+### N10.3 Entscheidung
+
+**Gewählt: U1.** Akzeptierte Schwäche: Über 10.000 Einträgen erkennt der Diff je Commit nur noch Umbenennungen mit gleichem Inhalt.
+
+1. **Zähllauf.** `metadaten` startet zuerst **einen** Lauf über alle angefragten Commits:
+   `log --no-walk=unsorted -z --root --no-renames --ignore-submodules=none --diff-merges=first-parent --name-only --format=%H%x00 --end-of-options <commits> --`.
+   Daraus ergibt sich je Commit die Zahl `n` seiner Einträge ohne Umbenennungssuche: gegen den ersten Elternteil, beim Wurzel-Commit gegen den leeren Baum, Submodule mitgezählt. Das ist dieselbe Vergleichsbasis wie in Metadaten und Diff. Die Reihenfolge der Einträge spielt für die Zahl keine Rolle; `diff.orderFile` kann sie also nicht verfälschen.
+2. **Schwelle** `SCHWELLE_UMBENENNUNG = 10_000` als Konstante im Modul, gemessen statt angenommen.
+   - `n ≤ 10.000` ergibt `Umbenennungssuche::Voll`, also `-M50% -l1000` wie heute (in `log` als `-M -l1000`).
+   - `n > 10.000` ergibt `Umbenennungssuche::NurGleiche`, also `-M100%` ohne `-l`.
+   - Bei 10.000 kosten die bis zu vier Läufe mit voller Suche zusammen höchstens etwa 1 s (gemessen 0,38 s je Lauf bei 20.000).
+   - Die Liste zeigt ohnehin höchstens 2.000 Dateien, und die Roh-Liste von 1 MB fasst etwa 10.000 Einträge (N7.9).
+3. **Ein Urteil je Commit, alle Läufe folgen ihm.**
+   - `Metadaten` trägt `umbenennung` und `n`. Der Zeilenzähl-Lauf von `metadaten` läuft je Gruppe: alle Commits mit `Voll` in einem `log`, alle mit `NurGleiche` in einem zweiten, und den zweiten gibt es nur, wenn ein Commit über der Schwelle liegt.
+   - Der Diff je Commit (A3) gibt `m.umbenennung` an **jeden** Lauf `diff_tree` dieses Commits weiter: Roh, Zahlen und Patch, mit und ohne Pfadangabe, in der Abkürzung von `datei=` ebenso wie im Rückfall (N7.8).
+   - Gemischt wird nie. Sonst passt `commits[0].dateien` nicht zur Liste (`dateien_gekappt.gesamt`, AK 10), und die Verbindung nach Position (N4.3) bricht.
+   - Ein Commit kommt nie in beide Gruppen. Ein kleiner Commit bekommt in jeder Liste dieselben Zähler, gleich welche großen neben ihm stehen.
+4. **Gesamt-Diff (A4).** Nur die Kopfwerte `commits[i]` kommen aus `metadaten`, mit dem Urteil. Namens-, Netto- und Folge-Läufe (`diff_tree_viele`, `diff_tree` über die Spanne) bleiben bei `-M50% -l1000`. „Nie fremd“ hängt an den Gruppen über Umbenennungen der Karte (N7.1), also wird dort nichts abgeschwächt. Ein Gesamt-Diff mit einem Commit über 75.000 Dateien bleibt „200 oder 503“ (N7.9). Die Obergrenze in N7.3 (Summe der `dateien`) bleibt eine Obergrenze.
+5. **Schalter.** Form und Inhalt bestimmt die Lesefunktion (N4.7); die Matrix des Startorts ändert sich nicht. `-M100%` kommt neu zu den Formschaltern. Der Test der Befehlszeile (R00206 AK 16 c) fährt beide Formen gegen echtes Git.
+6. **Zahl der Prozesse** (ändert N4.3, N6.2 und die Zählungen in R00204 und R00206):
+   - Diff je Commit: etwa acht statt sieben.
+   - Liste (R00204, Z5): 6 + 1 statt 5 + 1, mit einem Commit über der Schwelle unter mehreren ein weiterer.
+   - Gesamt-Diff: höchstens 17 statt 15.
+   - Nachfolgersuche: ein Prozess mehr.
+   - Die Tests, die heute zählen (`tests/arbeitsrepo_lesen.rs:208` „ein Prozess für alle Commits“, `src/dienst/nachfolger.rs:721`, `src/dienst/diff.rs:522` und ähnliche), werden auf die neue Zahl gesetzt, nicht gelockert.
+7. **`ETag`.** `GRENZEN_VERSION` steigt um eins (N7.5, Punkt 9). Für Commits zwischen 10.001 und etwa 75.000 Einträgen ändert sich die Antwort (`R` wird zu `D` und `A`); ohne die Erhöhung gäbe ein 304 die alte Form zurück.
+
+### N10.4 Was der Nutzer sieht
+
+- **Diff je Commit, Liste und `datei=` (JSON).** Über der Schwelle steht in `hinweise` die neue Art **`umbenennung_eingeschraenkt`** mit `{dateien: n, schwelle: 10000}`, an erster Stelle vor `dateien_gekappt`, damit die Antwort bytegleich bleibt.
+  - Die Art gilt für den Commit, nicht für eine Datei, und steht deshalb auch bei `datei=`.
+  - Leser überspringen eine unbekannte Art (N4.5); bis die Oberfläche einen Satz hat, bricht nichts.
+  - Umbenennungen mit gleichem Inhalt bleiben `R` mit `aehnlichkeit 100`.
+  - Eine Umbenennung mit Änderung erscheint als `D` (alter Pfad) und `A` (neuer Pfad), vollständig und mit allen Zeilen; beide sind über `datei=` ladbar.
+  - `commits[0].plus`, `minus` und `dateien` zählen genauso.
+- **`format=patch`**: dieselbe Auswahl (`deleted file` / `new file`). Ein Hinweis fehlt, weil der Text keinen Kanal dafür hat (wie heute bei `dateien_gekappt`).
+- **Liste der Commits (R00204)**: Die Zähler des Commits sind so gezählt wie im Diff, ohne Hinweis.
+- **Gesamt-Diff**: Der Körper ist unverändert; nur `commits[i]` ist so gezählt.
+- **Satz der Oberfläche** (D0009; Wortlaut entscheidet der product-owner, Vorschlag): „Sehr großer Commit ({dateien} Dateien): Umbenennungen sind nur erkannt, wenn der Inhalt gleich blieb. Umbenannte und zugleich geänderte Dateien stehen als gelöscht und neu da.“
+
+### N10.5 Lastprofil und R00206
+
+- **Unter der Schwelle** laufen alle bisherigen Läufe mit denselben Schaltern wie heute. Neu ist nur der Zähllauf: etwa 10 ms bei 30 Commits, weniger bei einem. Stand der Lastproben:
+  - R00206 AK 15: Liste p95 107 ms, `datei=` 85 ms, Ziel 500 ms.
+  - R00204 AK 10: p95 150 ms, Ziel 200 ms.
+  - R00208: p95 259 ms, Ziel 500 ms.
+  - Der Zähllauf passt in jede Marge. Belegt wird das durch die Abnahme-Probe P6.
+- **Erwartung für `gross2.py` 145.000 `datei=x`**: Zähllauf 0,07 + Metadaten 3,86 + Liste 0,13 + Rückfall 1,61 ≈ 5,7 s Git-Zeit. Heute sind es 5,50 + 1,86 + 3,44 ≈ 10,8 s, gefahren 8,76 s. Liste 75.000: etwa 5 s statt 503.
+- **Was bleibt**: Die Liste von gross2 mit 145.000 Einträgen braucht weiter etwa 9 s Git-Zeit, weil die Zeilen zweimal gezählt werden und Git sie nicht streamt. Sie bleibt damit „200 oder 503“ (N7.9, AK 8). Der nächste Hebel ist U5 (eigene Karte, Leistung).
+
+### N10.6 Durchsetzung, Abnahme-Proben, Pre-Mortem
+
+Abnahme-Proben (Wortlaut für den planer; die Anforderung schreibt der planer). P1–P3 mit Release-Build, eigener Instanz auf freiem Port, Repositories im eigenen Ordner der Ablage, `nice -n 10`, Last ≤ 6 vor jedem Lauf (`uptime`), nicht im Nachtbetrieb:
+- **P1 (Karte)**: `srev-229/gross2.py <kanbanD> 145000 4`: `datei=x` ergibt 200 innerhalb von 10 s. Heute 200 nach 8,76 s bei Last 5,5 und 503 bei Last 8–10.
+- **P2**: `gross2.py <kanbanD> 75000 4`: die Liste (`{}`) ergibt 200 innerhalb von 10 s. Heute 503 nach 10,02 s (rot).
+- **P3**: `arch-233/umbenannt2.py <kanbanD> 145000`: Liste, `datei=b/aaaa` und `format=patch` ergeben je 200 innerhalb von 10 s. Heute 503 / 200 nach 9,11 s / 503 (rot).
+- **P4 (Schwelle, deterministisch, Integrationstest mit der echten Konstante)**:
+  - *Gegeben* ein Commit, der gegen seinen ersten Elternteil `a/gleich.txt → b/gleich.txt` unverändert verschiebt und `a/r.txt` (5 Zeilen) nach `b/s.txt` verschiebt, wobei eine Zeile geändert ist. Dazu kommen `F` neue Dateien `z/<n>` mit je eigenem Inhalt. Ohne Umbenennungssuche hat er also `4 + F` Einträge.
+  - *Fall 10.000* (`F = 9.996`): Liste und `datei=b/s.txt` zeigen `b/s.txt` als `R` mit `alt a/r.txt` und `aehnlichkeit ≥ 50`, `b/gleich.txt` als `R` mit 100. `hinweise` enthält kein `umbenennung_eingeschraenkt`, `commits[0].dateien` ist 9.998.
+  - *Fall 10.001* (`F = 9.997`): `b/s.txt` steht als `A` da (auch über `datei=b/s.txt`), `a/r.txt` als `D` (auch über `datei=a/r.txt`), `b/gleich.txt` weiter als `R` mit 100. `hinweise[0]` ist `{art: "umbenennung_eingeschraenkt", dateien: 10001, schwelle: 10000}`, `commits[0].dateien` ist 10.000.
+  - *Beide Fälle*: `GET …/commits` (R00204) liefert für den Commit dieselben `plus`, `minus` und `dateien` wie `commits[0]` des Diffs.
+  - *Heute*: Fall 10.001 zeigt `R` und keinen Hinweis (rot).
+- **P5 (ein Urteil je Commit, Befehlszeilen über `GIT_TRACE` wie R00206 AK 16 c)**: Für den Fall 10.001 aus P4 tragen bei Liste, `datei=b/s.txt` und `format=patch` alle Läufe `log` und `diff-tree` dieses Commits `-M100%` und keiner `-M50%` oder `-l1000`. Für den Fall 10.000 tragen alle `-M50% -l1000` bzw. `-M -l1000`. Ein Gesamt-Diff über den Fall 10.001 startet `diff-tree` nur mit `-M50% -l1000`.
+- **P6 (Lastprofil)**: Die Lastproben R00206 AK 15, R00204 AK 10 und R00208 liegen mit p95 unter ihrem Ziel (500, 200, 500 ms), bei Last unter 2 wie dort verlangt, nicht im Nachtbetrieb. Die Werte stehen in der Commit-Nachricht.
+- **P7 (`ETag`)**: Ein `If-None-Match` mit dem `ETag` vor der Erhöhung von `GRENZEN_VERSION` ergibt für den Fall 10.001 eine 200, keine 304.
+
+Mutanten (je mindestens eine Probe rot):
+- Schwelle 100.000 statt 10.000: P2 und P4 Fall 10.001.
+- Schwelle 1.000: P4 Fall 10.000.
+- Schwelle ignoriert, immer `Voll`: P2, P3, P4 und P5.
+- Immer `NurGleiche`: P4 Fall 10.000 und P5.
+- Das Urteil erreicht nur einen Teil der Läufe (z. B. Roh mit `Voll`, Zahlen mit `NurGleiche`): P5, und P4 über die Zahl der Dateien.
+- `n` mit `-M` statt `--no-renames` gezählt: P4 Fall 10.001 (eine Umbenennung weniger).
+- `GRENZEN_VERSION` nicht erhöht: P7.
+
+Pre-Mortem:
+- (n) Eine spätere Git-Version rechnet bei `-M100%` wieder Ähnlichkeiten. Dann wird P3 rot; der Rückfall ist U2 (`--no-renames`), ein Wort in der Lesefunktion.
+- (o) Jemand gibt das Urteil nur an einige Läufe weiter, etwa an einen neuen Lauf in `datei=`. Dann wird P5 rot.
+- (p) Jemand nimmt `NurGleiche` in den Körper des Gesamt-Diffs, „weil es schneller ist“. Dann erscheint eine fremd angelegte Datei, die die Karte mit Änderung umbenennt, mit fremden Zeilen. Vorbeugung: P5, letzter Satz, und der Review-Punkt „`diff_tree_viele` und die Netto-Läufe nur mit `-M50% -l1000`“.
+- (q) Der Zähllauf ist Porcelain (`log`). `--no-renames`, `--ignore-submodules=none` und `-z` stehen ausdrücklich da, der Startort setzt für `log` `--no-show-signature` (N4.7). `diff.orderFile` ändert nur die Reihenfolge, nicht die Zahl.
+
+### N10 Konsequenzen
+
+- **Positiv**:
+  - Die Umbenennungssuche kostet höchstens etwa 1 s je Anfrage.
+  - Bei Massenänderungen sinkt jeder Lauf auf die Zeit ohne Suche.
+  - Unveränderte Verschiebungen bleiben erkannt.
+  - Ein Urteil je unveränderlichem Commit hält Liste, Diff und Kopfwerte gleich.
+  - Der Gesamt-Diff bleibt bei „nie fremd“ unberührt.
+- **Inkauf**:
+  - Über 10.000 Einträgen erscheint eine Umbenennung mit Änderung als `D` und `A`.
+  - Ein Zähllauf mehr je Anfrage, und ein zweiter Metadaten-Lauf bei gemischten Listen.
+  - Eine neue Art in `hinweise`, die die Oberfläche noch formulieren muss.
+  - Die Liste sehr großer Commits zählt die Zeilen weiter zweimal (U5 offen).
+- **Folgeaufgaben**:
+  - [ ] Karte #233 baut N10 (planer: R00206 ändern oder Nachtrag-Anforderung).
+  - [ ] Satz der Oberfläche (PO).
+  - [ ] Optional eigene Karte U5 (Zähler der Liste nicht doppelt).
+
 ## Quellen / Bezuege
 
 - Karten #207–#210; po-entscheidungen Z. 358–383 und Betreiber-Entscheidung 2026-11-19 (letzte Zeile, Nachtrag N1); `werkzeuge/board.py` der Factory (`_rebase`, `dokumente`, `wache_vorbereiten`); Vision Z. 110–113, 145–200; `AI-Team/factory.md` „Lastprofil“
 - `src/git.rs`, `src/modell/anwendungen.rs`, `src/modell/einstellungen.rs:40`, `:77`, `src/format/aufgabe.rs:667`, `src/web/statisch.rs`, `src/web/endpunkte.rs:35`
 - ADR-0003, ADR-0006, ADR-0008, ADR-0021, ADR-0024, ADR-0028, ADR-0030, ADR-0031
+- Git-Dokumentation `git-diff` `-M[<n>]` und `-l<num>` (nur der erschöpfende Teil der Suche wird begrenzt) — Verhalten von `-M100%` und `-l1` mit Git 2.48.1 gemessen in `gemeinsam/scratchpad/arch-233/` der Factory (N10.1)
 - Git-Dokumentation `git-diff` (`--no-ext-diff`, `--no-textconv`, `--raw -z`), `gitattributes` (diff-Treiber, textconv), `git-rev-parse` (`--end-of-options`, `^{commit}`) — Git 2.48.1 auf diesem Rechner
 - npm: `prismjs` 1.30.0 (MIT), `@highlightjs/cdn-assets` 11.12.0 (BSD-3-Clause), abgerufen 2026-11-19; Messung in `gemeinsam/scratchpad/arch-207/` der Factory
