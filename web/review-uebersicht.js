@@ -366,6 +366,108 @@
     return streuwert.toString(16).padStart(8, '0');
   }
 
+  /* ── Wortmarke (R00247, ADR-0042 Punkt 4, W1): gleiches Präfix und Suffix je Zeilenpaar, auf Wortgrenzen erweitert ── */
+
+  /** Zeilen aus `patchZeilen` → je Zeile die Marke `[von, bis)` im Zeilentext oder null. Gepaart wird ein Lauf gelöschter Zeilen mit
+      dem direkt folgenden Lauf hinzugefügter Zeilen, i-te mit i-ter, nur bei gleicher Länge (FA 1); Kontext und Hunk-Kopf trennen,
+      „\ No newline at end of file“ nicht. `zaehler.vergleiche` zählt die Zeichenvergleiche aller Paare (AK 9). */
+  function wortMarken(zeilen, zaehler = { vergleiche: 0 }) {
+    const marken = zeilen.map(() => null);
+    let k = 0;
+    while (k < zeilen.length) {
+      const geloescht = laufAb(zeilen, k, 'minus');
+      const hinzugefuegt = laufAb(zeilen, geloescht.ende, 'plus');
+      const gepaart = geloescht.indizes.length > 0 && geloescht.indizes.length === hinzugefuegt.indizes.length;
+      if (gepaart) {
+        geloescht.indizes.forEach((alt, i) => {
+          const neu = hinzugefuegt.indizes[i];
+          const marke = wortMarke(zeilen[alt].text, zeilen[neu].text, zaehler);
+          marken[alt] = marke[0];
+          marken[neu] = marke[1];
+        });
+      }
+      k = Math.max(hinzugefuegt.ende, k + 1);
+    }
+    return marken;
+  }
+
+  /** Ab `k` die Indizes eines Laufs der Art `art` (Hinweiszeilen dazwischen gehören dazu) und der Index nach dem Lauf. */
+  function laufAb(zeilen, k, art) {
+    const indizes = [];
+    let ende = k;
+    while (ende < zeilen.length && (zeilen[ende].art === art || (zeilen[ende].art === 'hinweis' && indizes.length > 0))) {
+      if (zeilen[ende].art === art) indizes.push(ende);
+      ende++;
+    }
+    return { indizes, ende };
+  }
+
+  /** Höchstens so lang (UTF-16-Einheiten, ohne Vorzeichen) ist eine Zeile mit Marke (FA 4, wie `GRENZE_ZEILE` in diff.js). */
+  const GRENZE_WORTMARKE = 1000;
+  /** So viele Einheiten müssen Präfix und Suffix zusammen gleich sein, sonst trägt das Paar keine Marke (FA 2). */
+  const SCHWELLE_GLEICH = 4;
+  const WORTZEICHEN = /[\p{L}\p{N}_]/u;
+
+  /** Ein Paar → [Marke der alten Zeile, Marke der neuen Zeile], je `[von, bis)` oder null (auch bei leerem Bereich). */
+  function wortMarke(alt, neu, zaehler = { vergleiche: 0 }) {
+    const keine = [null, null];
+    if (alt.length > GRENZE_WORTMARKE || neu.length > GRENZE_WORTMARKE) return keine;
+    const praefix = gleichesPraefix(alt, neu, zaehler);
+    const suffix = gleichesSuffix(alt, neu, praefix, zaehler);
+    if (praefix + suffix < SCHWELLE_GLEICH) return keine;
+    const bereich = aufWortgrenzen(alt, neu, praefix, suffix);
+    const ganzeZeile = bereich.von === 0 && bereich.suffix === 0;
+    if (ganzeZeile) return keine;
+    const marke = zeile => {
+      const bis = zeile.length - bereich.suffix;
+      if (bis === bereich.von) return null;
+      return [bereich.von, bis];
+    };
+    return [marke(alt), marke(neu)];
+  }
+
+  const hoheHaelfte = c => c >= 0xD800 && c <= 0xDBFF;
+  const niedrigeHaelfte = c => c >= 0xDC00 && c <= 0xDFFF;
+
+  /** Länge des gleichen Anfangs; endet er nach der hohen Hälfte eines Ersatzpaars, gehört diese zum Rest. */
+  function gleichesPraefix(alt, neu, zaehler) {
+    const kuerzer = Math.min(alt.length, neu.length);
+    let p = 0;
+    while (p < kuerzer) {
+      zaehler.vergleiche++;
+      if (alt.charCodeAt(p) !== neu.charCodeAt(p)) break;
+      p++;
+    }
+    if (p > 0 && hoheHaelfte(alt.charCodeAt(p - 1))) p--;
+    return p;
+  }
+
+  /** Länge des gleichen Endes, ohne in das Präfix zu reichen; beginnt es mit einer niedrigen Hälfte, gehört diese zum Rest. */
+  function gleichesSuffix(alt, neu, praefix, zaehler) {
+    const hoechstens = Math.min(alt.length, neu.length) - praefix;
+    let s = 0;
+    while (s < hoechstens) {
+      zaehler.vergleiche++;
+      if (alt.charCodeAt(alt.length - 1 - s) !== neu.charCodeAt(neu.length - 1 - s)) break;
+      s++;
+    }
+    if (s > 0 && niedrigeHaelfte(alt.charCodeAt(alt.length - s))) s--;
+    return s;
+  }
+
+  /** Den Rest nach außen erweitern, solange eine seiner Grenzen in einer der beiden Zeilen mitten in einem Wort liegt (FA 2). */
+  function aufWortgrenzen(alt, neu, praefix, suffix) {
+    const wort = (zeile, i) => i >= 0 && i < zeile.length && WORTZEICHEN.test(zeile[i]);
+    const teiltWort = (zeile, i) => wort(zeile, i - 1) && wort(zeile, i);
+    let von = praefix;
+    if (teiltWort(alt, von) || teiltWort(neu, von)) while (wort(alt, von - 1)) von--;
+    let s = suffix;
+    if (teiltWort(alt, alt.length - s) || teiltWort(neu, neu.length - s)) while (wort(alt, alt.length - s)) s--;
+    return { von, suffix: s };
+  }
+
+  Object.assign(ziel, { wortMarken, wortMarke });
+
   Object.assign(ziel, { GESEHEN_HOECHSTENS, gesehenSchluessel, gesehenLesen, gesehenSchreiben, commitDateiSchluessel, alleDateiSchluessel, fingerabdruck });
 
   Object.assign(ziel, { commitChips, chipText, zweigVerdichtung, zweigeWort, commitsWort, mitDiff, zeitKurz, leistenFolge, leistenRollstand, leistenAlleName, leistenEintragName });
