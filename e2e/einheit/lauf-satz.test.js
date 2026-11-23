@@ -710,13 +710,9 @@ test('Gleichheit an drei Orten: je Zeichen U+0000–U+FFFF mit Folge dahinter ze
   assert.deepStrictEqual(abweichend, []);
 });
 
-test('ergebnisSatz ohne ESC ist byte-gleich zum Stand vor R00244 (T13, T16 ohne Folgen, Hinweise, gekürzt, JSON)', () => {
-  const Modul = require('node:module');
-  const quelle = require('node:child_process').execFileSync('git', ['show', 'c4f49f50:web/lauf-satz.js'], { cwd: __dirname, encoding: 'utf8' });
-  const alt = new Modul('lauf-satz-alt');
-  alt._compile(quelle, require('node:path').join(__dirname, '../../web/lauf-satz-alt.js'));
-  const texte = [...t13.T13, ...t13.T13F, ...t16.T16].filter(e => e.art === 'werkzeugergebnis' && !e.text.includes(E)).map(e => e.text);
-  texte.push(t13.ERGEBNIS_3, t13.ERGEBNIS_5, `a\n<system-reminder>\nh\n</system-reminder>\n${zeilen(30).join('\n')}`, '{"ok":true}', '', 'x‮y');
-  assert.ok(texte.length >= 10);
-  for (const text of texte) assert.strictEqual(ergebnisSatz(text, sichtbar).html, alt.exports.ergebnisSatz(text, sichtbar).html, text.slice(0, 60));
+/* Die Erwartungen in r00244-ergebnis-ohne-esc.json hat ergebnisSatz am Stand vor R00244 (Karte #267, Commit „B1275“) gesetzt. */
+test('ergebnisSatz ohne ESC ist byte-gleich zum Stand vor R00244 (T13, T16 ohne Folgen, Hinweise, gekürzt, JSON, Bidi)', () => {
+  const vorher = require('./r00244-ergebnis-ohne-esc.json');
+  assert.ok(vorher.length >= 10);
+  for (const { text, html } of vorher) assert.strictEqual(ergebnisSatz(text, sichtbar).html, html, text.slice(0, 60));
 });

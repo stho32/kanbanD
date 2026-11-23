@@ -1,0 +1,70 @@
+[
+ {
+  "text": "Zeile 1\nZeile 2\nZeile 3\nZeile 4\nZeile 5\nZeile 6\nZeile 7\nZeile 8\nZeile 9\nZeile 10\nZeile 11\nZeile 12\nZeile 13\nZeile 14\nZeile 15\nZeile 16\nZeile 17\nZeile 18\nZeile 19\nZeile 20\nZeile 21\nZeile 22\nZeile 23\n1 failed, 3 passed\nEnde",
+  "html": "<p class=\"lv-tz fehl\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M18 6L6 18\"/></svg><span class=\"vh\">Tests fehlgeschlagen: </span><span>1 failed, 3 passed</span></p><pre>Zeile 1\nZeile 2\nZeile 3\nZeile 4\nZeile 5\nZeile 6\nZeile 7\nZeile 8\nZeile 9\nZeile 10\nZeile 11\nZeile 12\nZeile 13\nZeile 14\nZeile 15\nZeile 16\nZeile 17\nZeile 18\nZeile 19\nZeile 20</pre><details class=\"lv-mehr\"><summary><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\"/></svg>weitere 5 Zeilen<span class=\"vh\"> des Ergebnisses</span></summary><pre>Zeile 21\nZeile 22\nZeile 23\n1 failed, 3 passed\nEnde</pre></details>"
+ },
+ {
+  "text": "<persisted-output>\nOutput too large (69.9KB). Full output saved to: /tmp/demo/tool-results/b1.txt\n\nPreview (first 2KB):\nExit code 1\nfehlt: gross.log\n...\n</persisted-output>",
+  "html": "<p class=\"lv-cc\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"6\" r=\"3\"/><circle cx=\"6\" cy=\"18\" r=\"3\"/><path d=\"M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12\"/></svg><span>Von Claude Code gekürzt (69,9 KB): Der Agent sah nur diese Vorschau. Vollständig: <span class=\"mono lv-ccpfad\">/tmp/demo/tool-results/b1.txt</span></span></p><pre>Exit code 1\nfehlt: gross.log\n...</pre>"
+ },
+ {
+  "text": "Datei geändert.\n<system-reminder>\nNicht vergessen.\n</system-reminder>\nweiter",
+  "html": "<pre>Datei geändert.</pre><details class=\"lv-e sys lv-ein\"><summary><span class=\"pf\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\"/></svg></span><span class=\"nm\">Systemhinweis</span><span class=\"z1\">&lt;system-reminder&gt;</span></summary><pre>&lt;system-reminder&gt;\nNicht vergessen.\n&lt;/system-reminder&gt;</pre></details><pre>weiter</pre>"
+ },
+ {
+  "text": "Datei geschrieben.",
+  "html": "<pre>Datei geschrieben.</pre>"
+ },
+ {
+  "text": "<system-reminder>\nNur Hinweis.\n</system-reminder>",
+  "html": "<details class=\"lv-e sys lv-ein\"><summary><span class=\"pf\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\"/></svg></span><span class=\"nm\">Systemhinweis</span><span class=\"z1\">&lt;system-reminder&gt;</span></summary><pre>&lt;system-reminder&gt;\nNur Hinweis.\n&lt;/system-reminder&gt;</pre></details><p class=\"lv-nurh\">Nur Systemhinweis, ausgeblendet (Filter „Systemhinweise“).</p>"
+ },
+ {
+  "text": "{\"ok\":true,\"n\":3,\"liste\":[1,null],\"text\":\"a\"}",
+  "html": "<pre class=\"lv-json\">{\n  <span class=\"tk-function\">&quot;ok&quot;</span>: <span class=\"tk-keyword\">true</span>,\n  <span class=\"tk-function\">&quot;n&quot;</span>: <span class=\"tk-number\">3</span>,\n  <span class=\"tk-function\">&quot;liste&quot;</span>: [\n    <span class=\"tk-number\">1</span>,\n    <span class=\"tk-keyword\">null</span>\n  ],\n  <span class=\"tk-function\">&quot;text&quot;</span>: <span class=\"tk-string\">&quot;a&quot;</span>\n}</pre>"
+ },
+ {
+  "text": "ok",
+  "html": "<pre>ok</pre>"
+ },
+ {
+  "text": "Exit code 1\n<system-reminder>\nHinweis F.\n</system-reminder>",
+  "html": "<pre>Exit code 1</pre><details class=\"lv-e sys lv-ein\"><summary><span class=\"pf\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\"/></svg></span><span class=\"nm\">Systemhinweis</span><span class=\"z1\">&lt;system-reminder&gt;</span></summary><pre>&lt;system-reminder&gt;\nHinweis F.\n&lt;/system-reminder&gt;</pre></details>"
+ },
+ {
+  "text": "<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>",
+  "html": "<pre>&lt;tool_use_error&gt;File has not been read yet. Read it first before writing to it.&lt;/tool_use_error&gt;</pre>"
+ },
+ {
+  "text": "<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>",
+  "html": "<pre>&lt;tool_use_error&gt;File has not been read yet. Read it first before writing to it.&lt;/tool_use_error&gt;</pre>"
+ },
+ {
+  "text": "The file /w/wt/demo/karte-7/web/b.js has been updated.",
+  "html": "<pre>The file /w/wt/demo/karte-7/web/b.js has been updated.</pre>"
+ },
+ {
+  "text": "Zeile 1\nZeile 2\nZeile 3\nZeile 4\nZeile 5\nZeile 6\nZeile 7\nZeile 8\nZeile 9\nZeile 10\nZeile 11\nZeile 12\nZeile 13\nZeile 14\nZeile 15\nZeile 16\nZeile 17\nZeile 18\nZeile 19\nZeile 20\nZeile 21\nZeile 22\nZeile 23\n1 failed, 3 passed\nEnde",
+  "html": "<p class=\"lv-tz fehl\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M18 6L6 18\"/></svg><span class=\"vh\">Tests fehlgeschlagen: </span><span>1 failed, 3 passed</span></p><pre>Zeile 1\nZeile 2\nZeile 3\nZeile 4\nZeile 5\nZeile 6\nZeile 7\nZeile 8\nZeile 9\nZeile 10\nZeile 11\nZeile 12\nZeile 13\nZeile 14\nZeile 15\nZeile 16\nZeile 17\nZeile 18\nZeile 19\nZeile 20</pre><details class=\"lv-mehr\"><summary><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\"/></svg>weitere 5 Zeilen<span class=\"vh\"> des Ergebnisses</span></summary><pre>Zeile 21\nZeile 22\nZeile 23\n1 failed, 3 passed\nEnde</pre></details>"
+ },
+ {
+  "text": "<persisted-output>\nOutput too large (69.9KB). Full output saved to: /tmp/demo/tool-results/b1.txt\n\nPreview (first 2KB):\nExit code 1\nfehlt: gross.log\n...\n</persisted-output>",
+  "html": "<p class=\"lv-cc\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"6\" r=\"3\"/><circle cx=\"6\" cy=\"18\" r=\"3\"/><path d=\"M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12\"/></svg><span>Von Claude Code gekürzt (69,9 KB): Der Agent sah nur diese Vorschau. Vollständig: <span class=\"mono lv-ccpfad\">/tmp/demo/tool-results/b1.txt</span></span></p><pre>Exit code 1\nfehlt: gross.log\n...</pre>"
+ },
+ {
+  "text": "a\n<system-reminder>\nh\n</system-reminder>\nz1\nz2\nz3\nz4\nz5\nz6\nz7\nz8\nz9\nz10\nz11\nz12\nz13\nz14\nz15\nz16\nz17\nz18\nz19\nz20\nz21\nz22\nz23\nz24\nz25\nz26\nz27\nz28\nz29\nz30",
+  "html": "<pre>a</pre><details class=\"lv-e sys lv-ein\"><summary><span class=\"pf\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\"/></svg></span><span class=\"nm\">Systemhinweis</span><span class=\"z1\">&lt;system-reminder&gt;</span></summary><pre>&lt;system-reminder&gt;\nh\n&lt;/system-reminder&gt;</pre></details><pre>z1\nz2\nz3\nz4\nz5\nz6\nz7\nz8\nz9\nz10\nz11\nz12\nz13\nz14\nz15\nz16</pre><details class=\"lv-mehr\"><summary><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\"/></svg>weitere 14 Zeilen<span class=\"vh\"> des Ergebnisses</span></summary><pre>z17\nz18\nz19\nz20\nz21\nz22\nz23\nz24\nz25\nz26\nz27\nz28\nz29\nz30</pre></details>"
+ },
+ {
+  "text": "{\"ok\":true}",
+  "html": "<pre class=\"lv-json\">{\n  <span class=\"tk-function\">&quot;ok&quot;</span>: <span class=\"tk-keyword\">true</span>\n}</pre>"
+ },
+ {
+  "text": "",
+  "html": "<p class=\"lv-gedaempft\">Leeres Ergebnis.</p>"
+ },
+ {
+  "text": "x‮y",
+  "html": "<pre>x<span class=\"mk-z mk-bidi\" role=\"img\" aria-label=\"sichtbar gemachtes Bidi-Steuerzeichen U+202E\"><svg class=\"i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>⟨U+202E⟩</span>y</pre>"
+ }
+]
