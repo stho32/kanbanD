@@ -126,12 +126,10 @@ test('AK 4 (m): fremdes HTML ist nur Text — markiert wird „x“ bzw. „y“
 
 const zeile1000 = ende => '//' + 'a'.repeat(997) + ende;
 
-test('AK 3 (n): Zeilen mit genau 1.000 Zeichen tragen eine Marke (GRENZE_ZEILE gilt mit ≤)', () => {
+test('AK 3 (n): Zeilen mit genau 1.000 Zeichen tragen eine Marke über [2, 1000) — 997 × `a` und „1“ bzw. „2“ (GRENZE_ZEILE gilt mit ≤)', () => {
   assert.strictEqual(zeile1000('1').length, d.GRENZE_ZEILE);
-  const [alt, neu] = paar(zeile1000('1'), zeile1000('2'));
-  assert.ok(alt && neu, 'beide Zeilen tragen eine Marke');
-  assert.strictEqual(alt[1], 1000);
-  assert.strictEqual(zeile1000('2').slice(...neu).endsWith('2'), true);
+  assert.deepStrictEqual(paar(zeile1000('1'), zeile1000('2')), [[2, 1000], [2, 1000]]);
+  assert.strictEqual(zeile1000('2').slice(2, 1000), 'a'.repeat(997) + '2');
 });
 
 test('AK 3 (o): Zeilen mit 1.001 Zeichen tragen keine Marke, auch wenn nur eine Zeile des Paars zu lang ist', () => {
@@ -152,6 +150,36 @@ test('AK 9: zwei Zeilen zu je 1.000 Zeichen ergeben höchstens 2.000 Vergleiche 
 test('AK 9: die Vergleiche wachsen linear mit der Zeilenlänge — doppelte Länge, höchstens doppelt so viele', () => {
   const zaehle = n => { const z = { vergleiche: 0 }; u.wortMarke('a'.repeat(n) + '1', 'a'.repeat(n) + '2', z); return z.vergleiche; };
   assert.ok(zaehle(800) <= 2 * zaehle(400) + 2, `${zaehle(400)} → ${zaehle(800)}`);
+});
+
+/** Eine Zeilenliste aus `n` gleich langen Läufen zu je einer gelöschten und einer hinzugefügten Zeile von etwa 80 Zeichen. */
+const lastZeilen = n => {
+  const zeilen = [];
+  for (let i = 0; i < n; i++) {
+    const rumpf = `let wert_${String(i).padStart(6, '0')} = berechne(eingabe, ${'x'.repeat(40)}, `;
+    zeilen.push(minus(rumpf + '1);'), plus(rumpf + '2);'), kontext('}'));
+  }
+  return zeilen;
+};
+/** Kürzeste von mehreren Laufzeiten (ms) der Paarung über eine Zeilenliste — die kürzeste ist am wenigsten von fremder Last verfälscht. */
+const kuerzesteZeit = zeilen => {
+  let beste = Infinity;
+  for (let lauf = 0; lauf < 9; lauf++) {
+    const t0 = process.hrtime.bigint();
+    u.wortMarken(zeilen);
+    beste = Math.min(beste, Number(process.hrtime.bigint() - t0) / 1e6);
+  }
+  return beste;
+};
+
+test('AK 9: doppelte Zeilenzahl ergibt doppelt so viele Vergleiche und etwa doppelte Zeit (linear, keine Rechnung über das Paar hinaus)', () => {
+  const [einfach, doppelt] = [lastZeilen(5000), lastZeilen(10000)];
+  const vergleiche = zeilen => { const z = { vergleiche: 0 }; u.wortMarken(zeilen, z); return z.vergleiche; };
+  assert.strictEqual(vergleiche(doppelt), 2 * vergleiche(einfach));
+  kuerzesteZeit(einfach);
+  const [t1, t2] = [kuerzesteZeit(einfach), kuerzesteZeit(doppelt)];
+  const verhaeltnis = t2 / t1;
+  assert.ok(verhaeltnis >= 1.3 && verhaeltnis <= 3, `${t1.toFixed(2)} ms → ${t2.toFixed(2)} ms, Verhältnis ${verhaeltnis.toFixed(2)} (linear 2, quadratisch 4)`);
 });
 
 test('AK 9: über eine ganze Zeilenliste zählt die Paarung die Vergleiche aller Paare zusammen', () => {

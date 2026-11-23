@@ -77,13 +77,24 @@ function seite(page) {
       await expect(kopf).toHaveAttribute('aria-expanded', 'true');
     },
     anzeigen: pfad => datei(pfad).getByRole('button', { name: 'Änderungen anzeigen' }),
-    langeSeit: async (t0, name) => {
-      const alle = await page.evaluate(t => window.kdLang.filter(e => e.start >= t), t0);
-      if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify({ name, dauern: alle.map(e => e.dauer) }) + '\n');
-      return alle.filter(e => e.dauer > 150);
+    /** Die längste Aufgabe (ms) ab `t0`, 0 ohne Long Task. */
+    laengsteSeit: async t0 => {
+      const dauern = await page.evaluate(t => window.kdLang.filter(e => e.start >= t).map(e => e.dauer), t0);
+      return Math.max(0, ...dauern);
     },
     jetzt: () => page.evaluate(() => performance.now()),
   };
+}
+
+/** Liefert diff.js ohne Paarung aus — die Seite zeichnet wie vor der Karte (Vergleichswert „ohne Marke“ für AK 9). */
+const OHNE_MARKE = { alt: 'const marken = wortMarken(zeilen);', neu: 'const marken = zeilen.map(() => null);' };
+async function ohneMarkeAusliefern(page) {
+  await page.route(url => url.pathname === '/web/diff.js', async route => {
+    const antwort = await route.fetch();
+    const text = await antwort.text();
+    if (!text.includes(OHNE_MARKE.alt)) throw new Error('diff.js enthält die Paarung nicht mehr — Vergleich „ohne Marke“ greift nicht');
+    await route.fulfill({ response: antwort, body: text.replace(OHNE_MARKE.alt, OHNE_MARKE.neu) });
+  });
 }
 
 async function commitOeffnen(page, k, nr, commit) {
@@ -422,22 +433,34 @@ test.describe('R00247 Review-Seite — Wortmarke', () => {
     expect(je.every(r => r.anzahl === 0), JSON.stringify(je)).toBe(true);
   });
 
-  /* ── AK 9 Last (US-5) ── */
+  /* ── AK 9 Last (US-5): Messung mit Ausgabe, ohne Grenze (PO Z. 676) — harte Prüfungen sind Zähler und Linearität in
+     e2e/einheit/wortmarke.test.js. Aussagekräftig nur allein: `npx playwright test r00247 -g "AK 9" --workers=1`. ── */
 
   for (const [nr, pfad, commit, farbe] of [[11, 'src/last.rs', 'wl', 'nein'], [12, 'src/kurz.rs', 'wlf', 'ja']]) {
-    test(`AK 9: ${pfad} — 5.000 gelöschte gegen 5.000 hinzugefügte Zeilen, Zeichnen mit Marke${farbe === 'ja' ? ' und Farbe' : ''} ohne Long Task über 150 ms`, async ({ page }) => {
-      test.setTimeout(90000);
-      const s = seite(page);
-      await page.addInitScript(langeAufgabenSammeln);
-      await commitOeffnen(page, k, nr, wortmarkeRepository()[commit]);
-      const anzeigen = s.anzeigen(pfad);
-      await expect(anzeigen).toBeVisible();
-      const t0 = await s.jetzt();
-      await anzeigen.click();
-      expect(await s.farbeAbwarten(pfad, 30000)).toBe(farbe);
-      const lange = await s.langeSeit(t0, pfad);
-      await expect(s.bereich(pfad).locator('mark.wm')).toHaveCount(10000);
-      expect(lange, 'Long Tasks über 150 ms').toEqual([]);
+    test(`AK 9: ${pfad} — 5.000 gelöschte gegen 5.000 hinzugefügte Zeilen, längste Aufgabe ab „Änderungen anzeigen“ mit und ohne Marke (Messung)`, async ({ page, context }) => {
+      test.setTimeout(120000);
+      /** Öffnet den Commit, klickt „Änderungen anzeigen“ und gibt die längste Aufgabe bis zur entschiedenen Farbe zurück. */
+      const messen = async (seitenObjekt, markenSoll) => {
+        const s = seite(seitenObjekt);
+        await seitenObjekt.addInitScript(langeAufgabenSammeln);
+        await commitOeffnen(seitenObjekt, k, nr, wortmarkeRepository()[commit]);
+        const anzeigen = s.anzeigen(pfad);
+        await expect(anzeigen).toBeVisible();
+        const t0 = await s.jetzt();
+        await anzeigen.click();
+        expect(await s.farbeAbwarten(pfad, 30000)).toBe(farbe);
+        const laengste = await s.laengsteSeit(t0);
+        await expect(s.bereich(pfad).locator('mark.wm')).toHaveCount(markenSoll);
+        return laengste;
+      };
+      const mit = await messen(page, 10000);
+      const ohneSeite = await context.newPage();
+      await ohneMarkeAusliefern(ohneSeite);
+      const ohne = await messen(ohneSeite, 0);
+      const messung = { pfad, mit, ohne, workers: test.info().config.workers };
+      test.info().annotations.push({ type: 'AK 9 Messung', description: JSON.stringify(messung) });
+      console.log(`AK 9 Messung ${JSON.stringify(messung)}`);
+      if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify(messung) + '\n');
     });
   }
 });
