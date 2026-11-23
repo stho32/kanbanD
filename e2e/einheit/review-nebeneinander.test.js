@@ -126,3 +126,46 @@ test('gegenueberstellen: 2.500 gelöschte gegen 2.500 hinzugefügte ergeben 2.50
   assert.strictEqual(u.gegenueberstellen(zeilen).filter(x => x.art === 'zeile').length, 2500);
   assert.strictEqual(d.patchZeilen('@@ -1 +1 @@\n-a\n+b\n').length, 3, 'das Budget zählt weiter die Zeilen der Liste');
 });
+
+/* ── B1307 Zustand des Schalters (FA 6, ADR-0042 N6.6): dieselbe Funktion für beide Schalter ── */
+
+/** Ein Speicher mit der Schnittstelle von `localStorage`; `wirft` nennt die Aufrufe, die scheitern. */
+function speicher(werte = {}, wirft = []) {
+  return {
+    werte,
+    getItem(k) { if (wirft.includes('get')) throw new Error('gesperrt'); return k in werte ? werte[k] : null; },
+    setItem(k, v) { if (wirft.includes('set')) throw new Error('voll'); werte[k] = String(v); },
+  };
+}
+
+test('schalterLesen: unter kanbanD.nebeneinander ist nur „1“ an; fehlend, „0“, Unsinn aus; getrennt von kanbanD.umbrechen (m6)', () => {
+  assert.strictEqual(u.NEBENEINANDER_SCHLUESSEL, 'kanbanD.nebeneinander');
+  assert.strictEqual(u.schalterLesen(speicher({ 'kanbanD.nebeneinander': '1' }), u.NEBENEINANDER_SCHLUESSEL), true);
+  for (const wert of ['0', 'ja', 'true', '', ' 1']) assert.strictEqual(u.schalterLesen(speicher({ 'kanbanD.nebeneinander': wert }), u.NEBENEINANDER_SCHLUESSEL), false, JSON.stringify(wert));
+  assert.strictEqual(u.schalterLesen(speicher({}), u.NEBENEINANDER_SCHLUESSEL), false, 'fehlend: Voreinstellung aus');
+  assert.strictEqual(u.schalterLesen(speicher({ 'kanbanD.umbrechen': '1' }), u.NEBENEINANDER_SCHLUESSEL), false, 'Umbrechen schaltet Nebeneinander nicht');
+  assert.strictEqual(u.umbrechenLesen(speicher({ 'kanbanD.nebeneinander': '1' })), false, 'und umgekehrt');
+});
+
+test('schalterSchreiben: „1“/„0“ unter dem Schlüssel, danach liest schalterLesen dasselbe (m6)', () => {
+  const s = speicher();
+  assert.deepStrictEqual(u.schalterSchreiben(s, u.NEBENEINANDER_SCHLUESSEL, true), { fehler: false });
+  assert.deepStrictEqual(s.werte, { 'kanbanD.nebeneinander': '1' });
+  assert.strictEqual(u.schalterLesen(s, u.NEBENEINANDER_SCHLUESSEL), true);
+  u.schalterSchreiben(s, u.NEBENEINANDER_SCHLUESSEL, false);
+  assert.deepStrictEqual(s.werte, { 'kanbanD.nebeneinander': '0' });
+});
+
+test('schalterLesen/-Schreiben: ein werfender oder fehlender Speicher wirft nie nach außen (m7)', () => {
+  assert.strictEqual(u.schalterLesen(speicher({ 'kanbanD.nebeneinander': '1' }, ['get']), u.NEBENEINANDER_SCHLUESSEL), false);
+  assert.strictEqual(u.schalterLesen(null, u.NEBENEINANDER_SCHLUESSEL), false);
+  assert.deepStrictEqual(u.schalterSchreiben(speicher({}, ['set']), u.NEBENEINANDER_SCHLUESSEL, true), { fehler: true });
+  assert.deepStrictEqual(u.schalterSchreiben(undefined, u.NEBENEINANDER_SCHLUESSEL, true), { fehler: true });
+});
+
+test('nebeneinanderSchalterHtml: label.ru-sch mit input[checkbox][role=switch], „Nebeneinander“, eigene Kennung; checked nur bei an (FA 1, m9)', () => {
+  const aus = u.nebeneinanderSchalterHtml(false), an = u.nebeneinanderSchalterHtml(true);
+  assert.match(aus, /^<label class="ru-sch"><input type="checkbox" role="switch" id="rv-nb" data-nebeneinander>Nebeneinander<\/label>$/);
+  assert.ok(/ checked>/.test(an) && !/checked/.test(aus));
+  assert.ok(!u.umbrechenSchalterHtml(false).includes('rv-nb'));
+});

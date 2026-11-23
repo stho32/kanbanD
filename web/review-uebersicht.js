@@ -345,26 +345,32 @@
      gilt der Zustand nur bis zum Neuladen, ohne Meldung (eine Ansichtswahl, kein Fortschritt wie „Gesehen“). ── */
 
   const UMBRECHEN_SCHLUESSEL = 'kanbanD.umbrechen';
+  /** „Nebeneinander“ (R00249 FA 6, ADR-0042 N6.6): derselbe Weg, eigener Schlüssel. */
+  const NEBENEINANDER_SCHLUESSEL = 'kanbanD.nebeneinander';
 
-  /** Der Schalter der Kopfzeile (D0009 `.ru-sch`): ein Eingabefeld mit Rolle `switch`, der Zustand steht in `checked` (ADR-0042 N6.3). */
-  function umbrechenSchalterHtml(an) {
-    return `<label class="ru-sch"><input type="checkbox" role="switch" id="rv-umbr" data-umbrechen${an ? ' checked' : ''}>Umbrechen</label>`;
+  /** Ein Schalter der Kopfzeile (D0009 `.ru-sch`): ein Eingabefeld mit Rolle `switch`, der Zustand steht in `checked` (ADR-0042 N6.3). */
+  function schalterHtml(id, merkmal, text, an) {
+    return `<label class="ru-sch"><input type="checkbox" role="switch" id="${id}" ${merkmal}${an ? ' checked' : ''}>${text}</label>`;
   }
+  const umbrechenSchalterHtml = an => schalterHtml('rv-umbr', 'data-umbrechen', 'Umbrechen', an);
+  const nebeneinanderSchalterHtml = an => schalterHtml('rv-nb', 'data-nebeneinander', 'Nebeneinander', an);
 
-  /** Der gemerkte Zustand; ein Speicher, der fehlt oder wirft, ergibt „aus“. */
-  function umbrechenLesen(speicher) {
-    try { return speicher.getItem(UMBRECHEN_SCHLUESSEL) === '1'; } catch (_) { return false; }
+  /** Der gemerkte Zustand unter `schluessel`; ein Speicher, der fehlt oder wirft, ergibt „aus“. */
+  function schalterLesen(speicher, schluessel) {
+    try { return speicher.getItem(schluessel) === '1'; } catch (_) { return false; }
   }
 
   /** Merkt `an` als `1` bzw. `0`; scheitert der Speicher, wirft das nie nach außen, sondern steht als `fehler` im Ergebnis. */
-  function umbrechenSchreiben(speicher, an) {
+  function schalterSchreiben(speicher, schluessel, an) {
     try {
-      speicher.setItem(UMBRECHEN_SCHLUESSEL, an ? '1' : '0');
+      speicher.setItem(schluessel, an ? '1' : '0');
       return { fehler: false };
     } catch (_) {
       return { fehler: true };
     }
   }
+  const umbrechenLesen = speicher => schalterLesen(speicher, UMBRECHEN_SCHLUESSEL);
+  const umbrechenSchreiben = (speicher, an) => schalterSchreiben(speicher, UMBRECHEN_SCHLUESSEL, an);
 
   /* ── Schlüssel einer Datei (FA 7, 8; ADR-0042 N3): in „Ein Commit“ über den vollen Hash, in „Alle Änderungen“ über den Fingerabdruck ── */
 
@@ -541,7 +547,7 @@
 
   Object.assign(ziel, { wortMarken, wortMarke, gegenueberstellen });
 
-  Object.assign(ziel, { UMBRECHEN_SCHLUESSEL, umbrechenLesen, umbrechenSchreiben, umbrechenSchalterHtml });
+  Object.assign(ziel, { UMBRECHEN_SCHLUESSEL, umbrechenLesen, umbrechenSchreiben, umbrechenSchalterHtml, NEBENEINANDER_SCHLUESSEL, schalterLesen, schalterSchreiben, nebeneinanderSchalterHtml });
 
   Object.assign(ziel, { GESEHEN_HOECHSTENS, gesehenSchluessel, gesehenLesen, gesehenSchreiben, commitDateiSchluessel, alleDateiSchluessel, fingerabdruck });
 
