@@ -1,6 +1,6 @@
 ---
 id: R00250
-status: Neu
+status: Erledigt
 datum: 2026-11-23
 ursprung: Bug-Report
 ursprungslauf: R00010
@@ -100,31 +100,31 @@ H wird als „von Hand“ committet. **Diff** meint `git diff --numstat HEAD~1 H
 
 ### Bug behoben
 
-- [ ] **AK 1 Probe der Karte (heute rot):** Gegeben H. Wenn `sh` über `PUT /api/einstellungen` die Person `sh` in „Sven Hansen“ umbenennt, dann ist der Diff `1  1` (nur die Zeile von `sh`), und alles andere ist zeichengleich, auch Kommentar, fremder Schlüssel, Reihenfolge und Textkörper.
-- [ ] **AK 2 Jeder Schreibweg ändert nur seine Zeilen:** Gegeben H, je Fall frisch:
+- [x] **AK 1 Probe der Karte (heute rot):** Gegeben H. Wenn `sh` über `PUT /api/einstellungen` die Person `sh` in „Sven Hansen“ umbenennt, dann ist der Diff `1  1` (nur die Zeile von `sh`), und alles andere ist zeichengleich, auch Kommentar, fremder Schlüssel, Reihenfolge und Textkörper.
+- [x] **AK 2 Jeder Schreibweg ändert nur seine Zeilen:** Gegeben H, je Fall frisch:
   - `POST /api/personen` legt `ab` an → Diff `0  1`, die neue Zeile steht direkt hinter der Zeile von `ag`, also noch vor `# Klassen folgen`.
   - `PATCH /api/personen/ag` legt `ag` still → Diff `1  1` (`, active: false` an der Zeile von `ag`).
   - `PUT` legt das erste Signal `warten` an → Diff `0  2` (`signals:` und ein Eintrag), unmittelbar vor dem schließenden `---`, also hinter dem Block `sources` (Regel 1).
   - Danach entfernt `PUT` dieses Signal wieder → Diff `2  0`, und die Datei ist wieder zeichengleich mit H.
   - Ein zweites `PUT` mit unverändertem Rumpf → kein Commit.
-- [ ] **AK 3 CRLF und BOM bleiben:** Gegeben H mit `\r\n` an jeder Zeile und BOM. Wenn AK 1 und der Fall „erstes Signal“ aus AK 2 laufen, dann sind die Diffs dieselben wie dort. Jede Zeile der Datei endet danach auf `\r\n` (Anzahl `\n` = Anzahl `\r\n`), und das erste Zeichen ist weiter die BOM. Gegenprobe: H mit `\n` ohne BOM bekommt weder BOM noch `\r`.
-- [ ] **AK 4 Alte Form von `sources`:** Gegeben H, dessen Block `sources` in der alten Registerform steht (`wbs: ""`, `requirements: ""`, `applications:` mit `kd: {name: kanbanD, wbs: …, requirements: …}`, Form wie in den sechs Beständen). Wenn `PUT` die Person `sh` umbenennt, dann liegt jede geänderte Zeile in der Zeile von `sh` oder im Block `sources`. Dieser steht danach in der Form mit `repository` (ADR-0034 N2 Regel 2), alles andere ist zeichengleich, und nichts wird verweigert. Wenn statt dessen `PATCH /api/personen/sh` umbenennt, dann ist der Diff `1  1`, und `sources` bleibt in der alten Form.
-- [ ] **AK 5 `record-transcripts` hinter `sources` bleibt dort (der echte Bestand, heute rot):** Gegeben H mit `record-transcripts: true` als letzter Zeile vor dem schließenden `---`, hinter `sources`. Wenn `PUT` den Namen der Anwendung `kd` im Register ändert, dann ändern sich nur Zeilen im Block `sources`, und `record-transcripts: true` bleibt die letzte Zeile des Frontmatters. Dasselbe gilt für die Umbenennung von `sh` (Diff `1  1`).
-- [ ] **AK 6 Handform im geänderten Abschnitt wird verweigert (PO Z. 666, Probe 1):** Gegeben H mit der eingerückten Zeile `  # Vertretung` im Abschnitt `people`. Wenn `PUT` die Person `sh` umbenennt, dann antwortet kanbanD 409 mit `fehler` = „Nicht gespeichert: Der Abschnitt „people“ in kanbanD.md ist von Hand gestaltet und lässt sich nicht zeilengenau ändern. Bitte die Änderung direkt in kanbanD.md eintragen.“, und es gibt keinen Commit. Dasselbe gilt über `PATCH /api/personen/sh` und beim Stilllegen. Dieselbe 409 kommt bei diesen Formen von `people`:
+- [x] **AK 3 CRLF und BOM bleiben:** Gegeben H mit `\r\n` an jeder Zeile und BOM. Wenn AK 1 und der Fall „erstes Signal“ aus AK 2 laufen, dann sind die Diffs dieselben wie dort. Jede Zeile der Datei endet danach auf `\r\n` (Anzahl `\n` = Anzahl `\r\n`), und das erste Zeichen ist weiter die BOM. Gegenprobe: H mit `\n` ohne BOM bekommt weder BOM noch `\r`.
+- [x] **AK 4 Alte Form von `sources`:** Gegeben H, dessen Block `sources` in der alten Registerform steht (`wbs: ""`, `requirements: ""`, `applications:` mit `kd: {name: kanbanD, wbs: …, requirements: …}`, Form wie in den sechs Beständen). Wenn `PUT` die Person `sh` umbenennt, dann liegt jede geänderte Zeile in der Zeile von `sh` oder im Block `sources`. Dieser steht danach in der Form mit `repository` (ADR-0034 N2 Regel 2), alles andere ist zeichengleich, und nichts wird verweigert. Wenn statt dessen `PATCH /api/personen/sh` umbenennt, dann ist der Diff `1  1`, und `sources` bleibt in der alten Form.
+- [x] **AK 5 `record-transcripts` hinter `sources` bleibt dort (der echte Bestand, heute rot):** Gegeben H mit `record-transcripts: true` als letzter Zeile vor dem schließenden `---`, hinter `sources`. Wenn `PUT` den Namen der Anwendung `kd` im Register ändert, dann ändern sich nur Zeilen im Block `sources`, und `record-transcripts: true` bleibt die letzte Zeile des Frontmatters. Dasselbe gilt für die Umbenennung von `sh` (Diff `1  1`).
+- [x] **AK 6 Handform im geänderten Abschnitt wird verweigert (PO Z. 666, Probe 1):** Gegeben H mit der eingerückten Zeile `  # Vertretung` im Abschnitt `people`. Wenn `PUT` die Person `sh` umbenennt, dann antwortet kanbanD 409 mit `fehler` = „Nicht gespeichert: Der Abschnitt „people“ in kanbanD.md ist von Hand gestaltet und lässt sich nicht zeilengenau ändern. Bitte die Änderung direkt in kanbanD.md eintragen.“, und es gibt keinen Commit. Dasselbe gilt über `PATCH /api/personen/sh` und beim Stilllegen. Dieselbe 409 kommt bei diesen Formen von `people`:
   - `sh` in Blockform über zwei Zeilen statt in Flussform;
   - `name: 'Sven'` in eigener Anführung;
   - eine Leerzeile zwischen `sh` und `ag`.
   Reihenfolge: Mit Handform in `classes` und in `sources`, wenn `PUT` beide ändert, nennt die 409 `classes`, und es gibt keinen Commit. Die Mutante „Normalform-Prüfung entfernt“ macht diesen Test rot.
-- [ ] **AK 7 Handform bleibt, wo nichts geändert wird (PO Z. 666, Probe 2):** Gegeben H mit der eingerückten Zeile `  # Farbe abgestimmt` im Abschnitt `classes`. Wenn `PUT` die Person `sh` umbenennt, dann gibt es einen Commit mit Diff `1  1`, und der Abschnitt `classes` ist samt Kommentar zeichengleich.
-- [ ] **AK 8 Rücklese-Sicherung, auch beim Schalter (Regeln 5 und 7):** Gegeben H, und je Fall bleibt der Text danach zeichengleich, ohne Commit:
+- [x] **AK 7 Handform bleibt, wo nichts geändert wird (PO Z. 666, Probe 2):** Gegeben H mit der eingerückten Zeile `  # Farbe abgestimmt` im Abschnitt `classes`. Wenn `PUT` die Person `sh` umbenennt, dann gibt es einen Commit mit Diff `1  1`, und der Abschnitt `classes` ist samt Kommentar zeichengleich.
+- [x] **AK 8 Rücklese-Sicherung, auch beim Schalter (Regeln 5 und 7):** Gegeben H, und je Fall bleibt der Text danach zeichengleich, ohne Commit:
   - `people:` als `"people":` zitiert; `PUT` benennt `sh` um → 409 mit dem Wortlaut, `<schluessel>` = `people`.
   - H mit der Zeile `"signals": {}` (zitiert, leer); `PUT` legt das erste Signal `warten` an → 409 mit `<schluessel>` = `signals`, weil sich der Text mit zwei Schlüsseln `signals` nicht zurücklesen lässt. Die Mutante „Rücklese-Prüfung entfernt“ macht genau diesen Fall rot.
   - H mit `"record-transcripts": false`; `PUT /api/einstellungen/transkripte` mit `{erfassen: true}` → 409 mit `<schluessel>` = `record-transcripts` (heute 500).
-- [ ] **AK 9 Kopien der sechs echten Bestände (Legacy):** Gegeben je eine Kopie der `kanbanD.md` aus `Entwicklungsprozess`, `goaltreetoolA`, `JoinPuyaApp`, `kanbanD-Demo`, `kanbanD` und `localchatA` (Stand 2026-11-23). Die Namen der Menschen sind durch Platzhalter ersetzt, Kürzel, Art, Zustand, Reihenfolge, Form und Bytes der Zeilen sonst unverändert. Je Datei:
+- [x] **AK 9 Kopien der sechs echten Bestände (Legacy):** Gegeben je eine Kopie der `kanbanD.md` aus `Entwicklungsprozess`, `goaltreetoolA`, `JoinPuyaApp`, `kanbanD-Demo`, `kanbanD` und `localchatA` (Stand 2026-11-23). Die Namen der Menschen sind durch Platzhalter ersetzt, Kürzel, Art, Zustand, Reihenfolge, Form und Bytes der Zeilen sonst unverändert. Je Datei:
   - `PUT` benennt die erste Person um → jede geänderte Zeile liegt in deren Zeile oder im Block `sources` (alte → neue Form), und nichts wird verweigert;
   - `PATCH /api/personen/{kürzel}` benennt sie um → Diff `1  1`.
   Für `kanbanD` bleibt `record-transcripts: true` die letzte Zeile des Frontmatters (heute rot).
-- [ ] **AK 10 Oberfläche, Einrichten, Bug-Vorlage:**
+- [x] **AK 10 Oberfläche, Einrichten, Bug-Vorlage:**
   - Gegeben H mit `  # Vertretung` in `people`, im gestarteten Programm. Wenn `sh` in „Einrichten“ „Sven“ in „Sven Hansen“ ändert und „Speichern“ drückt, dann steht der Wortlaut aus AK 6 in `#einr-fehler`, das Feld zeigt weiter „Sven Hansen“, und es gibt keinen Commit.
   - Das Einrichten eines leeren Ordners schreibt `kanbanD.md` byte-gleich wie vor dem Fix.
   - `einstellungen::schreiben` wird nur noch aus `einrichten` aufgerufen.
