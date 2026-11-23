@@ -2209,3 +2209,5 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-23 | #233 | Architektur | architekt | bestanden | 43 min | ADR-0032 N10 · claude · opus · Lauf 233-architekt-1 · 4,46 $ · Karte gesamt 4,46 $ |
 | 2026-11-23 | #259 | Nacharbeit | entwickler | bestanden | 1 h 5 min | Sprung 0 px, Touch 40×22, r00236 Touch rot offen · claude · sonnet · Lauf 259-entwickler-2 · 1,93 $ · Karte gesamt 14,39 $ |
 | 2026-11-23 | #233 | Architektur | product-owner | bestanden | 1 min | 3 Fragen wie empfohlen · claude · opus · Lauf 233-product-owner-1 · 0,73 $ · Karte gesamt 5,19 $ |
+| 2026-11-23 | #239 | Architektur | architekt | bestanden | 6 min | ADR-0001 N1, zwei Scheiben · claude · opus · Lauf 239-architekt-1 · 1,90 $ · Karte gesamt 1,90 $ |
+| 2026-11-23 | #239 | Architektur | product-owner | bestanden | 1 min | Scheibe 2 als #272, Messwerte nur im Log · claude · opus · Lauf 239-product-owner-1 · 0,67 $ · Karte gesamt 2,57 $ |
