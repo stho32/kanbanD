@@ -13,7 +13,7 @@ const alleAdresse = (k, nr) => `${k.adresse}#/aufgaben/aufgabe/${nr}/review`;
 const exakt = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 
 function seite(page) {
-  const schalter = page.locator('#review .rv-leiste label.ru-sch');
+  const schalter = page.locator('#review .rv-leiste label.ru-sch').filter({ has: page.locator('#rv-umbr') });
   const eingabe = schalter.locator('input[type=checkbox][role=switch]');
   const datei = pfad => page.locator('#rv-insel section.df').filter({ has: page.locator('.df-k .p', { hasText: exakt(pfad) }) });
   const bereich = pfad => datei(pfad).locator('.df-sc');
@@ -129,7 +129,7 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
     await expect(s.schalter).toHaveText('Umbrechen');
     await expect(s.eingabe).not.toBeChecked();
     expect(await s.umbrechen()).toBe(false);
-    expect(await page.evaluate(() => document.getElementById('rv-alle').nextElementSibling === document.querySelector('.rv-leiste label.ru-sch'))).toBe(true);
+    expect(await page.evaluate(() => document.getElementById('rv-alle').nextElementSibling === document.getElementById('rv-umbr').closest('label.ru-sch'))).toBe(true);
     await s.alleOeffnen(k, 9);
     await expect(s.schalter).toHaveCount(1);
     await expect(s.eingabe).not.toBeChecked();

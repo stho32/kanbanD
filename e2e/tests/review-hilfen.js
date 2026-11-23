@@ -704,7 +704,11 @@ function umbrechenRepository() {
 
 /** Aufgaben: #9 U1 und U2 (K-Lang, K-Kurz, K-Zwei), #10 U3 (K-Last), #11 U4 ohne Dateien; Register `kd`, `wb`. */
 function umbrechenVorbereiten(h) {
-  const aufgaben = { 9: [`kd:${h.u1}`, `wb:${h.u2}`], 10: [`kd:${h.u3}`], 11: [`kd:${h.leer}`] };
+  return aufgabenVorbereiten(h, { 9: [`kd:${h.u1}`, `wb:${h.u2}`], 10: [`kd:${h.u3}`], 11: [`kd:${h.leer}`] });
+}
+
+/** Board mit den Aufgaben `aufgaben` (Nummer → Verweise) und dem Register `kd`, `wb` über die Repositories `h.r`, `h.s`. */
+function aufgabenVorbereiten(h, aufgaben) {
   const register = EINSTELLUNGEN_KOPF
     + `    kd: {name: KD, wbs: ${h.r}/Dokumentation/Planung/app.md, requirements: ""}\n`
     + `    wb: {name: WB, wbs: ${h.s}/Dokumentation/Planung/app.md, requirements: ""}\n---\n`;
@@ -722,4 +726,67 @@ function umbrechenVorbereiten(h) {
   };
 }
 
-module.exports = { umbrechenRepository, umbrechenVorbereiten, UM_A, UM_B, UM_FN, wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
+
+/* ── Ausgangslage von R00249 (Nebeneinander): N1 in `kd` mit K-Lauf (src/n.rs), K-Datei (neu, weg, ende, enden) und K-Lang (src/l.rs);
+   N2 K-Block (src/g.rs), N4 K-Last (src/gross.rs), N5 ohne Dateien; N3 in `wb` (K-Zwei, Fall (a) in docs/n.md) ── */
+
+/** src/n.rs als [alt, neu]: die Fälle (a)–(d), je durch acht unveränderte Zeilen getrennt, damit jeder Fall ein eigener Hunk ist. */
+function nebeneinanderN() {
+  const alt = [], neu = [];
+  const fuellung = name => { for (let i = 1; i <= 8; i++) { alt.push(`// n ${name} ${i}`); neu.push(`// n ${name} ${i}`); } };
+  fuellung('anfang');
+  alt.push('let a = 1;'); neu.push('let a = 2;');
+  fuellung('nach a');
+  alt.push('p = 10;', 'q = 20;'); neu.push('p = 11;', 'q = 21;', 'r = 31;');
+  fuellung('nach b');
+  neu.push('z = 0;');
+  fuellung('nach c');
+  alt.push('y = 0;');
+  fuellung('ende');
+  return [alt.join('\n') + '\n', neu.join('\n') + '\n'];
+}
+
+/** src/l.rs: (a) `// kurz` gegen UM_A (407 Zeichen), (b) `let u = "";` gegen UM_B (411 Zeichen ohne Leerzeichen), getrennt. */
+function nebeneinanderL() {
+  const alt = ['// l anfang', '// kurz'], neu = ['// l anfang', UM_A];
+  for (let i = 1; i <= 8; i++) { alt.push(`// l mitte ${i}`); neu.push(`// l mitte ${i}`); }
+  alt.push('let u = "";', '// l ende'); neu.push(UM_B, '// l ende');
+  return [alt.join('\n') + '\n', neu.join('\n') + '\n'];
+}
+
+function nebeneinanderBauen(basis) {
+  const r = path.join(basis, 'KD'), s = path.join(basis, 'WB');
+  for (const ort of [r, s]) {
+    fs.mkdirSync(path.join(ort, 'Dokumentation/Planung'), { recursive: true });
+    fs.writeFileSync(path.join(ort, 'Dokumentation/Planung/app.md'), '# App\n');
+    gitAls(ort, ADA, '2026-06-01T08:00:00+00:00', 'init', '-q', '-b', 'main');
+  }
+  const n = nebeneinanderN(), l = nebeneinanderL(), block = blockDatei(), last = lastDatei(5000, UM_LAST);
+  const h = { r, s };
+  aenderungsCommit(r, 'N0 Vorgänger', { 'src/n.rs': n[0], 'src/weg.rs': 'w1\nw2\nw3\n', 'src/ende.rs': 'e\nx = 1;', 'src/enden.rs': 'e\nx', 'src/l.rs': l[0], 'src/g.rs': block[0], 'src/gross.rs': last[0] });
+  h.n1 = aenderungsCommit(r, 'N1 Nebeneinander', { 'src/n.rs': n[1], 'src/neu.rs': 'n1\nn2\nn3\nn4\n', 'src/weg.rs': null, 'src/ende.rs': 'e\nx = 2;', 'src/enden.rs': 'e\nx\n', 'src/l.rs': l[1] });
+  h.n2 = aenderungsCommit(r, 'N2 Blockgrenze', { 'src/g.rs': block[1] });
+  h.n4 = aenderungsCommit(r, 'N4 Last', { 'src/gross.rs': last[1] });
+  h.leer = aenderungsCommit(r, 'N5 ohne Dateien', {});
+  aenderungsCommit(s, 'N3 Vorgänger', { 'docs/n.md': '# n\n\nlet a = 1;\n\nEnde\n' });
+  h.n3 = aenderungsCommit(s, 'N3', { 'docs/n.md': '# n\n\nlet a = 2;\n\nEnde\n' });
+  return h;
+}
+
+let nebeneinanderGeteilt = null;
+/** Ein Satz Repositories je Prozess für R00249, am Prozessende entfernt. */
+function nebeneinanderRepository() {
+  if (!nebeneinanderGeteilt) {
+    const basis = basisAnlegen();
+    nebeneinanderGeteilt = nebeneinanderBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return nebeneinanderGeteilt;
+}
+
+/** Aufgaben: #9 N1 und N3 (K-Lauf, K-Datei, K-Lang, K-Zwei), #10 N2 (K-Block), #11 N4 (K-Last), #12 N5 ohne Dateien; Register `kd`, `wb`. */
+function nebeneinanderVorbereiten(h) {
+  return aufgabenVorbereiten(h, { 9: [`kd:${h.n1}`, `wb:${h.n3}`], 10: [`kd:${h.n2}`], 11: [`kd:${h.n4}`], 12: [`kd:${h.leer}`] });
+}
+
+module.exports = { nebeneinanderRepository, nebeneinanderVorbereiten, umbrechenRepository, umbrechenVorbereiten, UM_A, UM_B, UM_FN, wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };

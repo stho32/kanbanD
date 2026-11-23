@@ -27,6 +27,8 @@ function timerStartMerken(schluessel, ms) {
 S.ui.bf = filterAus('');
 /* „Umbrechen“ der Review-Seite (R00248): ein Wert für alle Karten, gemerkt im Browser (ADR-0042 N5.1); ohne Speicher gilt er bis zum Neuladen */
 S.ui.umbrechen = (() => { try { return umbrechenLesen(window.localStorage); } catch (_) { return false; } })();
+/* „Nebeneinander“ (R00249 FA 6, ADR-0042 N6.6): derselbe Weg unter eigenem Schlüssel */
+S.ui.nebeneinander = (() => { try { return schalterLesen(window.localStorage, NEBENEINANDER_SCHLUESSEL); } catch (_) { return false; } })();
 S.ui.signaleOben = (() => { try { return localStorage.getItem('kanbanD.signale-oben') === '1'; } catch (_) { return false; } })();
 /** Bei „Signale oben“ ist die Anzeige nicht die echte Reihenfolge — ein Zug daraus wäre ein Zug an die falsche Stelle (R00088). */
 function zugGesperrt() {
@@ -1606,7 +1608,7 @@ function reviewKlappenMerken(r) {
 
 /** Woher die Knöpfe einer Datei in „Ein Commit“ ihre Ziele nehmen (R00236): Aufgabe, Verweis des Commits, Wurzel der Antwort. */
 function reviewQuelle(r) {
-  return { nr: r.nr, commit: r.diff.antwort.commits[0].verweis, wurzel: r.diff.antwort.wurzel };
+  return { nr: r.nr, commit: r.diff.antwort.commits[0].verweis, wurzel: r.diff.antwort.wurzel, nebeneinander: S.ui.nebeneinander };
 }
 
 /** Zeichnet nur den Abschnitt einer Datei in der Insel neu (Aufklappen, Einklappen, Nachladen). Stand der Fokus darin, steht er
@@ -2035,7 +2037,7 @@ function reviewGesamtKontext(r) {
     const e = r.liste && r.liste.status === 'da' && r.liste.eintraege.find(x => x.verweis === verweis);
     return (e && e.titel) || null;
   };
-  return { esc, nr: r.nr, adresse: verweis => reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: verweis }), titelVon };
+  return { esc, nr: r.nr, adresse: verweis => reviewAdresseBilden({ basis: r.basis, slug: r.slug, nummer: r.nr, commit: verweis }), titelVon, nebeneinander: S.ui.nebeneinander };
 }
 
 /** Hängt einen Abschnitt in die stehende Insel (N1.3): nur sein Knoten wird ersetzt. Stand der Fokus darin, steht er danach auf
@@ -2141,6 +2143,70 @@ function reviewUmbrechenSetzen(an) {
   requestAnimationFrame(() => reviewLesepositionHalten(merk));
 }
 
+/** Der Schalter „Nebeneinander“ (R00249 FA 5, ADR-0042 N6.1, N6.2): je offener Datei wird nur ihr Code-Bereich `.df-sc` neu gezeichnet,
+    ohne Anfrage; Köpfe, Gruppen, „Gesehen“ und der Fokus am Schalter bleiben dieselben Knoten. Die Lesezeile bleibt an ihrem Platz,
+    sofort und im nächsten Bild. */
+function reviewNebeneinanderSetzen(an) {
+  S.ui.nebeneinander = an;
+  schalterSchreiben(gesehenSpeicher(), NEBENEINANDER_SCHLUESSEL, an);
+  const r = S.ui.review;
+  if (!r || !document.getElementById('review')) return;
+  const merk = reviewLeseZeileNachKennung();
+  reviewCodeBereicheNeu(r);
+  reviewLeseZeileNachKennungHalten(merk);
+  requestAnimationFrame(() => reviewLeseZeileNachKennungHalten(merk));
+}
+
+/** Ersetzt in jeder Datei der Insel die Code-Bereiche durch die aus dem Zustand neu gezeichneten (gleiche Zahl, gleiche Reihenfolge). */
+function reviewCodeBereicheNeu(r) {
+  const vorlage = document.createElement('template');
+  for (const abschnitt of document.querySelectorAll('#rv-insel section.df')) {
+    const alt = abschnitt.querySelectorAll('.df-sc');
+    if (!alt.length) continue;
+    vorlage.innerHTML = reviewDateiHtmlZu(r, abschnitt.id);
+    const neu = vorlage.content.querySelectorAll('.df-sc');
+    if (neu.length !== alt.length) continue;
+    alt.forEach((bereich, k) => bereich.replaceWith(neu[k]));
+  }
+}
+
+/** Das HTML der Datei zum Abschnitt `rv-d<i>` („Ein Commit“) bzw. `rv-d<a>-<i>` („Alle Änderungen“) aus dem Zustand der Seite. */
+function reviewDateiHtmlZu(r, id) {
+  const [, a, i] = /^rv-d(\d+)(?:-(\d+))?$/.exec(id) || [];
+  if (r.ansicht === 'alle') return abschnittDateiHtml(r.alle.abschnitte[a], Number(a), Number(i), reviewGesamtKontext(r));
+  return dateiHtml(r.dateien[a], Number(a), r.staende[a], r.hinweise, esc, { id: Number(a), arg: Number(a), quelle: reviewQuelle(r) });
+}
+
+/** Die Lesezeile über ihre Kennung (ADR-0042 N6.2): ein `elementFromPoint` an der Oberkante der Rolle; gemerkt werden Ordnungszahl `n`
+    ihres `.df-sc`, kleinstes `data-z` `z` und Lage `oben`, dazu der Kopf ihrer Datei als Rückfall. Trifft der Punkt keine Zeile, gilt der Anker von `reviewLeseZeileMerken` (Kopf der Datei, erster Abschnitt). */
+function reviewLeseZeileNachKennung() {
+  const rolle = document.getElementById('review');
+  const r = rolle.getBoundingClientRect();
+  const getroffen = document.elementFromPoint(reviewNummernSpalte(rolle, r), r.top + 1);
+  const zeile = getroffen && getroffen.closest('.df-sc tr');
+  const kennungen = zeile ? Array.from(zeile.querySelectorAll('[data-z]'), zelle => Number(zelle.dataset.z)) : [];
+  if (!kennungen.length) return { rueckfall: reviewLeseZeileMerken() };
+  const bereich = zeile.closest('.df-sc');
+  const kopf = bereich.closest('section.df').querySelector('.df-k');
+  return { n: Array.from(rolle.querySelectorAll('.df-sc')).indexOf(bereich), z: Math.min(...kennungen), oben: zeile.getBoundingClientRect().top, rueckfall: { anker: kopf, oben: kopf.getBoundingClientRect().top } };
+}
+
+/** Waagerecht in der Spalte der Nummern: kurze Zeilen reichen nicht bis zur Mitte der Rolle, die Nummernzelle steht in jeder Zeile.
+    Gemessen am Block (nie übersprungen) und am Innenabstand der Tabelle, ohne Layout in einem übersprungenen Block zu erzwingen. */
+function reviewNummernSpalte(rolle, r) {
+  const block = rolle.querySelector('.dz-b');
+  if (!block) return r.left + r.width / 2;
+  return block.getBoundingClientRect().left + (parseFloat(getComputedStyle(block.firstElementChild).paddingLeft) || 0) + 4;
+}
+
+function reviewLeseZeileNachKennungHalten(merk) {
+  const bereich = merk.n === undefined ? null : document.querySelectorAll('#review .df-sc')[merk.n];
+  const zelle = bereich && bereich.querySelector(`[data-z="${merk.z}"]`);
+  if (!zelle) { reviewLesepositionHalten(merk.rueckfall); return; }
+  const verschiebung = zelle.closest('tr').getBoundingClientRect().top - merk.oben;
+  if (verschiebung) document.getElementById('review').scrollTop += verschiebung;
+}
+
 /** Die Seite „Alle Änderungen“ (Hauptbereich): Commit-Leiste, darunter Summe und Ansage, dann die Insel oder ein Zustand. */
 function vReviewAlle(r, b) {
   const alle = r.alle;
@@ -2157,7 +2223,7 @@ function vReviewAlle(r, b) {
     const offen = alle.abschnitte.some(ab => ab.status === 'da' && ab.staende.some(st => st.offen));
     const mitDateien = alle.abschnitte.some(ab => ab.status === 'da' && ab.antwort.dateien.length);
     let knopfAlle = '';
-    if (mitDateien) knopfAlle = knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen);
+    if (mitDateien) knopfAlle = knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen) + nebeneinanderSchalterHtml(S.ui.nebeneinander);
     summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span>${knopfAlle}</div>`;
     const mitListe = alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da' && ab.antwort.dateien.length);
     if (mitListe.length) summe += reviewAufklapperHtml(r, abschnittSummen(alle.abschnitte).dateien, mitListe.map(([, a]) => `rv-a${a}-rail`).join(' '));
@@ -2239,7 +2305,7 @@ function reviewDiffHtml(r, b) {
   else if (b.folge && b.folge.art === 'folge') navigation = blaetternHtml(b.folge, esc(kurz), reviewSchmal(), Boolean(r.wahlAnsage));
   else if (b.folge) navigation = fremdHtml(kurz, esc);
   const offen = r.staende.some(s => s.offen);
-  const alle = r.dateien.length ? knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen) : '';
+  const alle = r.dateien.length ? knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen) + nebeneinanderSchalterHtml(S.ui.nebeneinander) : '';
   const summe = `<div class="sum"><span>${dateienWort(c.dateien)} · <span class="pl">+${tausender(c.plus)}</span> <span class="mi">−${tausender(c.minus)}</span></span>${alle}</div>`;
   const eintrag = b.liste.status === 'da' ? b.liste.eintraege.find(e => e.hash && e.hash.toLowerCase() === c.hash.toLowerCase()) : null;
   const leer = !r.dateien.length;
@@ -4991,6 +5057,7 @@ function meldetBeimVerlassen(ereignis) {
 document.addEventListener('change', e => {
   if (S.neuzeichnen) return;
   if (e.target.matches('input[data-umbrechen]')) { reviewUmbrechenSetzen(e.target.checked); return; }
+  if (e.target.matches('input[data-nebeneinander]')) { reviewNebeneinanderSetzen(e.target.checked); return; }
   // das „focusout“ gleich danach kennt das Ziel des Fokus und trägt die Änderung nach
   if (meldetBeimVerlassen(e)) { aenderungAufschieben(e.target); return; }
   aenderungGemeldet(e.target);

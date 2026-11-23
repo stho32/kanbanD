@@ -292,12 +292,12 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     expect(leiste[0]).toBe('rv-u-alle');
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
-    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch; R00246: Gesehen; R00248: der Schalter „Umbrechen“ folgt „Alle einklappen“
-    for (let i = 0; i < 18 + leiste.length; i++) {
+    // R00235: vor den Dateien steht der Kopf ihrer Gruppe „Code“ (rv-gk0-code) in der Tab-Folge; R00236: nach dem Klappknopf Pfad, VS Code, Patch; R00246: Gesehen; R00248: der Schalter „Umbrechen“ folgt „Alle einklappen“; R00249: „Nebeneinander“ folgt „Umbrechen“
+    for (let i = 0; i < 19 + leiste.length; i++) {
       folge.push(await page.evaluate(() => { const e = document.activeElement; return e.closest('#review, #kopf') ? (e.id || e.className) : 'aus'; }));
       await page.keyboard.press('Tab');
     }
-    expect(folge).toEqual(['rv-rueckweg', ...leiste, 'rv-alle', 'rv-umbr', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'rv-pk0-0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'rv-gs0-0', 'df-sc', 'aus']);
+    expect(folge).toEqual(['rv-rueckweg', ...leiste, 'rv-alle', 'rv-umbr', 'rv-nb', 'rv-einzeln', 'rv-einzeln', 'rv-cv', 'rv-cv', 'rv-cv', 'rv-cv', 'dn-e', 'rv-gk0-code', 'rv-dk0-0', 'rv-pk0-0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'rv-gs0-0', 'df-sc', 'aus']);
   });
 
   /* ── AK 1 Adresse, Umschalter, Titel, Ansage ── */
@@ -870,12 +870,12 @@ test.describe('R00210 Alle Änderungen der Aufgabe', () => {
     const leiste = await page.locator(`${LEISTE} li > a`).evaluateAll(as => as.map(a => a.id));
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
-    for (let i = 0; i < 7 + leiste.length; i++) {
+    for (let i = 0; i < 8 + leiste.length; i++) {
       folge.push(await page.evaluate(() => { const e = document.activeElement; return e.id || e.className || e.tagName; }));
       await page.keyboard.press('Tab');
     }
-    expect(folge.slice(0, 3 + leiste.length)).toEqual(['rv-rueckweg', ...leiste, 'rv-alle', 'rv-umbr']); // R00248: der Schalter „Umbrechen“ folgt „Alle einklappen“
-    expect(folge[3 + leiste.length]).toBe('rv-cv');
+    expect(folge.slice(0, 4 + leiste.length)).toEqual(['rv-rueckweg', ...leiste, 'rv-alle', 'rv-umbr', 'rv-nb']); // R00248/R00249: „Umbrechen“ und „Nebeneinander“ folgen „Alle einklappen“
+    expect(folge[4 + leiste.length]).toBe('rv-cv');
   });
 
   test('AK 10: Fokus auf einem Schrittkopf von kd bleibt, während wb und xx ankommen; „Nachladen“ an einer wartenden Datei → Fokus auf ihrem Kopf, nie body', async ({ page }) => {
