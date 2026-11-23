@@ -281,3 +281,16 @@ test('AK 6/AK 10: Satz im Kopf unmittelbar nach „Werkzeuge … · Denken …�
   assert.ok(/<span class="auf">Werkzeuge [^<]*<\/span>$/.test(ohne), ohne);
   assert.ok(!/role=|aria-live/.test(kachel(kopf({ nichtLesbar: true, mehrAlsGrenze: true }))));
 });
+
+test('web/lauf-commits.js überschreibt im Browser keinen Namen eines anderen Moduls und keinen globalen aus ansicht.js und app.js (Lehre #217)', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const ordner = path.join(__dirname, '../../web');
+  const namen = datei => [...fs.readFileSync(path.join(ordner, datei), 'utf8').matchAll(/Object\.assign\(ziel, \{([^}]*)\}\);/g)]
+    .flatMap(m => m[1].split(',').map(n => n.trim().split(':')[0].trim()).filter(Boolean));
+  const eigene = namen('lauf-commits.js');
+  assert.deepStrictEqual(eigene, ['commitMarker', 'COMMIT_GRENZEN']);
+  for (const datei of fs.readdirSync(ordner).filter(d => d.endsWith('.js') && d !== 'lauf-commits.js')) assert.deepStrictEqual(namen(datei).filter(n => eigene.includes(n)), [], datei);
+  const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
+  for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
+  assert.match(fs.readFileSync(path.join(ordner, 'index.html'), 'utf8'), /<script src="\/web\/lauf-commits\.js"><\/script>\n<script src="\/web\/lauf-satz\.js"><\/script>\n<script src="\/web\/lauf\.js"><\/script>/, 'vor app.js geladen');
+});
