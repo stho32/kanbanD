@@ -1848,6 +1848,9 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-dif .add{background:var(--kd-status-ok-bg)}.lv-dif .add .m{color:var(--kd-status-ok-ink);font-weight:600}
 .lv-dif .del{background:var(--kd-status-error-bg)}.lv-dif .del .m{color:var(--kd-status-error-ink);font-weight:600}
 .lv-dif+.lv-mehr>.lv-dif{margin-top:0}
+.lv-na{margin:6px 0 2px;font-size:12px;font-weight:600;line-height:1.4}
+.lv-dif.nicht-angewendet .add,.lv-dif.nicht-angewendet .del{background:none}
+.lv-dif.nicht-angewendet .c,.lv-dif.nicht-angewendet .add .m,.lv-dif.nicht-angewendet .del .m{color:var(--kd-muted)}
 .lv-mehr{min-width:0}
 .lv-mehr>summary{display:inline-flex;align-items:center;gap:4px;min-block-size:max(24px,var(--kd-ziel));padding:0 4px 0 0;font:600 12px var(--kd-font);color:var(--kd-accent-ink);cursor:pointer;list-style:none}
 .lv-mehr>summary::-webkit-details-marker{display:none}

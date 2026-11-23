@@ -504,3 +504,33 @@ test('shellUmbruch: Bash-Gegenprobe — ohne die eingefügten \\n läuft der Bef
     assert.deepStrictEqual({ s: neu.status, o: neu.stdout }, { s: original.status, o: original.stdout }, befehl);
   }
 });
+
+/* ── R00244 (Karte #267): fehlgeschlagenes Edit/Write „nicht angewendet“ (AK 7, ADR-0041 N6 Punkt 6) ── */
+
+const t16 = require('../tests/laufansicht-t16.js');
+const NICHT_ANGEWENDET = '<p class="lv-na">Nicht angewendet — der Schritt ist fehlgeschlagen.</p>';
+
+test('aufrufSatz Edit mit Fehler: Satz über dem Diff, Klasse nicht-angewendet, Lesetext „vorgesehen …“, + und − bleiben', () => {
+  const html = aufrufSatz('Edit', t16.T16[5].text, esc, null, true);
+  assert.ok(html.includes(`${NICHT_ANGEWENDET}<div class="lv-dif nicht-angewendet">`), html);
+  assert.match(html, /<div class="del"><span class="m" aria-hidden="true">−<\/span><span class="vh">vorgesehen zu entfernen: <\/span><span class="c">alt<\/span><\/div>/);
+  assert.match(html, /<div class="add"><span class="m" aria-hidden="true">\+<\/span><span class="vh">vorgesehen hinzuzufügen: <\/span><span class="c">neu<\/span><\/div>/);
+  assert.doesNotMatch(html, /hinzugefügt: |"vh">entfernt: /);
+});
+
+test('aufrufSatz Write mit Fehler: Satz und gedämpfter Diff; der Satz steht nur einmal, auch über einem gekürzten Diff', () => {
+  assert.ok(aufrufSatz('Write', t16.T16[7].text, esc, null, true).includes(`${NICHT_ANGEWENDET}<div class="lv-dif nicht-angewendet"><div class="add">`));
+  const lang = aufrufSatz('Write', JSON.stringify({ file_path: 'a', content: zeilen(25).join('\n') }), esc, null, true);
+  assert.strictEqual(lang.split('lv-na').length - 1, 1);
+  assert.strictEqual(lang.split('lv-dif nicht-angewendet').length - 1, 2, 'offener Teil und Rest hinter „weitere 5 Zeilen“');
+});
+
+test('aufrufSatz ohne Fehler: Edit und Write wie bisher, ohne Satz und ohne Klasse; Bash mit Fehler hat keinen Satz', () => {
+  for (const [name, text] of [['Edit', t16.T16[10].text], ['Write', t16.T16[7].text]]) {
+    const html = aufrufSatz(name, text, esc, null, false);
+    assert.strictEqual(html, aufrufSatz(name, text, esc));
+    assert.doesNotMatch(html, /lv-na|nicht-angewendet|vorgesehen/);
+    assert.match(html, /<span class="vh">hinzugefügt: <\/span>/);
+  }
+  assert.doesNotMatch(aufrufSatz('Bash', t16.T16[3].text, esc, null, true), /lv-na|nicht-angewendet/);
+});

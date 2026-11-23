@@ -347,7 +347,7 @@
     if (aufruf) angabe = tokenAngabeHtml(s.nr, aufruf, z.tokens);
     if (aufruf && aufruf.wer === 'agent' && aufruf.tokens) tokensGanz = `<span class="k">Tokens</span><p class="lv-tk4">${vierWerteHtml(aufruf.tokens)}</p>`;
     const summary = `<summary>${PFEIL}<span class="nm">${name}</span>${befehl}${absicht}${kuerzelTeil}<span class="du">${schrittDauerHtml(s, aufruf, ergebnis, z.laengste)}</span>${angabe}</summary>`;
-    const ganz = tokensGanz + aufrufBlockHtml(aufruf, aufrufGebucht, s.name, ergebnis, z) + ergebnisBlockHtml(aufruf, ergebnisGebucht, ergebnisGesetzt, esc);
+    const ganz = tokensGanz + aufrufBlockHtml(aufruf, aufrufGebucht, s, ergebnis, z) + ergebnisBlockHtml(aufruf, ergebnisGebucht, ergebnisGesetzt, esc);
     const klasse = `lv-s${s.fehler ? ' fehl' : ''}${s.absicht === null ? ' ohne-ab' : ''}`;
     let marken = artAttribut('w');
     if (s.fehler) marken += ' data-fehler';
@@ -358,13 +358,13 @@
   const rohHtml = (b, esc) => `<pre>${gebuchtHtml(b, t => zeilenHtml(t, esc), esc)}</pre>`;
 
   /** Block „Aufruf“ (FA 1, 13): Fläche, Rand, Kante und das Wort als erstes Kind; der Satz nur, wenn das Budget den ganzen Text trägt
-      und die Grenzen ihn erlauben, sonst der Text wie heute. */
-  function aufrufBlockHtml(aufruf, gebucht, name, ergebnis, z) {
+      und die Grenzen ihn erlauben, sonst der Text wie heute. Ein fehlgeschlagener Schritt zeigt seinen Diff als „nicht angewendet“. */
+  function aufrufBlockHtml(aufruf, gebucht, s, ergebnis, z) {
     if (!aufruf) return '';
     let ergebnisText = null;
     if (ergebnis) ergebnisText = ergebnis.text;
     let inhalt = null;
-    if (!gebucht.rest) inhalt = satz.aufrufSatz(name, aufruf.text, t => zeileHtml(t, z.esc), { wurzeln: z.wurzeln, ergebnis: ergebnisText });
+    if (!gebucht.rest) inhalt = satz.aufrufSatz(s.name, aufruf.text, t => zeileHtml(t, z.esc), { wurzeln: z.wurzeln, ergebnis: ergebnisText }, s.fehler);
     if (inhalt === null) inhalt = rohHtml(gebucht, z.esc);
     return `<div class="lv-auf"><span class="k">Aufruf</span>${inhalt}</div>`;
   }

@@ -18,8 +18,9 @@ const EDIT_A = json({ file_path: '/w/wt/demo/karte-7/web/a.js', old_string: 'alt
 const ERGEBNIS_14 = `${E}[8mgeheim${E}[0m ${E}[7mumgekehrt${E}[0m ${E}[30;40mschwarz${E}[0m ${E}[38;5;196mrot${E}[0m`;
 const ERGEBNIS_19 = `${E}[2mgedämpft${E}[22m ${E}[31mrot${E}[0m ${E}[32mgrün${E}[0m ${E}[33mgelb${E}[0m ${E}[1mfett${E}[22m ${E}[1;31mrot-fett${E}[0m`;
 
-/** Die Einträge von T16 in der Reihenfolge der Tabelle (Nr = Index + 1). */
-const T16 = [
+/** Die Einträge von T16 in der Reihenfolge der Tabelle (Nr = Index + 1). Aufrufe tragen `id`, Ergebnisse `zu` ihres Aufrufs: so bleibt
+    Nr 10 ohne Ergebnis, statt nach der Reihenfolge das Ergebnis Nr 12 zu bekommen. */
+const OHNE_KENNUNG = [
   { zeit: um('10:00:00'), art: 'nachricht', wer: 'mensch', text: 'Projekt: /w/demo\nArbeitsort: Worktree /w/wt/demo/karte-7' },
   { zeit: um('10:00:10'), art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: json({ command: 'npx playwright test', description: 'E2E' }) },
   { zeit: um('10:00:20'), art: 'werkzeugergebnis', wer: 'werkzeug', text: ERGEBNIS_3 },
@@ -40,5 +41,10 @@ const T16 = [
   { zeit: um('10:01:50'), art: 'werkzeugaufruf', wer: 'agent', name: 'Bash', text: json({ command: 'ls', description: 'Spannen' }) },
   { zeit: um('10:01:51'), art: 'werkzeugergebnis', wer: 'werkzeug', text: ERGEBNIS_19 },
 ];
+const T16 = OHNE_KENNUNG.map((e, i) => {
+  if (e.art === 'werkzeugaufruf') return { ...e, id: `t16-${i + 1}` };
+  if (e.art === 'werkzeugergebnis') return { ...e, zu: `t16-${i}` };
+  return e;
+});
 
 module.exports = { T16, T16_KENNUNG, ERGEBNIS_3, ERGEBNIS_5, ERGEBNIS_14, ERGEBNIS_19 };

@@ -257,13 +257,14 @@
 
   /** Text eines Aufrufs → HTML des Inhalts im Block „Aufruf“, oder null für „wie heute als `pre`“: über den Grenzen, kein JSON, oder ein
       Satz, der mehr markierbare Zeichen zeigte, als im Text stehen und gebucht sind (etwa ein Escape `‮`). Mit `pfade = {wurzeln,
-      ergebnis}` (R00242 FA 2, 4) ist das Pfadfeld ein Link und Pfade in Befehl und anderen Feldern zeigen Marken; ohne wie bisher. */
-  function aufrufSatz(name, text, zeile, pfade = null) {
+      ergebnis}` (R00242 FA 2, 4) ist das Pfadfeld ein Link und Pfade in Befehl und anderen Feldern zeigen Marken; ohne wie bisher. Mit
+      `fehler` ist der Schritt fehlgeschlagen: der Diff von Edit und Write steht als „nicht angewendet“ (N6 Punkt 6). */
+  function aufrufSatz(name, text, zeile, pfade = null, fehler = false) {
     if (!satzErlaubt(text)) return null;
     const gelesen = jsonLesen(text);
     if (gelesen === null) return null;
     const zaehler = markenZaehler(zeile);
-    const html = gedeckelt(() => aufrufInhalt(name, gelesen.wert, aufrufSetzer(name, gelesen.wert, zaehler.zeile, pfade)));
+    const html = gedeckelt(() => aufrufInhalt(name, gelesen.wert, aufrufSetzer(name, gelesen.wert, zaehler.zeile, pfade), fehler));
     if (html === null || zaehler.gezeigt() > markenIn(text)) return null;
     return html;
   }
@@ -281,11 +282,11 @@
     return { zeile, text, feld };
   }
 
-  function aufrufInhalt(name, wert, setzer) {
+  function aufrufInhalt(name, wert, setzer, fehler) {
     if (!istObjekt(wert)) return jsonBlock(wert, setzer.zeile, 'aufruf');
     if (name === 'Bash' && typeof wert.command === 'string') return shellHtml(wert, setzer);
-    if (name === 'Edit' && typeof wert.old_string === 'string' && typeof wert.new_string === 'string') return editHtml(wert, setzer);
-    if (name === 'Write' && typeof wert.content === 'string') return writeHtml(wert, setzer);
+    if (name === 'Edit' && typeof wert.old_string === 'string' && typeof wert.new_string === 'string') return editHtml(wert, setzer, fehler);
+    if (name === 'Write' && typeof wert.content === 'string') return writeHtml(wert, setzer, fehler);
     if (!istFlach(wert)) return jsonBlock(wert, setzer.zeile, 'aufruf');
     return felderHtml(Object.entries(wert), setzer);
   }
@@ -298,17 +299,17 @@
   }
 
   /** Edit: Felder außer den Texten, darunter der Diff, `replace_all` nur bei `true` als Feld unter dem Diff. */
-  function editHtml(wert, setzer) {
+  function editHtml(wert, setzer, fehler) {
     const ohneDiff = Object.entries(wert).filter(([k]) => !['old_string', 'new_string', 'replace_all'].includes(k));
     let alleErsetzen = '';
     if (wert.replace_all === true) alleErsetzen = felderHtml([['replace_all', true]], setzer);
-    return felderHtml(ohneDiff, setzer) + diffHtml(editDiff(wert.old_string, wert.new_string), setzer.zeile) + alleErsetzen;
+    return felderHtml(ohneDiff, setzer) + diffHtml(editDiff(wert.old_string, wert.new_string), setzer.zeile, fehler) + alleErsetzen;
   }
 
   /** Write: Felder außer `content`, darunter `content` ganz als hinzugefügt. */
-  function writeHtml(wert, setzer) {
+  function writeHtml(wert, setzer, fehler) {
     const ohneInhalt = Object.entries(wert).filter(([k]) => k !== 'content');
-    return felderHtml(ohneInhalt, setzer) + diffHtml(editDiff('', wert.content), setzer.zeile);
+    return felderHtml(ohneInhalt, setzer) + diffHtml(editDiff('', wert.content), setzer.zeile, fehler);
   }
 
   /** Felder als „Schlüssel: Wert“ in der Reihenfolge des Objekts; ohne Felder nichts. */
@@ -350,18 +351,23 @@
   }
 
   const DIFF_FORM = {
-    kontext: { klasse: 'ctx', marke: ' ', lesetext: '' },
-    weg: { klasse: 'del', marke: '−', lesetext: '<span class="vh">entfernt: </span>' },
-    neu: { klasse: 'add', marke: '+', lesetext: '<span class="vh">hinzugefügt: </span>' },
+    kontext: { klasse: 'ctx', marke: ' ', lesetext: '', vorgesehen: '' },
+    weg: { klasse: 'del', marke: '−', lesetext: '<span class="vh">entfernt: </span>', vorgesehen: '<span class="vh">vorgesehen zu entfernen: </span>' },
+    neu: { klasse: 'add', marke: '+', lesetext: '<span class="vh">hinzugefügt: </span>', vorgesehen: '<span class="vh">vorgesehen hinzuzufügen: </span>' },
   };
+  const NICHT_ANGEWENDET = '<p class="lv-na">Nicht angewendet — der Schritt ist fehlgeschlagen.</p>';
 
-  /** Diff-Zeilen wie auf der Review-Seite, ohne Syntaxfarben und Zeilennummern, gekürzt als „… der Änderung“. */
-  function diffHtml(diff, zeile) {
+  /** Diff-Zeilen wie auf der Review-Seite, ohne Syntaxfarben und Zeilennummern, gekürzt als „… der Änderung“. Ist der Schritt
+      fehlgeschlagen, steht der Satz „Nicht angewendet …“ darüber, der Diff gedämpft (`nicht-angewendet`) mit Lesetext „vorgesehen …“. */
+  function diffHtml(diff, zeile, fehler) {
     const zeilen = diff.map(({ art, zeile: z }) => {
       const form = DIFF_FORM[art];
-      return `<div class="${form.klasse}"><span class="m" aria-hidden="true">${form.marke}</span>${form.lesetext}<span class="c">${zeile(z)}</span></div>`;
+      let lesetext = form.lesetext;
+      if (fehler) lesetext = form.vorgesehen;
+      return `<div class="${form.klasse}"><span class="m" aria-hidden="true">${form.marke}</span>${lesetext}<span class="c">${zeile(z)}</span></div>`;
     });
-    return kuerzungHtml(zeilen, 'aenderung', teile => `<div class="lv-dif">${teile.join('')}</div>`);
+    if (!fehler) return kuerzungHtml(zeilen, 'aenderung', teile => `<div class="lv-dif">${teile.join('')}</div>`);
+    return NICHT_ANGEWENDET + kuerzungHtml(zeilen, 'aenderung', teile => `<div class="lv-dif nicht-angewendet">${teile.join('')}</div>`);
   }
 
   /* ── Ergebnis (N4 Punkt 3, FA 1, 5–10) ── */
