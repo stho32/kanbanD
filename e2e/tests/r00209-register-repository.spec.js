@@ -25,7 +25,9 @@ function arbeitsRepository() {
   return r;
 }
 
-const register = (quellen, zeilen) => `---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\nclasses: {}\nsources:\n${quellen}${zeilen.length ? `  applications:\n${zeilen.map(z => `    ${z}\n`).join('')}` : ''}---\n`;
+// Mit dem Textkörper, den `einrichten` schreibt: seit R00250 (ADR-0043 Regel 4) ändert „Speichern“ nur die geänderten
+// Abschnitte und legt keinen Textkörper mehr an — die Vorschau gleicht der Datei nur für eine Datei in kanbanDs eigener Form.
+const register = (quellen, zeilen) => `---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\nclasses: {}\nsources:\n${quellen}${zeilen.length ? `  applications:\n${zeilen.map(z => `    ${z}\n`).join('')}` : ''}---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (\`people\`), Klassen (\`classes\`), Signale (\`signals\`) und Quellpfade (\`sources\`).\nPersonen werden stillgelegt (\`active: false\`), nicht entfernt.\n`;
 
 const zeileVon = (page, kuerzel) => page.locator(`.anw[data-anwendung="${kuerzel}"]`);
 const zustandVon = (page, kuerzel) => zeileVon(page, kuerzel).locator('.felder .erreich').first();

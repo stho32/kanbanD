@@ -35,7 +35,9 @@ function arbeitsRepository() {
   return { r, c1: git('rev-parse', 'HEAD'), wbs: `${r}/Dokumentation/Planung/kd.md`, anf: `${r}/Anforderungen` };
 }
 
-const register = zeile => `---\npeople:\n  sh: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\nclasses: {}\nsources:\n  applications:\n    ${zeile}\n---\n`;
+// Mit dem Textkörper, den `einrichten` schreibt: seit R00250 (ADR-0043 Regel 4) ändert „Speichern“ nur die geänderten
+// Abschnitte und legt keinen Textkörper mehr an — die Vorschau gleicht der Datei nur für eine Datei in kanbanDs eigener Form.
+const register = zeile => `---\npeople:\n  sh: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\nclasses: {}\nsources:\n  applications:\n    ${zeile}\n---\n\n# kanbanD\n\nEinstellungen dieses Ordners: Personen (\`people\`), Klassen (\`classes\`), Signale (\`signals\`) und Quellpfade (\`sources\`).\nPersonen werden stillgelegt (\`active: false\`), nicht entfernt.\n`;
 
 /** Ausgangslage von R00222 (wie tests/akzeptanz_r00222.rs); `inArbeit` legt #3 nach „In Arbeit“ (für die WIP-Warnung). */
 function lage(R, { registerZeile, inArbeit = false } = {}) {
