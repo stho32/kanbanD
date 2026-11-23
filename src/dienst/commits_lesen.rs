@@ -150,7 +150,7 @@ fn eintrag(v: &Verweis, objekt: &Objekt, metadaten: &HashMap<String, Metadaten>,
         Objekt::Commit(voll) => {
             let m = metadaten.get(voll).ok_or_else(|| Arbeitsrepofehler::Start(format!("keine Metadaten zu {voll}")))?;
             let z = zweige.get(voll).cloned().unwrap_or_default();
-            let mut e = Commiteintrag { hash: Some(voll.clone()), titel: Some(titel_kuerzen(&m.titel)), autor: Some(m.autor.clone()), datum: Some(m.datum.clone()), plus: Some(m.plus), minus: Some(m.minus), dateien: Some(m.dateien), ..basis(Commitzustand::Verwaist) };
+            let mut e = Commiteintrag { hash: Some(voll.clone()), titel: Some(titel_kuerzen(&m.titel)), autor: Some(m.autor.clone()), datum: Some(m.datum.clone()), autordatum: Some(m.autordatum), plus: Some(m.plus), minus: Some(m.minus), dateien: Some(m.dateien), ..basis(Commitzustand::Verwaist) };
             if !z.leer() {
                 e.zustand = Commitzustand::AufZweig;
                 e.zweige_weitere = (z.weitere > 0).then_some(z.weitere);

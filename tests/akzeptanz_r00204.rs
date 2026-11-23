@@ -89,12 +89,12 @@ async fn ak01_fuenf_zustaende() {
     let reihenfolge: Vec<&str> = l.iter().map(|e| e["verweis"].as_str().unwrap()).collect();
     let v = |h: &str| format!("kd:{h}");
     assert_eq!(reihenfolge, [v(&a.k3), v(&a.w1), v(&a.v1), v(&a.r1), v(&a.v2)], "Datum aufsteigend, V2 ohne Metadaten zuletzt");
-    assert_eq!(l[0], json!({"verweis": v(&a.k3), "anwendung": "kd", "hash": a.k3, "zustand": "auf_zweig", "zweige": ["main"], "entfernte_zweige": ["o/main"], "titel": "c.txt anlegen", "autor": "Ada Autorin", "datum": "2026-03-01T10:00:00+01:00", "plus": 3, "minus": 0, "dateien": 1}));
+    assert_eq!(l[0], json!({"verweis": v(&a.k3), "anwendung": "kd", "hash": a.k3, "zustand": "auf_zweig", "zweige": ["main"], "entfernte_zweige": ["o/main"], "titel": "c.txt anlegen", "autor": "Ada Autorin", "datum": "2026-03-01T10:00:00+01:00", "autordatum": 1772355600, "plus": 3, "minus": 0, "dateien": 1}));
     let w1 = eintrag(&l, &v(&a.w1));
     assert_eq!((&w1["zustand"], &w1["zweige"], &w1["entfernte_zweige"], &w1["autor"]), (&json!("auf_zweig"), &json!(["karte/1"]), &json!([]), &json!("Bernd Beispiel")));
     let v1 = eintrag(&l, &v(&a.v1));
     assert_eq!(v1["zustand"], "verwaist", "der Tag v1 zählt nicht");
-    assert_eq!(schluessel(v1), ["anwendung", "autor", "dateien", "datum", "hash", "minus", "plus", "titel", "verweis", "zustand"]);
+    assert_eq!(schluessel(v1), ["anwendung", "autor", "autordatum", "dateien", "datum", "hash", "minus", "plus", "titel", "verweis", "zustand"]);
     let r1 = eintrag(&l, &v(&a.r1));
     assert_eq!((&r1["zustand"], &r1["zweige"], &r1["entfernte_zweige"]), (&json!("auf_zweig"), &json!([]), &json!(["o/x"])));
     assert_eq!(eintrag(&l, &v(&a.v2)), &json!({"verweis": v(&a.v2), "anwendung": "kd", "hash": a.v2, "zustand": "fehlt"}));

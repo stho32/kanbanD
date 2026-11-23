@@ -378,3 +378,17 @@ async fn archiv_familie_nennt_die_423_und_ihren_vorrang() {
     assert_eq!(seite.matches(satz).count(), 3, "Seite /api nennt den Satz an genau den drei Endpunkten");
     assert!(!seite.contains("R00097/R00120; defektes Board 423"), "Seite /api trägt bei DELETE noch den alten Klammerzusatz");
 }
+
+/// R00251 AK 3 (B1322): `Commiteintrag` beschreibt `autordatum` als ganze Zahl, und die Beschreibung von `GET …/commits` nennt das
+/// Feld samt den Zuständen, in denen es steht.
+#[tokio::test]
+async fn commiteintrag_beschreibt_autordatum() {
+    let tmp = tempfile::tempdir().unwrap();
+    let lauf = gemeinsam::eingerichtet_starten(tmp.path());
+    let d = beschreibung(&lauf.adresse).await;
+    let feld = &d["components"]["schemas"]["Commiteintrag"]["properties"]["autordatum"];
+    assert!(feld.to_string().contains("\"integer\""), "{feld}");
+    assert!(!d["components"]["schemas"]["Commiteintrag"]["required"].as_array().unwrap().iter().any(|f| f == "autordatum"), "kein Pflichtfeld");
+    let text = d["paths"]["/api/aufgaben/{nr}/commits"]["get"]["description"].as_str().unwrap();
+    assert!(text.contains("autordatum?") && text.contains("autordatum (Autordatum in Epoch-Sekunden, ganze Zahl, bleibt beim Rebase gleich)"), "{text}");
+}

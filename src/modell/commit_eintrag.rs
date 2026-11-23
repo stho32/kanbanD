@@ -51,6 +51,9 @@ pub struct Commiteintrag {
     /// Commit-Datum, ISO 8601 mit der Zeitzone des Commits
     #[serde(skip_serializing_if = "Option::is_none")]
     pub datum: Option<String>,
+    /// bei `auf_zweig` und `verwaist`: Autordatum in Epoch-Sekunden; übersteht den Rebase (R00251, ADR-0041 N7 Punkt 4)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub autordatum: Option<i64>,
     /// hinzugefügte Zeilen gegen den ersten Elternteil (Wurzel: gegen den leeren Baum)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plus: Option<u64>,
@@ -65,7 +68,7 @@ pub struct Commiteintrag {
 impl Commiteintrag {
     /// Ein Eintrag nur mit Verweis und Commitzustand; die übrigen Felder setzt der Aufrufer.
     pub fn neu(verweis: &str, zustand: Commitzustand) -> Commiteintrag {
-        Commiteintrag { verweis: verweis.into(), anwendung: None, hash: None, zustand, grund: None, zweige: None, entfernte_zweige: None, zweige_weitere: None, titel: None, autor: None, datum: None, plus: None, minus: None, dateien: None }
+        Commiteintrag { verweis: verweis.into(), anwendung: None, hash: None, zustand, grund: None, zweige: None, entfernte_zweige: None, zweige_weitere: None, titel: None, autor: None, datum: None, autordatum: None, plus: None, minus: None, dateien: None }
     }
 }
 

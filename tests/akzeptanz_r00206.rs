@@ -193,7 +193,9 @@ async fn ak01_text_binaer_umbenennung() {
     e.remove("zustand");
     e.remove("zweige");
     e.remove("entfernte_zweige");
-    assert_eq!(d["commits"], json!([eintrag]), "wie die Liste, ohne Zustand und Zweige");
+    // R00251 FA 4: `autordatum` trägt nur die Liste `GET …/commits`, der Diff bleibt byte-gleich
+    assert!(e.remove("autordatum").is_some_and(|w| w.is_i64()), "die Liste trägt autordatum");
+    assert_eq!(d["commits"], json!([eintrag]), "wie die Liste, ohne Zustand, Zweige und Autordatum");
     assert_eq!(d["commits"][0]["dateien"], 3);
     assert_eq!((lies(&l.a.board, "aufgaben/0001-commit-liste.md"), l.a.commit_zahl()), (datei_vorher, zahl), "GET schreibt nie");
     assert_eq!(r_stand(&l.a.r), r_vorher, "in R nichts geändert");
