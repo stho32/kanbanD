@@ -592,3 +592,43 @@ test('Nacharbeit 1 Punkt 4: Text-Marker nur aus der Bestätigung eines git commi
     assert.deepStrictEqual(mit(befehl, '[karte/7 abc1234] Zähler zeichnen jetzt'), erwartet, befehl);
   }
 });
+
+/** Probe des security-reviewer (srev-269/n3/q4.js) als Treiber: `schritte` Bash-Aufrufe `git commit -m <65.000 × „a“>`, je mit einem
+    Ergebnis aus `zeilen` Belegzeilen `<hex7> <a × h>b<a × h>` (Titel 2h + 1 Zeichen, ganz nie im Befehl, Teiltreffer überall). */
+function langeBelegtitel(zeilen, h, schritte) {
+  const befehl = `git commit -m ${'a'.repeat(65000)}`;
+  const titel = `${'a'.repeat(h)}b${'a'.repeat(h)}`;
+  let text = '';
+  for (let i = 0; i < zeilen; i++) text += `${(0x1000000 + i).toString(16)} ${titel}\n`;
+  const lauf = [];
+  for (let i = 0; i < schritte; i++) lauf.push(aufruf(T(0), befehl), ergebnis(T(1), text));
+  return rechnen(paar(lauf, Object.fromEntries(lauf.map((e, i) => [i, i - 1]).filter(([i]) => i % 2 === 1))), []);
+}
+
+test('Nacharbeit 3 (Security Muss 4): Belegtitel vor der Suche auf den Kopf gekappt — je Suche höchstens 60 Zeichen Titel bei (N, h) = (1, 200.000), (1.000, 300), (258, 3.000), (250, 30.000) × 1 und 100 Schritten', () => {
+  const { titel, vergleichsZeichen } = COMMIT_GRENZEN;
+  for (const [zeilen, h] of [[1, 200000], [1000, 300], [258, 3000], [250, 30000]]) {
+    for (const schritte of [1, 100]) {
+      const start = process.hrtime.bigint();
+      const r = langeBelegtitel(zeilen, h, schritte);
+      const ms = Number(process.hrtime.bigint() - start) / 1e6;
+      const fall = `(${zeilen}, ${h}) × ${schritte} Schritte`;
+      assert.ok(r.belegvergleiche > 0, `${fall}: gesucht`);
+      assert.ok(r.belegTitelZeichen <= r.belegvergleiche * titel, `${fall}: ${r.belegTitelZeichen} Titelzeichen bei ${r.belegvergleiche} Suchen`);
+      assert.ok(r.belegZeichen <= vergleichsZeichen, `${fall}: ${r.belegZeichen} Befehlszeichen`);
+      const marker = [...r.marker.values()].flat().length;
+      assert.ok(marker <= COMMIT_GRENZEN.marker, `${fall}: ${marker} Marker — der Kopf aus 60 „a“ steht im Befehl, wie bei Karten-Titeln`);
+      console.log(`Beobachtung: ${fall} → ${r.belegvergleiche} Suchen, ${marker} Marker, ${r.belegTitelZeichen} Titelzeichen, ${r.belegZeichen} Befehlszeichen, ${ms.toFixed(0)} ms`);
+    }
+  }
+});
+
+test('Nacharbeit 3 (Security Muss 4): echte Titel bleiben Marker — 12, 60 und 61 bis 200 Zeichen im Befehl, der Marker trägt den ganzen Titel', () => {
+  const mit = titel => rechnen(paar([aufruf(T(10), `git commit -m "${titel}"`), ergebnis(T(11), `[karte/7 3f2a9c1] ${titel}`)], { 1: 0 }), []);
+  for (const laenge of [12, 59, 60, 61, 200]) {
+    const titel = `B1341: ${'Zähler '.repeat(40)}`.slice(0, laenge);
+    const r = mit(titel);
+    assert.deepStrictEqual(r.marker.get(1), [{ art: 'text', kurzhash: '3f2a9c1', titel }], `${laenge} Zeichen`);
+    assert.strictEqual(r.belegTitelZeichen, Math.min(laenge, COMMIT_GRENZEN.titel), `${laenge} Zeichen: gesucht wird der Kopf`);
+  }
+});

@@ -19,13 +19,13 @@
    * `verglicheneZeichen` die Zeichen der dabei durchsuchten Befehle, `fensterzugriffe` jeden Blick auf einen Commit bei der Suche
    * nach dem Fenster (Lehre „Grenzen, die Arbeit begrenzen“: Zähler am einzigen Leseort). `belegvergleiche` und `belegZeichen` zählen
    * die Suchen der Belegtitel im Befehl (Text-Marker) mit denselben Grenzen über `vergleichBuchen`, in eigenem Topf, damit nach dem
-   * Abbruch der Zuordnung Belegzeilen weiter Text-Marker werden (PO Z. 710). `teilweise`: eine der beiden Grenzen hat abgebrochen.
+   * Abbruch der Zuordnung Belegzeilen weiter Text-Marker werden (PO Z. 710); `belegTitelZeichen` die Zeichen der dabei gesuchten Köpfe. `teilweise`: eine der beiden Grenzen hat abgebrochen.
    */
   function commitMarker(zeilen, schritte, karte) {
     const commits = verlinkbareCommitsNachAutordatum(karte);
     const kandidaten = befehlsSchritte(zeilen, schritte);
     const zuordnung = commitsZuordnen(kandidaten, commits);
-    const belege = { vergleiche: 0, zeichen: 0, abgebrochen: false };
+    const belege = { vergleiche: 0, zeichen: 0, titelZeichen: 0, abgebrochen: false };
     const marker = new Map();
     for (const k of kandidaten) {
       const eigene = zuordnung.jeSchritt.get(k.nr);
@@ -35,7 +35,7 @@
     }
     const { titelpruefungen, verglicheneZeichen, fensterzugriffe } = zuordnung;
     const teilweise = zuordnung.teilweise || belege.abgebrochen;
-    return { ...begrenzt(marker), teilweise, titelpruefungen, verglicheneZeichen, fensterzugriffe, belegvergleiche: belege.vergleiche, belegZeichen: belege.zeichen };
+    return { ...begrenzt(marker), teilweise, titelpruefungen, verglicheneZeichen, fensterzugriffe, belegvergleiche: belege.vergleiche, belegZeichen: belege.zeichen, belegTitelZeichen: belege.titelZeichen };
   }
 
   /* ── Die Commits der Karte: nur, was einen Link tragen darf, sortiert nach Autordatum ── */
@@ -51,7 +51,7 @@
     const commits = [];
     eintraege.forEach((e, stelle) => {
       if (!verlinkbar(e)) return;
-      commits.push({ verweis: e.verweis, hash: e.hash, titel: e.titel, autordatum: e.autordatum, stelle, kopf: Array.from(e.titel).slice(0, COMMIT_GRENZEN.titel).join('') });
+      commits.push({ verweis: e.verweis, hash: e.hash, titel: e.titel, autordatum: e.autordatum, stelle, kopf: kopfVon(e.titel) });
     });
     return commits.sort((a, b) => a.autordatum - b.autordatum || a.stelle - b.stelle);
   }
@@ -164,6 +164,10 @@
     return { jeSchritt, teilweise, titelpruefungen: zaehler.vergleiche, verglicheneZeichen: zaehler.zeichen, fensterzugriffe: zaehler.zugriffe };
   }
 
+  /** Die ersten `COMMIT_GRENZEN.titel` Zeichen eines Titels: nur sie werden im Befehl gesucht (Karten- und Belegtitel), damit jede Suche
+      höchstens Befehl × 60 kostet (Security-Review #269 Muss 4). */
+  const kopfVon = titel => Array.from(titel).slice(0, COMMIT_GRENZEN.titel).join('');
+
   /** Bucht einen Vergleich (Titel der Karte bzw. Titel einer Belegzeile) mit einem Befehl von `zeichen` Zeichen; false, wenn er eine
       der beiden Grenzen überschritte. Der einzige Ort, der Vergleiche zählt. */
   function vergleichBuchen(zaehler, zeichen) {
@@ -197,7 +201,7 @@
   const BELEG_EINZEILER = /^([0-9a-f]{7,12}) (.+)$/;
 
   /** Ein Schritt ohne Commit der Karte, der `git commit` aufruft (nicht `--amend`): je Belegzeile im Ergebnis ein Text-Marker, wenn der
-      Titel mindestens 12 Zeichen hat und im Befehl steht. Jede Suche im Befehl bucht `vergleichBuchen` auf `belege` (Security-Review
+      Titel mindestens 12 Zeichen hat und sein Kopf (`kopfVon`) im Befehl steht. Jede Suche im Befehl bucht `vergleichBuchen` auf `belege` (Security-Review
       #269 Muss 3); würde sie eine Grenze überschreiten, endet die Belegsuche des Laufs dort (`belege.abgebrochen`), gefundene Marker
       bleiben. Der Hash ist der des Worktrees: er wird nur gezeigt. */
   function textMarker(k, belege) {
@@ -207,7 +211,9 @@
       const beleg = belegzeileLesen(zeile.replace(/\r$/, ''));
       if (!beleg || gesehen.has(zeile) || Array.from(beleg.titel).length < COMMIT_GRENZEN.belegTitel) continue;
       if (!vergleichBuchen(belege, k.befehl.length)) { belege.abgebrochen = true; break; }
-      if (!k.befehl.includes(beleg.titel)) continue;
+      const kopf = kopfVon(beleg.titel);
+      belege.titelZeichen += kopf.length;
+      if (!k.befehl.includes(kopf)) continue;
       gesehen.add(zeile);
       marker.push({ art: 'text', kurzhash: beleg.hash.slice(0, 7), titel: beleg.titel });
     }
