@@ -184,6 +184,12 @@ test('R00122 US-4 (B0569): Zeitraum 05.–11.11. begrenzt die Ankünfte', async 
     await alsFabrik(page);
     await page.goto(k.adresse + '#/berichte/durchsatz');
     await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3');
+    // R00254 AK 3 (Beispiel B, 05.–11.11. = 7 Kalendertage): drei Ø je Tag, Netto aus den Summen, mit Vorzeichen und Wort
+    const kz = page.locator('#dus-kennzahl');
+    await expect(kz).toContainText('Zugang 1 · Ø 0,1 je Tag');
+    await expect(kz).toContainText('Abgang 3 · Ø 0,4 je Tag');
+    await expect(kz).toContainText('Netto +2 · Ø +0,3 je Tag · baut ab');
+    await expect(kz).toContainText('2 Perioden');
     await page.locator('.fluss-tabs > summary').click();
     await expect(page.locator('.fluss-tab tbody tr').first().locator('td')).toHaveText(['KW45 02.–08.11.2026', '0', '1', '+1']);
     await expect(page.locator('.fluss-tab tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '1', '2', '+1']);
