@@ -92,6 +92,9 @@ pub struct Kanban {
     /// Bytegrenze von Netto-Liste und Netto-Zähler des Gesamt-Diffs mit `datei=` (ADR-0032 N8.6 Punkt 4 (a)); Tests
     /// verkleinern sie (R00225 AK 6 D2)
     grenze_netto_datei: usize,
+    /// Bytegrenze von Roh- und Zähler-Lauf der Folge-Liste ohne `datei=` (R00255, ADR-0032 N10.3 Punkt 1); Tests
+    /// verkleinern sie (AK 6)
+    grenze_folge_liste: usize,
     /// Testnaht (R00206 B1015): läuft einmal direkt nach dem Belegen des Antwortbudgets, mit der Zahl belegter Plätze der
     /// Lesegrenze
     #[cfg(test)]
@@ -151,7 +154,7 @@ impl Schritt {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN, grenze_netto_datei: crate::modell::GRENZE_DATEILISTE_EINZELN,
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN, grenze_netto_datei: crate::modell::GRENZE_DATEILISTE_EINZELN, grenze_folge_liste: crate::modell::GRENZE_DATEILISTE,
             #[cfg(test)]
             nach_dem_belegen: Mutex::default(),
             #[cfg(test)]

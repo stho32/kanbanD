@@ -449,8 +449,11 @@ impl Gesamtlauf<'_> {
         // startet Git mit der Angabe nicht (Argumentgrenze), ist das wie ein abgeschnittener Lauf ohne vollständigen
         // Abschnitt: die Folge-Einträge fallen weg, `dateien_gekappt` (N7.10 Punkt 3); mit datei= der Diff je Commit
         let zu_lang = || if self.anfrage.datei.is_some() { Err(zu_gross_fuer_datei(self.nr)) } else { Ok((vec![], 0, true, vec![vec![]; plan.commits.len()])) };
-        let Some(roh) = gestartet(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Roh), &pfade, GRENZE_DATEILISTE, self.frist)).map_err(repo_fehler)? else { return zu_lang() };
-        let Some(zahlen) = gestartet(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Zahlen), &pfade, GRENZE_DATEILISTE, self.frist)).map_err(repo_fehler)? else { return zu_lang() };
+        // mit `datei=` liest die Folge-Liste bis `grenze_netto_datei` wie die Netto-Liste (R00255 AK 1, ADR-0032 N10.3
+        // Punkt 1); ohne `datei=` bleibt die Folge-Grenze — die Liste wird nicht größer (AK 6)
+        let grenze = if self.anfrage.datei.is_some() { self.k.grenze_netto_datei } else { self.k.grenze_folge_liste };
+        let Some(roh) = gestartet(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Roh), &pfade, grenze, self.frist)).map_err(repo_fehler)? else { return zu_lang() };
+        let Some(zahlen) = gestartet(arbeitsrepo::diff_tree_viele(self.wurzel, &vergleiche, Vielart::Diff(Diffart::Zahlen), &pfade, grenze, self.frist)).map_err(repo_fehler)? else { return zu_lang() };
         let form = || Fehler::Intern("git: Folge-Lauf unlesbar".into());
         let roh_ab = abschnitte_z(&roh.ausgabe, &koepfe, Zform::Roh).ok_or_else(form)?;
         let zahlen_ab = abschnitte_z(&zahlen.ausgabe, &koepfe, Zform::Zahlen).ok_or_else(form)?;
@@ -1116,5 +1119,42 @@ mod tests {
         assert_eq!(EINTEILUNG_VERSION, 3, "R00255 AK 7: Version der Einteilung");
         assert_eq!(jetzt, etag_mit(&verweise, "s", "kd", Path::new("/w"), &a, 3), "{jetzt}");
         assert_ne!(etag_mit(&verweise, "s", "kd", Path::new("/w"), &a, 2), jetzt, "der ETag vor dem Fix ist ein anderer");
+    }
+
+    // R00255 AK 6 (ADR-0032 N10.3 Punkt 1): mit `datei=` liest die Folge-Liste bis `grenze_netto_datei` (20 MB), ohne
+    // `datei=` bleibt die Folge-Grenze (`grenze_folge_liste`) — die Liste wird nicht größer. `ganz_als_folge` billig über
+    // einen nicht-linearen Verlauf (K1 auf einem Seitenzweig, K2 auf `main`). Mutant m1 (Folge-Liste mit `datei=` weiter
+    // 1 MB) und m2 (Folge-Grenze auch ohne `datei=` 20 MB) werden hier rot.
+    #[test]
+    fn folge_liste_mit_datei_bis_20_mb_ohne_datei_unveraendert() {
+        let mut s = Stand::neu();
+        git(&s.r, &["checkout", "-q", "-b", "seite"]);
+        for i in 0..50 {
+            std::fs::write(s.r.join(format!("s{i:02}.txt")), format!("{i}\n")).unwrap();
+        }
+        let k1 = s.commit(None, None, "K1 Seite");
+        git(&s.r, &["checkout", "-q", "main"]);
+        let k2 = s.commit(None, Some("k2.txt"), "K2");
+        s.karte(2, &[k1, k2]);
+        let mut k = Kanban::neu(s.board.clone());
+        // K1 allein liegt über der Folge-Grenze
+        k.grenze_folge_liste = 300;
+        // ohne datei=: ganz als Folge (nicht linear) mit leerer Liste und Kappe — unverändert
+        let (a, _) = lesen(&k, 2, &anfrage(&[], None));
+        let (d, _) = json(&a);
+        assert_eq!(d["hinweise"][0], serde_json::json!({"art": "ganz_als_folge", "grund": "nicht_linear"}), "{d}");
+        assert_eq!(d["dateien"], serde_json::json!([]), "{d}");
+        assert_eq!(d["hinweise"][1], serde_json::json!({"art": "dateien_gekappt", "gezeigt": 0, "gesamt": 51}), "{d}");
+        // mit datei=: bis 20 MB gelesen → 200 mit Folge-Eintrag hinter dem Schnitt der Liste
+        let (a, _) = lesen(&k, 2, &anfrage(&[("datei", "k2.txt")], None));
+        let (d, _) = json(&a);
+        assert_eq!((d["dateien"][0]["pfad"].as_str(), d["dateien"][0]["schritte"][0]["status"].as_str()), (Some("k2.txt"), Some("A")), "{d}");
+        // Gegenprobe: kleine grenze_netto_datei → 404 hinter dem Schnitt, nicht „in keinem Kartencommit“
+        k.grenze_netto_datei = 300;
+        let f = match k.diff_lesen(2, &anfrage(&[("datei", "k2.txt")], None), frist()) {
+            Err(Fehler::NichtGefunden(t)) => t,
+            anders => panic!("kein 404: {anders:?}"),
+        };
+        assert!(!f.contains("in keinem Kartencommit") && f.contains("commit="), "{f}");
     }
 }
