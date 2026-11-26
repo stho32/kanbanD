@@ -7,7 +7,7 @@ mod statisch;
 pub mod strom;
 
 use crate::dienst::{Angelegt, Bewegung, BoardVerwalten, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur, Zielort};
-use crate::fehler::Fehler;
+use crate::fehler::{Fehler, Ursache};
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
 use crate::waechter::{self, Ereignis};
 use koerper::{Abfrage, Abweisung, JsonKoerper, Pfad};
@@ -153,25 +153,19 @@ fn router_bauen(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protoko
     router.merge(statisch::router()).with_state(app)
 }
 
+/// Was eine Abweisung im Protokoll hinterlässt (R00258 FA 10/11): die Ursache aus `Fehler::ursache()` und der
+/// Grund ohne Inhalt. `into_response` und `fehlerantwort` hängen sie als Response-Extension an — geschrieben wird nur
+/// in der Middleware (ADR-0001 N1.4 Regel 1). Fehlt sie (Abweisung durch axum selbst), steht im Protokoll `-`.
+#[derive(Clone, Debug)]
+pub struct Abweisungsgrund {
+    pub ursache: Ursache,
+    pub grund: String,
+}
+
 impl IntoResponse for Fehler {
     fn into_response(self) -> Response {
-        let status = match self {
-            Fehler::Ungueltig(_) => StatusCode::BAD_REQUEST,
-            Fehler::NichtGefunden(_) => StatusCode::NOT_FOUND,
-            Fehler::Konflikt(_) => StatusCode::CONFLICT,
-            Fehler::Defekt(_) => StatusCode::LOCKED,
-            Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Fehler::GrenzeErreicht { .. } => StatusCode::CONFLICT,
-            Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } | Fehler::SchalterVerboten { .. } => StatusCode::FORBIDDEN,
-            Fehler::Verweis { fehlt: true, .. } => StatusCode::NOT_FOUND,
-            Fehler::Verweis { fehlt: false, .. } => StatusCode::BAD_REQUEST,
-            Fehler::VerweisKonflikt { .. } => StatusCode::CONFLICT,
-            Fehler::Zeitgrenze(_) | Fehler::Ausgelastet(_) => StatusCode::SERVICE_UNAVAILABLE,
-            Fehler::Commitzustand { .. } | Fehler::Transkriptzustand { .. } => StatusCode::NOT_FOUND,
-            Fehler::ErfassungAus { .. } | Fehler::KennungBelegt { .. } => StatusCode::CONFLICT,
-            Fehler::ZuGross(_) => StatusCode::PAYLOAD_TOO_LARGE,
-        };
-        match &self {
+        let status = self.status();
+        let mut antwort = match &self {
             Fehler::GrenzeErreicht { spalte, grenze, anzahl } => {
                 let rumpf = openapi::GrenzeErreicht { fehler: self.meldung().to_string(), spalte: spalte.clone(), grenze: *grenze, anzahl: *anzahl };
                 (status, Json(rumpf)).into_response()
@@ -213,6 +207,30 @@ impl IntoResponse for Fehler {
                 (status, Json(rumpf)).into_response()
             }
             _ => fehlerantwort(status, self.meldung()),
+        };
+        antwort.extensions_mut().insert(Abweisungsgrund { ursache: self.ursache(), grund: self.grund_fuer_protokoll() });
+        antwort
+    }
+}
+
+impl Fehler {
+    /// Der HTTP-Status dieser Art — die eine Abbildung (N1.4 Regel 3: Rumpf und Status ändern sich nicht).
+    fn status(&self) -> StatusCode {
+        match self {
+            Fehler::Ungueltig(_) => StatusCode::BAD_REQUEST,
+            Fehler::NichtGefunden(_) => StatusCode::NOT_FOUND,
+            Fehler::Konflikt(_) => StatusCode::CONFLICT,
+            Fehler::Defekt(_) => StatusCode::LOCKED,
+            Fehler::Intern(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Fehler::GrenzeErreicht { .. } => StatusCode::CONFLICT,
+            Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } | Fehler::SchalterVerboten { .. } => StatusCode::FORBIDDEN,
+            Fehler::Verweis { fehlt: true, .. } => StatusCode::NOT_FOUND,
+            Fehler::Verweis { fehlt: false, .. } => StatusCode::BAD_REQUEST,
+            Fehler::VerweisKonflikt { .. } => StatusCode::CONFLICT,
+            Fehler::Zeitgrenze(_) | Fehler::Ausgelastet { .. } => StatusCode::SERVICE_UNAVAILABLE,
+            Fehler::Commitzustand { .. } | Fehler::Transkriptzustand { .. } => StatusCode::NOT_FOUND,
+            Fehler::ErfassungAus { .. } | Fehler::KennungBelegt { .. } => StatusCode::CONFLICT,
+            Fehler::ZuGross(_) => StatusCode::PAYLOAD_TOO_LARGE,
         }
     }
 }
@@ -220,6 +238,13 @@ impl IntoResponse for Fehler {
 /// Die Abweisung ohne weitere Felder: Status und Rumpf `{"fehler": …}` — für `Fehler` und für den Extraktor des Rumpfs (ADR-0003 N3).
 fn fehlerantwort(status: StatusCode, meldung: &str) -> Response {
     (status, Json(json!({ "fehler": meldung }))).into_response()
+}
+
+/// Wie [`fehlerantwort`], dazu die Ursache fürs Protokoll — für Abweisungen, die der Rahmen selbst erzeugt (413).
+pub(crate) fn fehlerantwort_mit(status: StatusCode, meldung: &str, ursache: Ursache) -> Response {
+    let mut antwort = fehlerantwort(status, meldung);
+    antwort.extensions_mut().insert(Abweisungsgrund { ursache, grund: meldung.to_string() });
+    antwort
 }
 
 /// Das Kürzel aus dem Header `X-KanbanD-Wer`, falls genannt.
@@ -1973,7 +1998,7 @@ mod tests {
         assert_eq!((status, rumpf.as_str()), (StatusCode::CONFLICT, r#"{"fehler":"m","verweis":"kd:3f2a9c1"}"#), "R00203: 409 trägt das alt");
         let (status, rumpf) = antwort(Fehler::Zeitgrenze("z".into())).await;
         assert_eq!((status, rumpf.as_str()), (StatusCode::SERVICE_UNAVAILABLE, r#"{"fehler":"z"}"#));
-        let (status, rumpf) = antwort(Fehler::Ausgelastet("Antwortbudget".into())).await;
+        let (status, rumpf) = antwort(Fehler::antwortbudget("Antwortbudget".into())).await;
         assert_eq!((status, rumpf.as_str()), (StatusCode::SERVICE_UNAVAILABLE, r#"{"fehler":"Antwortbudget"}"#), "R00206 AK 20");
     }
 
@@ -1982,10 +2007,10 @@ mod tests {
     async fn belegte_lesegrenze_ist_503_nur_mit_fehler() {
         for endung in ["keine Liste", "kein Diff", "keine Suche nach dem Nachfolger"] {
             let wortlaut = format!("Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — {endung}");
-            let a = Fehler::Ausgelastet(wortlaut.clone()).into_response();
+            let a = Fehler::antwortbudget(wortlaut.clone()).into_response();
             assert_eq!(a.status(), StatusCode::SERVICE_UNAVAILABLE, "{endung}");
             assert!(a.headers().get("retry-after").is_none(), "{endung}: kein Retry-After");
-            let (status, rumpf) = antwort(Fehler::Ausgelastet(wortlaut.clone())).await;
+            let (status, rumpf) = antwort(Fehler::antwortbudget(wortlaut.clone())).await;
             assert_eq!((status, rumpf), (StatusCode::SERVICE_UNAVAILABLE, serde_json::json!({ "fehler": wortlaut }).to_string()), "{endung}");
         }
     }
@@ -2052,5 +2077,52 @@ mod tests {
         let (status, rumpf) = antwort(Fehler::Konflikt("schon reserviert".into())).await;
         assert_eq!(status, StatusCode::CONFLICT);
         assert_eq!(rumpf, r#"{"fehler":"schon reserviert"}"#);
+    }
+
+    // R00258 AK 2/3: die Ursache ist eine eigene Abbildung (`Fehler::ursache()`), nie aus dem Text gelesen
+    #[test]
+    fn jede_abweisung_traegt_ihre_ursache() {
+        use crate::fehler::{Grenze, Ursache};
+        let faelle: Vec<(Fehler, Ursache)> = vec![
+            (Fehler::Ungueltig("x".into()), Ursache::Eingabe),
+            (Fehler::NichtGefunden("x".into()), Ursache::Fehlt),
+            (Fehler::Konflikt("x".into()), Ursache::Konflikt),
+            (Fehler::Defekt("x".into()), Ursache::Defekt),
+            (Fehler::Intern("x".into()), Ursache::Intern),
+            (Fehler::GrenzeErreicht { spalte: "s".into(), grenze: 1, anzahl: 2 }, Ursache::Grenze),
+            (Fehler::Verboten { meldung: "m".into(), spalte: "s".into(), nummer: 1 }, Ursache::Verboten),
+            (Fehler::einstellung_verboten("s", crate::modell::Einstellung::Grenze), Ursache::Verboten),
+            (Fehler::personenart_verboten("cl", false), Ursache::Verboten),
+            (Fehler::schalter_verboten(), Ursache::Verboten),
+            (Fehler::Verweis { meldung: "m".into(), verweis: "v".into(), fehlt: true }, Ursache::Fehlt),
+            (Fehler::Verweis { meldung: "m".into(), verweis: "v".into(), fehlt: false }, Ursache::Eingabe),
+            (Fehler::VerweisKonflikt { meldung: "m".into(), verweis: "v".into() }, Ursache::Konflikt),
+            (Fehler::Zeitgrenze("x".into()), Ursache::Zeitgrenze),
+            (Fehler::Ausgelastet { grenze: Grenze::Lesegrenze, meldung: "x".into() }, Ursache::Lesegrenze),
+            (Fehler::antwortbudget("Antwortbudget".into()), Ursache::Antwortbudget),
+            (Fehler::ZuGross("x".into()), Ursache::ZuGross),
+        ];
+        for (f, u) in faelle {
+            assert_eq!(f.ursache(), u, "{f:?}");
+            assert_eq!(f.ursache().text().is_empty(), false);
+        }
+    }
+
+    // R00258 AK 3 (Mutant m1): die Ursache kommt aus der Grenzart, nicht aus dem Meldungstext
+    #[test]
+    fn die_ursache_kommt_nicht_aus_dem_meldungstext() {
+        use crate::fehler::Ursache;
+        assert_eq!(Fehler::lesegrenze("Antwortbudget wäre auch denkbar".into()).ursache(), Ursache::Lesegrenze);
+        assert_eq!(Fehler::antwortbudget("Lesegrenze wäre auch denkbar".into()).ursache(), Ursache::Antwortbudget);
+    }
+
+    // R00258 AK 2: `into_response` schreibt nichts, hängt aber Ursache und Grund als Extension an — der Rumpf bleibt
+    #[tokio::test]
+    async fn die_antwort_traegt_ursache_und_grund_als_extension() {
+        let mut antwort = Fehler::Ungueltig("Person „zz“ steht nicht in kanbanD.md".into()).into_response();
+        let grund = antwort.extensions_mut().remove::<Abweisungsgrund>().expect("Abweisungsgrund hängt an der Antwort");
+        assert_eq!(grund.ursache, Ursache::Eingabe);
+        assert_eq!(grund.grund, "Person „zz“ steht nicht in kanbanD.md");
+        assert_eq!(antwort.status(), StatusCode::BAD_REQUEST);
     }
 }

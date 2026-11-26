@@ -34,7 +34,7 @@ impl IntoResponse for Abweisung {
         match self {
             Abweisung::Inhalt(fehler) => fehler.into_response(),
             Abweisung::KeinJson => super::fehlerantwort(StatusCode::UNSUPPORTED_MEDIA_TYPE, "Content-Type fehlt oder ist nicht application/json — der Rumpf wird nur als JSON gelesen"),
-            Abweisung::ZuGross => super::fehlerantwort(StatusCode::PAYLOAD_TOO_LARGE, "Der Rumpf ist zu groß für eine JSON-Anfrage"),
+            Abweisung::ZuGross => super::fehlerantwort_mit(StatusCode::PAYLOAD_TOO_LARGE, "Der Rumpf ist zu groß für eine JSON-Anfrage", crate::fehler::Ursache::ZuGross),
         }
     }
 }

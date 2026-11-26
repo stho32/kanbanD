@@ -817,7 +817,7 @@ mod tests {
         let plaetze: Vec<_> = (0..super::super::lesegrenze::LESEN_HOECHSTENS).map(|_| k.lesegrenze.betreten(fern).unwrap()).collect();
         let (vorher, start) = (arbeitsrepo::aufrufe(), Instant::now());
         let f = k.nachfolger_suchen(1, &format!("kd:{}", s.k), None, Instant::now() + Duration::from_millis(300)).unwrap_err();
-        assert!(matches!(&f, Fehler::Ausgelastet(m) if m == "Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — keine Suche nach dem Nachfolger"), "{f:?}");
+        assert!(matches!(&f, Fehler::Ausgelastet { meldung: m, .. } if m == "Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — keine Suche nach dem Nachfolger"), "{f:?}");
         assert!(start.elapsed() >= Duration::from_millis(300), "{:?}", start.elapsed());
         assert_eq!(arbeitsrepo::aufrufe() - vorher, 0, "Git nicht gestartet");
         drop(plaetze);

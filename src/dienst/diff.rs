@@ -353,7 +353,7 @@ impl Kanban {
             Diffformat::Json => json(&Diff { anwendung: anwendung.kuerzel.clone(), wurzel: wurzel.display().to_string(), commits: vec![commit], dateien: inhalt.dateien, hinweise: inhalt.hinweise })?,
             Diffformat::Patch => patch_text(&mut inhalt.dateien).into_bytes(),
         };
-        let rumpf = self.antwortbudget.belegen(bytes).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Diff in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
+        let rumpf = self.antwortbudget.belegen(bytes).ok_or_else(|| Fehler::antwortbudget(format!("Antwortbudget von {} MB belegt — Diff in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
         #[cfg(test)]
         if let Some(haken) = self.nach_dem_belegen.lock().unwrap().take() {
             haken(self.lesegrenze.belegt());
@@ -567,7 +567,7 @@ mod tests {
         let alles = k.antwortbudget.belegen(vec![0; k.antwortbudget.frei()]).unwrap();
         let start = Instant::now();
         let f = k.diff_lesen(1, &anfrage(&c1, Diffformat::Json), Instant::now() + Duration::from_secs(10)).unwrap_err();
-        assert!(matches!(&f, Fehler::Ausgelastet(m) if m == "Antwortbudget von 64 MB belegt — Diff in einigen Sekunden erneut laden"), "{f:?}");
+        assert!(matches!(&f, Fehler::Ausgelastet { meldung: m, .. } if m == "Antwortbudget von 64 MB belegt — Diff in einigen Sekunden erneut laden"), "{f:?}");
         assert!(start.elapsed() < Duration::from_secs(2), "ohne Warten: {:?}", start.elapsed());
         drop(alles);
         assert!(k.diff_lesen(1, &anfrage(&c1, Diffformat::Patch), Instant::now() + Duration::from_secs(10)).is_ok());
@@ -611,7 +611,7 @@ mod tests {
             let plaetze: Vec<_> = (0..super::super::lesegrenze::LESEN_HOECHSTENS).map(|_| k.lesegrenze.betreten(fern).unwrap()).collect();
             let (vorher, start) = (arbeitsrepo::aufrufe(), Instant::now());
             let f = k.diff_lesen(1, &a, Instant::now() + Duration::from_millis(300)).unwrap_err();
-            assert!(matches!(&f, Fehler::Ausgelastet(m) if m == BELEGT_KEIN_DIFF), "{name}: {f:?}");
+            assert!(matches!(&f, Fehler::Ausgelastet { meldung: m, .. } if m == BELEGT_KEIN_DIFF), "{name}: {f:?}");
             assert!(start.elapsed() >= Duration::from_millis(300), "{name}: {:?}", start.elapsed());
             assert_eq!(arbeitsrepo::aufrufe() - vorher, 0, "{name}: Git nicht gestartet");
             drop(plaetze);

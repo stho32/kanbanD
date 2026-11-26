@@ -1,5 +1,47 @@
 use crate::modell::Einstellung;
 
+/// Warum eine Anfrage abgewiesen wurde — eine geschlossene Liste, abgebildet an genau einem Ort
+/// (`Fehler::ursache()`, R00258 FA 11, ADR-0001 N1.4 Regel 3). Nie aus dem Text der Meldung gelesen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ursache {
+    Eingabe,
+    Fehlt,
+    Verboten,
+    Konflikt,
+    Grenze,
+    Defekt,
+    ZuGross,
+    Zeitgrenze,
+    Lesegrenze,
+    Antwortbudget,
+    Intern,
+}
+
+impl Ursache {
+    pub fn text(self) -> &'static str {
+        match self {
+            Ursache::Eingabe => "eingabe",
+            Ursache::Fehlt => "fehlt",
+            Ursache::Verboten => "verboten",
+            Ursache::Konflikt => "konflikt",
+            Ursache::Grenze => "grenze",
+            Ursache::Defekt => "defekt",
+            Ursache::ZuGross => "zu_gross",
+            Ursache::Zeitgrenze => "zeitgrenze",
+            Ursache::Lesegrenze => "lesegrenze",
+            Ursache::Antwortbudget => "antwortbudget",
+            Ursache::Intern => "intern",
+        }
+    }
+}
+
+/// Welche Kapazitätsgrenze belegt ist (R00258 FA 11): die Ursache wird nie aus dem Meldungstext gelesen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Grenze {
+    Lesegrenze,
+    Antwortbudget,
+}
+
 /// Was ein Anwendungsfall melden kann; jede Art hat ihren HTTP-Status.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Fehler {
@@ -33,7 +75,8 @@ pub enum Fehler {
     /// Ein Git-Prozess im Arbeits-Repository überschritt die Zeitgrenze und wurde beendet (503, ADR-0032 Punkt 3).
     Zeitgrenze(String),
     /// Das Antwortbudget ist belegt (503, ADR-0032 N5.1) — sofort, ohne Warten; der Text beginnt mit „Antwortbudget“.
-    Ausgelastet(String),
+    /// `grenze` nennt, welche der beiden Kapazitätsgrenzen voll ist (R00258 FA 11).
+    Ausgelastet { grenze: Grenze, meldung: String },
     /// Zu diesem Commit-Verweis gibt es keinen Diff (404, R00206 FA 3, ADR-0032 N4.2) — Rumpf `{fehler, zustand, grund?}`
     /// mit dem Zustand, den auch die Commit-Liste nennt.
     Commitzustand { meldung: String, zustand: crate::modell::Commitzustand, grund: Option<String> },
@@ -55,10 +98,50 @@ pub enum Fehler {
 impl Fehler {
     pub fn meldung(&self) -> &str {
         match self {
-            Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) | Fehler::Ausgelastet(m) | Fehler::ZuGross(m) => m,
+            Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) | Fehler::Ausgelastet { meldung: m, .. } | Fehler::ZuGross(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
             Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } | Fehler::Commitzustand { meldung, .. } | Fehler::ErfassungAus { meldung, .. } | Fehler::KennungBelegt { meldung, .. } | Fehler::Transkriptzustand { meldung, .. } | Fehler::SchalterVerboten { meldung } => meldung,
         }
+    }
+
+    /// Warum diese Abweisung — die einzige Abbildung `Fehler` → `Ursache` (R00258 FA 11), nie aus dem Text gelesen.
+    pub fn ursache(&self) -> Ursache {
+        match self {
+            Fehler::Ungueltig(_) => Ursache::Eingabe,
+            Fehler::NichtGefunden(_) => Ursache::Fehlt,
+            Fehler::Konflikt(_) => Ursache::Konflikt,
+            Fehler::Defekt(_) => Ursache::Defekt,
+            Fehler::Intern(_) => Ursache::Intern,
+            Fehler::GrenzeErreicht { .. } => Ursache::Grenze,
+            Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } | Fehler::SchalterVerboten { .. } => Ursache::Verboten,
+            Fehler::Verweis { fehlt: true, .. } => Ursache::Fehlt,
+            Fehler::Verweis { fehlt: false, .. } => Ursache::Eingabe,
+            Fehler::VerweisKonflikt { .. } => Ursache::Konflikt,
+            Fehler::Zeitgrenze(_) => Ursache::Zeitgrenze,
+            Fehler::Ausgelastet { grenze, .. } => match grenze {
+                Grenze::Lesegrenze => Ursache::Lesegrenze,
+                Grenze::Antwortbudget => Ursache::Antwortbudget,
+            },
+            Fehler::Commitzustand { .. } | Fehler::Transkriptzustand { .. } => Ursache::Fehlt,
+            Fehler::ErfassungAus { .. } | Fehler::KennungBelegt { .. } => Ursache::Konflikt,
+            Fehler::ZuGross(_) => Ursache::ZuGross,
+        }
+    }
+
+    /// Die Fassung der Meldung für das Protokoll, ohne Inhalt (R00258 FA 13). In B1378 ersetzt durch die
+    /// Fundstellen-Log-Fassung; bis dahin die Meldung selbst.
+    pub fn grund_fuer_protokoll(&self) -> String {
+        self.meldung().to_string()
+    }
+
+    /// Die Lesegrenze ist voll (503) — der eine Ort für die Grenzart.
+    pub fn lesegrenze(meldung: String) -> Fehler {
+        Fehler::Ausgelastet { grenze: Grenze::Lesegrenze, meldung }
+    }
+
+    /// Das Antwortbudget ist belegt (503) — der eine Ort für die Grenzart.
+    pub fn antwortbudget(meldung: String) -> Fehler {
+        Fehler::Ausgelastet { grenze: Grenze::Antwortbudget, meldung }
     }
 
     /// „Grenze der Spalte „<Name>“ ändern nur Menschen“ bzw. „Eigentümer der Spalte …“ — der eine Ort für den Wortlaut.

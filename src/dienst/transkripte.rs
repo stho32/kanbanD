@@ -324,7 +324,7 @@ impl Kanban {
         if stand != Transkriptzustand::Vorhanden {
             return Err(nicht_lieferbar(nr, kennung, stand));
         }
-        let platz = self.antwortbudget.platz(e.bytes as usize).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Transkript in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
+        let platz = self.antwortbudget.platz(e.bytes as usize).ok_or_else(|| Fehler::antwortbudget(format!("Antwortbudget von {} MB belegt — Transkript in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
         let pfad = datei(wurzel, nr, e).map_err(|_| nicht_lieferbar(nr, kennung, Transkriptzustand::Unlesbar))?;
         let mut bytes = Vec::with_capacity(e.bytes as usize);
         let (f, m) = lesend_oeffnen(&pfad).map_err(|_| nicht_lieferbar(nr, kennung, Transkriptzustand::Unlesbar))?;
@@ -815,7 +815,7 @@ mod tests {
         assert_eq!(GELESEN.with(|g| g.get()), TRANSKRIPT_HOECHSTENS, "die erste Lesung liest die Datei");
         GELESEN.with(|g| g.set(0));
         let f = k.transkript_lesen(1, &eintrag.kennung()).unwrap_err();
-        assert!(matches!(&f, Fehler::Ausgelastet(m) if m.starts_with("Antwortbudget")), "{f:?}");
+        assert!(matches!(&f, Fehler::Ausgelastet { meldung: m, .. } if m.starts_with("Antwortbudget")), "{f:?}");
         assert_eq!(GELESEN.with(|g| g.get()), 0, "bei 503 kein Byte gelesen");
         assert_eq!(erste.bytes, zehn);
         drop(erste);

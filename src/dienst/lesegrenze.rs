@@ -45,7 +45,7 @@ impl Lesegrenze {
 /// 503 für einen Lesevorgang, der bis zu seiner Frist keinen Platz bekam (R00226, ADR-0032 N9.3): Git ist nicht gestartet,
 /// darum nie der Text der Zeitgrenze; `endung` sagt, was ausbleibt („keine Liste“, „kein Diff“, …).
 pub fn belegt(endung: &str) -> Fehler {
-    Fehler::Ausgelastet(format!("Lesegrenze von {LESEN_HOECHSTENS} gleichzeitigen Lesevorgängen bis zur Frist von {} s belegt, Git nicht gestartet — {endung}", super::GESAMTGRENZE.as_secs()))
+    Fehler::lesegrenze(format!("Lesegrenze von {LESEN_HOECHSTENS} gleichzeitigen Lesevorgängen bis zur Frist von {} s belegt, Git nicht gestartet — {endung}", super::GESAMTGRENZE.as_secs()))
 }
 
 impl Drop for Platz<'_> {
@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn belegt_nennt_lesegrenze_und_endung() {
         for endung in ["keine Liste", "kein Diff", "keine Suche nach dem Nachfolger"] {
-            let Fehler::Ausgelastet(m) = belegt(endung) else { panic!("{endung}: {:?}", belegt(endung)) };
+            let Fehler::Ausgelastet { meldung: m, .. } = belegt(endung) else { panic!("{endung}: {:?}", belegt(endung)) };
             assert_eq!(m, format!("Lesegrenze von 4 gleichzeitigen Lesevorgängen bis zur Frist von 10 s belegt, Git nicht gestartet — {endung}"));
             assert!(m.starts_with("Lesegrenze") && !m.starts_with("Antwortbudget"), "{m}");
             assert!(!m.contains("antwortete nicht"), "{m}");

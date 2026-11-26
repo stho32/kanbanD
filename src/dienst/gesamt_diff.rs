@@ -88,7 +88,7 @@ impl Kanban {
             Diffformat::Json => serde_json::to_vec(&diff).map_err(|f| Fehler::Intern(format!("JSON: {f}")))?,
             Diffformat::Patch => text(diff).into_bytes(),
         };
-        let rumpf = self.antwortbudget.belegen(bytes).ok_or_else(|| Fehler::Ausgelastet(format!("Antwortbudget von {} MB belegt — Diff in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
+        let rumpf = self.antwortbudget.belegen(bytes).ok_or_else(|| Fehler::antwortbudget(format!("Antwortbudget von {} MB belegt — Diff in einigen Sekunden erneut laden", super::antwortbudget::ANTWORTBUDGET >> 20)))?;
         Ok(Diffantwort::Rumpf { etag: Some(etag), format: anfrage.format, rumpf })
     }
 }
