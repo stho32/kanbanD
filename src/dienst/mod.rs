@@ -326,4 +326,86 @@ mod tests {
         let e = super::ohne_doppelte([1, 2, 1, 2]).unwrap_err();
         assert!(matches!(&e, Fehler::Ungueltig(m) if m.contains("#1 doppelt")), "{e:?}");
     }
+
+    // ---- R00257 AK 1/AK 3 (I0247, ADR-0044 Prüfliste 1 und 3) --------------------------------------------------------
+
+    /// Ausgangslage der Listing-Proben: ein Ordner mit `n` nummerierten Aufgaben (#1–#n), einem Board „entwicklung“
+    /// ohne Zeilen und den Personen Stefan (Mensch) und Claude (Agent).
+    fn ordner_mit_aufgaben(n: u32) -> (tempfile::TempDir, Kanban) {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("boards")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("aufgaben")).unwrap();
+        std::fs::write(tmp.path().join("kanbanD.md"), "---\npeople:\n  st: {name: Stefan, kind: human}\n  cl: {name: Claude, kind: agent}\n---\n").unwrap();
+        for nr in 1..=n {
+            std::fs::write(tmp.path().join(format!("aufgaben/{nr:04}-karte.md")), format!("---\nid: {nr}\ntitle: Karte {nr}\n---\n")).unwrap();
+        }
+        std::fs::write(tmp.path().join("boards/entwicklung.md"), "# Entwicklung\n\n## Zu erledigen\n\n## Erledigt\n").unwrap();
+        git(tmp.path(), &["init", "-q"]);
+        git(tmp.path(), &["add", "-A"]);
+        git(tmp.path(), &["-c", "user.name=V", "-c", "user.email=v@v", "commit", "-q", "-m", "Ausgangslage"]);
+        let k = Kanban::neu(tmp.path().to_path_buf());
+        (tmp, k)
+    }
+
+    /// Ein Titelwechsel für die Nummer — sonst kein Feld, damit keine Klasse und kein `braucht:`-Label den Weg verbreitert.
+    fn titelwechsel(nr: u32) -> (u32, crate::modell::Aufgabenaenderung) {
+        (nr, crate::modell::Aufgabenaenderung { titel: Some(format!("neu {nr}")), ..Default::default() })
+    }
+
+    // R00257 AK 1 (ADR-0044 Prüfliste 1): für `mehrere_aendern`, `mehrere_archivieren` (beide Richtungen) und
+    // `mehrere_auf_board_legen` hängt die Zahl der Listings von `aufgaben/` nicht von n ab und bleibt höchstens 3;
+    // Einzeldateilesungen außerhalb der Einmal-Leser bleiben höchstens n + 1. Am Stand vor dem Fix ist der Zähler rot
+    // (mindestens n Listings, eines je `aufgabenpfad`).
+    #[test]
+    fn sammelwege_listen_den_ordner_unabhaengig_von_n() {
+        use crate::ablage::zaehler;
+        let (_tmp, k) = ordner_mit_aufgaben(400);
+        let st = k.handelnder(Some("st")).unwrap();
+        // Weg → (n → (Listings, Einzeldateilesungen))
+        let mut werte: std::collections::BTreeMap<&str, Vec<(u32, usize, usize)>> = std::collections::BTreeMap::new();
+        let mut festhalten = |weg: &'static str, n: u32| werte.entry(weg).or_default().push((n, zaehler::listings(), zaehler::einzeldateien()));
+        for n in [1u32, 10, 300] {
+            let nummern: Vec<u32> = (1..=n).collect();
+            zaehler::zuruecksetzen();
+            k.mehrere_aendern(&st, &nummern.iter().map(|nr| titelwechsel(*nr)).collect::<Vec<_>>()).unwrap();
+            festhalten("mehrere_aendern", n);
+            zaehler::zuruecksetzen();
+            k.mehrere_archivieren(&st, &nummern, true).unwrap();
+            festhalten("mehrere_archivieren", n);
+            zaehler::zuruecksetzen();
+            k.mehrere_archivieren(&st, &nummern, false).unwrap();
+            festhalten("zurueckholen", n);
+            zaehler::zuruecksetzen();
+            k.mehrere_auf_board_legen(&st, "entwicklung", &nummern, None).unwrap();
+            festhalten("mehrere_auf_board_legen", n);
+        }
+        for (weg, reihe) in &werte {
+            let listings: Vec<usize> = reihe.iter().map(|(_, l, _)| *l).collect();
+            assert_eq!(listings[0], listings[2], "{weg}: Listings hängen von n ab: {reihe:?}");
+            assert!(listings[2] <= 3, "{weg}: {} Listings bei n = 300, höchstens 3 erlaubt: {reihe:?}", listings[2]);
+            for (n, _, einzel) in reihe {
+                assert!(*einzel <= *n as usize + 1, "{weg}: {einzel} Einzeldateilesungen bei n = {n}, höchstens {} erlaubt", n + 1);
+            }
+        }
+    }
+
+    // R00257 AK 3 (ADR-0044 Prüfliste 3): die Momentaufnahme entsteht nach `gesperrt()`. Ein Test hält die Sperre und
+    // legt in dieser Zeit `aufgaben/0010-neu.md` an; der zweite Faden startet `mehrere_aendern` mit dem Eintrag 10 und
+    // läuft erst nach der Freigabe — die Änderung findet #10. Der Mutant „Momentaufnahme vor `gesperrt()`“ wird rot.
+    #[test]
+    fn momentaufnahme_entsteht_nach_der_sperre() {
+        let (tmp, k) = ordner_mit_aufgaben(1);
+        let k = std::sync::Arc::new(k);
+        let st = k.handelnder(Some("st")).unwrap();
+        let sperre = k.gesperrt();
+        let (k2, st2) = (std::sync::Arc::clone(&k), st.clone());
+        let lauf = std::thread::spawn(move || k2.mehrere_aendern(&st2, &[titelwechsel(10)]));
+        // Die Datei entsteht, solange die Sperre gehalten ist; der zweite Faden kann `gesperrt()` erst danach nehmen.
+        std::fs::write(tmp.path().join("aufgaben/0010-neu.md"), "---\nid: 10\ntitle: zehn\n---\n").unwrap();
+        drop(sperre);
+        let ergebnis = lauf.join().unwrap().unwrap();
+        assert_eq!(ergebnis[0].nummer, 10);
+        assert_eq!(ergebnis[0].titel, "neu 10", "die Momentaufnahme stammt aus der Zeit nach dem Warten");
+        assert!(std::fs::read_to_string(tmp.path().join("aufgaben/0010-neu.md")).unwrap().contains("title: neu 10"));
+    }
 }

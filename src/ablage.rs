@@ -32,6 +32,62 @@ pub struct Ordner {
     wurzel: PathBuf,
 }
 
+/// Testzähler für die Listing-Probe (R00257 AK 1, ADR-0044 Prüfliste 1): die Aufrufe von `markdown_dateien("aufgaben")`
+/// und die Einzeldateilesungen unter `aufgaben/` außerhalb der Einmal-Leser (`Ordner::aufgaben`). Thread-lokal, damit
+/// parallele Tests nicht mitzählen; nur unter `cfg(test)` übersetzt — im Programm kostet er nichts.
+#[cfg(test)]
+pub(crate) mod zaehler {
+    use std::cell::Cell;
+
+    thread_local! {
+        static LISTINGS: Cell<usize> = const { Cell::new(0) };
+        static EINZELDATEIEN: Cell<usize> = const { Cell::new(0) };
+        /// Während `Ordner::aufgaben()` liest: seine Dateizugriffe sind der Einmal-Leser, keine Einzeldateilesung.
+        static IM_GANZEN: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub fn zuruecksetzen() {
+        LISTINGS.with(|c| c.set(0));
+        EINZELDATEIEN.with(|c| c.set(0));
+    }
+
+    pub fn listings() -> usize {
+        LISTINGS.with(Cell::get)
+    }
+
+    pub fn einzeldateien() -> usize {
+        EINZELDATEIEN.with(Cell::get)
+    }
+
+    pub(super) fn listing() {
+        LISTINGS.with(|c| c.set(c.get() + 1));
+    }
+
+    /// Zählt nur Dateien unter `aufgaben/` und nur außerhalb eines laufenden `aufgaben()`-Laufs.
+    pub(super) fn einzeldatei(rel: &str) {
+        if rel.starts_with(AUFGABEN_PRAEFIX) && !IM_GANZEN.with(Cell::get) {
+            EINZELDATEIEN.with(|c| c.set(c.get() + 1));
+        }
+    }
+
+    /// Marke für die Dauer von `Ordner::aufgaben`; stellt den vorherigen Wert danach wieder her (auch bei `?`).
+    pub(super) struct ImGanzen(bool);
+
+    impl ImGanzen {
+        pub(super) fn neu() -> ImGanzen {
+            ImGanzen(IM_GANZEN.with(|c| c.replace(true)))
+        }
+    }
+
+    impl Drop for ImGanzen {
+        fn drop(&mut self) {
+            IM_GANZEN.with(|c| c.set(self.0));
+        }
+    }
+
+    const AUFGABEN_PRAEFIX: &str = "aufgaben/";
+}
+
 impl Ordner {
     pub fn neu(wurzel: PathBuf) -> Ordner {
         Ordner { wurzel }
@@ -42,6 +98,8 @@ impl Ordner {
     }
 
     pub fn lies(&self, rel: &str) -> io::Result<Option<String>> {
+        #[cfg(test)]
+        zaehler::einzeldatei(rel);
         match std::fs::read_to_string(self.wurzel.join(rel)) {
             Ok(t) => Ok(Some(t)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
@@ -52,6 +110,8 @@ impl Ordner {
     /// Wie `lies`, nur ohne UTF-8 vorauszusetzen: `Err` trägt die Bytes einer Datei, die kein gültiges UTF-8 ist (R00161).
     /// „Nicht gefunden“ ist leerer Text, jeder andere Zugriffsfehler bleibt einer.
     fn lies_bytes(&self, rel: &str) -> io::Result<Result<String, Vec<u8>>> {
+        #[cfg(test)]
+        zaehler::einzeldatei(rel);
         match std::fs::read(self.wurzel.join(rel)) {
             Ok(bytes) => Ok(String::from_utf8(bytes).map_err(|e| e.into_bytes())),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Ok(String::new())),
@@ -104,6 +164,8 @@ impl Ordner {
     /// Alle Aufgaben, nach Dateiname sortiert. Unlesbare, doppelt nummerierte und solche ohne gültiges UTF-8 (R00161)
     /// kommen als defekt zurück — mit den Schlüsseln, die sie lesbar tragen (R00157): unlesbare nachsichtig gelesen, doppelt nummerierte streng.
     pub fn aufgaben(&self) -> Result<(Vec<Aufgabe>, Vec<DefekteDatei>), Fehler> {
+        #[cfg(test)]
+        let _im_ganzen = zaehler::ImGanzen::neu();
         let mut gut: Vec<Aufgabe> = vec![];
         let mut defekt = vec![];
         for (stamm, rel) in self.markdown_dateien(aufgabe::ORDNER)? {
@@ -187,6 +249,10 @@ impl Ordner {
 
     /// (Dateistamm, relativer Pfad) aller `.md` in einem Unterordner, sortiert.
     pub fn markdown_dateien(&self, unterordner: &str) -> io::Result<Vec<(String, String)>> {
+        #[cfg(test)]
+        if unterordner == aufgabe::ORDNER {
+            zaehler::listing();
+        }
         let dir = self.wurzel.join(unterordner);
         let mut liste = vec![];
         match std::fs::read_dir(&dir) {
