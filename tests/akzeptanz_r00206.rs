@@ -748,7 +748,7 @@ async fn ak19_bestand_und_beschreibung() {
     let liste: Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
     let e = liste.as_array().unwrap().iter().find(|e| e["methode"] == "GET" && e["pfad"] == "/api/aufgaben/{nr}/diff").expect("Route in der Endpunktliste");
     let zweck = e["zweck"].as_str().unwrap();
-    for wort in ["commit", "datei", "format", "256 KB", "3.000 Zeilen", "4 MB", "8 MB", "2.000", "Antwortbudget", "64 MB", "ETag", "304", "400", "404", "423", "503", "dateien_gekappt", "zu_gross_zum_anzeigen", "gross", "nachladen"] {
+    for wort in ["commit", "datei", "format", "256 KB", "3.000 Zeilen", "4 MB", "8 MB", "2.000", "Antwortbudget", "64 MB", "ETag", "304", "400", "404", "423", "503", "dateien_gekappt", "zu_gross_zum_anzeigen", "gross", "nachladen", "umbenennung_eingeschraenkt", "schwelle", "10.000"] {
         assert!(zweck.contains(wort), "Zweck nennt {wort}");
     }
     let api: Value = reqwest::get(format!("{}api/openapi.json", lauf.adresse)).await.unwrap().json().await.unwrap();
@@ -765,6 +765,8 @@ async fn ak19_bestand_und_beschreibung() {
     let abschnitt = readme.split("### Diff eines Commits lesen").nth(1).expect("README-Abschnitt").split("\n### ").next().unwrap();
     assert!(abschnitt.contains("GET /api/aufgaben/1/diff?commit=kd:<X1>") && abschnitt.contains("Merkmale, keine Fehler") && abschnitt.contains("&datei=<neu>"));
     assert!(abschnitt.contains("8 MB") && abschnitt.contains("Antwortbudget") && abschnitt.contains("64 MB") && !abschnitt.contains("20 MB"), "README nennt Grenzen und Budget");
+    // R00253 AK 9 (FA 9, PO Z. 701): die Beschreibung nennt die neue Hinweisart und die Bedeutung von D/A über der Schwelle
+    assert!(abschnitt.contains("umbenennung_eingeschraenkt") && abschnitt.contains("schwelle") && abschnitt.contains("10.000"), "README nennt die eingeschränkte Umbenennungssuche: {abschnitt}");
 }
 
 /// Die Lesewege ohne Git: die Aufgabe, die Liste, der Zustand — als Text.
