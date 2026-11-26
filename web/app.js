@@ -855,6 +855,24 @@ function herkunftZuruecklegen(z) {
   });
 }
 
+/** Setzt die entfernten Abhängigkeits-Labels an ihre Stellen zurück (R00259 AK 9, ADR-0035 N1.6): das Rückgängig geht damit
+    durch die Tür von R00214 — ist die gebrauchte Karte inzwischen gelöscht, lehnt der Server ab und der Hinweis nennt es. */
+function brauchtZuruecklegen(z) {
+  const senden = async () => {
+    const a = aufgabe(z.nummer);
+    if (!a) throw new Error(`#${z.nummer} gibt es nicht mehr`);
+    const liste = z.eintraege.slice().sort((x, y) => x.index - y.index)
+      .reduce((acc, e) => [...acc.slice(0, Math.min(e.index, acc.length)), e.label, ...acc.slice(Math.min(e.index, acc.length))], a.labels.slice());
+    return durchDieSchlange(() => api('PATCH', `/api/aufgaben/${z.nummer}`, { labels: liste }));
+  };
+  return rueckgaengigAusfuehren(senden, () => `Abhängigkeit #${z.arg} wiederhergestellt`, gelungen => {
+    const ziele = [];
+    if (gelungen) ziele.push(knopfSelektor('braucht-weg', z.arg));
+    ziele.push('#fenster [data-af="labels"]');
+    return ziele;
+  });
+}
+
 /** Lädt den gemerkten Blob unter seinem Namen hoch; bei belegtem Namen vergibt der Server einen freien (R00112 AK 16). */
 function anhangZuruecklegen(z) {
   return rueckgaengigAusfuehren(() => anhangSenden(z.nummer, z.blob, z.name), antwort => anhangWiederhergestellt(z.name, antwort.name), (gelungen, antwort) => {
@@ -2977,6 +2995,23 @@ async function titelSpeichern(wert) {
   render();
 }
 
+/** Speichert das Label-Feld (R00259 AK 8, ADR-0035 N1.5): die gedeuteten Labels der gespeicherten Liste gehen wörtlich und in
+    ihrer Reihenfolge zuerst mit, dann die Einträge des Felds — so bleibt jede Abhängigkeit „unverändert mitgeschickt". Eine
+    abgelehnte Eingabe bleibt als Entwurf stehen (AK 10, `entwurfskennung` → LABELS_FELD). */
+async function labelsSpeichern(wert) {
+  const u = S.ui, nummer = u.offen;
+  if (ichNoetig()) { render(); return; }
+  entwurfAbschicken(LABELS_FELD, wert);
+  const a = aufgabe(nummer);
+  if (!a) return;
+  const gedeutet = (a.labels || []).filter(l => nummerAusLabel(l) !== null);
+  const felder = String(wert).split(',').map(s => s.trim()).filter(Boolean);
+  const gelungen = await aufgabeAendern(nummer, { labels: [...gedeutet, ...felder] }, LABELS_FELD);
+  if (u.offen !== nummer) return;
+  if (gelungen) u.entwurf = null;
+  render();
+}
+
 /** Felder, deren Eingabe abgeschickt und noch nicht beantwortet ist. Der Text steht dann noch im Feld, ist aber kein
     Entwurf mehr: Esc nimmt ihn nicht zurück und schließt das Fenster wie ohne Eingabe (R00155 54-10). */
 const abgeschickteFelder = new Set();
@@ -2992,6 +3027,7 @@ function abschicken(feld, schreibweg) {
 /** Kennung, unter der ein Feld des Aufgabenfensters den einen Entwurf und seine Meldung führt; null für Felder ohne. */
 function entwurfskennung(feld) {
   if (feld.dataset.af === 'titel') return TITEL_FELD;
+  if (feld.dataset.af === 'labels') return LABELS_FELD;
   if (feld.id === 'herkunft-neu') return HERKUNFT_FELD;
   if (feld.id === 'zeit-neu') return ZEIT_FELD;
   return null;
@@ -4492,6 +4528,10 @@ async function aktion(a, arg, wert) {
           await herkunftZuruecklegen(z);
           break;
         }
+        if (z.art === 'braucht') {
+          await brauchtZuruecklegen(z);
+          break;
+        }
         if (z.art === 'teilaufgabe') {
           // Der Server legt sie an `position`, hinter dem Ende ans Ende; ist die Aufgabe fort, lehnt er ab (R00185 108-1)
           const a = aufgabe(z.nummer);
@@ -4660,6 +4700,27 @@ async function aktion(a, arg, wert) {
         fokusNachEntfernen('herkunft-weg', arg, nachbar, '#herkunft-neu');
         const entfernt = await aufgabeAendern(nummer, { herkunft: liste.filter((_, j) => j !== index) });
         if (entfernt) u.hinweis = { text: `Herkunft ${herkunftAnzeige(wert)} entfernt`, undo: { art: 'herkunft', nummer, wert, index }, feld: '#herkunft-neu', at: Date.now() };
+        break;
+      }
+      case 'braucht-weg': {
+        if (ichNoetig()) break;
+        const nummer = u.offen, a = aufgabe(nummer), nr = Number(arg);
+        if (!a) break;
+        const noch = a.labels.filter(l => nummerAusLabel(l) !== nr);
+        if (noch.length === a.labels.length) break;
+        // Wert und Stelle vor dem Senden aus dem gezeigten Stand gemerkt (ADR-0017 Regel 2, Vorbild herkunft-weg)
+        const eintraege = a.labels.map((label, index) => ({ label, index })).filter(e => nummerAusLabel(e.label) === nr);
+        const ausloeser = `${anfrageName('PATCH', '/api/aufgaben/' + nummer)} labels`;
+        fokusNachEntfernen('braucht-weg', arg, nachbarArgument('#fenster .wt-dep', 'braucht-weg', arg), '#fenster [data-af="labels"]');
+        try {
+          await durchDieSchlange(() => api('PATCH', '/api/aufgaben/' + nummer, { labels: noch }));
+          gespeichertMelden(null, ausloeser);
+          u.hinweis = { text: `Abhängigkeit #${nr} entfernt`, undo: { art: 'braucht', nummer, arg: nr, eintraege }, at: Date.now() };
+        } catch (f) {
+          // eine gescheiterte eigene Anfrage nennt den Vorgang (ADR-0025 N1): der Chip bleibt, weil nichts geschrieben wurde
+          fensterMelden(`Abhängigkeit #${nr} nicht entfernt: ${f.message}`, null, ausloeser);
+        }
+        render();
         break;
       }
       case 'zeit-neu': {
@@ -5182,8 +5243,8 @@ document.addEventListener('change', e => {
   if (af === 'spalte') { act('bewegen', JSON.stringify({ nummer: S.ui.offen, spalte: v, index: 9999 })); return; }
   if (af === 'beschreibung') { S.ui.beschreibungBearbeiten = false; setTimeout(fokusNachBeschreibung, 0); }
   if (af === 'titel') { abschicken(e.target, () => titelSpeichern(v)); return; }
-  const aenderung = af === 'labels' ? { labels: v.split(',').map(s => s.trim()).filter(Boolean) }
-    : af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
+  if (af === 'labels') { abschicken(e.target, () => labelsSpeichern(v)); return; }
+  const aenderung = af === 'klasse' || af === 'faellig' ? { [af]: v || null } : { [af]: v };
   abschicken(e.target, () => aufgabeAendern(S.ui.offen, aenderung));
 });
 
