@@ -428,6 +428,12 @@
     return [...Array(anzahl).keys()].filter(i => i % schritt === 0 || i === anzahl - 1);
   }
 
+  /** Kalendertage zwischen zwei Tagesgrenzen — Datumsteile zählen, nicht 24-Stunden-Blöcke (R00254: Zeitumstellung). */
+  const kalendertage = (von, bis) => {
+    const a = new Date(von), b = new Date(bis);
+    return Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / TAG);
+  };
+
   /** Maße des Balkenpaars „Zugang · Abgang“ einer Periode (R00167, Zeichnung D0006 #durchsatz-von): das Paar nimmt 72 % des
       Platzes, mindestens 4 und höchstens 96; unter 10 hat es keine Lücke; unter 10 Einheiten Balkenbreite ist der hohle
       Zugangsbalken nicht mehr lesbar und wird voll gefüllt. */
@@ -447,10 +453,12 @@
       `anzahl`, `gesamt`, `durchschnitt` und `ausgenommen` sind der Abgang. Daneben der Zugang (R00167, ADR-0027 N3 Punkt 5) in
       `zugang` je Periode, `zugangGesamt` und `zugangDurchschnitt`: je Aufgabe einmal, in der Periode, in der sie den Von-Block
       `vonspalte` (Vorgabe: die erste Spalte) oder eine Spalte rechts davon erstmals erreicht — Rückläufer zählen nicht erneut;
-      Zeitfenster, Filter und `reporting.forecast` wirken auf beide gleich. */
+      Zeitfenster, Filter und `reporting.forecast` wirken auf beide gleich. Seit R00254 dazu: `tage` (Kalendertage des
+      dargestellten Zeitraums), `netto` je Periode (Abgang − Zugang), `nettoGesamt` und die Ø je Kalendertag
+      `zugangJeTag`, `abgangJeTag`, `nettoJeTag`; `durchschnitt` und `zugangDurchschnitt` bleiben je Periode (Ø-Linien). */
   function durchsatz(bew, f, aufgabeZu, jetzt, start = null, einheit = DURCHSATZ_STANDARD, zielblock = null, vonspalte = null) {
     const ziel = durchsatzZiel(bew, zielblock);
-    const leer = { einheit, perioden: [], gesamt: 0, durchschnitt: null, zugangGesamt: 0, zugangDurchschnitt: null, ausgenommen: 0, zielAusgeschlossen: false, ziel };
+    const leer = { einheit, perioden: [], gesamt: 0, durchschnitt: null, zugangGesamt: 0, zugangDurchschnitt: null, tage: 0, nettoGesamt: 0, zugangJeTag: null, abgangJeTag: null, nettoJeTag: null, ausgenommen: 0, zielAusgeschlossen: false, ziel };
     if (!bew.spalten.length) return leer;
     if (f.ohneSpalten.includes(ziel.name)) return { ...leer, zielAusgeschlossen: true };
     const erste = Math.min(...bew.aufgaben.map(a => a.wechsel.length ? zeitMs(a.wechsel[0].zeitpunkt) : Infinity));
@@ -473,7 +481,9 @@
       if (zugang) { zugang.zugang++; zugangGesamt++; }
     }
     const je = summe => perioden.length ? summe / perioden.length : null;
-    return { einheit, perioden, gesamt, durchschnitt: je(gesamt), zugangGesamt, zugangDurchschnitt: je(zugangGesamt), ausgenommen, zielAusgeschlossen: false, ziel };
+    perioden.forEach(p => { p.netto = p.anzahl - p.zugang; });
+    const tage = kalendertage(von, bis), nettoGesamt = gesamt - zugangGesamt, jeTag = summe => tage ? summe / tage : null;
+    return { einheit, perioden, gesamt, durchschnitt: je(gesamt), zugangGesamt, zugangDurchschnitt: je(zugangGesamt), tage, nettoGesamt, zugangJeTag: jeTag(zugangGesamt), abgangJeTag: jeTag(gesamt), nettoJeTag: jeTag(nettoGesamt), ausgenommen, zielAusgeschlossen: false, ziel };
   }
 
   /* ── Durchlaufzeit (R00045) ── */
