@@ -110,6 +110,7 @@ fn loeschnachricht(nr: u32, anhaenge: usize, boards: usize) -> String {
 impl Kanban {
     /// Archiviert bzw. holt mehrere Aufgaben in einem Commit zurück; eine unbekannte Nummer ändert nichts.
     pub fn mehrere_archivieren(&self, wer: &Person, nummern: &[u32], archivieren: bool) -> Result<Vec<u32>, Fehler> {
+        super::sammelgrenze_pruefen(nummern.len())?;
         if nummern.is_empty() {
             return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
         }

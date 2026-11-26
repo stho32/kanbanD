@@ -38,6 +38,7 @@ impl Kanban {
     }
 
     pub fn teilaufgaben_anlegen(&self, wer: &Person, nr: u32, texte: &[String]) -> Result<Aufgabe, Fehler> {
+        super::sammelgrenze_pruefen(texte.len())?;
         let texte: Vec<String> = texte.iter().map(|t| text_pruefen(t)).collect::<Result<_, _>>()?;
         if texte.is_empty() {
             return Err(Fehler::Ungueltig("Keine Teilaufgabe angegeben".into()));

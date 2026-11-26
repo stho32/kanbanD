@@ -96,6 +96,7 @@ impl Kanban {
     /// Mit Board zählt die Zielspalte nach allen neuen; ein Agent über der Grenze legt keine an (R00096).
     /// Ein Eintrag mit `key`, den schon eine Karte trägt (auch ein früherer Eintrag derselben Anfrage), legt nichts an (R00098).
     pub fn aufgaben_anlegen(&self, wer: &Person, neu: &NeueAufgaben) -> Result<Vec<Angelegt>, Fehler> {
+        super::sammelgrenze_pruefen(neu.titel.len())?;
         self.aufgaben_anlegen_gesperrt(&self.gesperrt(), wer, neu)
     }
 

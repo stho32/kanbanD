@@ -45,6 +45,7 @@ impl Kanban {
 
     /// Mehrere Karten in einem Commit (R00065): alle heraus, dann der Reihe nach an ihren Platz.
     pub fn mehrere_bewegen(&self, wer: &Person, slug: &str, ziele: &[Bewegung]) -> Result<Bewegt, Fehler> {
+        super::sammelgrenze_pruefen(ziele.len())?;
         if ziele.is_empty() {
             return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
         }

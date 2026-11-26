@@ -76,6 +76,8 @@ curl -X POST http://localhost:7420/api/aufgaben -H 'X-KanbanD-Wer: cl' \
 
 Der Link auf eine Aufgabe ist `http://<host>:7420/#/board/<slug>/aufgabe/<nr>` — er öffnet das Board mit dem Aufgabenfenster; für eine Aufgabe ohne Board `#/aufgaben/aufgabe/<nr>` (die Aufgabenliste mit dem Fenster).
 
+Eine Sammelanfrage trägt höchstens 5000 Einträge (ADR-0044 E2): `PATCH /api/aufgaben/mehrere`, `POST /api/aufgaben/archivieren`, `…/zurueckholen`, `POST /api/aufgaben/mehrere`, `POST /api/boards/{slug}/aufgaben/mehrere`, `…/bewegen-mehrere` und `POST /api/aufgaben/{nr}/teilaufgaben/mehrere` antworten darüber mit 400 `{fehler}` „Zu viele Einträge in einer Sammelanfrage: <n>, höchstens 5000 sind erlaubt. Bitte in Teilen senden.“ — geprüft vor der Sperre, nichts wird gelesen oder geschrieben.
+
 `GET /api/instanz` nennt `{ordner, port, version}` — den bedienten Ordner absolut und kanonisch, den gebundenen Port und die Programmversion: Daran erkennt ein Agent seine Instanz, wenn mehrere auf wechselnden Ports laufen (das Programm weicht bei belegtem Port auf den nächsten freien aus). Die Antwort kommt ohne `X-KanbanD-Wer` und liest den Ordner nicht — auch dann, wenn `GET /api/zustand` an einer Datei scheitert.
 
 `GET /api/ereignisse` meldet jede Änderung im Ordner als Server-Sent Event `{pfade, extern}`. `GET /api/berichte/bewegungen?board=<slug>` liefert je Aufgabe die Spaltenwechsel aus Git — die Grundlage der Board-Berichte, je Aufgabe mit `labels` und `reporting`; die Berichte rechnen je Spalte.

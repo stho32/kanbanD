@@ -274,6 +274,22 @@ pub(crate) fn ohne_doppelte(nummern: impl IntoIterator<Item = u32>) -> Result<()
     }
 }
 
+/// Höchstens so viele Einträge trägt eine Sammelanfrage (ADR-0044 E2, PO Z. 669): die längste Sperrdauer hängt nicht
+/// an der Ordnergröße. 5000 ist erlaubt, 5001 wird abgewiesen. Eine Konstante, keine Einstellung.
+pub const HOECHSTENS_EINTRAEGE: usize = 5000;
+
+/// Die Grenze an der Tür der sieben Sammelwege (ADR-0044 E2): bis [`HOECHSTENS_EINTRAEGE`] Einträge sind erlaubt.
+/// Geprüft **vor** `gesperrt()`, vor jedem Lesen und vor `ohne_doppelte` — nichts wird gelesen oder geschrieben, kein
+/// Commit. Der Wortlaut steht wörtlich in `AI-Team/po-entscheidungen.md` Z. 670 (ohne Tausendertrenner, ohne Vorsatz
+/// `#<nummer>: `, weil kein einzelner Eintrag scheitert) und ist an allen sieben Wegen derselbe. Nicht 413: das steht
+/// in kanbanD für die Größe des Körpers in Bytes (`Fehler::ZuGross`, ADR-0036 Regel 5).
+pub(crate) fn sammelgrenze_pruefen(anzahl: usize) -> Result<(), Fehler> {
+    if anzahl > HOECHSTENS_EINTRAEGE {
+        return Err(Fehler::Ungueltig(format!("Zu viele Einträge in einer Sammelanfrage: {anzahl}, höchstens {HOECHSTENS_EINTRAEGE} sind erlaubt. Bitte in Teilen senden.")));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Kanban, Schritt};
@@ -325,6 +341,52 @@ mod tests {
         assert!(super::ohne_doppelte([1, 2, 3]).is_ok());
         let e = super::ohne_doppelte([1, 2, 1, 2]).unwrap_err();
         assert!(matches!(&e, Fehler::Ungueltig(m) if m.contains("#1 doppelt")), "{e:?}");
+    }
+
+    // R00257 AK 4 (ADR-0044 E2, PO Z. 670): die Grenze als reine Prüffunktion — die Spanne 4999/5000/5001, der
+    // Wortlaut wörtlich, ohne Tausendertrenner und ohne Vorsatz `#<nummer>: `.
+    #[test]
+    fn sammelgrenze_prueft_die_spanne_und_den_wortlaut() {
+        for anzahl in [0, 1, 4999, 5000] {
+            assert_eq!(super::sammelgrenze_pruefen(anzahl), Ok(()), "{anzahl} ist erlaubt");
+        }
+        for anzahl in [5001, 12_000] {
+            let e = super::sammelgrenze_pruefen(anzahl).unwrap_err();
+            assert_eq!(
+                e.meldung(),
+                format!("Zu viele Einträge in einer Sammelanfrage: {anzahl}, höchstens 5000 sind erlaubt. Bitte in Teilen senden."),
+                "{anzahl}"
+            );
+        }
+    }
+
+    // R00257 AK 4 (ADR-0044 E2): die Grenze steht **vor** `gesperrt()` — ein Test, der die Sperre hält, bekommt die
+    // 400 auf 5001 Einträge sofort, ohne auf die Sperre zu warten; nichts wird gelesen (Zähler 0), kein Commit.
+    #[test]
+    fn grenze_wirkt_vor_der_sperre_ohne_zu_lesen() {
+        use std::sync::{Arc, mpsc};
+        use std::time::Duration;
+        let (tmp, k) = ordner_mit_aufgaben(2);
+        let k = Arc::new(k);
+        let st = k.handelnder(Some("st")).unwrap();
+        let commits = git(tmp.path(), &["rev-list", "--count", "HEAD"]);
+        let sperre = k.gesperrt();
+        let (k2, st2) = (Arc::clone(&k), st.clone());
+        let (tx, rx) = mpsc::channel();
+        let lauf = std::thread::spawn(move || {
+            crate::ablage::zaehler::zuruecksetzen();
+            let e = k2.mehrere_aendern(&st2, &(1..=5001).map(titelwechsel).collect::<Vec<_>>());
+            let listings = crate::ablage::zaehler::listings();
+            tx.send(()).ok();
+            (e, listings)
+        });
+        let rechtzeitig = rx.recv_timeout(Duration::from_secs(2)).is_ok();
+        drop(sperre);
+        let (e, listings) = lauf.join().unwrap();
+        assert!(rechtzeitig, "die Grenze wartet auf die Sperre, statt vor ihr zu greifen");
+        assert_eq!(e.unwrap_err().meldung(), "Zu viele Einträge in einer Sammelanfrage: 5001, höchstens 5000 sind erlaubt. Bitte in Teilen senden.");
+        assert_eq!(listings, 0, "die Grenze liest nichts");
+        assert_eq!(git(tmp.path(), &["rev-list", "--count", "HEAD"]), commits, "kein Commit");
     }
 
     // ---- R00257 AK 1/AK 3 (I0247, ADR-0044 Prüfliste 1 und 3) --------------------------------------------------------

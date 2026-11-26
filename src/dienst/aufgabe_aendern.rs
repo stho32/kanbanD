@@ -48,6 +48,7 @@ impl Kanban {
 
     /// Mehrere Aufgaben in einem Commit (R00065); ein ungültiges Feld bricht ab, bevor etwas geschrieben ist.
     pub fn mehrere_aendern(&self, wer: &Person, aenderungen: &[(u32, Aufgabenaenderung)]) -> Result<Vec<Aufgabe>, Fehler> {
+        super::sammelgrenze_pruefen(aenderungen.len())?;
         if aenderungen.is_empty() {
             return Err(Fehler::Ungueltig("Keine Aufgabe angegeben".into()));
         }

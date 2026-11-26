@@ -135,13 +135,47 @@ async fn ak4_grenze_an_allen_sieben_wegen_vor_der_sperre() {
     // 5000 Titel → 201 (angelegt); 5000 unbekannte Änderungen → 404; 5000 Teilaufgaben → 200
     assert_eq!(senden(Method::POST, &lauf.adresse, "api/aufgaben/mehrere", "st", rumpf("anlegen", 5000)).await.0, 201);
     assert_eq!(senden(Method::PATCH, &lauf.adresse, "api/aufgaben/mehrere", "st", rumpf("patch", 5000)).await.0, 404);
-    assert_eq!(senden(Method::POST, &lauf.adresse, "api/aufgaben/1/teilaufgaben/mehrere", "st", rumpf("teilaufgaben", 5000)).await.0, 200);
+    assert_eq!(senden(Method::POST, &lauf.adresse, "api/aufgaben/7/teilaufgaben/mehrere", "st", rumpf("teilaufgaben", 5000)).await.0, 200);
     // eine leere Liste behält ihre heutige Antwort (nicht die Grenzmeldung)
     for weg in WEGE {
         let (s, a) = senden(methode(weg), &lauf.adresse, pfad(weg), "st", rumpf(weg, 0)).await;
         assert_ne!(a["fehler"], json!(grenzmeldung(0)), "{weg}: leere Liste ist keine Grenzverletzung ({s})");
     }
 }
+
+// ---- AK 9: die Beschreibungen und die README nennen die Grenze -------------------------------------------------------
+
+/// Die sieben Sammelwege als (Methode, Pfad) — wie sie in `/api/endpunkte` und in der OpenAPI stehen.
+const WEGE_BESCHREIBUNG: [(&str, &str); 7] = [
+    ("PATCH", "/api/aufgaben/mehrere"),
+    ("POST", "/api/aufgaben/mehrere"),
+    ("POST", "/api/aufgaben/archivieren"),
+    ("POST", "/api/aufgaben/zurueckholen"),
+    ("POST", "/api/boards/{slug}/aufgaben/mehrere"),
+    ("POST", "/api/boards/{slug}/bewegen-mehrere"),
+    ("POST", "/api/aufgaben/{nr}/teilaufgaben/mehrere"),
+];
+
+#[tokio::test]
+async fn ak9_beschreibungen_und_readme_nennen_die_grenze() {
+    let tmp = tempfile::tempdir().unwrap();
+    lage_pfadregel(tmp.path());
+    let lauf = gemeinsam::starten(tmp.path(), &["--port", "0"]);
+    let satz = "höchstens 5000 Einträge → 400 {fehler}";
+    let liste: Value = reqwest::get(format!("{}api/endpunkte", lauf.adresse)).await.unwrap().json().await.unwrap();
+    for (methode, pfad) in WEGE_BESCHREIBUNG {
+        let eintrag = liste.as_array().unwrap().iter().find(|e| e["methode"] == methode && e["pfad"] == pfad).unwrap_or_else(|| panic!("{methode} {pfad} fehlt in /api/endpunkte"));
+        assert!(eintrag["zweck"].as_str().unwrap_or_default().contains(satz), "{methode} {pfad}: {}", eintrag["zweck"]);
+    }
+    let api: Value = reqwest::get(format!("{}api/openapi.json", lauf.adresse)).await.unwrap().json().await.unwrap();
+    for (methode, pfad) in WEGE_BESCHREIBUNG {
+        let text = api["paths"][pfad][methode.to_lowercase().as_str()]["description"].as_str().unwrap_or_default();
+        assert!(text.contains(satz), "{methode} {pfad} in der OpenAPI: {text}");
+    }
+    let readme = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
+    assert!(readme.contains("höchstens 5000 Einträge"), "README „Für Agenten“ nennt die Grenze");
+}
+
 
 // ---- AK 6: doppelte Nummern und Board-Datei unverändert (E3) --------------------------------------------------------
 
