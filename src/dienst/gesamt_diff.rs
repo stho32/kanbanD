@@ -270,7 +270,9 @@ impl Gesamtlauf<'_> {
         // ohne fremden Pfad und ohne Pfadangabe ist jeder Eintrag des Netto-Laufs Arbeit der Karte, auch wenn die Namen
         // unvollständig sind (B3)
         let alles_netto = einteilung.fremd.is_empty();
-        if datei.is_some_and(|d| !einteilung.karte.contains(d.as_bytes())) {
+        // „steht in keinem Kartencommit“ gilt nur bei vollständig gelesenen Namen (R00255 AK 5, ADR-0032 N10.3 Punkt 3);
+        // sonst entscheiden die Läufe, und bleibt die Auswahl leer, folgt `datei_hinter_dem_schnitt` (unten)
+        if namen_vollstaendig && datei.is_some_and(|d| !einteilung.karte.contains(d.as_bytes())) {
             return Err(datei_fehlt(nr));
         }
         let mut netto: Vec<Diffdatei> = vec![];
