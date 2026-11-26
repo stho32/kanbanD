@@ -1,7 +1,6 @@
 // R00249 Review-Seite — Ansicht nebeneinander (Karte #260, I0239, Scheibe S7 von ADR-0042 Punkt 8, N6): AK 1–10 und US-1..US-6 im
 // echten Programm gegen echtes Git. Ausgangslage: review-hilfen.js (`nebeneinanderRepository`: N1 mit K-Lauf, K-Datei, K-Lang; N2 K-Block,
 // N3 K-Zwei in `wb`, N4 K-Last, N5 ohne Dateien). Schichten: Testfälle → Testsprache (`seite`) → Treiber (Selektoren, Messungen nur hier).
-const fs = require('fs');
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastFarben } = require('./hilfen');
 const { nebeneinanderRepository, nebeneinanderVorbereiten, UM_A, UM_B } = require('./review-hilfen');
@@ -93,12 +92,6 @@ const textZeilen = zelle => zelle.evaluate(c => {
   if (lesen) r.setStartAfter(lesen);
   return new Set(Array.from(r.getClientRects()).filter(q => q.width > 0).map(q => Math.round(q.top))).size;
 });
-
-/** Long Tasks ab dem Laden (PerformanceObserver `longtask`, ereignisgenau). */
-function langeAufgabenSammeln() {
-  window.kdLang = [];
-  new PerformanceObserver(l => l.getEntries().forEach(e => window.kdLang.push({ start: e.startTime, dauer: Math.round(e.duration) }))).observe({ type: 'longtask', buffered: true });
-}
 
 test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
   let k;
@@ -596,43 +589,24 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
     expect(paare.flat().every(c => c[1] === 1)).toBe(true);
   });
 
-  /* ── AK 9 Tempo und Leseposition bei 10.000 Zeilen (US-6): Messung mit Ausgabe, Grenze nach der Messung ── */
+  /* ── AK 9 Tempo und Leseposition bei 10.000 Zeilen (US-6): das Wanduhr-Maß läuft als Lastprobe (R00256, KD_LASTPROBE),
+        das Gate prüft 5.000 Tabellenzeilen und die Leseposition über 30 Wiederholungen ── */
 
-  test('AK 9: K-Last — Umschalten und Scrollen ohne Long Task über 150 ms, 5.000 Tabellenzeilen; die Lesezeile bleibt (30 Wiederholungen)', async ({ page }) => {
+  test('AK 9: K-Last — 5.000 Tabellenzeilen und die Lesezeile bleibt an ihrer Stelle (30 Wiederholungen)', async ({ page }) => {
     test.setTimeout(240000);
     const s = seite(page);
     await breiteSetzen(page, 980, 800);
-    await page.addInitScript(langeAufgabenSammeln);
     await s.commitOeffnen(k, 11, N().n4);
     await s.datei('src/gross.rs').getByRole('button', { name: 'Änderungen anzeigen' }).click();
     await expect(s.bereich('src/gross.rs').locator('tr.add').first()).toBeVisible();
     await farbeAbwarten(page, s.bereich('src/gross.rs'));
     await zweiBilder(page);
-    const laengste = t => page.evaluate(von => Math.max(0, ...window.kdLang.filter(e => e.start >= von).map(e => e.dauer)), t);
-    const jetzt = () => page.evaluate(() => performance.now());
-    const bisEnde = () => page.evaluate(() => new Promise(fertig => {
-      const r = document.getElementById('review');
-      r.scrollTop = 0;
-      const schritt = () => { const vorher = r.scrollTop; r.scrollTop += r.clientHeight * 0.8; if (r.scrollTop === vorher) fertig(); else requestAnimationFrame(schritt); };
-      requestAnimationFrame(schritt);
-    }));
-    const t0 = await jetzt();
     await s.schalter.click();
     await expect(s.eingabe).toBeChecked();
     await expect.poll(() => s.nebeneinander('src/gross.rs')).toBe(true);
     await zweiBilder(page);
-    const umschalten = await laengste(t0);
     expect(await s.bereich('src/gross.rs').evaluate(b => b.querySelectorAll('tbody tr, table > tr').length - b.querySelectorAll('tr.hk').length), '5.000 Tabellenzeilen').toBe(5000);
-    const t1 = await jetzt();
-    await bisEnde();
-    await zweiBilder(page);
-    const scrollen = await laengste(t1);
-    const t2 = await jetzt();
-    await s.schalter.click();
-    await expect(s.eingabe).not.toBeChecked();
-    await zweiBilder(page);
-    const zurueck = await laengste(t2);
-    // Lesezeile: eine Zeile in der Mitte der Datei oben im Bild, 30-mal hin und her
+    // Lesezeile: eine Zeile in der Mitte der Datei oben im Bild, 30-mal hin und her (R00249 AK 9; m14)
     const versatz = [];
     for (let i = 0; i < 30; i++) {
       const z = 1001 + 2 * (i * 37 % 4000);
@@ -645,12 +619,8 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
       await zweiBilder(page);
       versatz.push(Math.abs((await lageNachKennung(page, n, z)) - davor));
     }
-    const messung = { umschalten, scrollen, zurueck, groessterVersatz: Math.max(...versatz), workers: test.info().config.workers };
-    test.info().annotations.push({ type: 'AK 9 Messung', description: JSON.stringify(messung) });
-    console.log(`AK 9 Messung ${JSON.stringify(messung)}`);
-    if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify(messung) + '\n');
+    test.info().annotations.push({ type: 'AK 9 Leseposition', description: JSON.stringify({ groessterVersatz: Math.max(...versatz) }) });
     expect(Math.max(...versatz), 'Lesezeile ≤ 36 px').toBeLessThanOrEqual(36);
-    expect(Math.max(umschalten, scrollen, zurueck), 'Long Task').toBeLessThanOrEqual(150);
   });
 
   /* ── ADR-0042 N7.4 P8: Hinaufrollen nach frischem Laden in „Nebeneinander“, „Umbrechen“ an und aus ── */

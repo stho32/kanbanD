@@ -1218,3 +1218,4 @@ Nie vom User erfragen.
 | 2026-11-26 | Karte #277 R00254 | B1353 `zahlenPassen` entscheidet alles oder nichts für die Zahlen an den Balken (Unit-Probe) | Standard | 1-2h | 0,1h | 0,1h | autonom |
 | 2026-11-26 | Karte #277 R00254 | B1354 Zahlen über den Balken zeichnen, Satz bei Wegfall, Halo, schmales Layout (E2E hell/dunkel/320/375/414) | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-26 | Karte #277 R00254 | B1355 Probe im echten Programm (Bildschirmfotos hell/dunkel/375/320/414 und 90 Tage), Wireframes-Indexzeile, Mutantenproben zu den Spec-Ergänzungen, volles Gate | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-26 | Karte #278 R00256 | B1362 Gate-Probe ohne Zeitmaß: `longtask`-Urteil aus AK 9 entfernt, 5.000 Tabellenzeilen und Leseposition (30 Wiederholungen, ≤ 36 px) bleiben; Befund zuerst rot (Last ~3: 233 ms), Spec grün, Mutant m14 (Anker auf dem Kopf der Datei) tötet sie | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
