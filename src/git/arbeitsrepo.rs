@@ -539,11 +539,13 @@ pub enum Diffart {
 }
 
 /// Ein Lauf `diff-tree` mit Bytegrenze (ADR-0032 N4.3, N4.4, N4.7): Form und Inhalt bestimmt dieses Modul — `-r`,
-/// Umbenennungen mit `-M50% -l1000`, Submodule kurz, im Patch volle Blob-Hashes (`--full-index`, N5.2) —, die Schalter
-/// der Befehlszeile der Startort; `pfade` gehen wörtlich nach `--` (bei einer Umbenennung beide Pfade, sonst wird sie
-/// zu `A`).
-pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
-    let mut args = vec!["-r", "-M50%", "-l1000", "--ignore-submodules=none"];
+/// Umbenennungen nach dem Urteil des Commits (`-M50% -l1000` bzw. `-M100%`, N11.3 Punkt 5), Submodule kurz, im Patch
+/// volle Blob-Hashes (`--full-index`, N5.2) —, die Schalter der Befehlszeile der Startort; `pfade` gehen wörtlich nach
+/// `--` (bei einer Umbenennung beide Pfade, sonst wird sie zu `A`).
+pub fn diff_tree(wurzel: &Path, vergleich: Vergleich, art: Diffart, umbenennung: Umbenennungssuche, pfade: &[&[u8]], bytegrenze: usize, frist: Instant) -> Result<Teil, Arbeitsrepofehler> {
+    let mut args = vec!["-r"];
+    args.extend_from_slice(umbenennung.diff_tree_schalter());
+    args.push("--ignore-submodules=none");
     args.extend_from_slice(match art {
         Diffart::Roh => &["--raw", "-z"][..],
         Diffart::Zahlen => &["--numstat", "-z"],

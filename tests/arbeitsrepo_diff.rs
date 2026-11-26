@@ -3,7 +3,7 @@
 mod gemeinsam;
 
 use gemeinsam::git_am;
-use kanband::git::arbeitsrepo::{self, Diffart, Teil, Vergleich};
+use kanband::git::arbeitsrepo::{self, Diffart, Teil, Umbenennungssuche, Vergleich};
 use kanband::modell::{Diffdatei, GRENZE_DATEILISTE, KAPPE_DATEIEN, dateiliste};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
@@ -44,8 +44,8 @@ fn zeilen(n: usize) -> String {
 fn liste_mit(r: &Path, h: &str, pfade: &[&[u8]]) -> (Teil, Teil, Vec<Diffdatei>, u64) {
     let m = arbeitsrepo::metadaten(r, &[h], frist()).unwrap().remove(h).unwrap();
     let v = Vergleich { eltern: m.erster_elternteil.as_deref(), commit: h };
-    let roh = arbeitsrepo::diff_tree(r, v, Diffart::Roh, pfade, GRENZE_DATEILISTE, frist()).unwrap();
-    let zahlen = arbeitsrepo::diff_tree(r, v, Diffart::Zahlen, pfade, GRENZE_DATEILISTE, frist()).unwrap();
+    let roh = arbeitsrepo::diff_tree(r, v, Diffart::Roh, Umbenennungssuche::Voll, pfade, GRENZE_DATEILISTE, frist()).unwrap();
+    let zahlen = arbeitsrepo::diff_tree(r, v, Diffart::Zahlen, Umbenennungssuche::Voll, pfade, GRENZE_DATEILISTE, frist()).unwrap();
     let liste = dateiliste(&roh.ausgabe, roh.abgeschnitten, &zahlen.ausgabe, zahlen.abgeschnitten).unwrap();
     (roh, zahlen, liste, m.dateien)
 }

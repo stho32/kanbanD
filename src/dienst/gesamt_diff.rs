@@ -6,7 +6,7 @@
 use super::Kanban;
 use super::diff::{Diffantwort, Diffanfrage, Diffcommit, Diffformat, repo_fehler};
 use crate::fehler::Fehler;
-use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Metadaten, Objekt, Teil, Vergleich, Vielart};
+use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Metadaten, Objekt, Teil, Umbenennungssuche, Vergleich, Vielart};
 use crate::modell::{Anwendung, Anwendungen, Commitzustand, Diffdatei, EINTEILUNG_VERSION, Einteilung, Eintragspfade, FREMD_HOECHSTENS, Fassung, Folgedatei, GRENZE_DATEILISTE, GRENZE_EINZELN, GRENZE_PATCH_LAUF, GRENZEN_VERSION, Gesamtdatei, Grund, Hinweis, KAPPE_DATEIEN, Spanne, Verteilung, Verweisform, Zform, abschliessen, abschnitte_patch, abschnitte_z, diffdatei, folge_bilden, hinweiszeile, lauf_der_liste, im_bezug_zugeordnet, leerer_baum, namen_lesen, nicht_zugeordnet_im_bezug, ordnen, patch_text, patches_zuordnen, patches_zuordnen_im_bezug, roh_lesen, spanne_lesen, titel_kuerzen, verweis_lesen, zahlen_lesen};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -216,9 +216,9 @@ impl Gesamtlauf<'_> {
             let pfade: &[&[u8]] = if e.fremd.is_empty() { &[] } else { &karte_pfade };
             // mit datei= bis 20 MB, dieselbe Pfadangabe, kein Prozess mehr (N8.6 Punkt 4 (a)); die Folge-Läufe behalten ihre Grenze
             let grenze = if self.anfrage.datei.is_some() { self.k.grenze_netto_datei } else { GRENZE_DATEILISTE };
-            let roh = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, pfade, grenze, frist)).map_err(repo_fehler)?;
+            let roh = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, Umbenennungssuche::Voll, pfade, grenze, frist)).map_err(repo_fehler)?;
             let zahlen = match roh {
-                Some(_) => gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, pfade, grenze, frist)).map_err(repo_fehler)?,
+                Some(_) => gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, Umbenennungssuche::Voll, pfade, grenze, frist)).map_err(repo_fehler)?,
                 None => None,
             };
             match (roh, zahlen) {
@@ -377,7 +377,7 @@ impl Gesamtlauf<'_> {
                     let bezug_angabe: Vec<&Vec<u8>> = if einteilung.fremd.is_empty() { vec![] } else { einteilung.karte.iter().collect() };
                     let gleich = angabe.iter().eq(bezug_angabe.iter().copied());
                     let vorher = (verteilung == Verteilung::Einzeln && !gleich).then(|| nettodateien.clone());
-                    let ohne = match gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist)).map_err(repo_fehler)? {
+                    let ohne = match gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, Umbenennungssuche::Voll, &pfade, budget, frist)).map_err(repo_fehler)? {
                         // startet Git mit der Angabe nicht (Argumentgrenze): die Einträge des Laufs `nachladen` (N7.10 Punkt 3)
                         None if verteilung == Verteilung::Einzeln && gleich => return Err(zu_gross_fuer_datei(nr)),
                         None => {
@@ -407,7 +407,7 @@ impl Gesamtlauf<'_> {
                         nettodateien = vorher;
                         let alle: Vec<Vec<u8>> = netto_liste.iter().flat_map(|d| d.pfade_roh.iter().cloned()).collect();
                         let pfade: Vec<&[u8]> = bezug_angabe.iter().map(|p| p.as_slice()).collect();
-                        let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, &pfade, budget, frist)).map_err(repo_fehler)? else {
+                        let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, Umbenennungssuche::Voll, &pfade, budget, frist)).map_err(repo_fehler)? else {
                             return Err(zu_gross_fuer_datei(nr));
                         };
                         let zuordnung = patches_zuordnen_im_bezug(&mut nettodateien, &im_lauf, &netto_liste, &alle, &patch.ausgabe, patch.abgeschnitten, verteilung, fassung);
@@ -970,7 +970,7 @@ mod tests {
     /// Angabe mit einem langen Pfad nicht (R00211 AK 12, `vorabgrenze_setzen`).
     fn kleine_vorabgrenze(r: &Path) {
         arbeitsrepo::vorabgrenze_setzen(Some(0));
-        let f = arbeitsrepo::diff_tree(r, Vergleich { eltern: Some("HEAD~"), commit: "HEAD" }, Diffart::Patch, &[], GRENZE_EINZELN, frist()).unwrap_err();
+        let f = arbeitsrepo::diff_tree(r, Vergleich { eltern: Some("HEAD~"), commit: "HEAD" }, Diffart::Patch, Umbenennungssuche::Voll, &[], GRENZE_EINZELN, frist()).unwrap_err();
         let Arbeitsrepofehler::ArgumenteZuLang(m) = f else { panic!("{f:?}") };
         let ohne: usize = m.split_whitespace().nth(2).unwrap().parse().unwrap();
         arbeitsrepo::vorabgrenze_setzen(Some(ohne + 1000));

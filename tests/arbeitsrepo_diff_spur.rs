@@ -1,8 +1,9 @@
-// R00206 AK 16 (b, c), ADR-0032 N4.3, N4.7: die Befehlszeilen von `diff-tree`, wie Git sie sieht (`GIT_TRACE` des
-// eigenen Testprozesses) — Form und Inhalt nennt das Modul selbst. Eigene Testdatei, weil die Umgebungsvariable für den
-// ganzen Prozess gilt. Tötet die gleichwertigen Mutanten „-M50% weg“, „-l1000 weg“, „--ignore-submodules=none weg“
-// und „kein `--` ohne Pfade“ (Security S1, #214: eine Datei mit dem Namen einer Revision macht sie sonst mehrdeutig).
-use kanband::git::arbeitsrepo::{self, Diffart, Vergleich};
+// R00206 AK 16 (b, c), ADR-0032 N4.3, N4.7, R00253 AK 7 (N11.3 Punkt 5): die Befehlszeilen von `diff-tree`, wie Git sie
+// sieht (`GIT_TRACE` des eigenen Testprozesses) — Form und Inhalt nennt das Modul selbst, die Umbenennungsschalter das
+// Urteil des Commits (`Voll`: `-M50% -l1000`, `NurGleiche`: `-M100%` ohne `-l`). Eigene Testdatei, weil die
+// Umgebungsvariable für den ganzen Prozess gilt. Tötet die gleichwertigen Mutanten „-M50% weg“, „-l1000 weg“,
+// „--ignore-submodules=none weg“, „kein `--` ohne Pfade“ (Security S1, #214) und „das Urteil erreicht diff_tree nicht“.
+use kanband::git::arbeitsrepo::{self, Diffart, Umbenennungssuche, Vergleich};
 use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -31,17 +32,26 @@ fn befehlszeilen_von_diff_tree() {
     let frist = Instant::now() + Duration::from_secs(10);
     let mit = Vergleich { eltern: Some(&k1), commit: &k2 };
     let wurzel = Vergleich { eltern: None, commit: &k1 };
-    arbeitsrepo::diff_tree(&r, mit, Diffart::Roh, &[], 1 << 20, frist).unwrap();
-    arbeitsrepo::diff_tree(&r, mit, Diffart::Zahlen, &[], 1 << 20, frist).unwrap();
-    arbeitsrepo::diff_tree(&r, mit, Diffart::Patch, &[b"a.txt"], 1 << 20, frist).unwrap();
-    arbeitsrepo::diff_tree(&r, wurzel, Diffart::Patch, &[], 1 << 20, frist).unwrap();
+    let ohne: &[&[u8]] = &[];
+    let pfad: &[&[u8]] = &[b"a.txt"];
+    for urteil in [Umbenennungssuche::Voll, Umbenennungssuche::NurGleiche] {
+        for (art, pfade) in [(Diffart::Roh, ohne), (Diffart::Zahlen, ohne), (Diffart::Patch, pfad)] {
+            arbeitsrepo::diff_tree(&r, mit, art, urteil, pfade, 1 << 20, frist).unwrap();
+        }
+        arbeitsrepo::diff_tree(&r, wurzel, Diffart::Patch, urteil, ohne, 1 << 20, frist).unwrap();
+    }
     let text = std::fs::read_to_string(&spur).unwrap();
     let zeilen: Vec<&str> = text.lines().filter(|z| z.contains("trace: built-in: git diff-tree")).map(|z| z.split("trace: built-in: ").nth(1).unwrap()).collect();
-    let schalter = "git diff-tree --no-ext-diff --no-textconv --no-color -r '-M50%' -l1000 --ignore-submodules=none";
+    let voll = "git diff-tree --no-ext-diff --no-textconv --no-color -r '-M50%' -l1000 --ignore-submodules=none";
+    let nur_gleiche = "git diff-tree --no-ext-diff --no-textconv --no-color -r '-M100%' --ignore-submodules=none";
     assert_eq!(zeilen, [
-        format!("{schalter} --raw -z --end-of-options {k1} {k2} --"),
-        format!("{schalter} --numstat -z --end-of-options {k1} {k2} --"),
-        format!("{schalter} -p --full-index --submodule=short --end-of-options {k1} {k2} -- a.txt"),
-        format!("{schalter} -p --full-index --submodule=short --root --no-commit-id --end-of-options {k1} --"),
+        format!("{voll} --raw -z --end-of-options {k1} {k2} --"),
+        format!("{voll} --numstat -z --end-of-options {k1} {k2} --"),
+        format!("{voll} -p --full-index --submodule=short --end-of-options {k1} {k2} -- a.txt"),
+        format!("{voll} -p --full-index --submodule=short --root --no-commit-id --end-of-options {k1} --"),
+        format!("{nur_gleiche} --raw -z --end-of-options {k1} {k2} --"),
+        format!("{nur_gleiche} --numstat -z --end-of-options {k1} {k2} --"),
+        format!("{nur_gleiche} -p --full-index --submodule=short --end-of-options {k1} {k2} -- a.txt"),
+        format!("{nur_gleiche} -p --full-index --submodule=short --root --no-commit-id --end-of-options {k1} --"),
     ]);
 }
