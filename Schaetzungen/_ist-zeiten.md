@@ -1232,3 +1232,4 @@ Nie vom User erfragen.
 | 2026-11-26 | Karte #241 R00257 | B1367 die drei Sammelwege fragen die Momentaufnahme nach `gesperrt()`; AK 1 grün (Listings ≤ 3 unabhängig von n), AK 3 grün | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-26 | Karte #241 R00257 | B1368 Grenze 5000 (`sammelgrenze_pruefen`) an den sechs Dienst-Einstiegen vor `gesperrt()`; AK 4 grün (5001 → 400 wörtlich, Zähler 0, kein Commit), AK 9 (Beschreibungen und README) | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-26 | Karte #241 R00257 | B1369 E2E-Wächter „Spalte archivieren“ zeigt die 400 (`page.route`), Positivkontrolle ohne Route, genau eine Anfrage, `web/app.js` unverändert | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-26 | Karte #241 R00257 | B1370 `Ordner::aufgaben` und `board_text` über Maps (E3), Verhalten unverändert; AK 6 grün, Modultest drei Dateien derselben Nummer | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

@@ -168,6 +168,9 @@ impl Ordner {
         let _im_ganzen = zaehler::ImGanzen::neu();
         let mut gut: Vec<Aufgabe> = vec![];
         let mut defekt = vec![];
+        // Nummer → Index in `gut` (ADR-0044 E3): die doppelte Nummer wird in O(1) gefunden statt mit `gut.iter().find`.
+        // Der erste Eintrag nach Dateinamen gewinnt — dieselbe Datei, die der lineare Sucher fand.
+        let mut erste: std::collections::HashMap<u32, usize> = std::collections::HashMap::new();
         for (stamm, rel) in self.markdown_dateien(aufgabe::ORDNER)? {
             let text = match self.lies_bytes(&rel)? {
                 Ok(text) => text,
@@ -178,12 +181,15 @@ impl Ordner {
                 }
             };
             match aufgabe::lesen(&format!("{stamm}.md"), &text).map(ohne_abgelaufene) {
-                Ok(a) => match gut.iter().find(|g| g.nummer == a.nummer) {
-                    Some(erste) => {
-                        let fehler = format!("Nummer #{} doppelt — auch in aufgaben/{}", a.nummer, erste.datei);
+                Ok(a) => match erste.get(&a.nummer) {
+                    Some(&i) => {
+                        let fehler = format!("Nummer #{} doppelt — auch in aufgaben/{}", a.nummer, gut[i].datei);
                         defekt.push(DefekteDatei { pfad: rel, fehler, schluessel: a.schluessel.into_iter().collect() });
                     }
-                    None => gut.push(a),
+                    None => {
+                        erste.insert(a.nummer, gut.len());
+                        gut.push(a);
+                    }
                 },
                 Err(e) => defekt.push(DefekteDatei { pfad: rel, fehler: e.to_string(), schluessel: aufgabe::schluessel_nachsichtig(&text) }),
             }
@@ -507,6 +513,21 @@ mod tests {
         super::zaehler::zuruecksetzen();
         assert_eq!(o.aufgabe(7).unwrap().titel, "sieben");
         assert_eq!((super::zaehler::listings(), super::zaehler::einzeldateien()), (1, 1), "ein Listing und eine Einzeldateilesung");
+    }
+
+    // R00257 AK 6 (E3): drei Dateien derselben Nummer — die erste nach Namen ist die Aufgabe, die beiden anderen sind
+    // defekt mit dem wörtlichen Hinweis auf die erste. Verhalten unverändert, jetzt über eine Map gefunden.
+    #[test]
+    fn drei_dateien_derselben_nummer_nennen_die_erste() {
+        let (tmp, o) = ordner_mit_fabrik();
+        std::fs::create_dir_all(tmp.path().join("aufgaben")).unwrap();
+        for (datei, titel) in [("0005-a.md", "a"), ("0005-b.md", "b"), ("0005-c.md", "c")] {
+            std::fs::write(tmp.path().join("aufgaben").join(datei), format!("---\nid: 5\ntitle: {titel}\n---\n")).unwrap();
+        }
+        let (gut, defekt) = o.aufgaben().unwrap();
+        assert_eq!(gut.iter().map(|a| (a.nummer, a.datei.as_str())).collect::<Vec<_>>(), [(5, "0005-a.md")]);
+        let meldungen: Vec<&str> = defekt.iter().filter(|d| d.pfad.starts_with("aufgaben/0005-")).map(|d| d.fehler.as_str()).collect();
+        assert_eq!(meldungen, ["Nummer #5 doppelt — auch in aufgaben/0005-a.md", "Nummer #5 doppelt — auch in aufgaben/0005-a.md"]);
     }
 
     #[test]

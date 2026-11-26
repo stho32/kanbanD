@@ -254,8 +254,14 @@ impl Kanban {
     /// Text der Board-Datei; die Links zeigen auf die Dateinamen der Aufgaben (`neu` ist noch nicht auf der Platte).
     fn board_text(&self, b: &Board, neu: Option<&Aufgabe>) -> Result<String, Fehler> {
         let (aufgaben, _) = self.ordner.aufgaben()?;
+        // Nummer → Aufgabe (ADR-0044 E3): der Dateiname wird in O(1) nachgeschlagen statt mit `aufgaben.iter().find`
+        // je Board-Zeile. `aufgaben()` liefert je Nummer genau eine Karte; die erste gewinnt, wie beim linearen Sucher.
+        let mut je_nummer: HashMap<u32, &Aufgabe> = HashMap::with_capacity(aufgaben.len());
+        for a in &aufgaben {
+            je_nummer.entry(a.nummer).or_insert(a);
+        }
         Ok(board::schreiben(b, |nr| {
-            neu.filter(|a| a.nummer == nr).or_else(|| aufgaben.iter().find(|a| a.nummer == nr)).map(|a| a.datei.clone())
+            neu.filter(|a| a.nummer == nr).or_else(|| je_nummer.get(&nr).copied()).map(|a| a.datei.clone())
         }))
     }
 
