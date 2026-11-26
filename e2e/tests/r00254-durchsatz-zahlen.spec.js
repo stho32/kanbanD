@@ -125,12 +125,23 @@ test('R00254 B1354 (US-5, AK 5): 90 Perioden je Tag — keine Zahl, der Satz erk
   } finally { await k.stoppen(); }
 });
 
-test('R00254 B1354 (US-7, AK 7): ohne gezeigten Zugang nur die Zahlen des Abgangs', async ({ page }) => {
+test('R00254 B1354 (US-7, AK 6): ohne gezeigten Zugang nur die Zahlen des Abgangs, keine Netto-Zeile, keine Netto-Spalte', async ({ page }) => {
   const k = await kanbanStarten(rechenbeispiel('---\nfever: {from-column: Erledigt}\n---\n\n'));
   try {
     await berichtAm0411(page, k);
     await page.getByRole('radio', { name: 'je Tag' }).click();
     await expect(zahlen(page)).toHaveText(['0', '0', '1']);
+    // Kennzahlenzeile: nur Abgang, kein Netto
+    const kz = page.locator('#dus-kennzahl');
+    await expect(kz).toContainText('Abgang 1 · Ø 0,3 je Tag');
+    await expect(kz).not.toContainText('Netto');
+    await expect(kz).not.toContainText('Zugang');
+    // Legende: kein Netto-Satz
+    await expect(page.locator('#dus-netto-satz')).toHaveCount(0);
+    // Tabellenansicht: keine Spalte „Netto“
+    await page.locator('.fluss-tabs > summary').click();
+    await expect(page.locator('.fluss-tab thead th')).toHaveText(['Zeitraum', 'Abgang']);
+    await expect(page.locator('.fluss-tab tbody tr').first().locator('td')).toHaveText(['02.11.2026', '0']);
   } finally { await k.stoppen(); }
 });
 
