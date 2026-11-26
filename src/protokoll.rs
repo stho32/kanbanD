@@ -5,9 +5,16 @@
 //! Server verlässt (N1.7 Regel 2), deshalb braucht kein Test zu warten. Die Datei-Senke mit Rotation folgt in B1375.
 
 use crate::uhr::{Ortsuhr, Uhr};
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, NaiveDate};
+use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+
+/// Der Name der laufenden Protokolldatei; rotierte tragen das Datum dahinter (N1.2 Regel 2).
+pub const DATEINAME: &str = "kanbanD.log";
+
+/// So lange bleiben rotierte Dateien liegen (N1.2 Regel 2, R00258 AK 16).
+pub const AUFBEWAHRUNG_TAGE: i64 = 14;
 
 /// Ein Wert im Protokoll ist höchstens so lang, dann `…` (N1.3, AK 12).
 pub const WERT_HOECHSTENS: usize = 200;
@@ -79,18 +86,28 @@ impl Ereignis {
 /// Die gesammelten Zeilen einer Testsenke (N1.7 Regel 1).
 pub type Sammler = Arc<Mutex<Vec<String>>>;
 
-/// Das Protokoll einer Instanz. Klonbar — alle Klone teilen die Senke.
+/// Wohin die Zeilen gehen.
+enum Senke {
+    /// sammelt nur im Speicher (Test)
+    Sammler(Sammler),
+    /// Datei und stderr (Betrieb, N1.2 Regel 1)
+    Betrieb(Mutex<Dateisenke>),
+    /// nichts (`Kanban::neu` in Tests, die kein Protokoll brauchen)
+    Stumm,
+}
+
+/// Das Protokoll einer Instanz: Stufe, Senke und Uhr. Klonbar — alle Klone teilen die Senke.
 #[derive(Clone)]
 pub struct Protokoll {
     stufe: Stufe,
-    sammler: Option<Sammler>,
+    senke: Arc<Senke>,
     uhr: Arc<dyn Uhr>,
 }
 
 impl Protokoll {
     /// Ein Protokoll ohne Ausgabe; für Werte, die nur der Vollständigkeit wegen eines tragen.
     pub fn stumm() -> Protokoll {
-        Protokoll { stufe: Stufe::Info, sammler: None, uhr: Arc::new(Ortsuhr) }
+        Protokoll { stufe: Stufe::Info, senke: Arc::new(Senke::Stumm), uhr: Arc::new(Ortsuhr) }
     }
 
     /// Eine Testsenke: liefert das Protokoll und den Sammler (N1.7 Regel 1).
@@ -110,12 +127,18 @@ impl Protokoll {
 
     fn sammler_mit_stufe_und_uhr(stufe: Stufe, uhr: Arc<dyn Uhr>) -> (Protokoll, Sammler) {
         let sammler: Sammler = Arc::new(Mutex::new(vec![]));
-        (Protokoll { stufe, sammler: Some(sammler.clone()), uhr }, sammler)
+        (Protokoll { stufe, senke: Arc::new(Senke::Sammler(sammler.clone())), uhr }, sammler)
     }
 
-    /// Der Betriebsfall: Datei im `log_ordner` und stderr (N1.2 Regel 1). Baut die Datei-Senke noch nicht (B1375).
-    pub fn betrieb(stufe: Stufe, _log_ordner: impl Into<PathBuf>) -> Protokoll {
-        Protokoll { stufe, sammler: None, uhr: Arc::new(Ortsuhr) }
+    /// Der Betriebsfall: Datei im `log_ordner` und stderr (N1.2 Regel 1). Der Ordner entsteht beim ersten Schreiben.
+    pub fn betrieb(stufe: Stufe, log_ordner: impl Into<PathBuf>) -> Protokoll {
+        Protokoll::betrieb_mit_uhr(stufe, log_ordner, Arc::new(Ortsuhr))
+    }
+
+    /// Wie [`Protokoll::betrieb`], mit fester Uhr (Test, N1.7 Regel 5).
+    pub fn betrieb_mit_uhr(stufe: Stufe, log_ordner: impl Into<PathBuf>, uhr: Arc<dyn Uhr>) -> Protokoll {
+        let senke = Dateisenke::neu(log_ordner.into());
+        Protokoll { stufe, senke: Arc::new(Senke::Betrieb(Mutex::new(senke))), uhr }
     }
 
     pub fn stufe(&self) -> Stufe {
@@ -128,7 +151,10 @@ impl Protokoll {
 
     /// Der Pfad der laufenden Datei, wenn es eine Datei-Senke ist (FA 6, `log=`).
     pub fn log_pfad(&self) -> Option<PathBuf> {
-        None
+        match &*self.senke {
+            Senke::Betrieb(s) => Some(s.lock().unwrap_or_else(|e| e.into_inner()).pfad.clone()),
+            _ => None,
+        }
     }
 
     /// Schreibt eine Zeile, wenn die Stufe sie zulässt (N1.3). Ein Fehler der Datei-Senke stoppt nie (N1.2 Regel 3).
@@ -137,8 +163,14 @@ impl Protokoll {
             return;
         }
         let text = zeile(self.uhr.jetzt(), stufe, ereignis, felder);
-        if let Some(sammler) = &self.sammler {
-            sammler.lock().unwrap_or_else(|e| e.into_inner()).push(text);
+        match &*self.senke {
+            Senke::Sammler(sammler) => sammler.lock().unwrap_or_else(|e| e.into_inner()).push(text),
+            Senke::Betrieb(senke) => {
+                // stderr läuft weiter, auch wenn die Datei ruht (N1.2 Regel 3)
+                eprintln!("{text}");
+                senke.lock().unwrap_or_else(|e| e.into_inner()).schreiben(self.uhr.heute(), &text);
+            }
+            Senke::Stumm => {}
         }
     }
 }
@@ -190,6 +222,79 @@ pub fn kuerzen(wert: &str, grenze: usize) -> String {
         s.push('…');
     }
     s
+}
+
+/// Die Datei-Senke: Ziel, tägliche Rotation und Aufbewahrung. Ruht nach einem Fehler bis zur nächsten Rotation.
+struct Dateisenke {
+    ordner: PathBuf,
+    pfad: PathBuf,
+    datei: Option<std::fs::File>,
+    tag: Option<NaiveDate>,
+    ruht: bool,
+}
+
+impl Dateisenke {
+    fn neu(ordner: PathBuf) -> Dateisenke {
+        Dateisenke { pfad: ordner.join(DATEINAME), ordner, datei: None, tag: None, ruht: false }
+    }
+
+    fn schreiben(&mut self, heute: NaiveDate, text: &str) {
+        if self.ruht {
+            return;
+        }
+        if self.tag != Some(heute) {
+            if let Err(e) = self.wechseln(heute) {
+                eprintln!("Protokoll: Log-Ordner {} ist nicht schreibbar ({e}) — bis zur nächsten Rotation ruht die Datei-Senke", self.ordner.display());
+                self.ruht = true;
+                return;
+            }
+        }
+        let ergebnis = match self.datei.as_mut() {
+            Some(datei) => datei.write_all(text.as_bytes()).and_then(|()| datei.write_all(b"\n")).and_then(|()| datei.flush()),
+            None => return,
+        };
+        if let Err(e) = ergebnis {
+            eprintln!("Protokoll: Log-Ordner {} ist nicht schreibbar ({e}) — bis zur nächsten Rotation ruht die Datei-Senke", self.ordner.display());
+            self.ruht = true;
+        }
+    }
+
+    /// Ein neuer Tag: die alte Datei bekommt das Datum ihres letzten Tages, alte rotierte werden gelöscht,
+    /// `kanbanD.log` wird neu geöffnet (N1.2 Regel 2).
+    fn wechseln(&mut self, heute: NaiveDate) -> std::io::Result<()> {
+        let alt = match self.tag.or_else(|| self.vorhandenes_datum()) {
+            Some(alt) if alt != heute => Some(alt),
+            _ => None,
+        };
+        if let Some(alt) = alt {
+            self.datei = None;
+            std::fs::rename(&self.pfad, self.ordner.join(format!("{DATEINAME}.{alt}")))?;
+        }
+        std::fs::create_dir_all(&self.ordner)?;
+        self.aufraeumen(heute);
+        self.datei = Some(std::fs::OpenOptions::new().create(true).append(true).open(&self.pfad)?);
+        self.tag = Some(heute);
+        Ok(())
+    }
+
+    /// Das Datum, an dem die vorhandene `kanbanD.log` zuletzt geschrieben wurde — beim Start statt der Rotation.
+    fn vorhandenes_datum(&self) -> Option<NaiveDate> {
+        let geaendert = std::fs::metadata(&self.pfad).ok()?.modified().ok()?;
+        Some(DateTime::<chrono::Local>::from(geaendert).date_naive())
+    }
+
+    /// Löscht `kanbanD.log.<Datum>`, deren Datum mehr als [`AUFBEWAHRUNG_TAGE`] Tage zurückliegt; andere Dateien nie.
+    fn aufraeumen(&self, heute: NaiveDate) {
+        let Ok(eintraege) = std::fs::read_dir(&self.ordner) else { return };
+        for eintrag in eintraege.flatten() {
+            let name = eintrag.file_name();
+            let Some(name) = name.to_str() else { continue };
+            let Some(datum) = name.strip_prefix(&format!("{DATEINAME}.")).and_then(|rest| NaiveDate::parse_from_str(rest, "%Y-%m-%d").ok()) else { continue };
+            if (heute - datum).num_days() > AUFBEWAHRUNG_TAGE {
+                let _ = std::fs::remove_file(eintrag.path());
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -260,5 +365,66 @@ mod tests {
         assert_eq!(zeilen.iter().filter(|z| z.contains(" WARN ")).count(), 1);
         assert_eq!(zeilen.iter().filter(|z| z.contains(" ERROR ")).count(), 1);
         assert_eq!(zeilen.iter().filter(|z| z.contains(" EXCEPTION ")).count(), 1, "Exception bleibt bei Stufe error");
+    }
+
+    // AK 15/16: Rotation und Aufbewahrung mit fester Uhr
+    #[test]
+    fn rotation_legt_die_alte_datei_ab_und_haelt_vierzehn_tage() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ordner = tmp.path().join("log");
+        std::fs::create_dir_all(&ordner).unwrap();
+        std::fs::write(ordner.join("kanbanD.log.2026-11-12"), "alt\n").unwrap();
+        std::fs::write(ordner.join("kanbanD.log.2026-11-13"), "gerade noch\n").unwrap();
+        std::fs::write(ordner.join("x.txt"), "fremd\n").unwrap();
+        let uhr = Arc::new(FesteUhr::aus_rfc3339("2026-11-26T09:00:00+01:00"));
+        let protokoll = Protokoll::betrieb_mit_uhr(Stufe::Info, &ordner, uhr.clone());
+        protokoll.schreiben(Stufe::Info, Ereignis::Gestartet, &[]);
+        assert!(ordner.join("kanbanD.log").exists());
+        uhr.stellen(FesteUhr::aus_rfc3339("2026-11-27T09:00:00+01:00").jetzt());
+        protokoll.schreiben(Stufe::Info, Ereignis::Commit, &[]);
+        let alt = std::fs::read_to_string(ordner.join("kanbanD.log.2026-11-26")).unwrap();
+        assert!(alt.contains(" INFO gestartet") && alt.contains("2026-11-26T09:00"), "{alt}");
+        let neu = std::fs::read_to_string(ordner.join("kanbanD.log")).unwrap();
+        assert!(neu.contains(" INFO commit") && !neu.contains("gestartet"), "{neu}");
+        assert!(neu.contains("2026-11-27T09:00"), "{neu}");
+        assert!(!ordner.join("kanbanD.log.2026-11-12").exists(), "vor 15 Tagen gelöscht");
+        assert!(ordner.join("kanbanD.log.2026-11-13").exists(), "vor 14 Tagen bleibt");
+        assert!(ordner.join("x.txt").exists(), "fremde Datei bleibt");
+    }
+
+    /// AK 16: die Grenze sitzt genau zwischen „vor 15 Tagen“ (löschen) und „vor 14 Tagen“ (behalten) —
+    /// tötet die Mutanten `>=` statt `>` und „15 statt 14“.
+    #[test]
+    fn aufbewahrung_grenzt_genau_bei_vierzehn_tagen() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ordner = tmp.path().join("log");
+        std::fs::create_dir_all(&ordner).unwrap();
+        assert_eq!(AUFBEWAHRUNG_TAGE, 14);
+        std::fs::write(ordner.join("kanbanD.log.2026-11-12"), "alt\n").unwrap();
+        std::fs::write(ordner.join("kanbanD.log.2026-11-13"), "gerade noch\n").unwrap();
+        // Start am 27.: Aufräumen läuft beim ersten Schreiben, die Uhr steht fest
+        let protokoll = Protokoll::betrieb_mit_uhr(Stufe::Info, &ordner, Arc::new(FesteUhr::aus_rfc3339("2026-11-27T09:00:00+01:00")));
+        protokoll.schreiben(Stufe::Info, Ereignis::Gestartet, &[("ordner", "/b".into())]);
+        assert!(!ordner.join("kanbanD.log.2026-11-12").exists(), "27 − 12 = 15 Tage → weg");
+        assert!(ordner.join("kanbanD.log.2026-11-13").exists(), "27 − 13 = 14 Tage → bleibt");
+    }
+
+    // AK 17: ein nicht schreibbarer Log-Ordner stoppt nichts und nennt den Ordner
+    #[test]
+    fn ein_nicht_schreibbarer_ordner_stoppt_das_protokoll_nicht() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let ordner = tmp.path().join("log");
+        std::fs::create_dir_all(&ordner).unwrap();
+        let mut rechte = std::fs::metadata(&ordner).unwrap().permissions();
+        rechte.set_mode(0o555);
+        std::fs::set_permissions(&ordner, rechte).unwrap();
+        let protokoll = Protokoll::betrieb_mit_uhr(Stufe::Info, &ordner, Arc::new(FesteUhr::aus_rfc3339("2026-11-27T09:00:00+01:00")));
+        protokoll.schreiben(Stufe::Info, Ereignis::Gestartet, &[]);
+        protokoll.schreiben(Stufe::Warn, Ereignis::Abgewiesen, &[]);
+        assert!(!ordner.join("kanbanD.log").exists(), "kein Schreiben möglich");
+        let mut rechte = std::fs::metadata(&ordner).unwrap().permissions();
+        rechte.set_mode(0o755);
+        std::fs::set_permissions(&ordner, rechte).unwrap();
     }
 }
