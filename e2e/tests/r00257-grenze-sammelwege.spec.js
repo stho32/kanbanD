@@ -3,7 +3,7 @@
 // (PO Z. 671, ADR-0044 E2). 5001 Karten auf einem Board sind im Gate zu teuer, deshalb antwortet die Probe per
 // `page.route`; eine Positivkontrolle ohne die Route beweist, dass derselbe Klick wirklich archiviert.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, bereit } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, bereit, mutanteEinsetzen } = require('./hilfen');
 
 const WORTLAUT = 'Zu viele Einträge in einer Sammelanfrage: 5001, höchstens 5000 sind erlaubt. Bitte in Teilen senden.';
 
@@ -30,7 +30,7 @@ async function spalteArchivieren(page) {
 
 test.describe('R00257 AK 5', () => {
   let k;
-  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(DATEIEN)); await alsPerson(page, 'st'); });
+  test.beforeEach(async ({ page }) => { k = await kanbanStarten(einrichten(DATEIEN)); await alsPerson(page, 'st'); await mutanteEinsetzen(page); });
   test.afterEach(() => k.stoppen());
 
   test('„Spalte archivieren“ zeigt die 400, nichts ist archiviert', async ({ page }) => {
