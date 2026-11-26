@@ -1,6 +1,10 @@
 // R00249 Review-Seite — Ansicht nebeneinander (Karte #260, I0239, Scheibe S7 von ADR-0042 Punkt 8, N6): AK 1–10 und US-1..US-6 im
 // echten Programm gegen echtes Git. Ausgangslage: review-hilfen.js (`nebeneinanderRepository`: N1 mit K-Lauf, K-Datei, K-Lang; N2 K-Block,
 // N3 K-Zwei in `wb`, N4 K-Last, N5 ohne Dateien). Schichten: Testfälle → Testsprache (`seite`) → Treiber (Selektoren, Messungen nur hier).
+// Lastprobe von AK 9 (R00256): die Long-Task-Grenze 150 ms (ADR-0042 Q2) läuft außerhalb des Gates, nur ausdrücklich und bei Last < 2 —
+// `KD_LASTPROBE=1 npx playwright test tests/r00249-review-nebeneinander.spec.js -g "AK 9 Lastprobe" --workers=1` (Last aus `/proc/loadavg`);
+// im Gate erscheint sie als `skipped`, ohne `KD_LASTPROBE` misst sie nicht.
+const fs = require('fs');
 const { test, expect } = require('@playwright/test');
 const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastFarben } = require('./hilfen');
 const { nebeneinanderRepository, nebeneinanderVorbereiten, UM_A, UM_B } = require('./review-hilfen');
@@ -621,6 +625,74 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
     }
     test.info().annotations.push({ type: 'AK 9 Leseposition', description: JSON.stringify({ groessterVersatz: Math.max(...versatz) }) });
     expect(Math.max(...versatz), 'Lesezeile ≤ 36 px').toBeLessThanOrEqual(36);
+  });
+
+  /* ── AK 9 Lastprobe (R00256): das Wanduhr-Maß außerhalb des Gates, nur ausdrücklich (KD_LASTPROBE=1) und bei Last < 2;
+        im Gate erscheint sie als `skipped`, ohne KD_LASTPROBE misst sie nicht ── */
+
+  test.describe('Lastprobe', () => {
+    test.skip(!process.env.KD_LASTPROBE, 'Lastprobe: nur ausdrücklich (KD_LASTPROBE=1), Last < 2');
+
+    /** Long Tasks ab dem Laden (PerformanceObserver `longtask`, ereignisgenau) — nur die Lastprobe misst Wanduhr-Zeit. */
+    function langeAufgabenSammeln() {
+      window.kdLang = [];
+      new PerformanceObserver(l => l.getEntries().forEach(e => window.kdLang.push({ start: e.startTime, dauer: Math.round(e.duration) }))).observe({ type: 'longtask', buffered: true });
+    }
+
+    /** Die 1-Minuten-Last der Maschine aus `/proc/loadavg` (R00256 AK 4). */
+    function lastLesen() {
+      return Number(fs.readFileSync('/proc/loadavg', 'utf8').split(/\s+/)[0]);
+    }
+
+    /** Meldet Last und Werte der Lastprobe in die Ausgabe, als Annotation und mit `KD_MESS_AUS` in eine Datei (R00256 AK 3, 4). */
+    function messungMelden(messung, last) {
+      const zeile = `AK 9 Lastprobe Last ${last.toFixed(2)} | umschalten ${messung.umschalten} ms | scrollen ${messung.scrollen} ms | zurueck ${messung.zurueck} ms | Tabellenzeilen ${messung.zeilen}`;
+      console.log(zeile);
+      test.info().annotations.push({ type: 'AK 9 Lastprobe', description: zeile });
+      if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify({ last, ...messung }) + '\n');
+    }
+
+    test('AK 9 Lastprobe: Umschalten, Scrollen und Zurück ohne Long Task über 150 ms, 5.000 Tabellenzeilen', async ({ page }) => {
+      const last = lastLesen();
+      console.log(`AK 9 Lastprobe: Last ${last.toFixed(2)} — Grenze 150 ms, Messung nur bei Last < 2`);
+      test.skip(last >= 2, `keine Messung: Last < 2 nötig (Last ${last.toFixed(2)})`);
+      test.setTimeout(240000);
+      const s = seite(page);
+      await breiteSetzen(page, 980, 800);
+      await page.addInitScript(langeAufgabenSammeln);
+      await s.commitOeffnen(k, 11, N().n4);
+      await s.datei('src/gross.rs').getByRole('button', { name: 'Änderungen anzeigen' }).click();
+      await expect(s.bereich('src/gross.rs').locator('tr.add').first()).toBeVisible();
+      await farbeAbwarten(page, s.bereich('src/gross.rs'));
+      await zweiBilder(page);
+      const laengste = t => page.evaluate(von => Math.max(0, ...window.kdLang.filter(e => e.start >= von).map(e => e.dauer)), t);
+      const jetzt = () => page.evaluate(() => performance.now());
+      const bisEnde = () => page.evaluate(() => new Promise(fertig => {
+        const r = document.getElementById('review');
+        r.scrollTop = 0;
+        const schritt = () => { const vorher = r.scrollTop; r.scrollTop += r.clientHeight * 0.8; if (r.scrollTop === vorher) fertig(); else requestAnimationFrame(schritt); };
+        requestAnimationFrame(schritt);
+      }));
+      const t0 = await jetzt();
+      await s.schalter.click();
+      await expect(s.eingabe).toBeChecked();
+      await expect.poll(() => s.nebeneinander('src/gross.rs')).toBe(true);
+      await zweiBilder(page);
+      const umschalten = await laengste(t0);
+      const zeilen = await s.bereich('src/gross.rs').evaluate(b => b.querySelectorAll('tbody tr, table > tr').length - b.querySelectorAll('tr.hk').length);
+      expect(zeilen, '5.000 Tabellenzeilen').toBe(5000);
+      const t1 = await jetzt();
+      await bisEnde();
+      await zweiBilder(page);
+      const scrollen = await laengste(t1);
+      const t2 = await jetzt();
+      await s.schalter.click();
+      await expect(s.eingabe).not.toBeChecked();
+      await zweiBilder(page);
+      const zurueck = await laengste(t2);
+      messungMelden({ umschalten, scrollen, zurueck, zeilen, workers: test.info().config.workers }, last);
+      expect(Math.max(umschalten, scrollen, zurueck), 'Long Task ≤ 150 ms').toBeLessThanOrEqual(150);
+    });
   });
 
   /* ── ADR-0042 N7.4 P8: Hinaufrollen nach frischem Laden in „Nebeneinander“, „Umbrechen“ an und aus ── */
