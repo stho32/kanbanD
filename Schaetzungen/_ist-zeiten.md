@@ -1235,3 +1235,10 @@ Nie vom User erfragen.
 | 2026-11-26 | Karte #241 R00257 | B1370 `Ordner::aufgaben` und `board_text` über Maps (E3), Verhalten unverändert; AK 6 grün, Modultest drei Dateien derselben Nummer | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-26 | Karte #241 R00257 | B1371 Lastprobe `tests/lastprobe_r00257.rs` (Last 1,45/1,98): Kette 2083/2335 ms, Lesepfad 127/193 ms, Commit 1956/2142 ms, fremder PATCH 49/53 ms nach der Kette, GET 30.002: 1038/1020 ms — Rest im Commit, neue Karte zum Commit-Weg (AK 7) | Standard | 1-2h | 0,8h | 0,8h | autonom |
 | 2026-11-26 | Karte #241 R00257 | B1372 Abschluss: Tagprobe im echten Programm (Last 2,29: `kette` 2,77 s, `titel only` 2,24 s, fremder PATCH 1,84 s, `kette+rueck` 0,31 s), Mutanten m1–m6 je getötet, Fitness Function AK 3, volles Gate grün (cargo 1322/0, node 2018/0+1 skip, Playwright 2773/0) | Standard | 0,5-1h | 1,0h | 1,0h | autonom |
+| 2026-11-26 | Karte #235 R00259 | B1382 Abnahme-Proben rot (Unit-Deutung, E2E-Oberfläche) | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-26 | Karte #235 R00259 | B1383 Deutung der Labels als reine Funktion (web/braucht.js) | Standard | 0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-26 | Karte #235 R00259 | B1384/B1385/B1387/B1388/B1391 Karte und Fenster zeigen „wartet auf #n“ (Chips, Name, Feld, Gestalt) | Standard | 2-3h | 0,4h | 0,4h | autonom |
+| 2026-11-26 | Karte #235 R00259 | B1389/B1390 × löst die Abhängigkeit, 400 als Entwurf (G-3 bleibt) | Standard | 1,5-2,5h | 0,3h | 0,3h | autonom |
+| 2026-11-26 | Karte #235 R00259 | B1386 E2E-Proben der Karte (Live, 320 px) | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-26 | Karte #235 R00259 | B1393 Wireframes-Indexzeile #wartet-auf | Standard | 0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-26 | Karte #235 R00259 | B1392 Mutanten m1/m2 getötet, Abnahme-Probe S2 im echten Programm, volles Gate | Standard | 1-2h | 1,0h | 1,0h | autonom |
