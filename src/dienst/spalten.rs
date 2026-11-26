@@ -18,8 +18,8 @@ impl Kanban {
             Spaltenfehler::AltUnbekannt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ gibt es nicht")),
             Spaltenfehler::AltDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ wird zweimal übernommen")),
             Spaltenfehler::EnthaeltAufgaben(n, z) => Fehler::Konflikt(format!("Spalte „{n}“ enthält {} — erst leeren", aufgaben_anzahl(z))),
-            Spaltenfehler::FarbeUngueltig(f) => Fehler::Ungueltig(format!("Farbe „{f}“ ist kein #rrggbb")),
-            Spaltenfehler::EigentuemerUngueltig(e) => Fehler::Ungueltig(format!("Eigentümer „{e}“ ist nicht human, agent oder null")),
+            Spaltenfehler::FarbeUngueltig(f) => Fehler::ungueltig_mit_inhalt(format!("Farbe „{f}“ ist kein #rrggbb"), format!("Farbe „{}“ ist kein #rrggbb", crate::fehler::inhalt_laenge(&f))),
+            Spaltenfehler::EigentuemerUngueltig(e) => Fehler::ungueltig_mit_inhalt(format!("Eigentümer „{e}“ ist nicht human, agent oder null"), format!("Eigentümer „{}“ ist nicht human, agent oder null", crate::fehler::inhalt_laenge(&e))),
         })?;
         let text = self.board_text(&b, None)?;
         zugregeln::einstellungen_pruefen(wer.art, &einstellungsaenderungen(&vorher, &b, &text, neu))?;

@@ -32,7 +32,7 @@ fn name(k: &Kanban, kuerzel: &str) -> String {
 /// Der Eintrag zur Kennung `wer@beginn` (R00090) — unabhängig davon, wo er im Block steht.
 fn eintrag<'a>(a: &'a mut Aufgabe, kennung: &str) -> Result<&'a mut Zeiteintrag, Fehler> {
     let nr = a.nummer;
-    a.zeiten.iter_mut().find(|z| z.hat_kennung(kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat keinen Zeiteintrag {kennung}")))
+    a.zeiten.iter_mut().find(|z| z.hat_kennung(kennung)).ok_or_else(|| Fehler::nicht_gefunden_mit_inhalt(format!("#{nr} hat keinen Zeiteintrag {kennung}"), format!("#{nr} hat keinen Zeiteintrag {}", crate::fehler::inhalt_laenge(kennung))))
 }
 
 impl Kanban {
@@ -45,7 +45,7 @@ impl Kanban {
         };
         let (beginn, ende) = match (&n.dauer, &n.beginn, &n.ende) {
             (Some(dauer), None, None) => {
-                let minuten = uhr::dauer_lesen(dauer).ok_or_else(|| Fehler::Ungueltig(format!("Dauer „{dauer}“: z. B. 0:45, 1,5 oder 90 min")))?;
+                let minuten = uhr::dauer_lesen(dauer).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Dauer „{dauer}“: z. B. 0:45, 1,5 oder 90 min"), format!("Dauer „{}“: z. B. 0:45, 1,5 oder 90 min", crate::fehler::inhalt_laenge(dauer))))?;
                 let ende = uhr::jetzt();
                 (uhr::verschieben(&ende, -minuten).expect("jetzt ist lesbar"), ende)
             }
@@ -67,7 +67,7 @@ impl Kanban {
         // gespeichert wird in Ortszeit mit Versatz, gleich in welcher Form die Eingabe kam (R00084)
         let lesen = |z: &Option<String>| -> Result<Option<String>, Fehler> {
             z.as_deref()
-                .map(|s| Zeitpunkt::lesen(s).map(|z| z.in_ortszeit().datei()).ok_or_else(|| Fehler::Ungueltig(format!("Zeitpunkt „{s}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z"))))
+                .map(|s| Zeitpunkt::lesen(s).map(|z| z.in_ortszeit().datei()).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Zeitpunkt „{s}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z"), format!("Zeitpunkt „{}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z", crate::fehler::inhalt_laenge(s)))))
                 .transpose()
         };
         let (beginn, ende) = (lesen(&k.beginn)?, lesen(&k.ende)?);
@@ -106,7 +106,7 @@ impl Kanban {
 
 /// Beginn und Ende eines Nachtrags in Ortszeit mit Versatz; das Ende liegt nach dem Beginn und nicht in der Zukunft.
 fn block_lesen(beginn: &str, ende: &str) -> Result<(String, String), Fehler> {
-    let lesen = |s: &str| Zeitpunkt::lesen(s).map(|z| z.in_ortszeit()).ok_or_else(|| Fehler::Ungueltig(format!("Zeitpunkt „{s}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z")));
+    let lesen = |s: &str| Zeitpunkt::lesen(s).map(|z| z.in_ortszeit()).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Zeitpunkt „{s}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z"), format!("Zeitpunkt „{}“: erwartet JJJJ-MM-TT HH:MM, optional mit Versatz ±HH:MM oder Z", crate::fehler::inhalt_laenge(s))));
     let (b, e) = (lesen(beginn)?, lesen(ende)?);
     if e.utc() <= b.utc() {
         return Err(Fehler::Ungueltig("Das Ende liegt nicht nach dem Beginn".into()));

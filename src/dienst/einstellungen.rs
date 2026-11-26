@@ -27,7 +27,7 @@ pub fn klassen_pruefen(klassen: &[Klasse]) -> Result<(), Fehler> {
             return Err(Fehler::Ungueltig(format!("Klasse „{}“ braucht eine Bezeichnung", k.schluessel)));
         }
         if !farbe_gueltig(&k.farbe) {
-            return Err(Fehler::Ungueltig(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", k.farbe)));
+            return Err(Fehler::ungueltig_mit_inhalt(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", k.farbe), format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", crate::fehler::inhalt_laenge(&k.farbe))));
         }
         if gesehen.contains(&k.schluessel.as_str()) {
             return Err(Fehler::Ungueltig(format!("Klasse „{}“ ist doppelt", k.schluessel)));
@@ -74,7 +74,7 @@ fn signale_pruefen(signale: &[Signal]) -> Result<(), Fehler> {
             return Err(Fehler::Ungueltig(format!("Signal „{}“ braucht eine Bedeutung", g.schluessel)));
         }
         if !farbe_gueltig(&g.farbe) {
-            return Err(Fehler::Ungueltig(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", g.farbe)));
+            return Err(Fehler::ungueltig_mit_inhalt(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", g.farbe), format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", crate::fehler::inhalt_laenge(&g.farbe))));
         }
         if gesehen.contains(&g.schluessel.as_str()) {
             return Err(Fehler::Ungueltig(format!("Signal „{}“ ist doppelt", g.schluessel)));

@@ -70,7 +70,7 @@ impl Kanban {
     /// Pfad (relativ) eines vorhandenen Anhangs.
     pub fn anhangpfad(&self, nr: u32, name: &str) -> Result<String, Fehler> {
         if !self.anhaenge(nr)?.iter().any(|a| a.name == name) {
-            return Err(Fehler::NichtGefunden(format!("#{nr} hat keinen Anhang „{name}“")));
+            return Err(Fehler::nicht_gefunden_mit_inhalt(format!("#{nr} hat keinen Anhang „{name}“"), format!("#{nr} hat keinen Anhang „{}“", crate::fehler::inhalt_laenge(&name))));
         }
         Ok(format!("{}/{name}", self.anhangordner(nr)?))
     }

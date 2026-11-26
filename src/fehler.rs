@@ -93,6 +93,16 @@ pub enum Fehler {
     /// Ein Agent stellt „Transkripte erfassen“ um (403, R00220 FA 3, ADR-0036 Nachtrag „Umschalten“) — Rumpf
     /// `{fehler, einstellung: "record-transcripts"}`; nur über `schalter_verboten` anlegen.
     SchalterVerboten { meldung: String },
+    /// Eine Abweisung, deren Meldung **Inhalt** einsetzt (Aufgaben-Titel, Fehlertext des Parsers, Wert aus Rumpf
+    /// oder Query, Commit-Text): der Rumpf nennt ihn wie bisher, das Protokoll nur seine Länge `<n Zeichen>`
+    /// (R00258 FA 13, ADR-0001 N1.8 Regel 1). `ursache` bestimmt Status und Protokollfeld; `verweis` füllt den
+    /// Rumpf der Verweis-Fehler.
+    Inhalt { meldung: String, grund: String, ursache: Ursache, verweis: Option<String> },
+}
+
+/// Die Länge eines Inhalts fürs Protokoll: `<n Zeichen>` (R00258 FA 13, ADR-0001 N1.8 Regel 1).
+pub fn inhalt_laenge(inhalt: &str) -> String {
+    format!("<{} Zeichen>", inhalt.chars().count())
 }
 
 impl Fehler {
@@ -100,6 +110,7 @@ impl Fehler {
         match self {
             Fehler::Ungueltig(m) | Fehler::NichtGefunden(m) | Fehler::Konflikt(m) | Fehler::Defekt(m) | Fehler::Intern(m) | Fehler::Zeitgrenze(m) | Fehler::Ausgelastet { meldung: m, .. } | Fehler::ZuGross(m) => m,
             Fehler::GrenzeErreicht { .. } => "Grenze erreicht",
+            Fehler::Inhalt { meldung, .. } => meldung,
             Fehler::Verboten { meldung, .. } | Fehler::EinstellungVerboten { meldung, .. } | Fehler::PersonenartVerboten { meldung, .. } | Fehler::Verweis { meldung, .. } | Fehler::VerweisKonflikt { meldung, .. } | Fehler::Commitzustand { meldung, .. } | Fehler::ErfassungAus { meldung, .. } | Fehler::KennungBelegt { meldung, .. } | Fehler::Transkriptzustand { meldung, .. } | Fehler::SchalterVerboten { meldung } => meldung,
         }
     }
@@ -113,6 +124,7 @@ impl Fehler {
             Fehler::Defekt(_) => Ursache::Defekt,
             Fehler::Intern(_) => Ursache::Intern,
             Fehler::GrenzeErreicht { .. } => Ursache::Grenze,
+            Fehler::Inhalt { ursache, .. } => *ursache,
             Fehler::Verboten { .. } | Fehler::EinstellungVerboten { .. } | Fehler::PersonenartVerboten { .. } | Fehler::SchalterVerboten { .. } => Ursache::Verboten,
             Fehler::Verweis { fehlt: true, .. } => Ursache::Fehlt,
             Fehler::Verweis { fehlt: false, .. } => Ursache::Eingabe,
@@ -128,10 +140,43 @@ impl Fehler {
         }
     }
 
-    /// Die Fassung der Meldung für das Protokoll, ohne Inhalt (R00258 FA 13). In B1378 ersetzt durch die
-    /// Fundstellen-Log-Fassung; bis dahin die Meldung selbst.
+    /// Die Fassung der Meldung für das Protokoll, ohne Inhalt (R00258 FA 13, ADR-0001 N1.8 Regel 1): an jeder
+    /// Fundstelle, die Inhalt einsetzt, steht dort nur dessen Länge; alles Übrige ist die Meldung selbst.
     pub fn grund_fuer_protokoll(&self) -> String {
-        self.meldung().to_string()
+        match self {
+            Fehler::Inhalt { grund, .. } => grund.clone(),
+            anders => anders.meldung().to_string(),
+        }
+    }
+
+    /// Eine 400, deren Meldung Inhalt einsetzt (FA 13).
+    pub fn ungueltig_mit_inhalt(meldung: impl Into<String>, grund: impl Into<String>) -> Fehler {
+        Fehler::Inhalt { meldung: meldung.into(), grund: grund.into(), ursache: Ursache::Eingabe, verweis: None }
+    }
+
+    /// Eine 404, deren Meldung Inhalt einsetzt.
+    pub fn nicht_gefunden_mit_inhalt(meldung: impl Into<String>, grund: impl Into<String>) -> Fehler {
+        Fehler::Inhalt { meldung: meldung.into(), grund: grund.into(), ursache: Ursache::Fehlt, verweis: None }
+    }
+
+    /// Eine 423, deren Meldung Inhalt einsetzt (Fehlertext des Parsers).
+    pub fn defekt_mit_inhalt(meldung: impl Into<String>, grund: impl Into<String>) -> Fehler {
+        Fehler::Inhalt { meldung: meldung.into(), grund: grund.into(), ursache: Ursache::Defekt, verweis: None }
+    }
+
+    /// Eine 409, deren Meldung Inhalt einsetzt.
+    pub fn konflikt_mit_inhalt(meldung: impl Into<String>, grund: impl Into<String>) -> Fehler {
+        Fehler::Inhalt { meldung: meldung.into(), grund: grund.into(), ursache: Ursache::Konflikt, verweis: None }
+    }
+
+    /// Ein Verweis-Fehler mit Inhalt: 400, bzw. 404 mit `fehlt: true` (Rumpf `{fehler, verweis}`).
+    pub fn verweis_mit_inhalt(meldung: impl Into<String>, grund: impl Into<String>, verweis: String, fehlt: bool) -> Fehler {
+        Fehler::Inhalt { meldung: meldung.into(), grund: grund.into(), ursache: if fehlt { Ursache::Fehlt } else { Ursache::Eingabe }, verweis: Some(verweis) }
+    }
+
+    /// Ein Verweis-Konflikt (409) mit Inhalt.
+    pub fn verweis_konflikt_mit_inhalt(meldung: impl Into<String>, grund: impl Into<String>, verweis: String) -> Fehler {
+        Fehler::Inhalt { meldung: meldung.into(), grund: grund.into(), ursache: Ursache::Konflikt, verweis: Some(verweis) }
     }
 
     /// Die Lesegrenze ist voll (503) — der eine Ort für die Grenzart.
@@ -194,5 +239,38 @@ impl From<std::io::Error> for Fehler {
 impl std::fmt::Display for Fehler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.meldung())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // R00258 AK 10 / FA 13: Inhalte stehen im Protokoll nur als Länge, der Rumpf bleibt unverändert
+    #[test]
+    fn der_grund_fuer_das_protokoll_ersetzt_inhalt_durch_seine_laenge() {
+        let f = Fehler::ungueltig_mit_inhalt(
+            "„GEHEIM-TITEL-239“: Aufgabe #999 gibt es nicht (braucht:999)",
+            format!("„{}“: Aufgabe #999 gibt es nicht (braucht:999)", inhalt_laenge("GEHEIM-TITEL-239")),
+        );
+        assert_eq!(f.meldung(), "„GEHEIM-TITEL-239“: Aufgabe #999 gibt es nicht (braucht:999)", "der Rumpf bleibt unverändert");
+        assert_eq!(f.grund_fuer_protokoll(), "„<16 Zeichen>“: Aufgabe #999 gibt es nicht (braucht:999)");
+        assert!(!f.grund_fuer_protokoll().contains("GEHEIM-TITEL-239"));
+        assert_eq!(f.ursache(), Ursache::Eingabe);
+    }
+
+    #[test]
+    fn der_grund_bleibt_die_meldung_wo_kein_inhalt_steht() {
+        assert_eq!(Fehler::Ungueltig("Person „zz“ steht nicht in kanbanD.md".into()).grund_fuer_protokoll(), "Person „zz“ steht nicht in kanbanD.md");
+        assert_eq!(inhalt_laenge(""), "<0 Zeichen>");
+        assert_eq!(inhalt_laenge("äöü"), "<3 Zeichen>", "nach Zeichen, nicht Bytes");
+    }
+
+    #[test]
+    fn ein_verweis_fehler_mit_inhalt_behaelt_seinen_rumpf_marker() {
+        let f = Fehler::verweis_mit_inhalt("„GEHEIM“ passt zu 2 Commit-Verweisen an #1 — längeren Hash nennen", "„<6 Zeichen>“ passt zu 2 Commit-Verweisen an #1 — längeren Hash nennen", "GEHEIM".into(), false);
+        assert_eq!(f.ursache(), Ursache::Eingabe);
+        assert_eq!(f.grund_fuer_protokoll(), "„<6 Zeichen>“ passt zu 2 Commit-Verweisen an #1 — längeren Hash nennen");
+        assert!(matches!(f, Fehler::Inhalt { verweis: Some(v), .. } if v == "GEHEIM"));
     }
 }

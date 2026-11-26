@@ -118,7 +118,7 @@ fn loeschen(a: &mut Aufgabe, kennung: &str) -> Result<String, Fehler> {
 /// Wo der Eintrag zur Kennung steht. Verglichen wird die ganze Kennung, zeichengleich wie `GET` sie liefert — kein
 /// Muster, kein Teilvergleich: eine unbekannte oder verstümmelte Kennung trifft keinen Eintrag.
 fn stelle(a: &Aufgabe, kennung: &str) -> Result<usize, Fehler> {
-    a.kosteneintraege.iter().position(|e| e.kennung() == kennung).ok_or_else(|| Fehler::NichtGefunden(format!("#{} hat keinen Kosteneintrag {}", a.nummer, nachricht::wert(kennung))))
+    a.kosteneintraege.iter().position(|e| e.kennung() == kennung).ok_or_else(|| Fehler::nicht_gefunden_mit_inhalt(format!("#{} hat keinen Kosteneintrag {}", a.nummer, nachricht::wert(kennung)), format!("#{} hat keinen Kosteneintrag {}", a.nummer, crate::fehler::inhalt_laenge(kennung))))
 }
 
 /// `at` einer Anfrage: nicht in der Zukunft, gespeichert in Ortszeit mit Versatz (R00084). Ein unlesbarer Wert
@@ -141,7 +141,7 @@ pub(super) fn spalte_pruefen(pfad: &str, spalte: &str, nr: u32, boards: &[Board]
     if boards.iter().filter(gemeint).any(|b| b.spalten.iter().any(|s| s.name == spalte)) {
         return Ok(());
     }
-    Err(Fehler::Ungueltig(format!("{pfad}.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", nachricht::wert(spalte))))
+    Err(Fehler::ungueltig_mit_inhalt(format!("{pfad}.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", nachricht::wert(spalte)), format!("{pfad}.column: „{}“ ist keine Spalte eines Boards, auf dem #{nr} liegt", crate::fehler::inhalt_laenge(spalte))))
 }
 
 /// ADR-0028 Punkt 4: gleiche Kennung an derselben Aufgabe → 409. Zwei Läufe derselben Rolle in derselben Minute
@@ -218,6 +218,7 @@ mod tests {
             Fehler::Ungueltig(m) => (400, m),
             Fehler::NichtGefunden(m) => (404, m),
             Fehler::Konflikt(m) => (409, m),
+            Fehler::Inhalt { meldung: m, ursache, .. } => (if ursache == crate::fehler::Ursache::Fehlt { 404 } else { 400 }, m),
             anderer => panic!("{anderer:?}"),
         }
     }

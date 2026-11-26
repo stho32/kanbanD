@@ -48,17 +48,17 @@ impl Aufgabenfilter {
                 "wartet" => f.wartet.push(match v.as_str() {
                     "ja" => true,
                     "nein" => false,
-                    _ => return Err(Fehler::Ungueltig(format!("wartet={v}: ja oder nein"))),
+                    _ => return Err(Fehler::ungueltig_mit_inhalt(format!("wartet={v}: ja oder nein"), format!("wartet={}: ja oder nein", crate::fehler::inhalt_laenge(v)))),
                 }),
                 "archivierte" => {
                     f.archivierte = match v.as_str() {
                         "ja" => Archivierte::Mit,
                         "nein" => Archivierte::Ohne,
                         "nur" => Archivierte::Nur,
-                        _ => return Err(Fehler::Ungueltig(format!("archivierte={v}: ja, nein oder nur"))),
+                        _ => return Err(Fehler::ungueltig_mit_inhalt(format!("archivierte={v}: ja, nein oder nur"), format!("archivierte={}: ja, nein oder nur", crate::fehler::inhalt_laenge(v)))),
                     }
                 }
-                _ => return Err(Fehler::Ungueltig(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte"))),
+                _ => return Err(Fehler::ungueltig_mit_inhalt(format!("Unbekannter Filter „{k}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte"), format!("Unbekannter Filter „{}“ — board, spalte, klasse, signal, zustaendig, reserviert, label, key, wartet, archivierte", crate::fehler::inhalt_laenge(k)))),
             }
         }
         if !f.spalten.is_empty() && f.board.is_none() {
@@ -269,14 +269,15 @@ mod tests {
         assert_eq!(getroffen(&[alt.clone()], &[("wartet", "ja")]), Vec::<u32>::new(), "Archivregel R00092");
         assert_eq!(getroffen(&[alt], &[("wartet", "ja"), ("archivierte", "ja")]), vec![6]);
         for falsch in ["vielleicht", "", "JA", "true"] {
-            let Err(Fehler::Ungueltig(text)) = Aufgabenfilter::aus_paaren(&paare(&[("wartet", falsch)])) else { panic!("400 erwartet: {falsch}") };
-            assert_eq!(text, format!("wartet={falsch}: ja oder nein"));
+            let Err(f) = Aufgabenfilter::aus_paaren(&paare(&[("wartet", falsch)])) else { panic!("400 erwartet: {falsch}") };
+            assert_eq!(f.meldung(), format!("wartet={falsch}: ja oder nein"));
         }
     }
 
     #[test]
     fn unbekannter_filter_nennt_label() {
-        let Err(Fehler::Ungueltig(text)) = Aufgabenfilter::aus_paaren(&paare(&[("farbe", "x")])) else { panic!("400 erwartet") };
+        let Err(f) = Aufgabenfilter::aus_paaren(&paare(&[("farbe", "x")])) else { panic!("400 erwartet") };
+        let text = f.meldung().to_string();
         assert!(text.contains(", label,") || text.ends_with(", label"), "{text}");
     }
 

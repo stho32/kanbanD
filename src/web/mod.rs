@@ -206,10 +206,29 @@ impl IntoResponse for Fehler {
                 let rumpf = openapi::Transkriptzustandsfehler { fehler: meldung.clone(), zustand: *zustand };
                 (status, Json(rumpf)).into_response()
             }
+            Fehler::Inhalt { verweis: Some(verweis), meldung, .. } => {
+                let rumpf = openapi::Verweisfehler { fehler: meldung.clone(), verweis: verweis.clone() };
+                (status, Json(rumpf)).into_response()
+            }
             _ => fehlerantwort(status, self.meldung()),
         };
         antwort.extensions_mut().insert(Abweisungsgrund { ursache: self.ursache(), grund: self.grund_fuer_protokoll() });
         antwort
+    }
+}
+
+/// Der HTTP-Status zu einer Ursache — für die inhaltsbewussten Abweisungen (`Fehler::Inhalt`), deren Status sonst
+/// keine Variante trägt (FA 11; `Grenze` tritt dort nicht auf).
+fn ursache_status(ursache: Ursache) -> StatusCode {
+    match ursache {
+        Ursache::Eingabe => StatusCode::BAD_REQUEST,
+        Ursache::Fehlt => StatusCode::NOT_FOUND,
+        Ursache::Verboten => StatusCode::FORBIDDEN,
+        Ursache::Konflikt | Ursache::Grenze => StatusCode::CONFLICT,
+        Ursache::Defekt => StatusCode::LOCKED,
+        Ursache::ZuGross => StatusCode::PAYLOAD_TOO_LARGE,
+        Ursache::Zeitgrenze | Ursache::Lesegrenze | Ursache::Antwortbudget => StatusCode::SERVICE_UNAVAILABLE,
+        Ursache::Intern => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
@@ -231,6 +250,7 @@ impl Fehler {
             Fehler::Commitzustand { .. } | Fehler::Transkriptzustand { .. } => StatusCode::NOT_FOUND,
             Fehler::ErfassungAus { .. } | Fehler::KennungBelegt { .. } => StatusCode::CONFLICT,
             Fehler::ZuGross(_) => StatusCode::PAYLOAD_TOO_LARGE,
+            Fehler::Inhalt { ursache, .. } => ursache_status(*ursache),
         }
     }
 }
@@ -1068,7 +1088,7 @@ async fn teilaufgabe_anlegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pf
     let position = ganze_zahl_ab_null("position", t.position.as_ref())?;
     let erledigt = match &t.erledigt {
         None | Some(serde_json::Value::Null) => false,
-        Some(wert) => wert.as_bool().ok_or_else(|| Fehler::Ungueltig(format!("„erledigt“ muss true oder false sein, nicht {wert}")))?,
+        Some(wert) => wert.as_bool().ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("„erledigt“ muss true oder false sein, nicht {wert}"), format!("„erledigt“ muss true oder false sein, nicht {}", crate::fehler::inhalt_laenge(&wert.to_string()))))?,
     };
     als_person(&app, wer, move |k, p| k.teilaufgabe_anlegen(p, nr, &t.text, position, erledigt)).await
 }
@@ -1384,10 +1404,10 @@ async fn anhaenge(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Respons
 )]
 async fn anhang_ablegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, mut teile: axum::extract::Multipart) -> Result<Response, Fehler> {
     let mut datei = None;
-    while let Some(feld) = teile.next_field().await.map_err(|e| Fehler::Ungueltig(format!("Hochladen: {e}")))? {
+    while let Some(feld) = teile.next_field().await.map_err(|e| Fehler::ungueltig_mit_inhalt(format!("Hochladen: {e}"), format!("Hochladen: {}", crate::fehler::inhalt_laenge(&e.to_string()))))? {
         if feld.name() == Some("datei") {
             let name = feld.file_name().unwrap_or("anhang").to_string();
-            let bytes = feld.bytes().await.map_err(|e| Fehler::Ungueltig(format!("Hochladen: {e}")))?;
+            let bytes = feld.bytes().await.map_err(|e| Fehler::ungueltig_mit_inhalt(format!("Hochladen: {e}"), format!("Hochladen: {}", crate::fehler::inhalt_laenge(&e.to_string()))))?;
             datei = Some((name, bytes));
         }
     }
@@ -1418,7 +1438,7 @@ async fn transkript_ablegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfa
         Ok((p, k.ordner().wurzel().to_path_buf()))
     })
     .await?;
-    let mut teile = teile.map_err(|e| Fehler::Ungueltig(format!("Hochladen: {}", e.body_text())))?;
+    let mut teile = teile.map_err(|e| Fehler::ungueltig_mit_inhalt(format!("Hochladen: {}", e.body_text()), format!("Hochladen: {}", crate::fehler::inhalt_laenge(&e.body_text()))))?;
     let mut empfang = Empfang::neu(&wurzel, nr);
     let gelesen = transkript_empfangen(&app, nr, &mut teile, &mut empfang).await;
     let eintrag = blockierend(&app, move |k| match gelesen {
@@ -1483,7 +1503,7 @@ async fn transkript_empfangen(app: &App, nr: u32, teile: &mut axum::extract::Mul
     use crate::dienst::transkripte::FELD_HOECHSTENS;
     let lesefehler = |e: axum::extract::multipart::MultipartError| match e.status() {
         StatusCode::PAYLOAD_TOO_LARGE => Fehler::ZuGross("Die Anfrage ist größer als 10 MB und 64 KB".into()),
-        _ => Fehler::Ungueltig(format!("Hochladen: {}", e.body_text())),
+        _ => Fehler::ungueltig_mit_inhalt(format!("Hochladen: {}", e.body_text()), format!("Hochladen: {}", crate::fehler::inhalt_laenge(&e.body_text()))),
     };
     let mut angaben = crate::dienst::transkripte::Ablageangaben::default();
     let mut mit_datei = false;
@@ -1506,16 +1526,16 @@ async fn transkript_empfangen(app: &App, nr: u32, teile: &mut axum::extract::Mul
             "at" => &mut angaben.at,
             "role" => &mut angaben.role,
             "column" => &mut angaben.column,
-            _ => return Err(Fehler::Ungueltig(format!("unbekanntes Feld „{}“ — erwartet at, role, column, datei", crate::nachricht::wert(&name)))),
+            _ => return Err(Fehler::ungueltig_mit_inhalt(format!("unbekanntes Feld „{}“ — erwartet at, role, column, datei", crate::nachricht::wert(&name)), format!("unbekanntes Feld „{}“ — erwartet at, role, column, datei", crate::fehler::inhalt_laenge(&name)))),
         };
         let mut text = Vec::new();
         while let Some(stueck) = feld.chunk().await.map_err(lesefehler)? {
             text.extend_from_slice(&stueck);
             if text.len() > FELD_HOECHSTENS {
-                return Err(Fehler::Ungueltig(format!("Feld „{name}“ ist länger als {FELD_HOECHSTENS} Byte")));
+                return Err(Fehler::ungueltig_mit_inhalt(format!("Feld „{name}“ ist länger als {FELD_HOECHSTENS} Byte"), format!("Feld „{}“ ist länger als {FELD_HOECHSTENS} Byte", crate::fehler::inhalt_laenge(&name))));
             }
         }
-        *ziel = Some(String::from_utf8(text).map_err(|_| Fehler::Ungueltig(format!("Feld „{name}“ ist kein UTF-8")))?);
+        *ziel = Some(String::from_utf8(text).map_err(|_| Fehler::ungueltig_mit_inhalt(format!("Feld „{name}“ ist kein UTF-8"), format!("Feld „{}“ ist kein UTF-8", crate::fehler::inhalt_laenge(&name))))?);
     }
     if !mit_datei {
         return Err(Fehler::Ungueltig("Feld „datei“ fehlt".into()));
@@ -1613,7 +1633,7 @@ async fn reservieren(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): In
 )]
 async fn ziehen(State(app): State<App>, Wer(wer): Wer, Instanz(instanz): Instanz, Pfad(slug): Pfad<String>, rumpf: axum::body::Bytes) -> Result<Response, Fehler> {
     let instanz = crate::dienst::instanz_pruefen(instanz_aus(instanz, &rumpf).as_deref())?;
-    let zug: crate::dienst::Zug = serde_json::from_slice(&rumpf).map_err(|e| Fehler::Ungueltig(format!("Rumpf {{von, nach?}}: {e}")))?;
+    let zug: crate::dienst::Zug = serde_json::from_slice(&rumpf).map_err(|e| Fehler::ungueltig_mit_inhalt(format!("Rumpf {{von, nach?}}: {e}"), format!("Rumpf {{von, nach?}}: {}", crate::fehler::inhalt_laenge(&e.to_string()))))?;
     als_person(&app, wer, move |k, p| k.ziehen(p, &instanz, &slug, &zug)).await
 }
 
@@ -1683,7 +1703,7 @@ fn ganze_zahl_ab_null(feld: &str, wert: Option<&serde_json::Value>) -> Result<Op
         Some(wert) => wert
             .as_u64()
             .map(|n| Some(n as usize))
-            .ok_or_else(|| Fehler::Ungueltig(format!("„{feld}“ muss eine ganze Zahl ab 0 sein, nicht {wert}"))),
+            .ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("„{feld}“ muss eine ganze Zahl ab 0 sein, nicht {wert}"), format!("„{feld}“ muss eine ganze Zahl ab 0 sein, nicht {}", crate::fehler::inhalt_laenge(&wert.to_string())))),
     }
 }
 

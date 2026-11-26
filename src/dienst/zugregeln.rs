@@ -106,7 +106,7 @@ impl super::Kanban {
         }
         let (boards, defekt) = self.ordner().boards()?;
         if let Some(d) = defekt.first() {
-            return Err(Fehler::Defekt(format!("{}: {} — nur lesbar, bis die Datei repariert ist", d.pfad, d.fehler)));
+            return Err(Fehler::defekt_mit_inhalt(format!("{}: {} — nur lesbar, bis die Datei repariert ist", d.pfad, d.fehler), format!("{}: {} — nur lesbar, bis die Datei repariert ist", d.pfad, crate::fehler::inhalt_laenge(&d.fehler))));
         }
         boards.iter().try_for_each(|b| entnahme_pruefen(wer.art, b, nummern))
     }

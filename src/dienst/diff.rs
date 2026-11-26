@@ -254,7 +254,7 @@ impl Diffanfrage {
         let format = match wert("format").as_deref() {
             None => Diffformat::Json,
             Some("patch") => Diffformat::Patch,
-            Some(f) => return Err(Fehler::Ungueltig(format!("format „{}“ gibt es nicht — nur format=patch", crate::nachricht::wert(f)))),
+            Some(f) => return Err(Fehler::ungueltig_mit_inhalt(format!("format „{}“ gibt es nicht — nur format=patch", crate::nachricht::wert(f)), format!("format „{}“ gibt es nicht — nur format=patch", crate::fehler::inhalt_laenge(f)))),
         };
         let datei = wert("datei");
         if let Some(d) = &datei {

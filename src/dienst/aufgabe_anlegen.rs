@@ -186,7 +186,7 @@ impl Kanban {
                     // Eine Kopie behält die Klasse ihrer Quelle, auch eine auf dem Zielboard fremde: unverändert heißt ungeprüft.
                     a.klasse = g.klasse.clone();
                 }
-                a.aendern(&aenderung, &e, &klassen).map_err(|f| Fehler::Ungueltig(format!("„{t}“: {f}")))?;
+                a.aendern(&aenderung, &e, &klassen).map_err(|f| Fehler::ungueltig_mit_inhalt(format!("„{t}“: {f}"), format!("„{}“: {f}", crate::fehler::inhalt_laenge(t))))?;
                 let teile = g.teilaufgaben.iter().flatten().map(|x| x.trim().replace('\n', " ")).filter(|x| !x.is_empty());
                 a.teilaufgaben.extend(teile.map(|text| crate::modell::Teilaufgabe { text, erledigt: false }));
             }
@@ -200,7 +200,7 @@ impl Kanban {
         }
         if let Some((nummer, meldung)) = tuer.kreis() {
             let titel = aufgaben.iter().find(|a| a.nummer == nummer).map(|a| a.titel.as_str()).unwrap_or_default();
-            return Err(Fehler::Ungueltig(format!("„{titel}“: {meldung}")));
+            return Err(Fehler::ungueltig_mit_inhalt(format!("„{titel}“: {meldung}"), format!("„{}“: {meldung}", crate::fehler::inhalt_laenge(titel))));
         }
         #[cfg(test)]
         {
@@ -317,7 +317,7 @@ fn schon_da(neue: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fre
 fn schluessel_in_defekter_datei_pruefen(defekt: &[DefekteDatei], angefragt: &[Option<Fremdschluessel>]) -> Result<(), Fehler> {
     let treffer = defekt.iter().find_map(|d| d.schluessel.iter().find(|k| angefragt.iter().flatten().any(|a| a == *k)).map(|k| (d, k)));
     match treffer {
-        Some((d, k)) => Err(Fehler::Defekt(format!("{}: {} — nur lesbar, bis die Datei repariert ist; sie trägt den Schlüssel „{}“, angelegt wurde nichts", d.pfad, d.fehler, k.text()))),
+        Some((d, k)) => Err(Fehler::defekt_mit_inhalt(format!("{}: {} — nur lesbar, bis die Datei repariert ist; sie trägt den Schlüssel „{}“, angelegt wurde nichts", d.pfad, d.fehler, k.text()), format!("{}: {} — nur lesbar, bis die Datei repariert ist; sie trägt den Schlüssel „{}“, angelegt wurde nichts", d.pfad, crate::fehler::inhalt_laenge(&d.fehler), k.text()))),
         None => Ok(()),
     }
 }

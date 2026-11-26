@@ -21,7 +21,7 @@ impl Kanban {
     pub fn start_setzen(&self, wer: &Person, slug: &str, start: Option<String>) -> Result<bool, Fehler> {
         let start = start.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
         if let Some(s) = start.as_deref().filter(|s| !ist_datum(s)) {
-            return Err(Fehler::Ungueltig(format!("Projektstart „{s}“ ist nicht JJJJ-MM-TT")));
+            return Err(Fehler::ungueltig_mit_inhalt(format!("Projektstart „{s}“ ist nicht JJJJ-MM-TT"), format!("Projektstart „{}“ ist nicht JJJJ-MM-TT", crate::fehler::inhalt_laenge(s))));
         }
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
@@ -70,7 +70,7 @@ impl Kanban {
         let rel = fieber::pfad(slug);
         match self.ordner().lies(&rel)? {
             None => Ok(vec![]),
-            Some(t) => fieber::lesen(&t).map_err(|e| Fehler::Defekt(format!("{rel}: {e} — „Cache verwerfen“ legt ihn neu an"))),
+            Some(t) => fieber::lesen(&t).map_err(|e| Fehler::defekt_mit_inhalt(format!("{rel}: {e} — „Cache verwerfen“ legt ihn neu an"), format!("{rel}: {} — „Cache verwerfen“ legt ihn neu an", crate::fehler::inhalt_laenge(&e.to_string())))),
         }
     }
 
@@ -80,7 +80,7 @@ impl Kanban {
         for t in &tage {
             t.pruefen().map_err(Fehler::Ungueltig)?;
             if t.datum.as_str() >= heute {
-                return Err(Fehler::Ungueltig(format!("{}: nur Tage vor heute kommen in den Cache — der heutige ändert sich noch", t.datum)));
+                return Err(Fehler::ungueltig_mit_inhalt(format!("{}: nur Tage vor heute kommen in den Cache — der heutige ändert sich noch", t.datum), format!("{}: nur Tage vor heute kommen in den Cache — der heutige ändert sich noch", crate::fehler::inhalt_laenge(&t.datum))));
             }
         }
         let _sperre = self.gesperrt();

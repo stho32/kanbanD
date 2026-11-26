@@ -139,7 +139,7 @@ impl Ordner {
     pub fn einstellungen(&self) -> Result<Option<Einstellungen>, Fehler> {
         match self.lies(einstellungen::DATEI)? {
             None => Ok(None),
-            Some(t) => einstellungen::lesen(&t).map(Some).map_err(|e| Fehler::Defekt(format!("{}: {e}", einstellungen::DATEI))),
+            Some(t) => einstellungen::lesen(&t).map(Some).map_err(|e| Fehler::defekt_mit_inhalt(format!("{}: {e}", einstellungen::DATEI), format!("{}: {}", einstellungen::DATEI, crate::fehler::inhalt_laenge(&e.to_string())))),
         }
     }
 
@@ -237,7 +237,7 @@ impl Ordner {
         }
         let rel = board_pfad(slug);
         let text = self.lies(&rel)?.ok_or_else(|| Fehler::NichtGefunden(format!("Board „{slug}“ gibt es nicht")))?;
-        board::lesen(slug, &text).map_err(|e| Fehler::Defekt(format!("{rel}: {e}")))
+        board::lesen(slug, &text).map_err(|e| Fehler::defekt_mit_inhalt(format!("{rel}: {e}"), format!("{rel}: {}", crate::fehler::inhalt_laenge(&e.to_string()))))
     }
 
     /// (Dateistamm, relativer Pfad) aller `.md` in einem Unterordner, sortiert.
@@ -294,7 +294,7 @@ impl Aufgabenverzeichnis<'_> {
     pub fn aufgabe(&mut self, nummer: u32) -> Result<Aufgabe, Fehler> {
         let (pfad, text) = self.pfad_und_text(nummer)?;
         let datei = dateiname(&pfad).to_string();
-        aufgabe::lesen(&datei, &text).map(ohne_abgelaufene).map_err(|e| Fehler::Defekt(format!("{pfad}: {e} — nur lesbar, bis die Datei repariert ist")))
+        aufgabe::lesen(&datei, &text).map(ohne_abgelaufene).map_err(|e| Fehler::defekt_mit_inhalt(format!("{pfad}: {e} — nur lesbar, bis die Datei repariert ist"), format!("{pfad}: {} — nur lesbar, bis die Datei repariert ist", crate::fehler::inhalt_laenge(&e.to_string()))))
     }
 
     /// Pfad **und** Text der Datei zur Nummer; der Text der gefundenen Datei kommt ohne zweiten Zugriff mit.

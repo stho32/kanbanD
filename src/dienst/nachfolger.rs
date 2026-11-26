@@ -740,7 +740,7 @@ mod tests {
         assert!(matches!(suchen(&k, &format!("kd:{}", &s.k[..6])), Err(Fehler::Verweis { fehlt: false, .. })));
         assert_eq!(arbeitsrepo::aufrufe(), vorher, "kein Git für eine Abweisung ohne Repository");
         std::fs::write(k.ordner().wurzel().join("aufgaben/0001-a.md"), "---\nid: 1\ntitle: [kaputt\n---\n").unwrap();
-        assert!(matches!(suchen(&k, &format!("kd:{}", s.k)), Err(Fehler::Defekt(_))), "423");
+        assert!(matches!(suchen(&k, &format!("kd:{}", s.k)), Err(Fehler::Defekt(_)) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Defekt, .. })), "423");
     }
 
     // R00218 AK 5 (Zählerprobe, ADR-0038 Q2): bei 1, 30 und 1.000 Commits im Fenster höchstens 12 Git-Prozesse, die

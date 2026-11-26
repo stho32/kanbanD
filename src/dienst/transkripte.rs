@@ -317,7 +317,7 @@ impl Kanban {
     /// Die Kennung der Adresse wird nur mit Einträgen verglichen, nie zu einem Pfad (Regel 7).
     pub fn transkript_lesen(&self, nr: u32, kennung: &str) -> Result<(Rumpf, String), Fehler> {
         let a = self.ordner().aufgabe(nr)?;
-        let zeile = a.transkripte.iter().find(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung))))?;
+        let zeile = a.transkripte.iter().find(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::nicht_gefunden_mit_inhalt(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung)), format!("#{nr} hat kein Transkript {}", crate::fehler::inhalt_laenge(kennung))))?;
         let e = zeile.lesbar().expect("gefunden als lesbar");
         let wurzel = self.ordner().wurzel();
         let stand = zustand(wurzel, nr, zeile);
@@ -348,7 +348,7 @@ impl Kanban {
     pub fn transkript_loeschen(&self, wer: &Person, nr: u32, kennung: &str) -> Result<Transkripteintrag, Fehler> {
         let _sperre = self.gesperrt();
         let mut a = self.ordner().aufgabe(nr)?;
-        let i = a.transkripte.iter().position(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::NichtGefunden(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung))))?;
+        let i = a.transkripte.iter().position(|z| z.lesbar().is_some_and(|e| e.kennung() == kennung)).ok_or_else(|| Fehler::nicht_gefunden_mit_inhalt(format!("#{nr} hat kein Transkript {}", crate::nachricht::wert(kennung)), format!("#{nr} hat kein Transkript {}", crate::fehler::inhalt_laenge(kennung))))?;
         let Transkriptzeile::Lesbar(e) = a.transkripte.remove(i) else { unreachable!("als lesbar gefunden") };
         let nachricht = format!("#{nr} Transkript entfernt: {}", crate::nachricht::wert(&e.kennung()));
         self.aktion(wer, &nachricht, &[Schritt::schreiben(format!("{}/{}", aufgabe::ORDNER, a.datei), aufgabe::schreiben(&a))])?;

@@ -137,7 +137,7 @@ impl Kanban {
 fn verweise_aus(rumpf: &serde_json::Value) -> Result<Vec<String>, Fehler> {
     let falsch = || Fehler::Ungueltig("Rumpf {commits: [Verweis, …]} mit mindestens einem Verweis erwartet".into());
     let feld = rumpf.as_object().filter(|o| o.len() == 1).and_then(|o| o.get("commits")).and_then(serde_json::Value::as_array).filter(|l| !l.is_empty()).ok_or_else(falsch)?;
-    feld.iter().enumerate().map(|(i, v)| v.as_str().map(String::from).ok_or_else(|| Fehler::Ungueltig(format!("commits[{i}] ist kein Text: {v}")))).collect()
+    feld.iter().enumerate().map(|(i, v)| v.as_str().map(String::from).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("commits[{i}] ist kein Text: {v}"), format!("commits[{i}] ist kein Text: {}", crate::fehler::inhalt_laenge(&v.to_string()))))).collect()
 }
 
 fn ersetzungsfehler(f: Ersetzungsfehler) -> Fehler {
@@ -170,13 +170,13 @@ fn urteil(a: &Aufgabe, paare: &[Paar]) -> Result<Vec<bool>, Fehler> {
         offen.push(treffer == 1 && !neu_da);
     }
     if let Some((paar, n)) = mehrdeutig {
-        return Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {n} Commit-Verweisen an #{nr} — längeren Hash nennen", nachricht::wert(&paar.alt_text)), verweis: paar.alt_text.clone(), fehlt: false });
+        return Err(Fehler::verweis_mit_inhalt(format!("„{}“ passt zu {n} Commit-Verweisen an #{nr} — längeren Hash nennen", nachricht::wert(&paar.alt_text)), format!("„{}“ passt zu {n} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::fehler::inhalt_laenge(&paar.alt_text)), paar.alt_text.clone(), false));
     }
     if let Some(paar) = fehlt {
-        return Err(Fehler::Verweis { meldung: format!("#{nr} hat weder „{}“ noch „{}“ als Commit-Verweis", nachricht::wert(&paar.alt_text), nachricht::wert(&paar.neu_text)), verweis: paar.alt_text.clone(), fehlt: true });
+        return Err(Fehler::verweis_mit_inhalt(format!("#{nr} hat weder „{}“ noch „{}“ als Commit-Verweis", nachricht::wert(&paar.alt_text), nachricht::wert(&paar.neu_text)), format!("#{nr} hat weder „{}“ noch „{}“ als Commit-Verweis", crate::fehler::inhalt_laenge(&paar.alt_text), crate::fehler::inhalt_laenge(&paar.neu_text)), paar.alt_text.clone(), true));
     }
     if let Some(paar) = beide {
-        return Err(Fehler::VerweisKonflikt { meldung: format!("#{nr} trägt „{}“ und „{}“ schon beide — „{}“ lässt sich mit DELETE entfernen", nachricht::wert(&paar.alt_text), nachricht::wert(&paar.neu_text), nachricht::wert(&paar.alt_text)), verweis: paar.alt_text.clone() });
+        return Err(Fehler::verweis_konflikt_mit_inhalt(format!("#{nr} trägt „{}“ und „{}“ schon beide — „{}“ lässt sich mit DELETE entfernen", nachricht::wert(&paar.alt_text), nachricht::wert(&paar.neu_text), nachricht::wert(&paar.alt_text)), format!("#{nr} trägt „{}“ und „{}“ schon beide — „{}“ lässt sich mit DELETE entfernen", crate::fehler::inhalt_laenge(&paar.alt_text), crate::fehler::inhalt_laenge(&paar.neu_text), crate::fehler::inhalt_laenge(&paar.alt_text)), paar.alt_text.clone()));
     }
     Ok(offen)
 }
@@ -191,7 +191,7 @@ fn ersetzen(a: &mut Aufgabe, plan: &Ersetzungsplan) -> Result<Option<String>, Fe
             continue;
         }
         let Some(voll) = voll else {
-            return Err(Fehler::Konflikt(format!("#{nr}: „{}“ stand bei der Prüfung nicht mehr zu tun — Aufruf wiederholen", nachricht::wert(&paar.alt_text))));
+            return Err(Fehler::konflikt_mit_inhalt(format!("#{nr}: „{}“ stand bei der Prüfung nicht mehr zu tun — Aufruf wiederholen", nachricht::wert(&paar.alt_text)), format!("#{nr}: „{}“ stand bei der Prüfung nicht mehr zu tun — Aufruf wiederholen", crate::fehler::inhalt_laenge(&paar.alt_text))));
         };
         let platz = a.commits.iter().position(|c| passt(c, &paar.alt)).expect("urteil: alt steht an der Karte");
         tausch.push((platz, voll));
@@ -254,8 +254,8 @@ fn entfernen(a: &mut Aufgabe, form: &Verweisform, verweis: &str) -> Result<Strin
     let treffer: Vec<usize> = a.commits.iter().enumerate().filter(|(_, c)| passt(c, form)).map(|(i, _)| i).collect();
     match treffer.as_slice() {
         [i] => Ok(format!("#{nr} Commit-Verweis entfernt: {}", kurz(&a.commits.remove(*i)))),
-        [] => Err(Fehler::Verweis { meldung: format!("#{nr} hat keinen Commit-Verweis „{}“", nachricht::wert(verweis)), verweis: verweis.into(), fehlt: true }),
-        mehrere => Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", nachricht::wert(verweis), mehrere.len()), verweis: verweis.into(), fehlt: false }),
+        [] => Err(Fehler::verweis_mit_inhalt(format!("#{nr} hat keinen Commit-Verweis „{}“", nachricht::wert(verweis)), format!("#{nr} hat keinen Commit-Verweis „{}“", crate::fehler::inhalt_laenge(verweis)), verweis.into(), true)),
+        mehrere => Err(Fehler::verweis_mit_inhalt(format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", nachricht::wert(verweis), mehrere.len()), format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::fehler::inhalt_laenge(verweis), mehrere.len()), verweis.into(), false)),
     }
 }
 
@@ -306,6 +306,9 @@ mod tests {
             Fehler::Konflikt(_) | Fehler::VerweisKonflikt { .. } => 409,
             Fehler::Verweis { fehlt: true, .. } => 404,
             Fehler::Verweis { fehlt: false, .. } => 400,
+            Fehler::Inhalt { ursache: crate::fehler::Ursache::Eingabe, .. } => 400,
+            Fehler::Inhalt { ursache: crate::fehler::Ursache::Fehlt, .. } => 404,
+            Fehler::Inhalt { ursache: crate::fehler::Ursache::Konflikt, .. } => 409,
             anderer => panic!("{anderer:?}"),
         }
     }
@@ -382,7 +385,7 @@ mod tests {
             let mut a = aufgabe(&alle);
             let form = crate::modell::Verweisform::lesen(verweis).unwrap();
             let f = entfernen(&mut a, &form, verweis).unwrap_err();
-            assert!(matches!(&f, Fehler::Verweis { verweis: v, .. } if v == verweis), "{f:?}");
+            assert!(matches!(&f, Fehler::Verweis { verweis: v, .. } | Fehler::Inhalt { verweis: Some(v), .. } if v == verweis), "{f:?}");
             assert_eq!(status(f), erwartet, "{verweis}");
             assert_eq!(a.commits, alle, "{verweis}");
         }
@@ -460,7 +463,7 @@ mod tests {
             (vec![(K2, "kd:fedcba9"), fehlt], 404, K4),
         ] {
             let f = plan(&a, &paare).unwrap_err();
-            assert!(matches!(&f, Fehler::Verweis { verweis: v, .. } | Fehler::VerweisKonflikt { verweis: v, .. } if v == verweis), "{paare:?}: {f:?}");
+            assert!(matches!(&f, Fehler::Verweis { verweis: v, .. } | Fehler::VerweisKonflikt { verweis: v, .. } | Fehler::Inhalt { verweis: Some(v), .. } if v == verweis), "{paare:?}: {f:?}");
             assert_eq!(status(f), erwartet, "{paare:?}");
         }
     }

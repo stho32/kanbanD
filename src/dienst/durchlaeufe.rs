@@ -38,8 +38,8 @@ impl Kanban {
         if phase.is_empty() || phase.chars().count() > 40 || phase.contains('·') {
             return Err(Fehler::Ungueltig("Phase: 1–40 Zeichen, ohne ·".into()));
         }
-        let ergebnis = Ergebnis::lesen(n.ergebnis.trim()).ok_or_else(|| Fehler::Ungueltig(format!("Ergebnis „{}“: bestanden, befund oder entfaellt", n.ergebnis)))?;
-        let dauer_minuten = n.dauer.as_deref().map(|d| uhr::dauer_lesen(d).ok_or_else(|| Fehler::Ungueltig(format!("Dauer „{d}“: z. B. 0:45, 1,5 oder 90 min")))).transpose()?;
+        let ergebnis = Ergebnis::lesen(n.ergebnis.trim()).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Ergebnis „{}“: bestanden, befund oder entfaellt", n.ergebnis), format!("Ergebnis „{}“: bestanden, befund oder entfaellt", crate::fehler::inhalt_laenge(&n.ergebnis))))?;
+        let dauer_minuten = n.dauer.as_deref().map(|d| uhr::dauer_lesen(d).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Dauer „{d}“: z. B. 0:45, 1,5 oder 90 min"), format!("Dauer „{}“: z. B. 0:45, 1,5 oder 90 min", crate::fehler::inhalt_laenge(d))))).transpose()?;
         let fuer = match n.wer.as_deref() {
             Some(k) => self.ordner().einstellungen()?.and_then(|e| e.person(k).cloned()).ok_or_else(|| Fehler::Ungueltig(format!("Person „{k}“ steht nicht in kanbanD.md")))?,
             None => wer.clone(),

@@ -38,7 +38,7 @@ pub fn erste_freie(reihe: &[u32], aufgaben: &[Aufgabe], instanz: &str) -> Option
 pub fn instanz_pruefen(instanz: Option<&str>) -> Result<String, Fehler> {
     let i = instanz.map(str::trim).filter(|i| !i.is_empty()).ok_or_else(|| Fehler::Ungueltig("Welche Instanz? Header X-KanbanD-Instanz oder Feld instanz fehlt".into()))?;
     if !instanz_gueltig(i) {
-        return Err(Fehler::Ungueltig(format!("Instanz „{i}“: 1–64 Zeichen aus A–Z, a–z, 0–9, . _ -")));
+        return Err(Fehler::ungueltig_mit_inhalt(format!("Instanz „{i}“: 1–64 Zeichen aus A–Z, a–z, 0–9, . _ -"), format!("Instanz „{}“: 1–64 Zeichen aus A–Z, a–z, 0–9, . _ -", crate::fehler::inhalt_laenge(i))));
     }
     Ok(i.to_string())
 }
