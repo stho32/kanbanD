@@ -51,11 +51,14 @@ const zellen = (ort, zelle) => ort.evaluateAll((trs, zelle) => trs.map(tr => [..
 /** Tabellenansicht des Burndowns ohne die Tagesspalte: je Tag offen, Umfang, +, − erledigt, − entfernt — ohne die Teilmenge
     „davon zurückgekommen“ (R00192, Spalte rechts von „+“), die diese Anforderung nicht rechnet. */
 const burndownJeTag = async page => (await zellen(page.locator('.bd-tabelle tbody tr'), 'td')).map(([, offen, umfang, plus, , ...abgang]) => [offen, umfang, plus, ...abgang]);
-/** Durchsatz je Tag aus der Tabellenansicht (Auflösung „je Tag“ gewählt): die Spalte „Abgang“, die letzte seit R00167. */
+/** Durchsatz je Tag aus der Tabellenansicht (Auflösung „je Tag“ gewählt): die Spalte „Abgang“ — seit R00254 steht
+    rechts von ihr die Spalte „Netto“, deshalb wird die Spalte über den Kopf gesucht statt als letzte genommen. */
 async function durchsatzJeTag(page) {
   await page.getByRole('radio', { name: 'je Tag' }).click();
   await expect(page.getByRole('radio', { name: 'je Tag' })).toHaveAttribute('aria-checked', 'true');
-  return (await zellen(page.locator('.fluss-tab tbody tr'), 'td')).map(zeile => zeile[zeile.length - 1]);
+  const spalte = await page.locator('.fluss-tab thead th').evaluateAll(kopf => kopf.findIndex(h => h.textContent.trim() === 'Abgang'));
+  expect(spalte, 'die Spalte „Abgang“ steht im Kopf').toBeGreaterThan(-1);
+  return (await zellen(page.locator('.fluss-tab tbody tr'), 'td')).map(zeile => zeile[spalte]);
 }
 async function erwarteZahlen(page, k, zahlen) {
   await zumBericht(page, k, 'verlauf');
@@ -326,6 +329,8 @@ for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es ni
 
 /** Seit R00167 steht unter der Legende, was der Zugang zählt — der Satz „„Von“ lässt sich noch nicht wählen: …“ ist entfallen. */
 const ZUGANG_ZAEHLT = '„Zugang“ zählt jede Aufgabe einmal: in der Periode, in der sie „A“ oder eine Spalte rechts davon erstmals erreicht; Rückläufer zählen nicht erneut.Deshalb darf der Zugang vom „+ hinzugekommen“ des Burndowns abweichen: dort zählt Nacharbeit jedes Mal.';
+/** Seit R00254 steht darunter der Netto-Satz — ein zweites `p.bd-hinweis`, deshalb wird der Zugang-Satz über `#dus-zugang-satz` angesprochen. */
+const NETTO_SATZ = 'Netto = Abgang − Zugang; Rückläufer und vom Board genommene Aufgaben zählen nicht — den offenen Bestand zeigt der Burndown.';
 const durchsatzDiagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: Zugang und Abgang je Periode' });
 /** Zeigt im Durchsatz „je Tag“ des Beispiels auf den Balkenplatz des Tages: drei Perioden auf 636 Einheiten Breite ab x = 44. */
 async function zeigeAufPeriode(page, tagImNovember) {
@@ -347,13 +352,14 @@ test('R00166 US-2, AK 10 (B0811): mit Zielspalte B nennt der Durchsatz „bis �
   try {
     await durchsatzJeTagOeffnen(page, k);
     await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode · bis „B“');
-    await expect(page.locator('#dus-kennzahl span')).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 3 bis „B“ · Ø 1,0 je Tag', '3 Perioden']);
+    await expect(page.locator('#dus-kennzahl span')).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 3 bis „B“ · Ø 1,0 je Tag', 'Netto 0 · Ø 0,0 je Tag · ausgeglichen', '3 Perioden']);
     await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · Zugang 0 · Abgang 3 bis „B“');
     await expect(page.locator('.fluss-leg .fluss-le').nth(1)).toHaveText('Abgang: erledigte Aufgaben (bis „B“)');
-    await expect(page.locator('p.bd-hinweis')).toHaveText(ZUGANG_ZAEHLT);
-    const [legende, satz] = await Promise.all([page.locator('.fluss-leg'), page.locator('p.bd-hinweis')].map(o => o.boundingBox()));
+    await expect(page.locator('#dus-zugang-satz')).toHaveText(ZUGANG_ZAEHLT);
+    await expect(page.locator('#dus-netto-satz')).toHaveText(NETTO_SATZ);
+    const [legende, satz] = await Promise.all([page.locator('.fluss-leg'), page.locator('#dus-zugang-satz')].map(o => o.boundingBox()));
     expect(satz.y).toBeGreaterThanOrEqual(legende.y + legende.height);
-    expect(await zellen(page.locator('.fluss-tab thead tr'), 'th')).toEqual([['Zeitraum', 'Zugang', 'Abgang']]);
+    expect(await zellen(page.locator('.fluss-tab thead tr'), 'th')).toEqual([['Zeitraum', 'Zugang', 'Abgang', 'Netto']]);
   } finally { await k.stoppen(); }
 });
 
@@ -363,10 +369,11 @@ for (const [fall, kopf] of [['ohne Wahl', ''], ['mit einer Zielspalte, die es ni
     try {
       await durchsatzJeTagOeffnen(page, k);
       await expect(page.locator('#main .leiste').first()).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode');
-      await expect(page.locator('#dus-kennzahl span')).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+      await expect(page.locator('#dus-kennzahl span')).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', 'Netto −2 · Ø −0,7 je Tag · staut auf', '3 Perioden']);
       await expect.poll(async () => (await zeigeAufPeriode(page, 3)).textContent()).toBe('03.11.2026 · Zugang 0 · Abgang 1');
       await expect(page.locator('.fluss-leg .fluss-le').nth(1)).toHaveText('Abgang: erledigte Aufgaben');
-      await expect(page.locator('p.bd-hinweis')).toHaveText(ZUGANG_ZAEHLT);
+      await expect(page.locator('#dus-zugang-satz')).toHaveText(ZUGANG_ZAEHLT);
+      await expect(page.locator('#dus-netto-satz')).toHaveText(NETTO_SATZ);
     } finally { await k.stoppen(); }
   });
 }

@@ -60,6 +60,13 @@ async function zumBericht(page, k, route) {
   await bereit(page, '#main .leiste');
 }
 const zellen = (ort, zelle) => ort.evaluateAll((trs, zelle) => trs.map(tr => [...tr.querySelectorAll(zelle)].map(td => td.textContent.trim())), zelle);
+/** Die Spalte „Abgang“ der Durchsatz-Tabelle (Auflösung „je Tag“): seit R00254 steht rechts von ihr die Spalte „Netto“,
+    deshalb wird sie über den Kopf gesucht statt als letzte genommen. */
+async function durchsatzAbgangJeTag(page) {
+  const spalte = await page.locator('.fluss-tab thead th').evaluateAll(kopf => kopf.findIndex(h => h.textContent.trim() === 'Abgang'));
+  expect(spalte, 'die Spalte „Abgang“ steht im Kopf').toBeGreaterThan(-1);
+  return (await zellen(page.locator('.fluss-tab tbody tr'), 'td')).map(zeile => zeile[spalte]);
+}
 /** Tabellenansicht des Burndowns: je Tag offen und Umfang. */
 const burndownJeTag = async page => (await zellen(page.locator('.bd-tabelle tbody tr'), 'td')).map(z => z.slice(1, 3));
 /** Tabellenansicht des Flusses: je Tag die Bänder und die vier Ränder offen · gesamt · angekommen · fertig. */
@@ -220,7 +227,7 @@ test('R00169 US-4, AK 8 (B0826): Spalte „Erledigt“ im Berichtsfilter ausgesc
     await page.getByRole('radio', { name: 'je Tag' }).click();
     await expect(page.getByRole('radio', { name: 'je Tag' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('#main')).not.toContainText('ist ausgeschlossen.');
-    expect((await zellen(page.locator('.fluss-tab tbody tr'), 'td')).map(z => z[z.length - 1]), 'Abgang je Tag: #3 am 03.11. direkt nach „Erledigt“, #1 am 04.11. nach C').toEqual(['0', '1', '1']);
+    expect(await durchsatzAbgangJeTag(page), 'Abgang je Tag: #3 am 03.11. direkt nach „Erledigt“, #1 am 04.11. nach C').toEqual(['0', '1', '1']);
     await expect(kopfleiste(page)).toHaveText('Durchsatz je Zeitraum · Zugang und Abgang je Periode · bis „C“');
     await zumBericht(page, k, 'fieber');
     await erwarteRandfall(page, null);
