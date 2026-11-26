@@ -36,20 +36,21 @@ impl From<Arbeitsrepofehler> for Inhaltsfehler {
     }
 }
 
-/// Der Inhalt des Diffs: `gesamt` ist die wahre Zahl der Dateien (`commits[0].dateien`).
+/// Der Inhalt des Diffs: `gesamt` ist die wahre Zahl der Dateien (`commits[0].dateien`), `umbenennung` das Urteil des
+/// Commits (R00253, ADR-0032 N11.3) — **jeder** Lauf dieses Commits folgt ihm.
 /// `fassung`: für JSON nur `patch`, für `format=patch` nur die Stücke (ADR-0032 N5.1 Regel 7).
-pub fn inhalt_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, auswahl: Auswahl, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
+pub fn inhalt_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, umbenennung: Umbenennungssuche, auswahl: Auswahl, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
     match auswahl {
-        Auswahl::Liste => liste_lesen(wurzel, vergleich, gesamt, fassung, frist),
-        Auswahl::Datei(name) => datei_lesen(wurzel, vergleich, name, fassung, frist),
+        Auswahl::Liste => liste_lesen(wurzel, vergleich, gesamt, umbenennung, fassung, frist),
+        Auswahl::Datei(name) => datei_lesen(wurzel, vergleich, name, umbenennung, fassung, frist),
     }
 }
 
 /// Die Liste: zwei Läufe der Dateiliste (je 1 MB), Kappe, Zeilengrenze und Pfadlänge, dann ein Patch-Lauf (4 MB) für
 /// die übrigen Dateien — die großen erreichen ihn nie, die Pfadangabe bleibt unter 1 MB (ADR-0032 N4.3, N5.5 S1).
-fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
-    let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, Umbenennungssuche::Voll, &[], GRENZE_DATEILISTE, frist)?;
-    let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, Umbenennungssuche::Voll, &[], GRENZE_DATEILISTE, frist)?;
+fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, umbenennung: Umbenennungssuche, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
+    let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, umbenennung, &[], GRENZE_DATEILISTE, frist)?;
+    let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, umbenennung, &[], GRENZE_DATEILISTE, frist)?;
     let mut dateien = dateiliste(&roh.ausgabe, roh.abgeschnitten, &zahlen.ausgabe, zahlen.abgeschnitten).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?;
     let mut hinweise = vec![];
     if (dateien.len() as u64) < gesamt {
@@ -68,7 +69,7 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassun
         let angabe = abschliessen(im_lauf.iter().flat_map(|i| dateien[*i].pfade_roh.iter().cloned()), &pfade_bezug);
         let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
         // startet Git mit der Angabe nicht (Vorabgrenze oder E2BIG, N7.9): alle Dateien des Laufs einzeln nachzuladen
-        let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, Umbenennungssuche::Voll, &pfade, GRENZE_PATCH_LAUF, frist))? else {
+        let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, umbenennung, &pfade, GRENZE_PATCH_LAUF, frist))? else {
             for &i in &im_lauf {
                 dateien[i].nachladen = true;
             }
@@ -79,7 +80,7 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassun
         nicht_zugeordnet_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung);
     } else {
         // ohne Pfadangabe gegen die vollständige Liste: streng, ein fehlendes Stück ist ein Fehler (N7.8)
-        let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, Umbenennungssuche::Voll, &[], GRENZE_PATCH_LAUF, frist)?;
+        let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, umbenennung, &[], GRENZE_PATCH_LAUF, frist)?;
         patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
     }
     Ok(Diffinhalt { dateien, hinweise })
@@ -89,8 +90,8 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, fassung: Fassun
 /// nur Pfade aus dieser Liste erreichen Git, wörtlich. Zuerst die Abkürzung mit Pfadangabe ([`mit_angabe`], N7.7); sie
 /// ist kein Beleg (N7.8): fehlen Zähler oder Stück, ist die Angabe zu groß, startet Git mit ihr nicht (`E2BIG`) oder ist
 /// die Dateiliste abgeschnitten, folgt der Rückfall ohne Pfadangabe ([`ohne_angabe`]).
-fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
-    let (rohe, liste_abgeschnitten) = dateiliste_einzeln(wurzel, vergleich, frist)?;
+fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, umbenennung: Umbenennungssuche, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
+    let (rohe, liste_abgeschnitten) = dateiliste_einzeln(wurzel, vergleich, umbenennung, frist)?;
     let ziele = namens(&rohe, name);
     if ziele.is_empty() {
         return Err(Inhaltsfehler::DateiFehlt { liste_abgeschnitten });
@@ -99,27 +100,27 @@ fn datei_lesen(wurzel: &Path, vergleich: Vergleich, name: &str, fassung: Fassung
     let angabe = abschliessen(ziele.iter().flat_map(|&i| rohe[i].pfade.iter().cloned()), &pfade);
     if liste_abgeschnitten || !angabe_passt(&angabe) {
         drop((pfade, angabe));
-        return ohne_angabe(wurzel, vergleich, rohe, liste_abgeschnitten, &ziele, fassung, frist);
+        return ohne_angabe(wurzel, vergleich, rohe, liste_abgeschnitten, &ziele, umbenennung, fassung, frist);
     }
     // die Einträge der Liste, die die Angabe trifft, in ihrer Reihenfolge, noch ohne Zähler
     let bezug: Vec<Diffdatei> = getroffen(&angabe, &pfade).into_iter().map(|j| diffdatei(rohe[j].clone(), None)).collect();
     drop(pfade);
     // die Dateiliste ist nur Zwischenstand: frei vor dem Patch-Lauf (ADR-0032 N5.1 Regel 6); es bleiben die getroffenen
     drop(rohe);
-    if let Some(inhalt) = mit_angabe(wurzel, vergleich, name, &angabe, bezug, fassung, frist)? {
+    if let Some(inhalt) = mit_angabe(wurzel, vergleich, name, &angabe, bezug, umbenennung, fassung, frist)? {
         return Ok(inhalt);
     }
-    let (rohe, liste_abgeschnitten) = dateiliste_einzeln(wurzel, vergleich, frist)?;
+    let (rohe, liste_abgeschnitten) = dateiliste_einzeln(wurzel, vergleich, umbenennung, frist)?;
     let ziele = namens(&rohe, name);
     if ziele.is_empty() {
         return Err(Inhaltsfehler::DateiFehlt { liste_abgeschnitten });
     }
-    ohne_angabe(wurzel, vergleich, rohe, liste_abgeschnitten, &ziele, fassung, frist)
+    ohne_angabe(wurzel, vergleich, rohe, liste_abgeschnitten, &ziele, umbenennung, fassung, frist)
 }
 
 /// Die Dateiliste für `datei=`: ungekappt bis 20 MB, und ob sie abgeschnitten ist.
-fn dateiliste_einzeln(wurzel: &Path, vergleich: Vergleich, frist: Instant) -> Result<(Vec<Rohdatei>, bool), Inhaltsfehler> {
-    let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, Umbenennungssuche::Voll, &[], GRENZE_DATEILISTE_EINZELN, frist)?;
+fn dateiliste_einzeln(wurzel: &Path, vergleich: Vergleich, umbenennung: Umbenennungssuche, frist: Instant) -> Result<(Vec<Rohdatei>, bool), Inhaltsfehler> {
+    let roh = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Roh, umbenennung, &[], GRENZE_DATEILISTE_EINZELN, frist)?;
     let rohe = roh_lesen(&roh.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Dateiliste von diff-tree unlesbar".into()))?;
     Ok((rohe, roh.abgeschnitten))
 }
@@ -134,16 +135,16 @@ fn namens(rohe: &[Rohdatei], name: &str) -> Vec<usize> {
 /// Einträge der Liste, damit Git wie dort paart; nur der angefragte Eintrag bleibt. `None`, wenn das kein Beleg ist
 /// (N7.8): Git paart anders (Zähler passen nicht, das Stück fehlt), das Stück liegt hinter 8 MB, oder Git startet mit
 /// der Angabe nicht (`E2BIG`).
-fn mit_angabe(wurzel: &Path, vergleich: Vergleich, name: &str, angabe: &[Vec<u8>], mut bezug: Vec<Diffdatei>, fassung: Fassung, frist: Instant) -> Result<Option<Diffinhalt>, Inhaltsfehler> {
+fn mit_angabe(wurzel: &Path, vergleich: Vergleich, name: &str, angabe: &[Vec<u8>], mut bezug: Vec<Diffdatei>, umbenennung: Umbenennungssuche, fassung: Fassung, frist: Instant) -> Result<Option<Diffinhalt>, Inhaltsfehler> {
     let pfade: Vec<&[u8]> = angabe.iter().map(Vec::as_slice).collect();
     // die Zähler der getroffenen Einträge sind kürzer als ihr Teil der Dateiliste: dieselbe Grenze schneidet sie nie
-    let Some(zahlen) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, Umbenennungssuche::Voll, &pfade, GRENZE_DATEILISTE_EINZELN, frist))? else { return Ok(None) };
+    let Some(zahlen) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, umbenennung, &pfade, GRENZE_DATEILISTE_EINZELN, frist))? else { return Ok(None) };
     let zahlen = zahlen_mit_pfaden(&zahlen.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Zähler von diff-tree unlesbar".into()))?;
     if zahlen_im_bezug(&mut bezug, zahlen).is_err() {
         return Ok(None);
     }
     let mut dateien: Vec<Diffdatei> = bezug.iter().filter(|d| d.name() == name).cloned().collect();
-    let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, Umbenennungssuche::Voll, &pfade, GRENZE_EINZELN, frist))? else { return Ok(None) };
+    let Some(patch) = gestartet(arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, umbenennung, &pfade, GRENZE_EINZELN, frist))? else { return Ok(None) };
     let alle: Vec<usize> = (0..dateien.len()).collect();
     if !nicht_zugeordnet_im_bezug(&mut dateien, &alle, &bezug, angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln, fassung).is_empty() {
         return Ok(None);
@@ -164,10 +165,10 @@ fn gestartet(lauf: Result<arbeitsrepo::Teil, Arbeitsrepofehler>) -> Result<Optio
 /// sie vollständig ist; Zähler und Fassung aus den Stücken ([`aus_stuecken`]). Liegt ein Stück hinter 8 MB: `gross` und
 /// `zu_gross_zum_anzeigen`, die Zähler dann aus dem Zähler-Lauf ohne Angabe (bis 20 MB). Ist die Liste abgeschnitten
 /// und die Zuordnung scheitert, ist die Datei nicht einzeln ladbar.
-fn ohne_angabe(wurzel: &Path, vergleich: Vergleich, rohe: Vec<Rohdatei>, liste_abgeschnitten: bool, ziele: &[usize], fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
+fn ohne_angabe(wurzel: &Path, vergleich: Vergleich, rohe: Vec<Rohdatei>, liste_abgeschnitten: bool, ziele: &[usize], umbenennung: Umbenennungssuche, fassung: Fassung, frist: Instant) -> Result<Diffinhalt, Inhaltsfehler> {
     // Zähler erst aus den Stücken: vorerst als Text, damit die Zuordnung die ganzen Stücke behält
     let mut dateien: Vec<Diffdatei> = rohe.into_iter().map(|r| diffdatei(r, Some((0, 0)))).collect();
-    let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, Umbenennungssuche::Voll, &[], GRENZE_EINZELN, frist)?;
+    let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, umbenennung, &[], GRENZE_EINZELN, frist)?;
     let alle: Vec<usize> = (0..dateien.len()).collect();
     let zuordnung = patches_zuordnen(&mut dateien, &alle, &patch.ausgabe, patch.abgeschnitten, Verteilung::Einzeln, Fassung::Stuecke);
     drop(patch);
@@ -181,7 +182,7 @@ fn ohne_angabe(wurzel: &Path, vergleich: Vergleich, rohe: Vec<Rohdatei>, liste_a
         aus_stuecken(d, fassung);
     }
     if dateien.iter().any(|(_, d)| d.gross) {
-        let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, Umbenennungssuche::Voll, &[], GRENZE_DATEILISTE_EINZELN, frist)?;
+        let zahlen = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Zahlen, umbenennung, &[], GRENZE_DATEILISTE_EINZELN, frist)?;
         let zahlen = zahlen_mit_pfaden(&zahlen.ausgabe).ok_or_else(|| Inhaltsfehler::Form("Zähler von diff-tree unlesbar".into()))?;
         for (i, d) in dateien.iter_mut().filter(|(_, d)| d.gross) {
             let Some((z, pfade)) = zahlen.get(*i) else { return Err(Inhaltsfehler::Form("Zähler: der Lauf ohne Pfadangabe endet vor der Datei".into())) };
@@ -330,7 +331,12 @@ impl Kanban {
             Diffformat::Json => Fassung::Patch,
             Diffformat::Patch => Fassung::Stuecke,
         };
-        let mut inhalt = inhalt_lesen(&wurzel, vergleich, m.dateien, auswahl, fassung, frist).map_err(|f| inhaltsfehler(f, nr, &voll))?;
+        let mut inhalt = inhalt_lesen(&wurzel, vergleich, m.dateien, m.umbenennung, auswahl, fassung, frist).map_err(|f| inhaltsfehler(f, nr, &voll))?;
+        // Der Hinweis gilt dem Commit, nicht einer Datei: er steht auch bei `datei=` an erster Stelle, vor
+        // `dateien_gekappt` (R00253 FA 4, ADR-0032 N11.4). `format=patch` hat keinen Kanal dafür (wie `dateien_gekappt`).
+        if anfrage.format == Diffformat::Json && m.umbenennung == Umbenennungssuche::NurGleiche {
+            inhalt.hinweise.insert(0, Hinweis::UmbenennungEingeschraenkt { dateien: m.eintraege, schwelle: arbeitsrepo::SCHWELLE_UMBENENNUNG as u64 });
+        }
         let commit = Diffcommit { verweis: gespeichert.to_string(), anwendung: anwendung.kuerzel.clone(), hash: voll.clone(), titel: titel_kuerzen(&m.titel), autor: m.autor, datum: m.datum, plus: m.plus, minus: m.minus, dateien: m.dateien };
         let bytes = match anfrage.format {
             Diffformat::Json => json(&Diff { anwendung: anwendung.kuerzel.clone(), wurzel: wurzel.display().to_string(), commits: vec![commit], dateien: inhalt.dateien, hinweise: inhalt.hinweise })?,

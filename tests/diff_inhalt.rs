@@ -4,6 +4,7 @@ mod gemeinsam;
 
 use gemeinsam::git_am;
 use kanband::dienst::diff::{Auswahl, Diffinhalt, Inhaltsfehler, inhalt_lesen};
+use kanband::git::arbeitsrepo::Umbenennungssuche;
 use kanband::git::arbeitsrepo::{self, Vergleich};
 use kanband::modell::{Diffdatei, Fassung, Hinweis, patch_text};
 use std::os::unix::ffi::OsStrExt;
@@ -36,7 +37,7 @@ fn lesen(r: &Path, h: &str, auswahl: Auswahl) -> Result<Diffinhalt, Inhaltsfehle
 fn lesen_als(r: &Path, h: &str, auswahl: Auswahl, fassung: Fassung) -> Result<Diffinhalt, Inhaltsfehler> {
     let frist = Instant::now() + Duration::from_secs(10);
     let m = arbeitsrepo::metadaten(r, &[h], frist).unwrap().remove(h).unwrap();
-    inhalt_lesen(r, Vergleich { eltern: m.erster_elternteil.as_deref(), commit: h }, m.dateien, auswahl, fassung, frist)
+    inhalt_lesen(r, Vergleich { eltern: m.erster_elternteil.as_deref(), commit: h }, m.dateien, Umbenennungssuche::Voll, auswahl, fassung, frist)
 }
 
 fn liste(r: &Path, h: &str) -> Diffinhalt {

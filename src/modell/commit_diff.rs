@@ -21,8 +21,10 @@ pub const PFAD_HOECHSTENS: usize = 4096;
 pub const GRENZE_EINZELN: usize = 8_388_608;
 /// Dateiliste (`--raw -z`) für `datei=` (20 MB binär) — nur Zwischenstand im Bau, vor dem Patch-Lauf frei (N5.1 Regel 6).
 pub const GRENZE_DATEILISTE_EINZELN: usize = 20_971_520;
-/// Version der Grenzen im `ETag`: ändert sich eine Grenze, ändert sich jede Antwort.
-pub const GRENZEN_VERSION: u32 = 1;
+/// Version der Grenzen im `ETag`: ändert sich eine Grenze, ändert sich jede Antwort. 2 seit R00253 (ADR-0032 N11.3
+/// Punkt 7): Commits zwischen 10.001 und etwa 75.000 Einträgen antworten anders (`R` wird zu `D` und `A`), ein alter
+/// `ETag` darf dafür nicht die alte Form zurückgeben.
+pub const GRENZEN_VERSION: u32 = 2;
 
 /// Eine Datei des Diffs (Form F2). Felder mit `?` fehlen, wenn sie nicht passen (nie `null`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
@@ -649,6 +651,9 @@ pub enum Hinweis {
     Ausgelassen { verweis: String, zustand: super::Commitzustand },
     /// die Liste zeigt `gezeigt` von `gesamt` Dateien
     DateienGekappt { gezeigt: usize, gesamt: u64 },
+    /// Diff je Commit (R00253, ADR-0032 N11.4): der Commit hat mehr als `schwelle` Einträge — über der Schwelle werden
+    /// nur Umbenennungen mit gleichem Inhalt erkannt, eine Umbenennung mit Änderung erscheint als `D` und `A`
+    UmbenennungEingeschraenkt { dateien: u64, schwelle: u64 },
     /// die einzeln geladene Datei ist über der Grenze für einzeln geladene Dateien
     ZuGrossZumAnzeigen { datei: String },
 }

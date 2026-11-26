@@ -357,12 +357,12 @@ async fn ak11_cache_und_bewegter_zweig() {
     let lauf = starten(&a, &[("GIT_TRACE", spurdatei.to_str().unwrap())]);
     let kalt = liste(&lauf.adresse).await;
     let s = spur(&spurdatei);
-    assert_eq!(s.len(), 6, "kalt: Wurzel, cat-file, log, Fingerabdruck, Zweigliste, Probe: {s:#?}");
+    assert_eq!(s.len(), 7, "kalt: Wurzel, cat-file, Zähllauf, Zeilenzähl-Lauf, Fingerabdruck, Zweigliste, Probe: {s:#?}");
     assert_eq!(s.iter().filter(|z| z.contains("rev-list --parents")).count(), 1);
     std::fs::write(&spurdatei, "").unwrap();
     let warm = liste(&lauf.adresse).await;
     let s = spur(&spurdatei);
-    assert_eq!(s.len(), 4, "aus dem Cache: Wurzel, cat-file, log, Fingerabdruck: {s:#?}");
+    assert_eq!(s.len(), 5, "aus dem Cache: Wurzel, cat-file, Zähllauf, Zeilenzähl-Lauf, Fingerabdruck: {s:#?}");
     assert!(!s.iter().any(|z| z.contains("rev-list") || z.contains("--contains")));
     assert_eq!(warm, kalt);
     std::fs::write(&spurdatei, "").unwrap();

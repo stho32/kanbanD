@@ -1,9 +1,6 @@
 // R00253 (I0243, Karte #233): Diff je Commit — sehr große Commits über 10.000 Einträgen nur mit genauen Umbenennungen.
 // Akzeptanztests gegen das echte Programm und ein echtes Arbeits-Repository (Ausgangslage P4 aus ADR-0032 N11.6).
 // Schichten: Testfall (je AK) → Testsprache (`Lage`, `diff`, `datei_holen`) → Treiber (`holen`: URL, Header, Status) → Programm.
-//
-// erwartet rot (B1342): AK 5, 6, 7, 8 — der heutige Stand sucht in jedem Lauf voll (`-M50% -l1000`) und gibt keinen
-// Hinweis; die Markierung fällt, sobald alle grün sind.
 mod gemeinsam;
 
 use gemeinsam::{git, git_am, starten_mit, Laufendes};
