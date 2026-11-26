@@ -130,3 +130,38 @@ test('R00254 B1350: leerer Zeitraum und Board ohne Bewegung liefern keine Kalend
   const vorher = B.durchsatz(beispielA(), filter({ zeitraum: 'eigen', von: '2026-01-01', bis: '2026-01-31' }), mitDatei, JETZT_A, null, 'tag', null, null);
   assert.deepStrictEqual([vorher.tage, vorher.nettoGesamt, vorher.nettoJeTag], [0, 0, null], 'Zeitraum vor der ersten Bewegung');
 });
+
+/* ── B1353: alles oder nichts — tragen die Zahlen an den Balken? ──────────────────────────────────────────────────────── */
+const DUS_BREITE = 636; // Zeichenfläche des Durchsatzes (DUS_B − DUS_L − DUS_R = 900 − 44 − 220)
+
+test('R00254 B1353 (AK 4): Beispiel A trägt die Zahlen — 3 Perioden, zwei Balken je Periode, Fläche 636, einstellig', () => {
+  assert.strictEqual(B.zahlenPassen(3, 2, DUS_BREITE, 1), true, 'Beispiel A: sechs Balken, je eine Ziffer');
+  assert.strictEqual(B.zahlenPassen(3, 2, DUS_BREITE, 2), true, 'auch zweistellig trägt Beispiel A');
+});
+
+test('R00254 B1353 (AK 5): 90 Perioden je Tag entfallen — keine Zahl, auch nicht einstellig', () => {
+  assert.strictEqual(B.zahlenPassen(90, 2, DUS_BREITE, 1), false, '90 Perioden je Tag: alle Zahlen entfallen');
+});
+
+test('R00254 B1353 (AK 5): einstellig und zweistellig an derselben Grenze — 25 Perioden tragen „3“, nicht „12“', () => {
+  assert.strictEqual(B.zahlenPassen(25, 2, DUS_BREITE, 1), true, 'einstellig passt');
+  assert.strictEqual(B.zahlenPassen(25, 2, DUS_BREITE, 2), false, 'zweistellig berührt die Nachbarzahl');
+});
+
+test('R00254 B1353 (AK 5): ohne gezeigten Zugang ein Balken je Periode — mehr Platz, dieselbe Zahl trägt', () => {
+  assert.strictEqual(B.zahlenPassen(40, 2, DUS_BREITE, 1), false, 'zwei Balken je Periode: zu eng');
+  assert.strictEqual(B.zahlenPassen(40, 1, DUS_BREITE, 1), true, 'ein Balken je Periode: die Zahl passt');
+});
+
+test('R00254 B1353 (AK 5): größere Schrift braucht mehr Platz — dieselbe Lage trägt bei 11, nicht bei 22', () => {
+  assert.strictEqual(B.zahlenPassen(25, 2, DUS_BREITE, 1, 11), true, 'Schriftgröße 11 wie .achse');
+  assert.strictEqual(B.zahlenPassen(25, 2, DUS_BREITE, 1, 22), false, 'doppelte Schriftgröße: entfällt');
+});
+
+test('R00254 B1353 (AK 5): die Antwort ist eine Entscheidung für die ganze Fläche — keine Liste, keine einzelne Zahl', () => {
+  for (const [perioden, balken, ziffern] of [[3, 2, 1], [90, 2, 1], [25, 2, 2], [40, 1, 1]]) {
+    assert.strictEqual(typeof B.zahlenPassen(perioden, balken, DUS_BREITE, ziffern), 'boolean', 'ein Wahrheitswert für alle');
+  }
+  assert.strictEqual(B.zahlenPassen(0, 2, DUS_BREITE, 1), false, 'ohne Periode keine Zahl');
+  assert.strictEqual(B.zahlenPassen(3, 2, 0, 1), false, 'ohne Fläche keine Zahl');
+});

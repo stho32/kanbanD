@@ -445,6 +445,22 @@
     return { paar, luecke, breite: balkenbreite, zugangVoll: balkenbreite < 10 };
   }
 
+  /** Vorschub einer Ziffer im Diagramm, in em: die Achsen- und Zahlenbeschriftung läuft in --kd-mono (IBM Plex Mono,
+      Vorschub 0,6 em), Schriftgröße 11 wie `.diagramm .achse` (R00254 AK 4). */
+  const ZAHL_EM = 0.6;
+  /** Tragen die Zahlen an den Balken? (R00254 AK 5) Zahl der Perioden, Balken je Periode (2 mit Zugang, 1 ohne),
+      Breite der Fläche, breiteste Zahl (Ziffern) und Schriftgröße → true, wenn die breiteste Zahl über ihren Balken
+      passt, ohne die Nachbarzahl zu berühren (Abstand mindestens 2 Einheiten); sonst entfallen alle Zahlen der Fläche.
+      Nachbarzahlen liegen bei zwei Balken je Periode `Balkenbreite + Lücke` auseinander, bei einem Balken einen Platz
+      (`breite / perioden`) — ein Balken je Periode hat mehr Platz. */
+  function zahlenPassen(perioden, balken, breite, ziffern, schriftgroesse = 11) {
+    if (!(perioden > 0) || !(breite > 0) || !(ziffern > 0)) return false;
+    const masse = durchsatzPaar(breite, perioden);
+    const abstand = balken === 2 ? masse.breite + masse.luecke : breite / perioden;
+    const zahl = ziffern * schriftgroesse * ZAHL_EM;
+    return zahl + 2 <= abstand;
+  }
+
   /** Durchsatz je Kalenderperiode (R00122): je Aufgabe das erste Erreichen des Ziels (Abschlussspalte, mit `zielblock`
       der gewählte Block oder rechts davon, R00166) zählen. `einheit` ist 'tag' | 'woche' | 'monat' (Standard Woche); Perioden sind Kalenderfenster über
       [von, bis) des Filters — „Rechnen ab“ schneidet den Anfang, die Messbasis wirkt nicht, die angebrochene letzte
@@ -1177,5 +1193,5 @@
     return texte;
   }
 
-  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, letzterTag, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, simuliereMitZugang, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
+  Object.assign(ziel, { bestandAm, erledigtSpalten, fluss, flussRand, flussName, flussMax, durchsatz, durchsatzPaar, zahlenPassen, ZAHL_EM, durchsatzZiel, durchsatzName, durchsatzTip, durchsatzMarke, xMarken, DURCHSATZ_EINHEITEN, DURCHSATZ_STANDARD, diagrammBloecke, zugangGegenAbgang, grenzenAb, letzterTag, ersterTag, fieberAusduennen, fieberBloecke, zielblock, vonblock, fieberSchluessel, fieberTag, fehlendeTage, dauerIn, pufferVorschlag, fieberZone, fieberPlan, fieberPunkte, tagAnPosition, vollDatum, zaehltImBericht, ausgenommen, ersterDurchlauf, terminChance, anteilBis, werktageBis, prognose, simuliere, simuliereMitZugang, tagesreihen, werktagDatum, PERZENTILE, MIN_LAEUFE, durchlaufzeiten, durchlaufVorgabe, durchlaufWahl, durchlaufMerken, perzentil, spalteAm, eintrittAm, alterText, datumsTrenner, trennerText, ankunftsTag, burndown, burndownBalken, BURNDOWN_BAND, ZEITRAEUME, FILTER_LEER, zeitraumGrenzen, aufgabePasst, zeitenGefiltert, filterAnzahl, leistenAnzahl, filterZuruecksetzen, zuruecksetzenHinweis, BERICHTSLEISTEN, filterAus, isoTag, offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter });
 })(typeof module !== 'undefined' ? module.exports : window);
