@@ -2,7 +2,7 @@
 // Schichten: Testfall (je AK) → Testsprache (`ausgangslage`, `karte`, `fensterOeffnen`) → Treiber (Playwright).
 // Browser-Eigenes (Darstellung, Fokus, Live, Aria) über E2E; die Deutung prüft der Unit-Test (e2e/einheit/braucht.test.js).
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, reiter, bereit, breiteSetzen } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, reiter, bereit, breiteSetzen, mutanteEinsetzen } = require('./hilfen');
 
 // ---- Testsprache --------------------------------------------------------------------------------------------------------
 
@@ -55,6 +55,7 @@ test.describe('R00259 wartet auf #n', () => {
   test.afterEach(async () => { if (k) await k.stoppen(); k = null; });
 
   async function starten(page, extra = {}) {
+    await mutanteEinsetzen(page);
     k = await kanbanStarten(einrichten(ausgangslage(extra)));
     await alsPerson(page, 'st');
     await page.goto(k.adresse);
@@ -157,9 +158,10 @@ test.describe('R00259 wartet auf #n', () => {
     await expect(labelFeld(page)).toHaveValue('ui');
     await labelFeld(page).fill('ui, prio');
     await labelFeld(page).blur();
-    await expect.poll(() => k.lies('aufgaben/0002-bau.md')).toMatch(/labels: \[(.*"?)braucht:1/);
+    // erst wenn das Feld geschrieben ist (der neue Eintrag steht), dann prüfen — sonst träfe die Erwartung den alten Stand
+    await expect.poll(() => k.lies('aufgaben/0002-bau.md')).toContain('prio');
     const text = k.lies('aufgaben/0002-bau.md');
-    expect(text.indexOf('braucht:1')).toBeGreaterThanOrEqual(0);
+    expect(text, 'die gedeutete Abhängigkeit geht mit').toContain('braucht:1');
     expect(text.indexOf('braucht:1')).toBeLessThan(text.indexOf('ui'));
     expect(text.indexOf('ui')).toBeLessThan(text.indexOf('prio'));
     await expect(chipAnKarte(page, 2)).toHaveCount(1);
