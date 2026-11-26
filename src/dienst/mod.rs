@@ -195,8 +195,8 @@ impl Kanban {
                 e.repository_ergaenzen();
                 e
             }),
-            Err(Fehler::Defekt(f)) => {
-                defekte.push(DefekteDatei::neu(crate::format::einstellungen::DATEI, f));
+            Err(f @ (Fehler::Defekt(_) | Fehler::Inhalt { ursache: crate::fehler::Ursache::Defekt, .. })) => {
+                defekte.push(DefekteDatei::neu(crate::format::einstellungen::DATEI, f.meldung().to_string()));
                 None
             }
             Err(f) => return Err(f),

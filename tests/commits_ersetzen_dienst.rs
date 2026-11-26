@@ -5,7 +5,7 @@ mod gemeinsam;
 
 use gemeinsam::{ZWEIER, git, lies, repo_mit_k3_k4};
 use kanband::dienst::Kanban;
-use kanband::fehler::Fehler;
+use kanband::fehler::{Fehler, Ursache};
 use kanband::git::arbeitsrepo;
 use serde_json::{Value, json};
 use std::path::Path;
@@ -77,7 +77,7 @@ fn zwischen_pruefung_und_sperre_geaendert_ergibt_404_unter_der_sperre() {
 
     let f = k.commits_ersetzen_eintragen(&wer, 1, &geprueft).unwrap_err();
 
-    assert!(matches!(&f, Fehler::Verweis { verweis, fehlt: true, .. } if *verweis == kd(&r.basis.k1)), "{f:?}");
+    assert!(matches!(&f, Fehler::Verweis { verweis, fehlt: true, .. } | Fehler::Inhalt { verweis: Some(verweis), ursache: Ursache::Fehlt, .. } if *verweis == kd(&r.basis.k1)), "{f:?}");
     assert_eq!((commit_zahl(tmp.path()), lies(tmp.path(), DATEI)), (n, vorher));
     assert_eq!(k.ordner().aufgabe(1).unwrap().commits, [kd(&r.k4), kd(&r.basis.w1)]);
 }
@@ -95,7 +95,7 @@ fn zwischen_pruefung_und_sperre_neu_angekommen_ergibt_409_unter_der_sperre() {
 
     let f = k.commits_ersetzen_eintragen(&wer, 1, &geprueft).unwrap_err();
 
-    assert!(matches!(&f, Fehler::VerweisKonflikt { verweis, .. } if *verweis == kd(&r.basis.k1)), "{f:?}");
+    assert!(matches!(&f, Fehler::VerweisKonflikt { verweis, .. } | Fehler::Inhalt { verweis: Some(verweis), ursache: Ursache::Konflikt, .. } if *verweis == kd(&r.basis.k1)), "{f:?}");
     assert_eq!((commit_zahl(tmp.path()), lies(tmp.path(), DATEI)), (n, vorher));
 }
 
@@ -108,7 +108,7 @@ fn mehrdeutiger_praefix_von_alt_ist_400_ohne_git() {
     let (n, vorher, git_vorher) = (commit_zahl(tmp.path()), lies(tmp.path(), DATEI), arbeitsrepo::aufrufe());
 
     let f = k.commits_ersetzen_pruefen(1, &rumpf(&[(&kd(&ZWEIER[0][..7]), &kd(&r.k3))])).unwrap_err();
-    assert!(matches!(&f, Fehler::Verweis { verweis, fehlt: false, .. } if *verweis == kd(&ZWEIER[0][..7])), "{f:?}");
+    assert!(matches!(&f, Fehler::Verweis { verweis, fehlt: false, .. } | Fehler::Inhalt { verweis: Some(verweis), ursache: Ursache::Eingabe, .. } if *verweis == kd(&ZWEIER[0][..7])), "{f:?}");
     // ein längerer Präfix unterscheidet sie
     let plan = k.commits_ersetzen_pruefen(1, &rumpf(&[(&kd(&ZWEIER[0][..10]), &kd(&r.k3))]));
     assert!(plan.is_ok(), "{plan:?}");

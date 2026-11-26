@@ -7,10 +7,18 @@ use crate::format::aufgabe;
 use crate::modell::{Aufgabe, abhaengigkeiten, an_der_tuer, braucht_nummern, in_letzter_spalte, kreis_meldung, kreis_suchen, neue_braucht_labels};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-/// Setzt einer 400 den Vorsatz des Aufrufers voran (`#7: `, `„Titel“: `) — andere Fehler bleiben, wie sie sind.
+/// Setzt einer Abweisung den Vorsatz des Aufrufers voran (`#7: `, `„Titel“: `) — andere Fehler bleiben, wie sie sind.
 pub(super) fn vorsatz(f: Fehler, vor: &str) -> Fehler {
+    vorsatz_mit_inhalt(f, vor, vor)
+}
+
+/// Wie [`vorsatz`], mit eigener inhaltsfreier Fassung des Vorsatzes fürs Protokoll (R00258 FA 13): trägt der
+/// Vorsatz Inhalt (einen Aufgaben-Titel), erscheint er im Protokoll nur als dessen Länge.
+pub(super) fn vorsatz_mit_inhalt(f: Fehler, vor: &str, vor_log: &str) -> Fehler {
     match f {
+        Fehler::Ungueltig(m) if vor != vor_log => Fehler::ungueltig_mit_inhalt(format!("{vor}{m}"), format!("{vor_log}{m}")),
         Fehler::Ungueltig(m) => Fehler::Ungueltig(format!("{vor}{m}")),
+        Fehler::Inhalt { meldung, grund, ursache, verweis } => Fehler::Inhalt { meldung: format!("{vor}{meldung}"), grund: format!("{vor_log}{grund}"), ursache, verweis },
         anders => anders,
     }
 }
@@ -105,7 +113,7 @@ impl Kanban {
     fn lesbare_aufgabe(&self, nummer: u32) -> Result<Option<Aufgabe>, Fehler> {
         match self.ordner().aufgabe(nummer) {
             Ok(a) => Ok(Some(a)),
-            Err(Fehler::NichtGefunden(_) | Fehler::Defekt(_)) => Ok(None),
+            Err(Fehler::NichtGefunden(_) | Fehler::Defekt(_) | Fehler::Inhalt { ursache: crate::fehler::Ursache::Defekt, .. }) => Ok(None),
             Err(f) => Err(f),
         }
     }

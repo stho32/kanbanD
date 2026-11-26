@@ -29,6 +29,8 @@ fn lage(pfad: &Path) {
         let nr = i + 1;
         std::fs::write(pfad.join(format!("aufgaben/{nr:04}-{name}.md")), format!("---\nid: {nr}\ntitle: {name}\n---\n")).unwrap();
     }
+    // #16 ist defekt (unlesbares `estimate`) — für den 423-Fall aus AK 2
+    std::fs::write(pfad.join("aufgaben/0016-kaputt.md"), "---\nid: 16\ntitle: kaputt\nestimate: abc\n---\n").unwrap();
     gemeinsam::git(pfad, &["init", "-q"]);
     gemeinsam::git(pfad, &["add", "-A"]);
     gemeinsam::git(pfad, &["-c", "user.name=Vorbereitung", "-c", "user.email=v@v", "commit", "-q", "-m", "Ausgangslage"]);
@@ -160,33 +162,213 @@ async fn ak11_ein_praeparierter_header_bricht_die_zeile_nicht() {
     }
 }
 
-/// `name=wert`-Paare einer Zeile; Werte in Anführungszeichen werden als Ganzes genommen (AK 11).
+/// `name=wert`-Paare einer Zeile; Werte in Anführungszeichen werden als Ganzes genommen, `\"` bricht sie nicht (AK 11).
 fn felder(zeile: &str) -> Vec<(String, String)> {
-    let mut teile = vec![];
-    let mut rest = zeile;
-    let mut sammeln = |teil: &str| {
-        if let Some((n, v)) = teil.split_once('=') {
-            teile.push((n.to_string(), v.trim_matches('"').to_string()));
+    let b: Vec<char> = zeile.chars().collect();
+    let mut felder = vec![];
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == '=' {
+            let mut start = i;
+            while start > 0 && !b[start - 1].is_whitespace() {
+                start -= 1;
+            }
+            let name: String = b[start..i].iter().collect();
+            if !name.is_empty() && name.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
+                let mut j = i + 1;
+                let wert;
+                if j < b.len() && b[j] == '"' {
+                    j += 1;
+                    let mut s = String::new();
+                    while j < b.len() {
+                        if b[j] == '\\' && j + 1 < b.len() {
+                            s.push(b[j]);
+                            s.push(b[j + 1]);
+                            j += 2;
+                            continue;
+                        }
+                        if b[j] == '"' {
+                            break;
+                        }
+                        s.push(b[j]);
+                        j += 1;
+                    }
+                    wert = s;
+                    i = j + 1;
+                } else {
+                    let mut s = String::new();
+                    while j < b.len() && !b[j].is_whitespace() {
+                        s.push(b[j]);
+                        j += 1;
+                    }
+                    wert = s;
+                    i = j;
+                }
+                felder.push((name, wert));
+                continue;
+            }
         }
-    };
-    while let Some(i) = rest.find('=') {
-        let (vor, nach) = rest.split_at(i);
-        if nach.starts_with("=\"") {
-            let Some(ende) = nach[2..].find("\\\"").map(|e| e + 2).or_else(|| nach[2..].find('"').map(|e| e + 2)) else { break };
-            let name = vor.rsplit(' ').next().unwrap_or_default();
-            sammeln(&format!("{name}={}", &nach[1..ende]));
-            rest = &nach[ende..];
-        } else {
-            let name = vor.rsplit(' ').next().unwrap_or_default();
-            let ende = nach.find(' ').unwrap_or(nach.len());
-            sammeln(&format!("{name}{}", &nach[..ende]));
-            rest = &nach[ende..];
-        }
-        if rest.is_empty() {
-            break;
-        }
+        i += 1;
     }
-    teile
+    felder
 }
 
 // ---- AK 20: INFO commit (B1380) ---------------------------------------------------------------------------
+
+// ---- AK 2: Ursache je Abweisung, abgetastet über die ganze Liste --------------------------------------------
+
+#[tokio::test]
+async fn ak2_jede_abweisung_traegt_status_und_ursache() {
+    let probe = Probe::neu();
+    // 403: Agent zieht eine Karte aus einer Spalte, die dem Menschen gehört
+    let (status, _) = probe.mit_kopf("POST", "api/boards/entwicklung/ziehen", &[("X-KanbanD-Wer", "cl"), ("X-KanbanD-Instanz", "i1")], Some(json!({"von": "Eingang", "nach": "In Arbeit"}))).await;
+    assert_eq!(status, 403);
+    assert!(zeile_mit(&probe, "status=403").unwrap().contains("ursache=verboten"));
+    // 409: Agent bewegt eine Karte in eine Spalte mit erreichter WIP-Grenze
+    let (status, _) = probe.rufen("POST", "api/boards/entwicklung/bewegen", "cl", Some(json!({"nummer": 2, "spalte": "Voll"}))).await;
+    assert_eq!(status, 409);
+    assert!(zeile_mit(&probe, "status=409").unwrap().contains("ursache=grenze"));
+    // 404: unbekannte Nummer
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/9999", "cl", Some(json!({"titel": "x"}))).await;
+    assert_eq!(status, 404);
+    assert!(zeile_mit(&probe, "status=404").unwrap().contains("ursache=fehlt"));
+    // 409 ohne Grenze: fremde gültige Reservierung
+    let (status, _) = probe.mit_kopf("POST", "api/aufgaben/2/reservierung", &[("X-KanbanD-Wer", "cl"), ("X-KanbanD-Instanz", "i1")], None).await;
+    assert_eq!(status, 200, "die eigene Reservierung geht");
+    let (status, _) = probe.mit_kopf("POST", "api/aufgaben/2/reservierung", &[("X-KanbanD-Wer", "cl"), ("X-KanbanD-Instanz", "i2")], None).await;
+    assert_eq!(status, 409);
+    assert!(letzte_zeile(&probe).contains("ursache=konflikt"), "{}", letzte_zeile(&probe));
+    // 423: Änderung an einer defekten Aufgabendatei
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/16", "cl", Some(json!({"titel": "x"}))).await;
+    assert_eq!(status, 423);
+    assert!(zeile_mit(&probe, "status=423").unwrap().contains("ursache=defekt"));
+    // 413: Körper über der Grenze der Route
+    let gross = "a".repeat(3 * 1024 * 1024);
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/1", "cl", Some(json!({"beschreibung": gross}))).await;
+    assert_eq!(status, 413);
+    assert!(zeile_mit(&probe, "status=413").unwrap().contains("ursache=zu_gross"));
+    // 400: Kürzel steht nicht in kanbanD.md
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/1", "zz", Some(json!({"titel": "x"}))).await;
+    assert_eq!(status, 400);
+    assert!(zeile_mit(&probe, "status=400").unwrap().contains("ursache=eingabe"));
+    // 200 schreibt keine Zeile
+    let vorher = probe.zaehle(" WARN abgewiesen ");
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/1", "cl", Some(json!({"titel": "neu"}))).await;
+    assert_eq!(status, 200);
+    assert_eq!(probe.zaehle(" WARN abgewiesen "), vorher, "200 schreibt nichts");
+    assert_eq!(probe.zaehle(" ERROR fehlgeschlagen "), 0);
+}
+
+/// Die erste Zeile, die dieses Merkmal trägt.
+fn zeile_mit(probe: &Probe, merkmal: &str) -> Option<String> {
+    probe.zeilen().into_iter().find(|z| z.contains(merkmal))
+}
+
+fn letzte_zeile(probe: &Probe) -> String {
+    probe.zeilen().last().cloned().unwrap_or_default()
+}
+
+// ---- AK 5: Abweisung ohne Fehler von kanbanD ---------------------------------------------------------------
+
+#[tokio::test]
+async fn ak5_axum_abweisungen_enden_ueber_fehler_oder_ohne_grund() {
+    let probe = Probe::neu();
+    // Läuft über den Extraktor `Pfad<u32>` und damit über `Fehler` — Ursache `eingabe` (AK 5 zweiter Satz)
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/abc", "cl", Some(json!({"titel": "x"}))).await;
+    assert_eq!(status, 400);
+    let zeile = letzte_zeile(&probe);
+    assert!(zeile.contains(" WARN abgewiesen "), "{zeile}");
+    assert!(zeile.contains("ursache=eingabe"), "{zeile}");
+    // Eine Methode, die axum selbst abweist (405), trägt keinen Grund
+    let (status, _) = probe.rufen("GET", "api/aufgaben/mehrere", "cl", None).await;
+    assert_eq!(status, 405);
+    let zeile = letzte_zeile(&probe);
+    assert!(zeile.contains(" WARN abgewiesen "), "{zeile}");
+    assert!(zeile.contains("status=405") && zeile.contains("ursache=-") && zeile.contains("grund=-"), "{zeile}");
+}
+
+// ---- AK 6: die Zeile ist da, wenn die Antwort da ist -------------------------------------------------------
+
+#[tokio::test]
+async fn ak6_die_zeile_steht_ohne_warten_nach_dem_await() {
+    let probe = Probe::neu();
+    let vorher = probe.zeilen().len();
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/9999", "cl", Some(json!({"titel": "x"}))).await;
+    assert_eq!(status, 404);
+    assert_eq!(probe.zeilen().len(), vorher + 1, "ohne Warten und ohne Wiederholschleife");
+}
+
+// ---- AK 8: alle sieben Sammelwege --------------------------------------------------------------------------
+
+#[tokio::test]
+async fn ak8_alle_sieben_sammelwege_tragen_ziele_und_nach_bedarf_erstes() {
+    let probe = Probe::neu();
+    // (Weg, Methode, Pfad, Rumpf, erwarteter Status, erwartete Anzahl, erwartetes erstes, erwartete Aufgabe)
+    let faelle: Vec<(&str, &str, &str, Value, u16, usize, Option<u32>, Option<u32>)> = vec![
+        ("aendern", "PATCH", "api/aufgaben/mehrere", json!({"aenderungen": [{"nummer": 4}, {"nummer": 4}]}), 400, 2, Some(4), None),
+        ("archivieren", "POST", "api/aufgaben/archivieren", json!({"nummern": [1, 9999]}), 404, 2, Some(1), None),
+        ("zurueckholen", "POST", "api/aufgaben/zurueckholen", json!({"nummern": [1, 9999]}), 404, 2, Some(1), None),
+        ("bewegen", "POST", "api/boards/entwicklung/bewegen-mehrere", json!({"ziele": [{"nummer": 9998, "spalte": "Voll"}, {"nummer": 9999, "spalte": "Voll"}]}), 404, 2, Some(9998), None),
+        ("auf-board", "POST", "api/boards/entwicklung/aufgaben/mehrere", json!({"nummern": [9998, 9999]}), 404, 2, Some(9998), None),
+        ("anlegen", "POST", "api/aufgaben/mehrere", json!({"titel": ["", "b"]}), 400, 2, None, None),
+        ("teilaufgaben", "POST", "api/aufgaben/1/teilaufgaben/mehrere", json!({"texte": ["ok", ""]}), 400, 2, None, Some(1)),
+    ];
+    for (name, methode, pfad, rumpf, status, ziele, erstes, aufgabe) in faelle {
+        let vorher = probe.zeilen().len();
+        let (antwort, _) = probe.rufen(methode, pfad, "cl", Some(rumpf)).await;
+        assert_eq!(antwort, status, "{name}");
+        let zeilen = probe.zeilen();
+        assert_eq!(zeilen.len(), vorher + 1, "{name}: genau eine Zeile: {:?}", &zeilen[vorher..]);
+        let zeile = &zeilen[vorher];
+        assert!(zeile.contains(&format!("ziele={ziele}")), "{name}: {zeile}");
+        match erstes {
+            Some(e) => assert!(zeile.contains(&format!("erstes=#{e}")), "{name}: {zeile}"),
+            None => assert!(!zeile.contains("erstes="), "{name} ohne erstes: {zeile}"),
+        }
+        match aufgabe {
+            Some(nr) => assert!(zeile.contains(&format!("aufgabe=#{nr}")), "{name}: {zeile}"),
+            None => assert!(!zeile.contains("aufgabe=#"), "{name} ohne aufgabe: {zeile}"),
+        }
+    }
+    // Rechenbeispiel AK 7: Reihenfolge #9, #4 → erstes=#9
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/mehrere", "cl", Some(json!({"aenderungen": [{"nummer": 9}, {"nummer": 4}]}))).await;
+    assert_eq!(status, 200, "beide gültig");
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/mehrere", "cl", Some(json!({"aenderungen": [{"nummer": 9}, {"nummer": 4}, {"nummer": 4}]}))).await;
+    assert_eq!(status, 400);
+    assert!(letzte_zeile(&probe).contains("erstes=#9"), "Reihenfolge der Anfrage: {}", letzte_zeile(&probe));
+}
+
+// ---- AK 9: kein Rumpf, keine Query, kein fremder Header ----------------------------------------------------
+
+#[tokio::test]
+async fn ak9_kein_inhalt_keine_query_kein_fremder_header_im_log() {
+    let probe = Probe::neu();
+    let (status, _) = probe
+        .mit_kopf(
+            "PATCH",
+            "api/aufgaben/1?q=GEHEIM-QUERY",
+            &[("X-KanbanD-Wer", "cl"), ("Authorization", "Bearer GEHEIM-TOKEN"), ("Cookie", "k=GEHEIM-KEKS"), ("User-Agent", "GEHEIM-UA")],
+            Some(json!({"labels": ["braucht:999"], "beschreibung": "GEHEIM-239"})),
+        )
+        .await;
+    assert_eq!(status, 400);
+    let zeile = letzte_zeile(&probe);
+    for marker in ["GEHEIM-239", "GEHEIM-QUERY", "GEHEIM-TOKEN", "GEHEIM-KEKS", "GEHEIM-UA", "Authorization", "Cookie", "User-Agent"] {
+        assert!(!zeile.contains(marker), "{marker} in {zeile}");
+    }
+    assert!(zeile.contains("endpunkt=/api/aufgaben/{nr}"), "die Vorlage, nie die rohe URI: {zeile}");
+    assert!(!zeile.contains("?q="), "{zeile}");
+}
+
+// ---- AK 12: Kürzen von Kopfwerten --------------------------------------------------------------------------
+
+#[tokio::test]
+async fn ak12_kopfwerte_werden_auf_32_zeichen_gekuerzt() {
+    let probe = Probe::neu();
+    let lang = "a".repeat(40);
+    probe.mit_kopf("PATCH", "api/aufgaben/9999", &[("X-KanbanD-Wer", &lang), ("X-KanbanD-Instanz", &lang)], Some(json!({"titel": "x"}))).await;
+    let zeile = letzte_zeile(&probe);
+    let erwartet = format!("{}{}", "a".repeat(32), "…");
+    assert!(zeile.contains(&format!("wer={erwartet}")), "{zeile}");
+    assert!(zeile.contains(&format!("instanz={erwartet}")), "{zeile}");
+}

@@ -1,4 +1,4 @@
-use super::braucht::{Tuer, vorsatz};
+use super::braucht::{Tuer, vorsatz_mit_inhalt};
 use super::{Kanban, Schritt};
 use super::archiv::zurueckgeholt;
 use super::kommentare::kommentiert;
@@ -193,7 +193,7 @@ impl Kanban {
             if aus.is_none() {
                 // Eine Kopie übernimmt die Labels ihrer Quelle als Bestand: ungeprüft (R00214). Jede neue Karte meldet sich
                 // an der Tür, damit ein späterer Eintrag derselben Anfrage auf sie warten kann.
-                tuer.pruefen(nummer, &[], &a.labels).map_err(|f| vorsatz(f, &format!("„{t}“: ")))?;
+                tuer.pruefen(nummer, &[], &a.labels).map_err(|f| vorsatz_mit_inhalt(f, &format!("„{t}“: "), &format!("„{}“: ", crate::fehler::inhalt_laenge(t))))?;
             }
             plan.push((nummer, true));
             aufgaben.push(a);

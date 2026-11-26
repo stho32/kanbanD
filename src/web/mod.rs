@@ -17,7 +17,8 @@ use futures_util::stream::Stream;
 use tokio::sync::{broadcast, watch};
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
-use axum::extract::{FromRequestParts, State};
+use axum::extract::{FromRequestParts, Request, State};
+use axum::middleware::Next;
 use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -26,7 +27,7 @@ use utoipa::OpenApi;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use serde_json::json;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct App {
@@ -150,6 +151,8 @@ fn router_bauen(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protoko
         .routes(routes!(openapi_json))
         .split_for_parts();
     let _ = OPENAPI.set(api);
+    // Die eine Stelle für Abweisungen liegt um alle API-Routen (nur hier hat der Router `MatchedPath`, N1.4 Regel 1)
+    let router = router.route_layer(axum::middleware::from_fn_with_state(app.clone(), abweisung_protokollieren));
     router.merge(statisch::router()).with_state(app)
 }
 
@@ -253,6 +256,103 @@ impl Fehler {
             Fehler::Inhalt { ursache, .. } => ursache_status(*ursache),
         }
     }
+}
+
+/// Die Felder der Sammelanfrage: Anzahl der Einträge und das erste Ziel in Anfragereihenfolge (R00258 FA 12).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Anfragezettel {
+    pub ziele: usize,
+    pub erstes: Option<u32>,
+}
+
+/// Der Anfragezettel einer Anfrage. Die Middleware legt einen leeren in die Request-Extensions, nur die sieben
+/// Sammel-Handler füllen ihn (ADR-0001 N1.4 Regel 4).
+pub struct Zettel(pub Arc<Mutex<Anfragezettel>>);
+
+impl Zettel {
+    /// Trägt ein, wie viele Einträge die Anfrage nennt und welches Ziel das erste ist.
+    pub fn fuellen(&self, ziele: usize, erstes: Option<u32>) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = Anfragezettel { ziele, erstes };
+    }
+}
+
+impl<S: Send + Sync> FromRequestParts<S> for Zettel {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(teile: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        Ok(Zettel(teile.extensions.get::<Arc<Mutex<Anfragezettel>>>().cloned().unwrap_or_default()))
+    }
+}
+
+/// Die eine Stelle, die Abweisungen schreibt (ADR-0001 N1.4 Regel 1): nach dem Handler, bevor die Antwort zurückgeht.
+/// Je Anfrage ab 400 höchstens eine Zeile; 4xx und 503 als `WARN abgewiesen`, übrige 5xx als `ERROR fehlgeschlagen`.
+async fn abweisung_protokollieren(State(app): State<App>, anfrage: Request, next: Next) -> Response {
+    let (mut teile, rumpf) = anfrage.into_parts();
+    let endpunkt = teile.extensions.get::<axum::extract::MatchedPath>().map(|m| m.as_str().to_string());
+    let methode = teile.method.as_str().to_string();
+    let wer = kopfwert(&teile.headers, "x-kanband-wer");
+    let instanz = kopfwert(&teile.headers, "x-kanband-instanz");
+    let nr = pfadnummer(&mut teile).await;
+    let zettel = Arc::new(Mutex::new(Anfragezettel::default()));
+    teile.extensions.insert(zettel.clone());
+    let antwort = next.run(Request::from_parts(teile, rumpf)).await;
+    let grund = antwort.extensions().get::<Abweisungsgrund>().cloned();
+    let zettel = *zettel.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((stufe, ereignis, felder)) = abweisungszeile(antwort.status(), &methode, endpunkt.as_deref(), nr, wer.as_deref(), instanz.as_deref(), zettel, grund.as_ref()) {
+        app.protokoll.schreiben(stufe, ereignis, &felder);
+    }
+    antwort
+}
+
+/// Ein Kopfwert fürs Protokoll: `X-KanbanD-Wer` bzw. `-Instanz`, höchstens 32 Zeichen (N1.3, AK 12).
+fn kopfwert(kopf: &axum::http::HeaderMap, name: &str) -> Option<String> {
+    kopf.get(name).and_then(|w| w.to_str().ok()).map(|w| crate::protokoll::kuerzen(w, crate::protokoll::KOPF_HOECHSTENS))
+}
+
+/// Die `nr` aus den Pfadparametern, wenn die Route eine trägt (N1.4 Regel 2).
+async fn pfadnummer(teile: &mut Parts) -> Option<u32> {
+    let werte = axum::extract::RawPathParams::from_request_parts(teile, &()).await.ok()?;
+    werte.iter().find(|(name, _)| *name == "nr").and_then(|(_, wert)| wert.parse().ok())
+}
+
+/// Die Zeile einer Abweisung — die reine Funktion (Interactor der Abweisung, N1.4 Regeln 1–3): leer unter 400.
+#[allow(clippy::too_many_arguments)]
+pub fn abweisungszeile(
+    status: StatusCode,
+    methode: &str,
+    endpunkt: Option<&str>,
+    nr: Option<u32>,
+    wer: Option<&str>,
+    instanz: Option<&str>,
+    zettel: Anfragezettel,
+    grund: Option<&Abweisungsgrund>,
+) -> Option<(crate::protokoll::Stufe, crate::protokoll::Ereignis, Vec<(&'static str, String)>)> {
+    use crate::protokoll::{Ereignis, Stufe};
+    if status.as_u16() < 400 {
+        return None;
+    }
+    let (stufe, ereignis) = if status.as_u16() == 503 || status.is_client_error() { (Stufe::Warn, Ereignis::Abgewiesen) } else { (Stufe::Error, Ereignis::Fehlgeschlagen) };
+    let mut felder: Vec<(&'static str, String)> = vec![("status", status.as_u16().to_string())];
+    if let Some(wer) = wer {
+        felder.push(("wer", wer.to_string()));
+    }
+    if let Some(instanz) = instanz {
+        felder.push(("instanz", instanz.to_string()));
+    }
+    felder.push(("methode", methode.to_string()));
+    felder.push(("endpunkt", endpunkt.unwrap_or("-").to_string()));
+    if let Some(n) = nr {
+        felder.push(("aufgabe", format!("#{n}")));
+    }
+    if zettel.ziele > 0 {
+        felder.push(("ziele", zettel.ziele.to_string()));
+        if let Some(erstes) = zettel.erstes {
+            felder.push(("erstes", format!("#{erstes}")));
+        }
+    }
+    felder.push(("ursache", grund.map(|g| g.ursache.text().to_string()).unwrap_or_else(|| "-".to_string())));
+    felder.push(("grund", grund.map(|g| g.grund.clone()).unwrap_or_else(|| "-".to_string())));
+    Some((stufe, ereignis, felder))
 }
 
 /// Die Abweisung ohne weitere Felder: Status und Rumpf `{"fehler": …}` — für `Fehler` und für den Extraktor des Rumpfs (ADR-0003 N3).
@@ -1870,7 +1970,8 @@ async fn openapi_json() -> Response {
     request_body = crate::dienst::NeueAufgaben,
     responses((status = 201, description = "mindestens ein Eintrag neu", body = Vec<crate::dienst::Angelegt>), (status = 200, description = "alle Einträge gab es schon (neu: false)", body = Vec<crate::dienst::Angelegt>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn aufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(neu): JsonKoerper<NeueAufgaben>) -> Result<Response, Fehler> {
+async fn aufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, zettel: Zettel, JsonKoerper(neu): JsonKoerper<NeueAufgaben>) -> Result<Response, Fehler> {
+    zettel.fuellen(neu.titel.len(), None);
     let a = blockierend(&app, move |k| {
         let p = k.handelnder(wer.as_deref())?;
         k.aufgaben_anlegen(&p, &neu)
@@ -1898,7 +1999,8 @@ struct Texte {
     request_body = Texte,
     responses((status = 200, description = "Erfolg", body = crate::modell::Aufgabe), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn teilaufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, JsonKoerper(t): JsonKoerper<Texte>) -> Result<Response, Fehler> {
+async fn teilaufgaben_anlegen(State(app): State<App>, Wer(wer): Wer, Pfad(nr): Pfad<u32>, zettel: Zettel, JsonKoerper(t): JsonKoerper<Texte>) -> Result<Response, Fehler> {
+    zettel.fuellen(t.texte.len(), None);
     als_person(&app, wer, move |k, p| k.teilaufgaben_anlegen(p, nr, &t.texte)).await
 }
 
@@ -1921,7 +2023,8 @@ struct Ziele {
     request_body = Ziele,
     responses((status = 200, description = "Erfolg", body = crate::dienst::Bewegt), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten))
 )]
-async fn mehrere_bewegen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<String>, JsonKoerper(z): JsonKoerper<Ziele>) -> Result<Response, Fehler> {
+async fn mehrere_bewegen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<String>, zettel: Zettel, JsonKoerper(z): JsonKoerper<Ziele>) -> Result<Response, Fehler> {
+    zettel.fuellen(z.ziele.len(), z.ziele.first().map(|b| b.nummer));
     als_person(&app, wer, move |k, p| k.mehrere_bewegen(p, &slug, &z.ziele)).await
 }
 
@@ -1940,7 +2043,8 @@ struct Legen {
     request_body = Legen,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn mehrere_auf_board_legen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<String>, JsonKoerper(l): JsonKoerper<Legen>) -> Result<Response, Fehler> {
+async fn mehrere_auf_board_legen(State(app): State<App>, Wer(wer): Wer, Pfad(slug): Pfad<String>, zettel: Zettel, JsonKoerper(l): JsonKoerper<Legen>) -> Result<Response, Fehler> {
+    zettel.fuellen(l.nummern.len(), l.nummern.first().copied());
     als_person(&app, wer, move |k, p| k.mehrere_auf_board_legen(p, &slug, &l.nummern, l.spalte.as_deref())).await
 }
 
@@ -1965,7 +2069,8 @@ struct Aenderungen {
     request_body = Aenderungen,
     responses((status = 200, description = "Erfolg", body = Vec<crate::modell::Aufgabe>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, JsonKoerper(a): JsonKoerper<Aenderungen>) -> Result<Response, Fehler> {
+async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, zettel: Zettel, JsonKoerper(a): JsonKoerper<Aenderungen>) -> Result<Response, Fehler> {
+    zettel.fuellen(a.aenderungen.len(), a.aenderungen.first().map(|e| e.nummer));
     let liste: Vec<_> = a.aenderungen.into_iter().map(|e| (e.nummer, e.aenderung)).collect();
     als_person(&app, wer, move |k, p| k.mehrere_aendern(p, &liste)).await
 }
@@ -1979,7 +2084,8 @@ async fn mehrere_aendern(State(app): State<App>, Wer(wer): Wer, JsonKoerper(a): 
     request_body = Nummern,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort), (status = 403, description = "Agent aus einer Menschen-Spalte", body = crate::web::openapi::Verboten))
 )]
-async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, JsonKoerper(n): JsonKoerper<Nummern>) -> Result<Response, Fehler> {
+async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, zettel: Zettel, JsonKoerper(n): JsonKoerper<Nummern>) -> Result<Response, Fehler> {
+    zettel.fuellen(n.nummern.len(), n.nummern.first().copied());
     als_person(&app, wer, move |k, p| k.mehrere_archivieren(p, &n.nummern, true)).await
 }
 
@@ -1992,7 +2098,8 @@ async fn mehrere_archivieren(State(app): State<App>, Wer(wer): Wer, JsonKoerper(
     request_body = Nummern,
     responses((status = 200, description = "Erfolg", body = Vec<u32>), (status = 400, description = "ungültige Eingabe", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 409, description = "Konflikt mit dem Zustand; ein Agent über der WIP-Grenze bekommt GrenzeErreicht", body = crate::web::openapi::Konflikt), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
-async fn mehrere_zurueckholen(State(app): State<App>, Wer(wer): Wer, JsonKoerper(n): JsonKoerper<Nummern>) -> Result<Response, Fehler> {
+async fn mehrere_zurueckholen(State(app): State<App>, Wer(wer): Wer, zettel: Zettel, JsonKoerper(n): JsonKoerper<Nummern>) -> Result<Response, Fehler> {
+    zettel.fuellen(n.nummern.len(), n.nummern.first().copied());
     als_person(&app, wer, move |k, p| k.mehrere_archivieren(p, &n.nummern, false)).await
 }
 
@@ -2134,6 +2241,54 @@ mod tests {
         use crate::fehler::Ursache;
         assert_eq!(Fehler::lesegrenze("Antwortbudget wäre auch denkbar".into()).ursache(), Ursache::Lesegrenze);
         assert_eq!(Fehler::antwortbudget("Lesegrenze wäre auch denkbar".into()).ursache(), Ursache::Antwortbudget);
+    }
+
+    // R00258 AK 3/4: die Zeile wählt Stufe und Ereignis nach dem Status (4xx und 503 WARN, übrige 5xx ERROR)
+    #[test]
+    fn ak3_und_ak4_die_stufe_folgt_dem_status() {
+        use crate::fehler::Ursache;
+        use crate::protokoll::{Ereignis, Stufe};
+        let bauen = |status: u16, ursache: Ursache, grund: &str| {
+            let g = Abweisungsgrund { ursache, grund: grund.to_string() };
+            abweisungszeile(StatusCode::from_u16(status).unwrap(), "GET", Some("/api/aufgaben/{nr}"), Some(1), Some("cl"), None, Anfragezettel::default(), Some(&g))
+        };
+        for (ursache, text) in [(Ursache::Zeitgrenze, "zeitgrenze"), (Ursache::Lesegrenze, "lesegrenze"), (Ursache::Antwortbudget, "antwortbudget")] {
+            let (stufe, ereignis, felder) = bauen(503, ursache, "Git antwortete nicht").unwrap();
+            assert_eq!((stufe, ereignis), (Stufe::Warn, Ereignis::Abgewiesen));
+            assert!(felder.iter().any(|(n, w)| *n == "status" && w == "503"), "{felder:?}");
+            assert!(felder.iter().any(|(n, w)| *n == "ursache" && w == text), "{felder:?}");
+        }
+        let (stufe, ereignis, felder) = bauen(500, Ursache::Intern, "Dateizugriff").unwrap();
+        assert_eq!((stufe, ereignis), (Stufe::Error, Ereignis::Fehlgeschlagen));
+        assert!(felder.iter().any(|(n, w)| *n == "ursache" && w == "intern"));
+        assert!(abweisungszeile(StatusCode::OK, "GET", Some("/api/zustand"), None, None, None, Anfragezettel::default(), None).is_none(), "200 schreibt nichts");
+        // Eine Abweisung ohne Fehler von kanbanD (grund=-) und eine ohne Kopfwerte
+        let (_, _, felder) = abweisungszeile(StatusCode::METHOD_NOT_ALLOWED, "GET", Some("/api/aufgaben/mehrere"), None, None, None, Anfragezettel::default(), None).unwrap();
+        assert!(felder.iter().any(|(n, w)| *n == "grund" && w == "-") && felder.iter().any(|(n, w)| *n == "ursache" && w == "-"), "{felder:?}");
+        assert!(!felder.iter().any(|(n, _)| *n == "wer"), "ohne Header kein wer: {felder:?}");
+    }
+
+    // R00258 AK 3: drei Abweisungen an der Zeitgrenze ergeben drei Zeilen mit derselben Ursache
+    #[test]
+    fn ak3_drei_abweisungen_an_der_zeitgrenze_ergeben_drei_zeilen() {
+        use crate::fehler::Ursache;
+        let (protokoll, sammler) = crate::protokoll::Protokoll::sammler();
+        let g = Abweisungsgrund { ursache: Ursache::Zeitgrenze, grund: "Git antwortete nicht in 10 s".to_string() };
+        for _ in 0..3 {
+            let (stufe, ereignis, felder) = abweisungszeile(StatusCode::SERVICE_UNAVAILABLE, "GET", Some("/api/aufgaben/{nr}/commits"), Some(1), Some("cl"), None, Anfragezettel::default(), Some(&g)).unwrap();
+            protokoll.schreiben(stufe, ereignis, &felder);
+        }
+        let zeilen = sammler.lock().unwrap();
+        assert_eq!(zeilen.iter().filter(|z| z.contains(" WARN abgewiesen ") && z.contains("status=503") && z.contains("ursache=zeitgrenze")).count(), 3, "{zeilen:?}");
+    }
+
+    // R00258 AK 12: der Kopfwert wird vor dem Schreiben auf 32 Zeichen gekürzt
+    #[test]
+    fn ak12_kopfwerte_werden_gekuerzt() {
+        let lang = "a".repeat(40);
+        let mut kopf = axum::http::HeaderMap::new();
+        kopf.insert("x-kanband-wer", lang.parse().unwrap());
+        assert_eq!(kopfwert(&kopf, "x-kanband-wer"), Some(format!("{}…", "a".repeat(32))));
     }
 
     // R00258 AK 2: `into_response` schreibt nichts, hängt aber Ursache und Grund als Extension an — der Rumpf bleibt
