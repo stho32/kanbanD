@@ -207,6 +207,8 @@ const kennzahlen = page => page.locator('#dus-kennzahl > span');
 const diagramm = page => page.getByRole('img', { name: 'Durchsatz je Zeitraum: Zugang und Abgang je Periode' });
 const legende = page => page.locator('.fluss-leg .fluss-le');
 const zugangSatz = page => page.locator('#dus-zugang-satz');
+const nettoSatz = page => page.locator('#dus-netto-satz');
+const NETTO_SATZ = 'Netto = Abgang − Zugang; Rückläufer und vom Board genommene Aufgaben zählen nicht — den offenen Bestand zeigt der Burndown.';
 const masse = balken => balken.evaluateAll(bs => bs.map(b => ['x', 'y', 'width', 'height'].map(a => Number(b.getAttribute(a)))));
 /** Zeigt im Durchsatz „je Tag“ des Beispiels auf den Platz des Tages: drei Perioden auf 636 Einheiten Breite ab x = 44. */
 async function zeigeAufTag(page, tagImNovember) {
@@ -228,9 +230,10 @@ test('R00167 US-1, AK 1, AK 8 (B0819): ohne Wahl steht der Zugang ab der ersten 
   const k = await kanbanStarten(rechenbeispiel());
   try {
     await berichtAm0411(page, k, 'durchsatz');
-    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['3', '0'], ['0', '0'], ['0', '1']], summe: ['Summe', '3', '1'] });
+    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang', 'Netto'], jeTag: [['3', '0', '−3'], ['0', '0', '0'], ['0', '1', '+1']], summe: ['Summe', '3', '1', '−2'] });
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
     await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', 'Netto −2 · Ø −0,7 je Tag · staut auf', '3 Perioden']);
+    await expect(nettoSatz(page)).toHaveText(NETTO_SATZ);
     await tooltipAm(page, 2).toBe('02.11.2026 · Zugang 3 · Abgang 0');
     await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Backlog“)', 'Abgang: erledigte Aufgaben', 'Ø Zugang 1,0 je Tag', 'Ø Abgang 0,3 je Tag']);
     await expect(page.locator('.fluss-leg .rechts')).toHaveText('zeigt nur, filtert nicht');
@@ -244,9 +247,10 @@ test('R00167 US-1, US-2, AK 1, AK 4, AK 8 (B0819, Abnahme der Karte #157): „Zu
   try {
     await berichtAm0411(page, k, 'durchsatz');
     await waehle(page, zugangAb, 'Spalte „Arbeit“', 'Arbeit');
-    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['0', '0'], ['2', '0'], ['0', '1']], summe: ['Summe', '2', '1'] });
+    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang', 'Netto'], jeTag: [['0', '0', '0'], ['2', '0', '−2'], ['0', '1', '+1']], summe: ['Summe', '2', '1', '−1'] });
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode · ab „Arbeit“');
     await expect(kennzahlen(page)).toHaveText(['Zugang 2 ab „Arbeit“ · Ø 0,7 je Tag', 'Abgang 1 · Ø 0,3 je Tag', 'Netto −1 · Ø −0,3 je Tag · staut auf', '3 Perioden']);
+    await expect(nettoSatz(page)).toHaveText(NETTO_SATZ);
     await tooltipAm(page, 3).toBe('03.11.2026 · Zugang 2 ab „Arbeit“ · Abgang 0');
     await tooltipAm(page, 4).toBe('04.11.2026 · Zugang 0 ab „Arbeit“ · Abgang 1');
     await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Arbeit“)', 'Abgang: erledigte Aufgaben', 'Ø Zugang 0,7 je Tag', 'Ø Abgang 0,3 je Tag']);
@@ -291,6 +295,7 @@ test('R00167 US-4, AK 5 (B0818): „Zugang ab“ = Erledigt — kein Zugang in K
     expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Abgang'], jeTag: [['0'], ['0'], ['1']], summe: ['Summe', '1'] });
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
     await expect(kennzahlen(page)).toHaveText(['Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await expect(nettoSatz(page)).toHaveCount(0);
     await expect(diagramm(page).locator('text.ratetext')).toHaveText(['Ø Abgang 0,3 je Tag']);
     await expect(diagramm(page).locator('rect.balken.zugang')).toHaveCount(0);
     expect(await masse(diagramm(page).locator('rect.balken')), 'die Skala folgt allein dem Abgang').toEqual([[575, 24, 47, 204]]);
@@ -305,7 +310,7 @@ test('R00167 AK 6 (B0819): `from-column: Abnahme` rechnet und beschriftet wie oh
   try {
     await berichtAm0411(page, k, 'durchsatz');
     await expect(hinweisWeg(page)).toBeVisible();
-    expect((await tabelleJeTag(page)).jeTag).toEqual([['3', '0'], ['0', '0'], ['0', '1']]);
+    expect((await tabelleJeTag(page)).jeTag).toEqual([['3', '0', '−3'], ['0', '0', '0'], ['0', '1', '+1']]);
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
     await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', 'Netto −2 · Ø −0,7 je Tag · staut auf', '3 Perioden']);
     await expect(legende(page).first()).toHaveText('Zugang (erstmals ab „Backlog“)');
@@ -316,17 +321,17 @@ test('R00167 AK 7 (B0819): `reporting.forecast: false` an #1 wirkt auf beide Bal
   const k = await kanbanStarten(rechenbeispiel(mitFever('from-column: Arbeit'), { aufgaben: { 1: aufgabe(1, 'reporting: {forecast: false}\n') } }));
   try {
     await berichtAm0411(page, k, 'durchsatz');
-    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['0', '0'], ['1', '0'], ['0', '0']], summe: ['Summe', '1', '0'] });
+    expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang', 'Netto'], jeTag: [['0', '0', '0'], ['1', '0', '−1'], ['0', '0', '0']], summe: ['Summe', '1', '0', '−1'] });
     await expect(page.locator('#dus-nicht')).toContainText('Nicht enthalten: ausgenommen 1');
   } finally { await k.stoppen(); }
 });
 
-for (const [fall, kopf, zugang] of [['von = Backlog', '', ['3', '0', '1']], ['von = Arbeit', mitFever('from-column: Arbeit'), ['0', '2', '1']]]) {
+for (const [fall, kopf, zugang, netto] of [['von = Backlog', '', ['3', '0', '1'], ['−3', '0', '+1']], ['von = Arbeit', mitFever('from-column: Arbeit'), ['0', '2', '1'], ['0', '−2', '+1']]]) {
   test(`R00167 AK 10 (B0819): #4 am 04.11. direkt in Erledigt angelegt zählt in Zugang und Abgang desselben Tages — ${fall}: 04.11. Zugang 1 · Abgang 2`, async ({ page }) => {
     const k = await kanbanStarten(rechenbeispiel(kopf, { nummern: [1, 2, 3, 4], am0411: [[3], [2], [4, 1]] }));
     try {
       await berichtAm0411(page, k, 'durchsatz');
-      expect((await tabelleJeTag(page)).jeTag).toEqual([[zugang[0], '0'], [zugang[1], '0'], [zugang[2], '2']]);
+      expect((await tabelleJeTag(page)).jeTag).toEqual([[zugang[0], '0', netto[0]], [zugang[1], '0', netto[1]], [zugang[2], '2', netto[2]]]);
     } finally { await k.stoppen(); }
   });
 }

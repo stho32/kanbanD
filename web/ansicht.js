@@ -1593,15 +1593,17 @@ function vDurchsatzUm(einheit) {
 const vDurchsatzNicht = n => `<div class="kennzahlen" id="dus-nicht"><span>Nicht enthalten: ausgenommen <b>${n}</b></span></div>`;
 /** Legende: die zwei Balken und je gezeigter Größe eine Ø-Linie mit Einheit (R00254); die Zahlen stehen in Tabelle und
     Tooltip (keine Farbe allein). Darunter, was der Zugang zählt — „erstmals“, deshalb darf er vom „+ hinzugekommen“ des
-    Burndowns abweichen (R00167 AK 8). Ohne gezeigten Zugang entfallen sein Eintrag, seine Ø-Linie und die zwei Sätze. */
+    Burndowns abweichen (R00167 AK 8) — und der Netto-Satz (R00254 AK 7: Netto = Abgang − Zugang, nicht der offene
+    Bestand). Ohne gezeigten Zugang entfallen sein Eintrag, seine Ø-Linie, die zwei Sätze und der Netto-Satz. */
 function vDurchsatzLegende(d, einheit, zielWorte, zugang) {
-  let zugangEintrag = '', zugangRate = '', zugangSaetze = '';
+  let zugangEintrag = '', zugangRate = '', zugangSaetze = '', nettoSatz = '';
   if (zugang) {
     zugangEintrag = `<span class="fluss-le"><span class="fluss-sw zugang"></span>Zugang (erstmals ab „${esc(zugang.name)}“)</span>`;
     zugangRate = `<span class="fluss-le"><span class="fluss-linie zugang"></span>Ø Zugang ${zahl1(d.zugangDurchschnitt)} ${dusWort(einheit)}</span>`;
     zugangSaetze = `\n<p class="bd-hinweis" id="dus-zugang-satz">„Zugang“ zählt jede Aufgabe einmal: in der Periode, in der sie ${esc(zugang.worte.genannt)} oder eine Spalte rechts davon erstmals erreicht; Rückläufer zählen nicht erneut.<br>Deshalb darf der Zugang vom „+ hinzugekommen“ des Burndowns abweichen: dort zählt Nacharbeit jedes Mal.</p>`;
+    nettoSatz = `\n<p class="bd-hinweis" id="dus-netto-satz">Netto = Abgang − Zugang; Rückläufer und vom Board genommene Aufgaben zählen nicht — den offenen Bestand zeigt der Burndown.</p>`;
   }
-  return `<div class="fluss-leg" aria-label="Legende">${zugangEintrag}<span class="fluss-le"><span class="fluss-sw"></span>Abgang: erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span>${zugangRate}<span class="fluss-le"><span class="fluss-linie f"></span>Ø Abgang ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>${zugangSaetze}`;
+  return `<div class="fluss-leg" aria-label="Legende">${zugangEintrag}<span class="fluss-le"><span class="fluss-sw"></span>Abgang: erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span>${zugangRate}<span class="fluss-le"><span class="fluss-linie f"></span>Ø Abgang ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>${zugangSaetze}${nettoSatz}`;
 }
 /** Tooltip einer Periode: „03.11.2026 · Zugang 2 ab „Arbeit“ · Abgang 0 bis „B““ — der Zugang nur, wenn er gezeigt wird. */
 function dusTip(p, einheit, zielWorte, zugang) {
@@ -1659,14 +1661,16 @@ ${fadenkreuz(DUS_O, unten)}
 </svg>`;
   return vDiagrammFlaeche(svg);
 }
-/** Die textliche Entsprechung (M5): je Periode eine Zeile mit Zugang und Abgang, „Summe“ als th scope=row, im
-    tastaturerreichbaren .bericht-rahmen; ohne gezeigten Zugang entfällt seine Spalte. */
+/** Die textliche Entsprechung (M5): je Periode eine Zeile mit Zugang, Abgang und Netto (R00254: Abgang − Zugang, mit
+    Vorzeichen, „0“ ohne Vorzeichen), „Summe“ als th scope=row, im tastaturerreichbaren .bericht-rahmen; ohne gezeigten
+    Zugang entfallen Zugang und Netto. */
 function vDurchsatzTabelle(d, einheit, zugang) {
   const zugangZelle = wert => zugang ? `<td class="r">${wert}</td>` : '';
-  let zugangKopf = '';
-  if (zugang) zugangKopf = '<th scope="col" class="r">Zugang</th>';
-  const zeilen = d.perioden.map(p => `<tr><td>${esc(durchsatzName(p, einheit))}</td>${zugangZelle(p.zugang)}<td class="r">${p.anzahl}</td></tr>`).join('');
-  return `<details class="fluss-tabs"><summary data-halt="klappe:tabelle-durchsatz">Tabellenansicht</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th>${zugangKopf}<th scope="col" class="r">Abgang</th></tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th>${zugangZelle(d.zugangGesamt)}<td class="r">${d.gesamt}</td></tr></tfoot></table></div></details>`;
+  const nettoZelle = wert => zugang ? `<td class="r">${nettoSumme(wert)}</td>` : '';
+  let zugangKopf = '', nettoKopf = '';
+  if (zugang) { zugangKopf = '<th scope="col" class="r">Zugang</th>'; nettoKopf = '<th scope="col" class="r">Netto</th>'; }
+  const zeilen = d.perioden.map(p => `<tr><td>${esc(durchsatzName(p, einheit))}</td>${zugangZelle(p.zugang)}<td class="r">${p.anzahl}</td>${nettoZelle(p.netto)}</tr>`).join('');
+  return `<details class="fluss-tabs"><summary data-halt="klappe:tabelle-durchsatz">Tabellenansicht</summary>${berichtRahmen('Durchsatz je Zeitraum')}<table class="fluss-tab"><thead><tr><th scope="col">Zeitraum</th>${zugangKopf}<th scope="col" class="r">Abgang</th>${nettoKopf}</tr></thead><tbody>${zeilen}</tbody><tfoot><tr><th scope="row">Summe</th>${zugangZelle(d.zugangGesamt)}<td class="r">${d.gesamt}</td>${nettoZelle(d.nettoGesamt)}</tr></tfoot></table></div></details>`;
 }
 
 /** Kostenbericht (R00105 US-9 bis US-14, R00165 AK 9, R00171): je Währung die angefallenen Kosten — Kosteneinträge, alte

@@ -164,13 +164,13 @@ test('R00122 B0567 (US-1, US-5): Tabelle mit Summe, Tooltip und zeigerlose Bedie
     await expect(rahmen).toHaveAttribute('role', 'group');
     await expect(rahmen).toHaveAttribute('aria-label', 'Durchsatz je Zeitraum');
     const tabelle = page.locator('.fluss-tab');
-    await expect(tabelle.locator('thead th')).toHaveText(['Zeitraum', 'Zugang', 'Abgang']);
+    await expect(tabelle.locator('thead th')).toHaveText(['Zeitraum', 'Zugang', 'Abgang', 'Netto']);
     await expect(tabelle.locator('thead th').first()).toHaveAttribute('scope', 'col');
     await expect(tabelle.locator('tbody tr')).toHaveCount(2);
-    await expect(tabelle.locator('tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '1', '2']);
+    await expect(tabelle.locator('tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '1', '2', '+1']);
     await expect(tabelle.locator('tfoot th')).toHaveText('Summe');
     await expect(tabelle.locator('tfoot th')).toHaveAttribute('scope', 'row');
-    await expect(tabelle.locator('tfoot td')).toHaveText(['4', '4']);
+    await expect(tabelle.locator('tfoot td')).toHaveText(['4', '4', '0']);
     // zeigerlos: der Rahmen ist per Tab erreichbar
     await rahmen.focus();
     expect(await rahmen.evaluate(el => el === document.activeElement)).toBe(true);
@@ -185,8 +185,8 @@ test('R00122 US-4 (B0569): Zeitraum 05.–11.11. begrenzt die Ankünfte', async 
     await page.goto(k.adresse + '#/berichte/durchsatz');
     await expect(page.locator('#dus-kennzahl')).toContainText('Abgang 3');
     await page.locator('.fluss-tabs > summary').click();
-    await expect(page.locator('.fluss-tab tbody tr').first().locator('td')).toHaveText(['KW45 02.–08.11.2026', '0', '1']);
-    await expect(page.locator('.fluss-tab tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '1', '2']);
+    await expect(page.locator('.fluss-tab tbody tr').first().locator('td')).toHaveText(['KW45 02.–08.11.2026', '0', '1', '+1']);
+    await expect(page.locator('.fluss-tab tbody tr').nth(1).locator('td')).toHaveText(['KW46 09.–15.11.2026', '1', '2', '+1']);
   } finally { await k.stoppen(); }
 });
 
