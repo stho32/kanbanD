@@ -210,7 +210,7 @@ const FELD_BESCHRIFTUNG = { spalte: 'column', klasse: 'class', labels: 'labels',
     Spalte im Inhalt (R00146 FA 4/12). Der Wert trägt denselben Schlüssel `data-af` wie sein Gegenstück; `schmal` (Spalte)
     stellt die Beschriftung über den Wert und lässt die Schnellknöpfe am Datumsfeld weg (S3). */
 function vFeldZeile(feld, a, schmal) {
-  const umbruch = feld === 'faellig' && !schmal ? ' wrap' : '';
+  const umbruch = feld === 'labels' || (feld === 'faellig' && !schmal) ? ' wrap' : '';
   return `${vBeschriftung(FELD_BESCHRIFTUNG[feld])}<span class="w${umbruch}">${vFeldWert(feld, a, schmal)}</span>`;
 }
 /** Der Wert einer Feldzeile; „Spalte“ kennt drei Fälle: bewegen (Board), „nicht auf diesem Board“ (kein Board) und, schmal,
@@ -223,7 +223,7 @@ function vFeldWert(feld, a, schmal) {
     return `<select data-af="spalte" aria-label="Spalte"${ort}>${S.board.spalten.map(sp => `<option${sp === spalte ? ' selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>`;
   }
   if (feld === 'klasse') return vKlassenWahl('data-af', a.klasse, vorrat(a));
-  if (feld === 'labels') return `<input class="mini-inp full" data-af="labels" value="${esc(a.labels.join(', '))}" placeholder="ui, daten" aria-label="Labels">`;
+  if (feld === 'labels') return vWartetFeld(a);
   const knoepfe = schmal ? '' : `<span class="due-knoepfe">${[['0', 'heute'], ['1', 'morgen'], ['7', '+1 Woche']].map(([n, t]) => `<button class="as" data-act="faellig" data-arg="${n}">${t}</button>`).join('')}${a.faellig ? '<button class="as" data-act="faellig" data-arg="" aria-label="Fälligkeit entfernen">✕</button>' : ''}</span>`;
   return `<input type="date" class="mini-inp" data-af="faellig" value="${esc(a.faellig || '')}" aria-label="Fälligkeit">${knoepfe}`;
 }
@@ -694,8 +694,12 @@ const FENSTER_MELDUNG = 'fenster-meldung';
 const HERKUNFT_FELD = 'herkunft';
 /** Kennung des Titelfelds an Meldung und Entwurf (R00155 #96). */
 const TITEL_FELD = 'titel';
-/** Kennung des Felds „Zeit nachtragen“ an Meldung und Entwurf (R00155 #93). */
+/** Kennung des Felds „Zeit nachtragen" an Meldung und Entwurf (R00155 #93). */
 const ZEIT_FELD = 'zeit';
+/** Kennung des Label-Felds an Meldung und Entwurf (R00259 AK 10, ADR-0035 N1.7). */
+const LABELS_FELD = 'labels';
+/** Die Sanduhr der Review-Seite (`web/diff.js`, `zw-wartet`) für den Abhängigkeits-Chip (R00259, D0002/D0003). */
+const WT_SANDUHR = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/></svg>';
 /** Wert und Verweis eines Entwurfsfelds — die eine Stelle für alle Felder (ADR-0015 N2, R00155 G-1): die abgelehnte Eingabe
     dieser Aufgabe statt `gezeichnet`, und solange die Meldung das Feld nennt, ungültig mit Verweis auf sie (R00111 AK 1). */
 function vEntwurf(a, feld, gezeichnet = '') {
@@ -741,6 +745,31 @@ function vZaehlungFeld(a) {
 function vHerkunft(a) {
   const o = a.herkunft.length ? a.herkunft : ['thin air'];
   return `<span class="orgs">${o.map(vHerkunftChip).join('')}</span>`;
+}
+/* ── Abhängigkeiten „wartet auf #n" (R00259, ADR-0035 N1) — Quelle allein `a.braucht` der geladenen Aufgabe ── */
+/** Der Abhängigkeits-Chip an der Karte (D0002 #wartet-auf): je OFFENER Abhängigkeit ein Chip mit Sanduhr, Tooltip der Titel
+    bzw. „#n fehlt"; kein Bedienelement — der Klick öffnet die Karte selbst. Die gedeuteten Labels erscheinen nicht zusätzlich. */
+function vWartetKarte(a) {
+  const labels = uebrigeLabels(a.labels).map(l => `<span class="lbl">${esc(l)}</span>`);
+  const chips = (a.braucht || []).filter(b => !b.erledigt).map(b => `<span class="wt-chip" title="${esc(b.titel == null ? `#${b.nummer} fehlt` : b.titel)}">${WT_SANDUHR}wartet auf #${b.nummer}</span>`);
+  const alle = labels.concat(chips);
+  return alle.length ? `<div class="r1 wt-chips">${alle.join('')}</div>` : '';
+}
+/** Ein Abhängigkeits-Chip im Fenster (D0003 #wartet-auf): offen „wartet auf #n Titel" (Verweis), erledigt gedämpft „#n erledigt"
+    (Verweis), fehlt Warnung „#n fehlt" (kein Bedienelement). Je Chip ein ×, das jede Deutung der Nummer entfernt (ADR-0035 N1.6). */
+function vWartetFensterChip(b) {
+  const fehlt = b.titel == null, zustand = fehlt ? ' fehlt' : b.erledigt ? ' erledigt' : '';
+  const text = fehlt ? `#${b.nummer} fehlt` : b.erledigt ? `#${b.nummer} erledigt` : `wartet auf #${b.nummer} ${b.titel}`;
+  const inhalt = fehlt
+    ? `<span class="wt-t" title="${esc(text)}">${esc(text)}</span>`
+    : `<button type="button" class="wt-t" data-act="oeffnen" data-arg="${b.nummer}" title="${esc(text)}">${b.erledigt ? '' : WT_SANDUHR}${esc(text)}</button>`;
+  const weg = `<button type="button" class="btn btn-sym wt-x" data-act="braucht-weg" data-arg="${b.nummer}" aria-label="Abhängigkeit #${b.nummer} entfernen" title="entfernen">✕</button>`;
+  return `<span class="ochip wt-dep${zustand}">${inhalt}${weg}</span>`;
+}
+/** Die Labels-Zeile mit Abhängigkeits-Chips davor und dem Feld der übrigen Labels (D0003; ADR-0035 N1.5/N1.7). */
+function vWartetFeld(a) {
+  const chips = (a.braucht || []).map(vWartetFensterChip).join('');
+  return `${chips}<input class="mini-inp full wt-eingabe" data-af="labels"${vEntwurf(a, LABELS_FELD, uebrigeLabels(a.labels).join(', '))} placeholder="ui, daten" aria-label="Labels">`;
 }
 /** Σ der gebuchten Zeit (R00089): abgeschlossene als Basis, laufende zählt der Sekundentakt über `data-summe-seit` weiter. */
 function vSumme(a) {
@@ -797,11 +826,11 @@ function vKarte(a, fertig, spalte) {
     seit = `<span class="seit" aria-hidden="true">${esc(alter.kurz)}</span>`;
     alterVoll = alter.voll;
   }
-  const zusaetze = [vergessen ? `Timer läuft ${seitText(laufzeit)}` : ''];
+  const zusaetze = [wartetZusatz(a.braucht), vergessen ? `Timer läuft ${seitText(laufzeit)}` : ''];
   if (alterVoll) zusaetze.push(alterVoll);
   const lz = rs.length ? vLaufChip({ beginn: erster, eigen, anzahl: rs.length, namen: rs.map(z => per(z.wer).name).join(', ') }) : '';
   const gewaehlt = S.ui.auswahl.includes(a.nummer), summe = vSumme(a), angefallen = vAngefallen(a);
-  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorratBekannt(a) ? vorrat(a) : null, gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0"><span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${(r1 => r1 ? `<div class="r1">${r1}</div>` : '')(`${a.labels.map(l => `<span class="lbl">${esc(l)}</span>`).join('')}`)}${fertig ? '' : vNaechsteTeilaufgabe(a)}<div class="r3">${vFremdeKlasse(a)}<span class="rechts">${angefallen || vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
+  return `<div class="ka${fertig ? ' fertig' : ''}${ext ? ' fremd' : ''}${S.ui.offen === a.nummer ? ' offen' : ''}${gewaehlt ? ' gewaehlt' : ''}${vergessen ? ' vergessen' : ''}" role="listitem" aria-label="${esc(kartenName(a, vorratBekannt(a) ? vorrat(a) : null, gewaehlt, zusaetze))}" draggable="true" data-id="${a.nummer}" data-act="oeffnen" data-arg="${a.nummer}" tabindex="0"${cl ? ` data-c="${esc(a.klasse)}"` : ''}${cl && !PAL.includes(cl.farbe) ? ' data-eigen' : ''}${sig ? ` data-sig="${esc(sig)}"` : ''}${cl || sig ? ` style="${[cl && cv(cl.farbe), sig && '--sg:' + esc(signalFarbe(sig))].filter(Boolean).join(';')}"` : ''}><div class="r0"><span class="id">#${a.nummer}</span>${S.ui.umbenennen === a.nummer ? `<input class="inp umbenennen" id="umbenennen" value="${esc(a.titel)}" data-enter="umbenennen-ok" data-arg="${a.nummer}" aria-label="Neuer Titel">` : `<div class="t" data-dbl="umbenennen" data-arg="${a.nummer}">${esc(a.titel)}</div>`}${vSignale(a, fertig)}${(e => e ? `<span class="ecke" data-leiste="1">${e}</span>` : '')(lz + vStoppKnopf(a))}</div>${vWartetKarte(a)}${fertig ? '' : vNaechsteTeilaufgabe(a)}<div class="r3">${vFremdeKlasse(a)}<span class="rechts">${angefallen || vPreisetikett(a, summe.length > 0)}${summe}${seit}${vSchaetzung(a)}${tk}${due}${vHerkunft(a)}${vSchloss(a)}<span class="avs">${a.zustaendige.map(pk).join('')}</span></span></div>${ext ? `<div class="ein" data-ext="${ext.at}" data-datei="${esc(ext.datei)}">extern · ${esc(ext.datei)} · vor ${Math.round((Date.now() - ext.at) / 1000)} Sek</div>` : ''}</div>`;
 }
 
 /** Die defekte Datei zu einer Aufgabennummer (über den Dateinamen). */

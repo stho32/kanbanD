@@ -473,6 +473,18 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ochip{display:inline-flex}
 .ochip button{border:0;background:var(--kd-accent-weak);color:var(--kd-accent-ink);cursor:pointer;height:16px;padding:0 4px;font-size:11px;line-height:1}
 .ochip button:hover{background:var(--kd-accent);color:var(--kd-on-accent)}
+/* ── Abhängigkeiten „wartet auf #n" (R00259, ADR-0035 N1; D0002 #wartet-auf, D0003 #wartet-auf) ── */
+.ka .wt-chips{display:flex;flex-wrap:wrap;align-items:center;gap:3px 4px;min-width:0}
+.wt-chip{display:inline-flex;align-items:center;gap:3px;height:16px;padding:0 5px;font-family:var(--kd-mono);font-size:10.5px;line-height:1;background:var(--kd-sunken);color:var(--kd-text);border:1px solid var(--kd-line);white-space:nowrap;max-width:100%;overflow:hidden}
+.wt-chip .i,.wt-dep .wt-t .i{width:11px;height:11px;stroke-width:2.5;flex:none}
+.felder .w .wt-dep{display:inline-flex}
+.wt-dep .wt-t{display:inline-flex;align-items:center;gap:3px;height:16px;padding:0 4px;font-family:var(--kd-mono);font-size:10.5px;line-height:1;white-space:nowrap;background:var(--kd-accent-weak);color:var(--kd-accent-ink)}
+button.wt-t{border:0;cursor:pointer}
+button.wt-t:hover{background:var(--kd-accent);color:var(--kd-on-accent);text-decoration:none}
+.wt-dep.erledigt .wt-t{background:var(--kd-sunken);color:var(--kd-muted)}
+.wt-dep.fehlt .wt-t{background:var(--kd-surface);color:var(--kd-warn);border:1px solid var(--kd-warn)}
+.wt-dep .wt-t:focus-visible,.wt-dep button:focus-visible,.wt-dep button.wt-fokus,.wt-dep .wt-t.wt-fokus{outline:2px solid var(--kd-accent-ink);outline-offset:-2px}
+.wt-eingabe{flex:1 1 140px;min-width:80px;width:auto}
 .oerr{font-size:11px;color:var(--kd-warn);width:100%}
 .as{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 6px 0 2px;border:1px solid var(--kd-line);background:var(--kd-surface);cursor:pointer;font-size:11.5px;color:var(--kd-muted)}
 .as:hover{border-color:var(--kd-line-strong)}
