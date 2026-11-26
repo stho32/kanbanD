@@ -1532,6 +1532,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .rv-haupt{min-width:0;padding:var(--kd-s4);display:flex;flex-direction:column;gap:var(--kd-s4)}
 .rv-dateien{display:flex;flex-direction:column;gap:var(--kd-s4);min-width:0}
 .rv-gekappt{margin:0;padding:6px var(--kd-s3);border:1px solid var(--kd-line-strong);background:var(--kd-sunken);font-size:12px}
+.rv-umb svg.i{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;margin-right:6px;vertical-align:-2px}
 .df{border:1px solid var(--kd-line-strong);background:var(--kd-surface);min-width:0}
 .df-h{margin:0;font-size:inherit;font-weight:inherit}
 .df-k{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;inline-size:100%;min-block-size:max(32px,var(--kd-ziel));padding:3px var(--kd-s3);border:0;background:var(--kd-sunken);color:var(--kd-text);text-align:left;cursor:pointer}

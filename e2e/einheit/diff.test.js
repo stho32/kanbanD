@@ -177,3 +177,25 @@ test('fehlerArt und Diff-Seite: 503 „Lesegrenze … — kein Diff“ bleibt ze
   assert.ok(text.includes('Zeitgrenze überschritten.'), text);
   assert.ok(text.includes(`Der Diff ließ sich nicht lesen: ${BELEGT} — kein Diff (503).`), text);
 });
+
+/* ── R00253 B1348: die Hinweiszeile „umbenennung_eingeschraenkt“ über den Dateien, vor der Kappungszeile ── */
+
+const UMBENENNUNG_SATZ = n => `Sehr großer Commit (${n} Dateien): Umbenennungen werden nur erkannt, wenn der Inhalt gleich blieb. Umbenannte und zugleich geänderte Dateien erscheinen als gelöscht und neu.`;
+
+test('hinweiseHtml: über der Schwelle die Zeile mit Symbol und dem Satz (PO Z. 700), vor der Kappungszeile', () => {
+  const html = require('../../web/diff.js').hinweiseHtml([{ art: 'umbenennung_eingeschraenkt', dateien: 10001, schwelle: 10000 }, { art: 'dateien_gekappt', gezeigt: 2000, gesamt: 10000 }]);
+  assert.ok(html.includes(UMBENENNUNG_SATZ('10.001')), html);
+  assert.ok(/<svg[^>]*>/.test(html), 'Symbol, nicht nur Farbe');
+  const satz = html.indexOf('Sehr großer Commit');
+  const kappung = html.indexOf('2.000 von 10.000 Dateien gezeigt');
+  assert.ok(satz >= 0 && kappung >= 0 && satz < kappung, `Satz ${satz} vor Kappung ${kappung}: ${html}`);
+});
+
+test('hinweiseHtml: ohne den Hinweis keine Zeile; der Tausenderpunkt kommt aus der Zahl des Hinweises', () => {
+  const d = require('../../web/diff.js');
+  assert.strictEqual(d.hinweiseHtml([]), '');
+  assert.strictEqual(d.hinweiseHtml([{ art: 'zu_gross_zum_anzeigen', datei: 'x' }]), '');
+  const html = d.hinweiseHtml([{ art: 'umbenennung_eingeschraenkt', dateien: 250000, schwelle: 10000 }]);
+  assert.ok(html.includes(UMBENENNUNG_SATZ('250.000')), html);
+  assert.ok(!html.includes('100.000') && !html.includes('10.000 '), 'die Schwelle steht nicht im Satz');
+});

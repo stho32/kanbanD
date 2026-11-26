@@ -773,6 +773,24 @@
     return `<p class="rv-gekappt">${tausender(h.gezeigt)} von ${tausender(h.gesamt)} Dateien gezeigt. Die übrigen stehen nicht in dieser Liste; der Commit liegt vollständig im Repository.</p>`;
   }
 
+  /** Der Satz über der Schwelle (R00253 FA 8, Wortlaut PO Z. 700): `{dateien}` ist `n` aus dem Hinweis, mit
+      Tausenderpunkt wie die Kappungszeile („10.001“); die Schwelle steht nicht im Satz. */
+  const umbenennungSatz = n => `Sehr großer Commit (${tausender(n)} Dateien): Umbenennungen werden nur erkannt, wenn der Inhalt gleich blieb. Umbenannte und zugleich geänderte Dateien erscheinen als gelöscht und neu.`;
+
+  /** Die Zeile über der Schwelle: Symbol und Satz, in der Form der Kappungszeile (PO Z. 700). Sie gilt dem Commit,
+      nicht einer Datei. */
+  function umbenennungHtml(hinweise) {
+    const h = hinweise.find(x => x.art === 'umbenennung_eingeschraenkt');
+    if (!h) return '';
+    return `<p class="rv-gekappt rv-umb">${symbol('achtung')}${umbenennungSatz(h.dateien)}</p>`;
+  }
+
+  /** Die Hinweiszeilen über den Dateien, in der Reihenfolge der Antwort: erst `umbenennung_eingeschraenkt`, dann
+      `dateien_gekappt` (R00253 FA 8: „vor der Kappungszeile“); ohne den jeweiligen Hinweis keine Zeile. */
+  function hinweiseHtml(hinweise) {
+    return umbenennungHtml(hinweise) + gekapptHtml(hinweise);
+  }
+
   /** Der Satz, wenn der Browser „Gesehen“ nicht speichern kann (R00246 FA 10, Wortlaut PO Z. 641). */
   const GESEHEN_NICHT_GESPEICHERT = 'Gesehen wird in diesem Browser nicht gespeichert und gilt nur bis zum Neuladen.';
 
@@ -806,7 +824,7 @@
   }
 
   Object.assign(ziel, { kopfMitAktionenHtml, pfadFeldHtml, sprungBasis, gesehenZeileHtml, gesehenAnsage });
-  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, codeBereicheTeilen, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, chipHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
+  Object.assign(ziel, { STATUSWORT, anwendungName, sichtbarText, symbol, zahlenHtml, merkmalSaetze, hinweisHtml, codeHtml, codeBereicheTeilen, kurzVerweis, sichtbarHtml, pfadHtml, dateiHtml, inselHtml, commitGruppeHtml, gruppeHtml, gruppierteListeHtml, dateilisteHtml, chipHtml, commitKopfHtml, blaetternHtml, meldungHtml, zustandZeilenHtml, diffFehlerHtml, keineHtml, gekapptHtml, umbenennungHtml, hinweiseHtml, fremdHtml, dateienWort, tausender, knopf, commitsFehlerText, listeFehlerText });
 
   Object.assign(ziel, { spracheZuPfad, faerbbar, GRENZE_PATCH, GRENZE_ZEILE, zelleHtml, farbAuftragHolen, TK_KLASSEN });
 

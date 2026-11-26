@@ -2356,7 +2356,7 @@ function reviewDiffHtml(r, b) {
   const schluessel = reviewInselSchluessel();
   const insel = leer ? '' : inselGehalten ? `<div class="rv-dateien" id="rv-insel" data-insel="${esc(schluessel)}"></div>` : inselHtml(schluessel, r.dateien, r.staende, r.hinweise, esc, r.gruppenOffen, reviewQuelle(r));
   const gesehen = gesehenZeileHtml({ k: reviewGesehenZahl(r.staende), n: r.staende.length, fuer: r.gesehenFuer, ungeladen: 0, speicherFehlt: r.gesehenFehler }, esc);
-  return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${navigation}${summe}${aufklapper}${gesehen}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${gekapptHtml(r.hinweise)}${insel}</div></div>`;
+  return `${reviewLeisteHtml(r, b)}<div class="rv-leiste">${navigation}${summe}${aufklapper}${gesehen}</div><div class="rv-rumpf"><div class="rv-rail">${rail}</div><div class="rv-haupt">${hinweiseHtml(r.hinweise)}${insel}</div></div>`;
 }
 
 /** Nach jedem Zeichnen liegt der gezeigte Eintrag der Leiste samt Fokusring ganz in ihrem sichtbaren Teil (R00245 FA 13): gerollt wird
