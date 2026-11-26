@@ -2,7 +2,7 @@
 // gegen echte Wegwerf-Repositories (AK 5, 6, 13, 17).
 mod gemeinsam;
 
-use kanband::git::arbeitsrepo::{self, Arbeitsrepofehler, Metadaten, Objekt};
+use kanband::git::arbeitsrepo::{self, Arbeitsrepofehler, Metadaten, Objekt, Umbenennungssuche};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -125,6 +125,34 @@ fn zahlen_datum_autor() {
     assert_eq!(alle.len(), 4, "ein Aufruf für alle");
     assert_eq!(zahlen(&alle[&leer]), (0, 0, 0), "der leere Commit verschiebt nichts");
     assert_eq!(zahlen(&alle[&merge]), (4, 0, 1));
+}
+
+// R00253 FA 1 (ADR-0032 N11.3 Punkt 1): der Zähllauf zählt die Einträge **ohne** Umbenennungssuche — gegen den ersten
+// Elternteil, beim Wurzel-Commit gegen den leeren Baum, Submodule mitgezählt; eine Umbenennung zählt als zwei Einträge.
+// Das Urteil steht an der Zahl; der Zeilenzähl-Lauf folgt ihm (hier `Voll`: die Umbenennung bleibt eine Datei).
+#[test]
+fn zaehlung_und_urteil_gegen_echtes_git() {
+    let (_tmp, r) = leeres_repo();
+    std::fs::write(r.join("a.txt"), "1\n2\n").unwrap();
+    std::fs::write(r.join("b.txt"), "b\n").unwrap();
+    let k1 = commit(&r, "Wurzel");
+    let vorher = arbeitsrepo::aufrufe();
+    let m = metadaten(&r, &k1);
+    assert_eq!(arbeitsrepo::aufrufe() - vorher, 2, "Zähllauf und Zeilenzähl-Lauf");
+    assert_eq!((m.eintraege, m.dateien, m.umbenennung), (2, 2, Umbenennungssuche::Voll), "Wurzel gegen den leeren Baum");
+    git_am(&r, DATUM, &["mv", "b.txt", "c.txt"]);
+    let z1 = commit(&r, "umbenannt");
+    let m = metadaten(&r, &z1);
+    assert_eq!((m.eintraege, m.dateien, m.umbenennung), (2, 1, Umbenennungssuche::Voll), "eine Umbenennung zählt als zwei Einträge, als eine Datei");
+    // Submodul: ein Eintrag (`--ignore-submodules=none`); ohne `add -A`, das den Gitlink sonst wieder austrägt
+    git_am(&r, DATUM, &["update-index", "--add", "--cacheinfo", &format!("160000,{k1},unter")]);
+    git_am(&r, DATUM, &["commit", "-q", "-m", "Submodul"]);
+    let z2 = git_am(&r, DATUM, &["rev-parse", "HEAD"]);
+    let m = metadaten(&r, &z2);
+    assert_eq!((m.eintraege, m.dateien), (1, 1), "das Submodul zählt mit");
+    // mehrere Commits in einem Aufruf: jeder seine eigene Zahl
+    let alle = arbeitsrepo::metadaten(&r, &[&k1, &z1, &z2], frist()).unwrap();
+    assert_eq!((alle[&k1].eintraege, alle[&z1].eintraege, alle[&z2].eintraege), (2, 2, 1));
 }
 
 // AK 13, AK 17: feindlicher Titel und Autor zeichengleich; Steuerzeichen bleiben und verschieben nichts; nur die erste

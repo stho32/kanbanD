@@ -274,6 +274,49 @@ pub enum Objekt {
     NameEinesRefs,
 }
 
+/// Wie gründlich Umbenennungen gesucht werden (ADR-0032 N11.3): bis [`SCHWELLE_UMBENENNUNG`] Einträgen voll, darüber
+/// nur Umbenennungen mit gleichem Inhalt. Ein Urteil je Commit — der Commit ist unveränderlich, das Urteil damit fest,
+/// und **jeder** Lauf dieses Commits folgt ihm (N11.3 Punkt 3; gemischt wird nie).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Umbenennungssuche {
+    /// `-M50% -l1000` wie bisher
+    Voll,
+    /// `-M100%` ohne `-l`: nur Umbenennungen, deren Inhalt gleich blieb
+    NurGleiche,
+}
+
+/// Bis einschließlich so vieler Einträge (ohne Umbenennungssuche gezählt) sucht der Diff Umbenennungen wie bisher;
+/// darüber nur Umbenennungen mit gleichem Inhalt (ADR-0032 N11.3 Punkt 2; Startwert des product-owner, anpassbar).
+pub const SCHWELLE_UMBENENNUNG: usize = 10_000;
+
+impl Umbenennungssuche {
+    /// Das Urteil aus der Zahl `n` der Einträge ohne Umbenennungssuche (ADR-0032 N11.3 Punkt 2).
+    pub fn aus(n: usize) -> Self {
+        if n <= SCHWELLE_UMBENENNUNG {
+            Umbenennungssuche::Voll
+        } else {
+            Umbenennungssuche::NurGleiche
+        }
+    }
+
+    /// Die Umbenennungsschalter eines Laufs `diff-tree` (ADR-0032 N11.3 Punkt 5).
+    fn diff_tree_schalter(self) -> &'static [&'static str] {
+        match self {
+            Umbenennungssuche::Voll => &["-M50%", "-l1000"],
+            Umbenennungssuche::NurGleiche => &["-M100%"],
+        }
+    }
+
+    /// Die Umbenennungsschalter des Zeilenzähl-Laufs `log` (ADR-0032 N11.3 Punkt 3; `-M` ist dort dasselbe wie `-M50%`,
+    /// wie der Bestand es nennt).
+    fn log_schalter(self) -> &'static [&'static str] {
+        match self {
+            Umbenennungssuche::Voll => &["-M", "-l1000"],
+            Umbenennungssuche::NurGleiche => &["-M100%"],
+        }
+    }
+}
+
 /// Titel (erste Zeile, ungekürzt), Autor (nur der Name), Commit-Datum (ISO 8601 mit Zeitzone des Commits) und Zeilen gegen
 /// den ersten Elternteil, beim Wurzel-Commit gegen den leeren Baum; dazu der erste Elternteil (ohne beim Wurzel-Commit).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -289,6 +332,10 @@ pub struct Metadaten {
     pub plus: u64,
     pub minus: u64,
     pub dateien: u64,
+    /// das Urteil dieses Commits (ADR-0032 N11.3): alle Läufe des Diffs folgen ihm
+    pub umbenennung: Umbenennungssuche,
+    /// die Zahl `n` seiner Einträge ohne Umbenennungssuche — Grundlage des Urteils und `dateien` des Hinweises
+    pub eintraege: u64,
 }
 
 /// Die Grenze für den nächsten Prozess: `min(ZEITGRENZE, Rest bis zur Frist)`; ist die Frist vorbei, startet keiner mehr.
@@ -338,11 +385,89 @@ fn objekt(name: &str, zeile: &str) -> Objekt {
 /// kein NUL enthalten, alles andere schon).
 const LOG_FORMAT: &str = "--format=%H%x00%P%x00%an%x00%cI%x00%at%x00%B%x00";
 
-/// Metadaten der Commits (volle Hashes) in einem Aufruf `log --no-walk`.
+/// Metadaten der Commits (volle Hashes) in Aufrufen `log --no-walk`: zuerst der Zähllauf, dann der Zeilenzähl-Lauf je
+/// Gruppe des Urteils (ADR-0032 N11.3 Punkt 1–3). Trägt je Commit das Urteil `umbenennung` und die Zahl `n` seiner
+/// Einträge ohne Umbenennungssuche.
 pub fn metadaten(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<HashMap<String, Metadaten>, Arbeitsrepofehler> {
-    // `-M -l1000` wie die Dateiliste des Diffs (ADR-0032 N4.3): `diff.renameLimit` aus dem Repository ändert nichts;
-    // `--ignore-submodules=none`: `diff.ignoreSubmodules` ließe `log` Submodule sonst still weglassen (R00206 AK 16 b)
-    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "-M", "-l1000", "--ignore-submodules=none", "--diff-merges=first-parent", "--numstat", LOG_FORMAT, "--end-of-options"];
+    if commits.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let eintraege = zaehlung(wurzel, commits, frist)?;
+    let mut voll: Vec<&str> = vec![];
+    let mut nur_gleiche: Vec<&str> = vec![];
+    for c in commits {
+        match Umbenennungssuche::aus(*eintraege.get(*c).ok_or_else(|| Arbeitsrepofehler::Start(format!("der Zähllauf nennt {c} nicht")))?) {
+            Umbenennungssuche::Voll => voll.push(c),
+            Umbenennungssuche::NurGleiche => nur_gleiche.push(c),
+        }
+    }
+    let mut ergebnis = HashMap::new();
+    if !voll.is_empty() {
+        ergebnis.extend(zeilen(wurzel, &voll, Umbenennungssuche::Voll, frist)?);
+    }
+    if !nur_gleiche.is_empty() {
+        ergebnis.extend(zeilen(wurzel, &nur_gleiche, Umbenennungssuche::NurGleiche, frist)?);
+    }
+    for (hash, m) in ergebnis.iter_mut() {
+        let n = *eintraege.get(hash.as_str()).ok_or_else(|| Arbeitsrepofehler::Start(format!("der Zähllauf nennt {hash} nicht")))?;
+        m.eintraege = n as u64;
+        m.umbenennung = Umbenennungssuche::aus(n);
+    }
+    Ok(ergebnis)
+}
+
+/// Der Zähllauf (ADR-0032 N11.3 Punkt 1): **ein** Lauf über alle angefragten Commits, `--no-renames` — je Commit die
+/// Zahl seiner Einträge ohne Umbenennungssuche, gegen den ersten Elternteil, beim Wurzel-Commit gegen den leeren Baum,
+/// Submodule mitgezählt (`--ignore-submodules=none`). Die Reihenfolge der Einträge spielt für die Zahl keine Rolle,
+/// `diff.orderFile` kann sie also nicht verfälschen.
+fn zaehlung(wurzel: &Path, commits: &[&str], frist: Instant) -> Result<HashMap<String, usize>, Arbeitsrepofehler> {
+    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "--no-renames", "--ignore-submodules=none", "--diff-merges=first-parent", "--name-only", "--format=%H%x00", "--end-of-options"];
+    args.extend_from_slice(commits);
+    args.push("--");
+    let aus = lesen(wurzel, Befehl::Log, &args, None, frist)?;
+    zaehlung_lesen(&aus).ok_or_else(|| Arbeitsrepofehler::Start("Ausgabe des Zähllaufs unlesbar".into()))
+}
+
+/// Liest die Ausgabe des Zähllaufs: je Commit `<hash>\0\0` und dann die Namen seiner Einträge, je mit NUL abgeschlossen
+/// (der erste trägt das `\n`, das Git vor die Namensliste setzt). Ein Commit endet vor dem nächsten `<hash>\0\0`; ein
+/// Name, der selbst wie ein Hash aussieht, ist daran nicht zu verwechseln, weil nur der Commit-Kopf von einem leeren
+/// Feld gefolgt wird.
+fn zaehlung_lesen(aus: &[u8]) -> Option<HashMap<String, usize>> {
+    let mut felder: Vec<&[u8]> = aus.split(|b| *b == 0).collect();
+    felder.pop();
+    let ist_hash = |f: &[u8]| (f.len() == 40 || f.len() == 64) && f.iter().all(u8::is_ascii_hexdigit);
+    let mut ergebnis = HashMap::new();
+    let mut i = 0;
+    while i < felder.len() {
+        let hash = felder[i];
+        if !ist_hash(hash) {
+            return None;
+        }
+        if felder.get(i + 1).is_none_or(|f| !f.is_empty()) {
+            return None;
+        }
+        i += 2;
+        let mut n = 0;
+        while i < felder.len() {
+            if ist_hash(felder[i]) && felder.get(i + 1).is_some_and(|f| f.is_empty()) {
+                break;
+            }
+            n += 1;
+            i += 1;
+        }
+        ergebnis.insert(String::from_utf8_lossy(hash).into_owned(), n);
+    }
+    Some(ergebnis)
+}
+
+/// Der Zeilenzähl-Lauf einer Gruppe des Urteils (`--numstat`, ADR-0032 N11.3 Punkt 3): `-M -l1000` bzw. `-M100%` —
+/// derselbe Aufruf wie bisher, nur je Gruppe mit ihren Schaltern. `--ignore-submodules=none`: `diff.ignoreSubmodules`
+/// ließe `log` Submodule sonst still weglassen (R00206 AK 16 b).
+fn zeilen(wurzel: &Path, commits: &[&str], umbenennung: Umbenennungssuche, frist: Instant) -> Result<HashMap<String, Metadaten>, Arbeitsrepofehler> {
+    let mut args = vec!["--no-walk=unsorted", "-z", "--root", "--ignore-submodules=none", "--diff-merges=first-parent", "--numstat"];
+    args.extend_from_slice(umbenennung.log_schalter());
+    args.push(LOG_FORMAT);
+    args.push("--end-of-options");
     args.extend_from_slice(commits);
     args.push("--");
     let aus = lesen(wurzel, Befehl::Log, &args, None, frist)?;
@@ -370,7 +495,7 @@ fn log_lesen(aus: &[u8]) -> Option<HashMap<String, Metadaten>> {
         let nachricht = text(felder.next()?);
         let erster_elternteil = eltern.split(' ').next().filter(|e| !e.is_empty()).map(String::from);
         let elternzahl = eltern.split(' ').filter(|e| !e.is_empty()).count();
-        let mut m = Metadaten { erster_elternteil, elternzahl, titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, autordatum, plus: 0, minus: 0, dateien: 0 };
+        let mut m = Metadaten { erster_elternteil, elternzahl, titel: nachricht.split('\n').next().unwrap_or_default().to_string(), autor, datum, autordatum, plus: 0, minus: 0, dateien: 0, umbenennung: Umbenennungssuche::Voll, eintraege: 0 };
         if !felder.next()?.is_empty() {
             return None;
         }
@@ -1110,6 +1235,40 @@ mod tests {
         }
         let c = kommando(Path::new("/r"), Befehl::DiffTree, &["-p", "--", "--ext-diff"], std::iter::empty());
         assert_eq!(args(&c).last().map(String::as_str), Some("--ext-diff"), "hinter -- ist es eine Pfadangabe");
+    }
+
+    // R00253 AK 4/AK 5 (ADR-0032 N11.3 Punkt 2): das Urteil fällt an der Schwelle — genau 10.000 Einträge suchen voll,
+    // 10.001 nur genaue Umbenennungen; die Schalter beider Befehle folgen dem Urteil
+    #[test]
+    fn urteil_an_der_schwelle() {
+        assert_eq!(SCHWELLE_UMBENENNUNG, 10_000);
+        assert_eq!(Umbenennungssuche::aus(0), Umbenennungssuche::Voll);
+        assert_eq!(Umbenennungssuche::aus(10_000), Umbenennungssuche::Voll, "genau auf der Schwelle wie bisher");
+        assert_eq!(Umbenennungssuche::aus(10_001), Umbenennungssuche::NurGleiche, "über der Schwelle nur genaue Umbenennungen");
+        assert_eq!(Umbenennungssuche::aus(145_000), Umbenennungssuche::NurGleiche);
+        assert_eq!(Umbenennungssuche::Voll.diff_tree_schalter(), ["-M50%", "-l1000"]);
+        assert_eq!(Umbenennungssuche::NurGleiche.diff_tree_schalter(), ["-M100%"], "ohne -l");
+        assert_eq!(Umbenennungssuche::Voll.log_schalter(), ["-M", "-l1000"]);
+        assert_eq!(Umbenennungssuche::NurGleiche.log_schalter(), ["-M100%"]);
+    }
+
+    // R00253 FA 1 (ADR-0032 N11.3 Punkt 1): die Zerlegung des Zähllaufs — je Commit `<hash>\0\0` und die Namen, je mit
+    // NUL; ein Name, der wie ein Hash aussieht, verschiebt die Zählung nicht (nur der Commit-Kopf hat ein leeres Feld
+    // hinter sich), ein Commit ohne Einträge zählt 0
+    #[test]
+    fn zaehlung_zerlegt_nach_commit() {
+        let a = "a".repeat(40);
+        let b = "b".repeat(40);
+        let name = "c".repeat(40);
+        let aus = format!("{a}\0\0\nalpha.txt\0{name}\0beta.txt\0{b}\0\0\ngamma.txt\0").into_bytes();
+        let z = zaehlung_lesen(&aus).unwrap();
+        assert_eq!(z[&a], 3, "der Hash-ähnliche Name zählt mit");
+        assert_eq!(z[&b], 1);
+        let leer = format!("{a}\0\0").into_bytes();
+        assert_eq!(zaehlung_lesen(&leer).unwrap()[&a], 0, "ein Commit ohne Einträge");
+        assert!(zaehlung_lesen(b"kein-hash\0\0\nx\0").is_none(), "kein Commit-Kopf");
+        assert!(zaehlung_lesen(&format!("{a}\0x\0").into_bytes()).is_none(), "dem Kopf folgt kein leeres Feld");
+        assert_eq!(zaehlung_lesen(b"").unwrap().len(), 0);
     }
 
     // R00206 AK 16 (c), ADR-0032 N4.7: die Befehlszeile jedes Befehls, der Diffs erzeugt, läuft gegen echtes Git und endet

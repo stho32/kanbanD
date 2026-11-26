@@ -260,21 +260,22 @@ mod tests {
         (e.zustand, e.zweige.clone())
     }
 
-    // R00204 AK 11, ADR-0032 N3.2: kalt 6 Prozesse (Wurzel, cat-file, log, Fingerabdruck, Zweigliste, Probe), aus dem
-    // Cache 4 ohne Zweigliste; nach Bewegen eines Zweigs wieder die Zweigliste und kein veraltetes Ergebnis
+    // R00204 AK 11, ADR-0032 N3.2: kalt 7 Prozesse (Wurzel, cat-file, Zähllauf, Zeilenzähl-Lauf, Fingerabdruck,
+    // Zweigliste, Probe; der Zähllauf ist mit R00253/N11.3 dazugekommen), aus dem Cache 5 ohne Zweigliste; nach
+    // Bewegen eines Zweigs wieder die Zweigliste und kein veraltetes Ergebnis
     #[test]
     fn zweite_liste_aus_dem_cache() {
         let s = stand();
         let (kalt, n) = lesen_und_zaehlen(&s);
-        assert_eq!(n, 6);
+        assert_eq!(n, 7);
         assert_eq!(zweige_von(&kalt, &s.c1), (Commitzustand::AufZweig, Some(vec!["b".into(), "main".into()])));
         let (warm, n) = lesen_und_zaehlen(&s);
-        assert_eq!(n, 4, "kein rev-list, keine Probe");
+        assert_eq!(n, 5, "kein rev-list, keine Probe");
         assert_eq!(warm, kalt);
         assert_eq!(s.k.zweigcache.lock().unwrap().len(), 2);
         git(&s.r, &["branch", "-f", "b", &s.c2]);
         let (neu, n) = lesen_und_zaehlen(&s);
-        assert_eq!(n, 6, "Zweig bewegt: Zweigliste neu");
+        assert_eq!(n, 7, "Zweig bewegt: Zweigliste neu");
         assert_eq!(zweige_von(&neu, &s.c2), (Commitzustand::AufZweig, Some(vec!["b".into(), "main".into()])));
     }
 
@@ -292,7 +293,7 @@ mod tests {
         assert!(s.k.zweigcache.lock().unwrap().is_empty(), "nichts abgelegt");
         git(&s.r, &["branch", "-f", "b", &s.c1]);
         let (_, n) = lesen_und_zaehlen(&s);
-        assert_eq!(n, 6, "der alte Fingerabdruck trifft nichts im Cache");
+        assert_eq!(n, 7, "der alte Fingerabdruck trifft nichts im Cache");
         // hin und zurück zwischen den Proben: der Fingerabdruck ist gleich, das Ergebnis stammt aus seinen Spitzen und stimmt
         let (r, c1, c2) = (s.r.clone(), s.c1.clone(), s.c2.clone());
         s.k.zweigcache.lock().unwrap().ablegen(Path::new("/"), "", "", vec![]);

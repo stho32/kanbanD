@@ -813,7 +813,7 @@ mod tests {
         }
     }
 
-    // R00208 AK 5, ADR-0032 N6 Durchsetzung 5: kalt höchstens 15 Git-Prozesse bei 1, 10 und 30 Kartencommits, linear
+    // R00208 AK 5, ADR-0032 N6 Durchsetzung 5: kalt höchstens 17 Git-Prozesse bei 1, 10 und 30 Kartencommits, linear
     // (alles netto) und abwechselnd mit fremden Commits auf derselben Datei (Folge); je Form gleich bei 10 und 30
     // (Mutant „Folge je Commit statt --stdin“ wüchse mit der Karte)
     #[test]
@@ -841,14 +841,16 @@ mod tests {
             s.kalt(nr as usize);
             let (antwort, prozesse) = lesen(&k, nr, &anfrage(&[], None));
             let (d, _) = json(&antwort);
-            assert!(prozesse <= 15, "#{nr}: {prozesse} Prozesse");
+            assert!(prozesse <= 17, "#{nr}: {prozesse} Prozesse");
             let folgen = d["dateien"].as_array().unwrap().iter().filter(|f| f["schritte"].is_array()).count();
             zahlen.push((prozesse, folgen));
         }
         assert_eq!(zahlen[1].0, zahlen[2].0, "linear: gleich bei 10 und 30 — {zahlen:?}");
         assert_eq!(zahlen[4].0, zahlen[5].0, "Folge: gleich bei 10 und 30 — {zahlen:?}");
         assert_eq!(zahlen.iter().map(|z| z.1).collect::<Vec<_>>(), [0, 0, 0, 0, 1, 1], "Folge nur in der zweiten Form (a.txt; bei einem Commit gibt es nichts dazwischen)");
-        assert_eq!(zahlen[5].0, 15, "die zweite Form mit Netto und Folge erreicht die Obergrenze genau: {zahlen:?}");
+        // 16 statt 15: der Zähllauf (R00253/N11.3) kommt dazu; die Obergrenze 17 deckt auch eine gemischte Liste,
+        // bei der der Zeilenzähl-Lauf zweimal läuft
+        assert_eq!(zahlen[5].0, 16, "die zweite Form mit Netto und Folge: {zahlen:?}");
     }
 
     // R00225 AK 6 D2 (ADR-0032 N8.6 Punkt 4 (d), PO Z. 514): auch mit datei= ist die Netto-Liste abgeschnitten (Grenze im Test

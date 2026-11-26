@@ -718,7 +718,7 @@ mod tests {
         let vorher = arbeitsrepo::aufrufe();
         let n = suchen(&k, &format!("kd:{mg}")).unwrap();
         assert_eq!((n.kandidaten.len(), n.hinweise.clone()), (0, vec![Suchhinweis::Merge]));
-        assert_eq!(arbeitsrepo::aufrufe() - vorher, 5, "Wurzel, Fingerabdruck, cat-file, log, Zweige — kein Fenster");
+        assert_eq!(arbeitsrepo::aufrufe() - vorher, 6, "Wurzel, Fingerabdruck, cat-file, Zähllauf, Zeilenzähl-Lauf, Zweige — kein Fenster");
         let n = suchen(&k, &format!("kd:{e}")).unwrap();
         assert_eq!((n.kandidaten.len(), n.hinweise.clone()), (0, vec![Suchhinweis::Leer]));
     }
