@@ -21,6 +21,7 @@ dateien! {
     "seitenname.js" => "text/javascript; charset=utf-8",
     "adresse.js" => "text/javascript; charset=utf-8",
     "kartenname.js" => "text/javascript; charset=utf-8",
+    "braucht.js" => "text/javascript; charset=utf-8",
     "klassenvorrat.js" => "text/javascript; charset=utf-8",
     "reiter.js" => "text/javascript; charset=utf-8",
     "commits.js" => "text/javascript; charset=utf-8",
