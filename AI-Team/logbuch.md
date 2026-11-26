@@ -2251,3 +2251,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-26 | #277 | Architektur | product-owner | bestanden | 4 min | 5 Entscheidungen Z. 718–723, nicht richtungsweisend · claude · opus · Lauf 277-product-owner-1 · 1,57 $ · Karte gesamt 1,57 $ |
 | 2026-11-26 | #236 | Detailplanung | entwickler | bestanden | 8 min | Probe P1/P3/P4: heute rot wie in N10 erwartet; E1–E3 tragen nach Codelesung; Pflichtlektüre gekürzt (gemeinsam/gelerntes.md nicht) · claude · sonnet · Lauf 236-entwickler-1 · 0,33 $ · Karte gesamt 2,83 $ |
 | 2026-11-26 | #277 | Detailplanung | planer | bestanden | 5 min | R00254 (9 AK), I0244 mit F0164/F0165, B1350–B1355; Claude Sonnet (neue Interaction) · claude · sonnet · Lauf 277-planer-1 · 1,01 $ · Karte gesamt 2,58 $ |
+| 2026-11-26 | #277 | Detailplanung | gestalter | bestanden | 6 min | D0006 #durchsatz-zahlen, 5 Bilder · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 277-gestalter-1 · 0,084 $ · Karte gesamt 2,66 $ |
