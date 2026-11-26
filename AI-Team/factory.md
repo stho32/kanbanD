@@ -124,6 +124,8 @@ Anlass: Am 2026-11-15 war gut ein Drittel der Kosten Arbeit ohne Nutzen — Plan
 
 ### Modellverteilung (Betreiber 2026-11-14)
 
+- **Wie gitreviewA** (Betreiber 2026-11-26, wörtlich: „Bitte konfiguriere die rollen LLMs so wie in der Factory für ~/Projekte/gitreviewA“; ersetzt alle folgenden Zeilen): alle Rollen außer dem Director über Treiber `opencode` mit `openrouter/deepseek/deepseek-v4.1-flash`; Ausnahmen über Treiber `claude`: `product-owner` immer mit Sonnet; `security-reviewer` bei Label `sicherheit` mit Sonnet; `planer` bei der Detailplanung neuer Interactions mit Sonnet (Opus nach den Merkmalen in der Rollentabelle). Ein einzelner Lauf kann mit `beginne --treiber claude` abweichen, Grund im Zugkommentar. Laufende Claude-Läufe arbeiten zu Ende.
+
 DeepSeek ist der Standard für die übrigen Rollen, Claude steht dort, wo ein Fehler teuer ist oder ein zweites, anderes Modell mehr sieht. Anlass: Woche bis 2026-11-12 mit Claude Opus 47,89 $ je Karte (48 Karten); seit 2026-11-13 mit DeepSeek 0,48 $ (#80) und 1,03 $ (#43) je Karte, 29 Läufe ohne falschen Bericht, aber zwei ungültige Ergebnisblöcke des code-reviewers und ein Widerspruch in der Planung (#138, AK 19 gegen AK 20).
 
 - **Opus und Sonnet statt Fable** (Betreiber 2026-11-18, wörtlich: „Bitte switche alles auf Opus oder Sonnet“; ersetzt die Zeile zu Fable darunter): `product-owner`, `realist-consultant`, `planer`, `architekt` auf **Opus**; `entwickler` nach der Prüfliste des Directors je Karte (Opus bei Datenmodell, Migration, Sicherheit, Nebenläufigkeit, unklarer Ursache, neuem Muster oder mehr als etwa 5 Bubbles, sonst Sonnet; Label `opus-entwickler`/`sonnet-entwickler`); alle prüfenden Rollen, `fachspezialist` und `gestalter` auf **Sonnet**. Laufende Fable-Läufe arbeiten zu Ende.
@@ -189,21 +191,21 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 
 | Rolle | Kürzel | Treiber | Modell | Einsatz |
 |---|---|---|---|---|
-| product-owner | po | claude | opus | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) |
-| realist-consultant | real | claude | opus | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
-| planer | plan | claude | opus | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen |
-| architekt | arch | claude | opus | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
-| architektur-reviewer | arev | claude | sonnet | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
-| entwickler | entw1 | claude | | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
-| code-reviewer | crev | claude | sonnet | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
-| security-reviewer | srev | claude | sonnet | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) |
-| entwicklertester | etst | claude | sonnet | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
-| ux-reviewer | ux | claude | sonnet | Oberfläche mit Material 3 als Referenz, Tastatur, Barrierefreiheit; Vorprüfung in der Detailplanung |
-| rechtschreib-reviewer | rsr | claude | sonnet | deutsche Oberfläche, Fehlermeldungen, API-Beschreibung, Anforderungen |
-| legacy-reviewer | leg | claude | sonnet | bestehende Board-Ordner (`~/Projekte/Kanban-Boards/*`) und Agenten-Clients (`kanband.py` der Factory) öffnen und nutzen nach jeder Änderung an Dateiformat oder API weiter |
-| observability-reviewer | obs | claude | sonnet | Logging gegen das Konzept in `umgebung.md`, nur bei neuen Fehlerpfaden oder Protokollzeilen |
-| fachspezialist | fach | claude | sonnet | Glossar unter `Dokumentation/Domaenenwissen/` anlegen und pflegen, Benennung neuer Begriffe |
-| gestalter | ges | claude | sonnet | Dialog-Artboards und Skizzen unter `Dokumentation/Wireframes/` in der entschiedenen Richtung verfeinern (`/wireframe verfeinern`), vor dem Bau; der product-owner gibt frei (Betreiber 2026-11-11) |
+| product-owner | po | claude | sonnet | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) (Claude Sonnet wie gitreviewA: mit Flash bestätigte der PO dort jede Empfehlung ungeprüft) |
+| realist-consultant | real | opencode | openrouter/deepseek/deepseek-v4.1-flash | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
+| planer | plan | opencode | openrouter/deepseek/deepseek-v4.1-flash | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen **Detailplanung neuer Interactions: Treiber `claude`, Modell `sonnet`; `opus`, sobald eines zutrifft: Label `sicherheit`, voraussichtlich mehr als 8 Bubbles, neues Muster ohne Vorbild im Code, mehrere Wünsche des Betreibers in einer Karte**; Folgearbeit bleibt bei Flash |
+| architekt | arch | opencode | openrouter/deepseek/deepseek-v4.1-flash | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
+| architektur-reviewer | arev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
+| entwickler | entw1 | opencode | openrouter/deepseek/deepseek-v4.1-flash | Interactions bauen, Test zuerst, Gate; WIP 1; entw2 (Nacharbeit): Muss-Befunde im Worktree der Karte; im Sparbetrieb nur, wenn entw1 nicht baut |
+| code-reviewer | crev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Korrektheit, Tests, Wartbarkeit je Paket; anderes Modell als der Erbauer (Modellverteilung, Betreiber 2026-11-14) |
+| security-reviewer | srev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Full-Trust über `X-KanbanD-Wer`, neue 403/409-Grenzen, Eingaben von außen (Routen, Anhänge, Markdown-Darstellung) **Karten mit Label `sicherheit`: Treiber `claude`, Modell `sonnet`** |
+| entwicklertester | etst | opencode | openrouter/deepseek/deepseek-v4.1-flash | User Story im echten Programm (Browser und API) auf einer Wegwerf-Instanz |
+| ux-reviewer | ux | opencode | openrouter/deepseek/deepseek-v4.1-flash | Oberfläche mit Material 3 als Referenz, Tastatur, Barrierefreiheit; Vorprüfung in der Detailplanung |
+| rechtschreib-reviewer | rsr | opencode | openrouter/deepseek/deepseek-v4.1-flash | deutsche Oberfläche, Fehlermeldungen, API-Beschreibung, Anforderungen |
+| legacy-reviewer | leg | opencode | openrouter/deepseek/deepseek-v4.1-flash | bestehende Board-Ordner (`~/Projekte/Kanban-Boards/*`) und Agenten-Clients (`kanband.py` der Factory) öffnen und nutzen nach jeder Änderung an Dateiformat oder API weiter |
+| observability-reviewer | obs | opencode | openrouter/deepseek/deepseek-v4.1-flash | Logging gegen das Konzept in `umgebung.md`, nur bei neuen Fehlerpfaden oder Protokollzeilen |
+| fachspezialist | fach | opencode | openrouter/deepseek/deepseek-v4.1-flash | Glossar unter `Dokumentation/Domaenenwissen/` anlegen und pflegen, Benennung neuer Begriffe |
+| gestalter | ges | opencode | openrouter/deepseek/deepseek-v4.1-flash | Dialog-Artboards und Skizzen unter `Dokumentation/Wireframes/` in der entschiedenen Richtung verfeinern (`/wireframe verfeinern`), vor dem Bau; der product-owner gibt frei (Betreiber 2026-11-11) |
 
 ## Spalten
 
