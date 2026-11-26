@@ -188,6 +188,7 @@ async fn ak10_lastprobe_kalt_ueber_die_api() {
     eprintln!("ms: {:?}", zeiten.iter().map(Duration::as_millis).collect::<Vec<_>>());
     eprintln!("Git-Aufrufe je Lauf: {aufrufe:?}");
     eprintln!("p95 {} ms", p.as_millis());
-    assert!(aufrufe.iter().all(|n| *n == 6), "Z5: 5 + 1 je kaltem Lauf: {aufrufe:?}");
+    // R00253: der Zähllauf (ADR-0032 N11.3) kommt je kaltem Lauf dazu — 6 + 1 statt 5 + 1
+    assert!(aufrufe.iter().all(|n| *n == 7), "Z5: 6 + 1 je kaltem Lauf: {aufrufe:?}");
     assert!(p < SCHWELLE, "p95 {} ms", p.as_millis());
 }
