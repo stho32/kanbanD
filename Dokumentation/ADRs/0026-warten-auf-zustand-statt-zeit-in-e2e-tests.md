@@ -1,6 +1,6 @@
 # ADR-0026: E2E-Tests warten auf den Zielzustand statt auf Zeit — fünf Regeln und zwei Hilfen in `e2e/tests/hilfen.js`
 
-**Status**: Vorgeschlagen (Nachträge N1–N5; N4 Regel 11 an eine Probe gebunden; N5 Regel 12 aufgenommen, Karte #280)
+**Status**: Vorgeschlagen (Nachträge N1–N6; N4 Regel 11 an eine Probe gebunden; N5 Regel 12 aufgenommen, Karte #280; N6 dehnt Regel 12 auf die Einheitentests aus, Karte #276)
 **Datum**: 2026-11-14
 **Entscheider**: Claude (autonom, architekt, Auftrag Betreiber 2026-11-14, Karte #139)
 **Kontext-Anforderung**: — (Sammelkarte #139 „E2E-Wackler: Tests warten auf Zustand statt auf Zeit“, ohne WBS-Knoten)
@@ -269,3 +269,20 @@ Review-Punkt für `code-reviewer` und `architektur-reviewer`: eine Zeitgrenze (`
 ### Probe (Abnahme)
 
 `KD_LASTPROBE=1 npx playwright test tests/r00249-review-nebeneinander.spec.js -g "AK 9 Lastprobe" --workers=1` bei Last < 2 grün, bei Last ≥ 2 „keine Messung: Last < 2 nötig“; im Gate `1 skipped`. Mutant (m14): Anker der zeitfreien Gate-Probe auf den Kopf der Datei statt auf die oberste Zeile → die Gate-Probe wird rot.
+
+## Nachtrag 2026-11-26: Regel 12 gilt auch für Einheitentests — R00247 AK 9 über den Zähler, die Zeit als Lastprobe (Karte #276)
+
+**Anlass**: `e2e/einheit/wortmarke.test.js:175` (R00247 AK 9) prüft die Linearität der Wortmarke über die Wanduhr: doppelte Zeilenzahl soll ein Zeitverhältnis 1,3–3 ergeben (`:180–182`, `kuerzesteZeit` `:165–173`). Im parallelen `node --test`-Lauf unter Last wurde er rot (Verhältnis 3,16 / 3,5 / 4,2), allein grün. Dieselbe Klasse wie N5, aber N5 nennt nur E2E (`e2e/tests/*.spec.js`) und Rust (`tests/*.rs`); die Einheitentests (`e2e/einheit/*.js`) fehlen dort.
+
+**Belegt (Code, Stand `71345f25`)**:
+- Die Messnaht ist vorhanden: `wortMarken(zeilen, zaehler = { vergleiche: 0 })` und `wortMarke(alt, neu, zaehler)` erhöhen `zaehler.vergleiche` je Zeichenvergleich in Präfix- und Suffixschleife (`web/review-uebersicht.js:406`, `:491`, `:516`, `:529`). Für die Entscheidung ändert sich kein Produktivcode.
+- Der Test prüft die Vergleiche schon exakt (`assert.strictEqual(vergleiche(doppelt), 2 * vergleiche(einfach))`, `e2e/einheit/wortmarke.test.js:178`); das Wanduhr-Verhältnis steht daneben (`:180–182`). Ein quadratischer Mutant (jedes Zeichen gegen jedes, m12 aus R00247) tötet den Zähler.
+
+**Entscheidung**:
+1. **Im Gate entscheidet der Zähler**, nicht die Uhr: doppelte Zeilenzahl ⇒ exakt doppelte Vergleiche. Für eine reine Funktion ist das die härtere, lastfreie Aussage; die Laufzeit folgt der Zahl der Vergleiche, ein Zeitverhältnis misst unter Last die Maschine (Faktor 1,3–1,5, darüber flach).
+2. **Das Wanduhr-Verhältnis bleibt Kriterium, aber als Lastprobe** im selben Einheitentest (Node `node:test`: `{ skip: !process.env.KD_LASTPROBE }` an `test`/`describe`, im Gate erscheint der Fall als `skipped`): nur ausdrücklich, nur bei Last < 2 aus `/proc/loadavg`, die Ausgabe nennt Last und beide Zeiten; bei Last ≥ 2 „keine Messung: Last < 2 nötig“ statt stillen Grüns. Das ist Regel 12 (Nachtrag N5, Karte #280, Zweig `karte/280`, Commit `523c32f8`; zum Zeitpunkt dieses Nachtrags dort, nicht auf `main`), hier nur der Geltungsbereich.
+3. **Keine neue Messnaht**: der optionale Zähler ist die Naht; die Zeitmessung braucht keine, sie umschließt den Aufruf einer reinen, synchronen Funktion (`process.hrtime.bigint()`).
+
+**Durchsetzung**: Review-Punkt wie N5 — ein Dauermaß in ms als Gate-Kriterium ist auch in `e2e/einheit/*.js` ein Befund; es gehört in einen `KD_LASTPROBE`-Lauf mit genannter Last.
+
+**Probe (Abnahme)**: `node --test e2e/einheit/*.js` unter Last ≥ 6 zehnmal grün (der Zeitfall erscheint als `skipped`); `KD_LASTPROBE=1 node --test e2e/einheit/wortmarke.test.js` bei Last < 2 grün, mit Last und beiden Zeiten in der Ausgabe; Mutant „jedes Zeichen gegen jedes“ → der Zähler-Test wird rot.
