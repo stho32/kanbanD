@@ -79,7 +79,7 @@ Seit R00214 kann ein Agent per API fragen, worauf eine Karte wartet; ein Mensch 
 
 ### Deutung und Aufbau
 
-- [ ] **AK 11** (Unit, Node) Gegeben die Labels aus R00214 AK 3 (`[BRAUCHT:3, braucht:1, Braucht:1, braucht:abc, braucht:kd#12, braucht:012, braucht:0, braucht:999]`) und die Formen aus AK 7 von R00214. Wenn die Deutungsfunktion sie liest, dann ergibt sie die Nummern `3, 1, 999` in dieser Reihenfolge, die übrigen fünf bleiben Labels; dieselbe Nummer erscheint einmal.
+- [ ] **AK 11** (Unit, Node) Gegeben die Labels aus R00214 AK 3 (`[BRAUCHT:3, braucht:1, Braucht:1, braucht:abc, braucht:kd#12, braucht:012, braucht:0, braucht:999]`) und die Formen aus AK 7 von R00214. Wenn die Deutungsfunktion sie liest, dann ergibt sie die Nummern `3, 1, 999` in dieser Reihenfolge, die übrigen vier (`braucht:abc`, `braucht:kd#12`, `braucht:012`, `braucht:0`) bleiben Labels; dieselbe Nummer erscheint einmal.
 - [ ] **AK 12** Gegeben die Ausgangslage. Wenn das Board und das Fenster #2 geöffnet werden, dann geht von der Seite genau eine Anfrage `GET /api/aufgaben` je Aufbau aus; keine Anfrage `GET /api/aufgaben/<n>` für die gebrauchten Karten (Zähler am Server-Log bzw. Netzwerkereignis).
 
 ### Gestalt
@@ -143,3 +143,4 @@ Auslöser ist #226/#228: Abhängigkeiten stehen als stumme Label-Chips an den Ka
 - Entschieden ohne Rückfrage (Empfehlung, Lauf 235-planer-1): AK 10 gilt für jede 400 des Label-Felds (ADR N1.7); „erledigt“ ist an der Karte unsichtbar, im Fenster gedämpft; fehlende Datei zählt als offen (R00214 AK 6).
 - Verworfen (ADR-0035 N1, Varianten zu 5): Feld zeigt weiter alle Labels; Chips ersetzen das Feld.
 - Nachgezogen nach den Entscheidungen des PO vom 2026-11-26 (`AI-Team/po-entscheidungen.md` Z. 724–733, Lauf 235-planer-2): AK 5 „bei Bedarf Umbruch“ mit der Variante sechs Chips bei 320 px (Z. 725, 729); AK 9 Hinweis „Abhängigkeit #n entfernt“ mit „rückgängig“ (Z. 726); AK 10 „#5 aus der Ausgangslage“ (Z. 728); die beiden offenen Fragen sind entschieden (Z. 724, 725).
+- Korrigiert (Lauf 235-planer-3, Weg `/anforderung review`, wie R00214): AK 11 „die übrigen fünf“ → „die übrigen vier (`braucht:abc`, `braucht:kd#12`, `braucht:012`, `braucht:0`)“. Grund: Zählfehler — von den acht Labels deuten vier auf eine Nummer (`BRAUCHT:3`, `braucht:1`, `Braucht:1` doppelt, `braucht:999`), die anderen vier bleiben Labels; gefunden vom entwickler bei #235.
