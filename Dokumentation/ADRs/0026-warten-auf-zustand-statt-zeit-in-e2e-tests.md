@@ -1,6 +1,6 @@
 # ADR-0026: E2E-Tests warten auf den Zielzustand statt auf Zeit — fünf Regeln und zwei Hilfen in `e2e/tests/hilfen.js`
 
-**Status**: Vorgeschlagen (Nachträge N1–N6; N4 Regel 11 an eine Probe gebunden; N5 Regel 12 aufgenommen, Karte #280; N6 dehnt Regel 12 auf die Einheitentests aus, Karte #276)
+**Status**: Vorgeschlagen (Nachträge N1–N6; N4 Regel 11 an eine Probe gebunden; N5 Regel 12 aufgenommen, Karte #280; N5a Klassengrenze, Fundstellen und Suchmuster, Karte #279; N6 dehnt Regel 12 auf die Einheitentests aus, Karte #276)
 **Datum**: 2026-11-14
 **Entscheider**: Claude (autonom, architekt, Auftrag Betreiber 2026-11-14, Karte #139)
 **Kontext-Anforderung**: — (Sammelkarte #139 „E2E-Wackler: Tests warten auf Zustand statt auf Zeit“, ohne WBS-Knoten)
@@ -261,6 +261,18 @@ Review-Punkt wie oben:
 12. **Ein Kriterium, das Wanduhr-Zeit misst (`longtask`/`PerformanceObserver`, eine Dauer in ms), steht nicht als Gate-Kriterium in der Suite.** Im Gate bleibt nur das **zeitfreie** Verhalten desselben Kriteriums (Zustand, Anzahl, Position), bewacht durch einen Mutanten. Das Zeitmaß läuft **nur ausdrücklich** (`KD_LASTPROBE=1`) und **nur bei Last < 2** (1-Minuten-Wert aus `/proc/loadavg`); der Lauf nennt Last und Messwerte in der Ausgabe und in der Messdatei. Bei Last ≥ 2 meldet der Lauf „keine Messung: Last < 2 nötig“ statt eines stillen Grüns, und im Gate erscheint der Fall als `skipped` mit dem Grund. Gilt für E2E (`e2e/tests/*.spec.js`) und Rust (`tests/*.rs`). Eine Zeitgrenze, die das Gate selbst trägt, ist ein Befund — auch wenn sie heute grün ist, denn das Gate erzeugt die Last, die sie kippt.
 
 **Nicht entschieden**: Ob eine einzelne Grenze richtig gesetzt ist (die 150 ms aus ADR-0040 Punkt 6 und ADR-0042 Q2), entscheidet sich je Kriterium am Abstand zum ruhigen Messwert (≥ 30 %, `rollen/planer/zeitkriterien.md`) — diese Regel ändert die Grenze nicht, sie nimmt sie nur aus dem Gate. Die drei übrigen Wanduhr-Grenzen im Gate (`r00248:528`, `r00217:365/393`, `r00247:445`) sind nicht Teil dieser Aufnahme, sondern eine eigene Karte (WBS I0246).
+
+### N5a: Klassengrenze, Fundstellen und Suchmuster (Karte #279, 2026-11-26)
+
+Regel 12 ist eng zu lesen — **im Gate bleiben**:
+
+- **Beobachtung ohne Grenze** (kostet kein Rot): `e2e/tests/r00219-ansicht-laeufe.spec.js:954–975` (ADR-0039 N1 Punkt 5), `e2e/tests/r00247-review-wortmarke.spec.js:437–465` (PO Z. 676), `e2e/tests/r00217-syntaxfarben.spec.js:385`.
+- **Eine Untergrenze einer Frist** („erst nach 1.000 ms“, `e2e/tests/r00217-syntaxfarben.spec.js:468`): Last erfüllt sie nur besser.
+- **Grenzen im Sekundenmaßstab mit Abstand ≥ 30 %** (`tests/akzeptanz_r00204.rs` u. a.) sind eine andere Klasse, nicht Gegenstand von Regel 12.
+
+**Fundstellen, die Regel 12 heute trifft** (Stand main `71345f25`, am Code gelesen): `e2e/tests/r00217-syntaxfarben.spec.js:365` und `:393` (AK 1; Helfer `langeAufgabenBeobachten`/`langeSeit` `:313–337`) und `e2e/tests/r00248-review-umbrechen.spec.js:528` (AK 7) — Vorbild der Abtrennung ist `r00249-review-nebeneinander.spec.js:634–696` (R00256). **Korrektur zum Nachtrag oben**: `r00247:445` ist **keine** Grenze — AK 9 in `r00247-review-wortmarke.spec.js:437–465` ist seit PO Z. 676 eine Messung ohne Grenze; dort ist nichts abzutrennen.
+
+**Zum Finden** (das Muster der Durchsetzung, nicht nur `longtask`): `grep -rn "longtask" e2e/` (4 Specs) und `grep -rn "performance\.now\|Date\.now" e2e/tests e2e/einheit` (acht Specs, zwei Einheitstests). Die dort gefundenen Wanduhr-Grenzen ohne `longtask` (`r00100-bestand.spec.js:482`, `r00123-kartenverlauf.spec.js:279`, `r00221-laufansicht.spec.js:456`, `e2e/einheit/bestand.test.js:146`, `e2e/einheit/lauf-satz.test.js:640`) sind dieselbe Krankheit in kleinerem Maß; ihre Umstellung entscheidet der planer je Karte, sie sind nicht Teil dieser Regel.
 
 ### Durchsetzung
 
