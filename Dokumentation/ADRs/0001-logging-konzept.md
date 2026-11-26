@@ -1,8 +1,8 @@
 # ADR-0001: Logging-Konzept
 
-**Status**: Akzeptiert in der Fassung von Nachtrag N1 (2026-11-23, Karte #239) — Option C statt Option A
-**Datum**: 2026-10-31, Nachtrag N1 2026-11-23
-**Entscheider**: architekt (Software-Factory), Nachtrag N1: Claude (autonom, architekt, Auftrag Betreiber über Karte #239)
+**Status**: Akzeptiert in der Fassung von Nachtrag N1 (2026-11-23, Karte #239) und N1.8 (2026-11-26, Karte #239) — Option C statt Option A; `grund` ohne Inhalt, Board-Titel als Kennung, unbekannte Pfade ohne Zeile
+**Datum**: 2026-10-31, Nachtrag N1 2026-11-23, Nachtrag N1.8 2026-11-26
+**Entscheider**: architekt (Software-Factory), Nachtrag N1: Claude (autonom, architekt, Auftrag Betreiber über Karte #239), Nachtrag N1.8: Claude (autonom, architekt, Auftrag Director über Karte #239)
 **Kontext-Anforderung**: — (Vorbereitung für R00096–R00099: abgewiesene Züge sollen sichtbar werden); Karte #239
 **Erprobt durch**: Abhängigkeitsprobe 2026-11-23 (`cargo tree` gegen axum 0.8/tokio/chrono, siehe N1.1)
 
@@ -111,6 +111,17 @@ Ein Ereignis = eine Zeile:
 4. Zeit wird übergeben, nicht abgewartet: Episodenende über `beobachten(…, jetzt)` mit gesetzten Instants; Sperrzeit über die Schwelle (`Duration::ZERO` → jede gehaltene Sperre schreibt genau eine Zeile; Standard → keine) — kein `sleep` im Test. Die Konstante prüft ein Test als Wert (1 s).
 5. Rotation und Aufbewahrung mit fester Uhr im Wegwerf-Ordner (`tempfile`).
 6. **Durchsetzung**: Test, dass ein Rumpf mit Marker (`"beschreibung":"GEHEIM-239"`) in keiner Zeile erscheint; Review-Punkt des `observability-reviewer`: ein neues `eprintln!`/`println!` außerhalb von `main.rs`/`protokoll.rs` und jede Zeile zu einer Abweisung außerhalb der Middleware sind ein Befund.
+
+### N1.8 `grund` ohne Inhalt, Board-Titel als Kennung, unbekannte Pfade ohne Zeile (2026-11-26, Karte #239)
+
+Anlass: drei Fragen des planers an den architekt zu R00258 (deren „Offene Fragen“ 1–3). Der Auftrag nannte den Nachtrag „N1.5“; N1.5 ist bereits „Defekte Dateien“ (Scheibe 2), deshalb N1.8. Die drei Antworten gelten unverändert für Scheibe 2.
+
+1. **Längenregel bestätigt — der Rumpf bleibt unverändert.** N1.4 Regel 1 setzt `grund` = `Fehler::meldung()`; das gilt für den **Rumpf der Antwort**, nicht für das Protokoll. Ins Log kommt neben `Fehler::meldung()` eine zweite, inhaltsfreie Fassung (`Fehler::grund_fuer_protokoll()`): an jeder Fundstelle, an der eine Meldung Inhalt einsetzt (Aufgaben-Titel, Fehlertext des Parsers, Wert aus Rumpf oder Query, Commit-Text), steht dort nur dessen Länge `<n Zeichen>` — die Anführungszeichen und der übrige Satz bleiben, also `„<16 Zeichen>“: Aufgabe #999 gibt es nicht (braucht:999)`. Nummern, Spalten-, Board- und Labelnamen, Kürzel und Schlüssel bleiben Wort für Wort. Damit ist „Titel“ in N1.3 (Datenschutz) als **Aufgaben-Titel** bestimmt. Grund: die gemeinsame Lehre „Benutzereingaben im Log nur als Länge oder Kennung, nie im Wortlaut“ (Probe: Markenwort eingeben, im Log suchen); ein Längendeckel allein genügt nicht, weil er Inhalt nur kürzt statt ihn zu ersetzen. Der Rumpf bleibt bytegleich `Fehler::meldung()`; Rechenbeispiel und Fundliste stehen in R00258 AK 10, die Regel als FA 13.
+   Die Wahl kippt, wenn ein Inhalt allein über seine Länge diagnostizierbar sein muss — heute trägt die Zeile Nummer, Feld und Ursache daneben, die Länge ist nur der Beleg, dass etwas dagestanden hat.
+
+2. **Board-Titel sind Kennung, sie bleiben im Log.** N1.3 meint mit „Titel“ den Aufgaben-Titel. Board-, Spalten- und Labelnamen gehören zur Board-Datei (`kanbanD.md`), sind Betreiber-Konfiguration und kein Nutzerinhalt; sie werden wie Kürzel und Schlüssel behandelt, R00258 FA 13 nennt sie bereits ausdrücklich. Eine Meldung, die den Board-Titel einsetzt (`Spalte „x“ gibt es auf „<Board>“ nicht`, `src/dienst/reservierung.rs:79`, `:82`, `src/dienst/zuordnung.rs:17`, `:31`, `:44`), erscheint im Log unverändert; wo die Meldung schon den Slug trägt (`src/dienst/aufgabe_anlegen.rs:239`), bleibt es der Slug. Kein Vorzug des Slugs vor dem Titel: `grund` ist die Meldung, nur um Inhalte gekürzt (Regel 1) — eine zweite Umschreibung wäre ein zweiter Wortlaut, der driftet. Grenze: wer Inhalt in einen Board- oder Spaltennamen legt, verstößt gegen die Board-Regeln, nicht gegen das Log; Länge und Escaping aus N1.3 (200 Zeichen, `\"`, `\\`, `\n`, `\u{..}`) gelten auch hier.
+
+3. **Unbekannte Pfade bleiben für Scheibe 1 ohne Zeile — hingenommen.** `route_layer` läuft nur auf getroffenen Routen; `/api/gibtsnicht` fällt in den Fallback von axum, wo kein `MatchedPath` vorliegt. Eine Zeile dort erzwänge die rohe URI als `endpunkt` — genau das, was N1.4 Regel 2 und R00258 AK 9 verbieten, denn ein unbekannter Pfad ist Nutzereingabe und kann Query, Kürzel oder Kennungen tragen. Zwei Gründe überwiegen: (a) der Zweck ist, einem Agenten nachzulesen, warum sein **gültiger** Zug scheiterte; ein falscher Pfad zeigt ihm der Rumpf als 404; (b) jede Anfrage eines Scanners an einen unbekannten Pfad erzeugte sonst eine Zeile. Wenn ein späterer Bedarf entsteht, deckt es eine eigene Karte: dann eine Zeile für den `/api/*`-Fallback mit **festem** `endpunkt=unbekannt` (kein Pfad, keine Query), `ursache=fehlt`, `status=404` — nicht Teil von #239.
 
 ### Konsequenzen N1
 
