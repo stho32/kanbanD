@@ -194,6 +194,7 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 |---|---|---|---|---|
 | product-owner | po | claude | sonnet | Rückfragen der Rollen im Sinne der Vision entscheiden, Protokoll `AI-Team/po-entscheidungen.md`; vertritt den Betreiber auch gegenüber dem realist-consultant (`auftrag.md`, „Einsatz des realist-consultant“) (Claude Sonnet wie gitreviewA: mit Flash bestätigte der PO dort jede Empfehlung ungeprüft) |
 | realist-consultant | real | opencode | openrouter/deepseek/deepseek-v4.1-flash | berät den PO bei jedem neuen inhaltlichen Auftrag; Schleifenbremse |
+| factory-optimizer | fopt | opencode | openrouter/deepseek/deepseek-v4.1-flash | Spalte „Factory-Optimizer“: je ausgelieferter Karte ein Optimierungsschritt der Factory nach ausgeloster Eigenschaft (Cheaper, Safer, Faster), höchstens 30 Minuten, ohne Verschlechterung der anderen (Betreiber 2026-11-26) |
 | planer | plan | opencode | openrouter/deepseek/deepseek-v4.1-flash | Detailplanung: R00095–R00100 als WBS-Knoten einhängen, Interaction bis Bubble verfeinern, Anforderung schreiben; Befunde einplanen **Detailplanung neuer Interactions: Treiber `claude`, Modell `sonnet`; `opus`, sobald eines zutrifft: Label `sicherheit`, voraussichtlich mehr als 8 Bubbles, neues Muster ohne Vorbild im Code, mehrere Wünsche des Betreibers in einer Karte**; Folgearbeit bleibt bei Flash |
 | architekt | arch | opencode | openrouter/deepseek/deepseek-v4.1-flash | Architektur-Modell anlegen (fehlt), ADRs zu den Regeln am Schreibweg (Sperre → Prüfung → Commit: Grenze, Eigentümer, Schlüssel) und zum Logging |
 | architektur-reviewer | arev | opencode | openrouter/deepseek/deepseek-v4.1-flash | Pakete gegen Modell und ADRs, nur wenn sie Schreibweg oder Modell berühren |
@@ -220,7 +221,8 @@ Ziel stderr und `~/.local/state/kanbanD/<ordnername>/kanbanD.log`, nie im Board-
 | Nacharbeit | Team | Muss-Befunde aus Auto-Reviews und Entwicklertest beheben, Sollte/Optional entscheiden (beheben oder verwerfen, siehe „Befunde aus Reviews und Tests“) (`entw2`, im Worktree der Karte), danach zurück in die Auto-Reviews, nur Rollen mit Befund wiederholen |
 | Auto-Reviews | Team | Reviews parallel am selben Stand, je Rolle eine Teilaufgabe; code-reviewer immer, die übrigen nur, wenn die Karte ihr Thema berührt (Auswahl im Kommentar des Directors beim Zug) |
 | Entwicklertest | Team | User Story wörtlich im echten Programm auf einer Wegwerf-Instanz |
-| Erledigt | Mensch | fertig: nach bestandenem Entwicklertest direkt hierher, ohne Abnahme-Spalte; beim Zug installiert der Director kanbanD neu und startet das Board neu (siehe „Auslieferung“); letzte Spalte, Abschlussspalte der Berichte |
+| Factory-Optimizer | Team | nach der Auslieferung, vor „Erledigt“: der Director lost eine Eigenschaft aus Cheaper, Safer, Faster, die Rolle factory-optimizer ermittelt dafür einen Optimierungsschritt für die Factory (höchstens 30 Minuten), gestützt auf Transkripte und Commits der Karte; Eintrag mit erhofftem Gewinn in `factory-optimizer.log` im Root der Factory (Betreiber 2026-11-26) |
+| Erledigt | Mensch | fertig: nach bestandenem Entwicklertest und dem Factory-Optimizer hierher, ohne Abnahme-Spalte; beim Zug installiert der Director kanbanD neu und startet das Board neu (siehe „Auslieferung“); letzte Spalte, Abschlussspalte der Berichte |
 
 ## Ablauf
 
@@ -281,6 +283,17 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
 ### Entwicklertest
 - **Betritt die Karte die Spalte**: entwicklertester fährt die User Story wörtlich im echten Programm, am reviewten Stand des Kartenzweigs. Wissen im Auftrag: Befunde aus Reviews und Tests.
 - **Entscheidung**
-  - bestanden → Zusammenführen (Gate auf `main`; rot → Nacharbeit); grün → Auslieferung (`bash AI-Team/ausliefern.sh`, höchstens 20 Minuten: kanbanD aus main installieren und die Board-Instanz neu starten); gelingt sie → Erledigt; schlägt sie fehl → Ohne Mensch nicht lösbar („Auslieferung fehlgeschlagen — die alte Board-Instanz läuft weiter“)
+  - bestanden → Zusammenführen (Gate auf `main`; rot → Nacharbeit); grün → Auslieferung (`bash AI-Team/ausliefern.sh`, höchstens 20 Minuten: kanbanD aus main installieren und die Board-Instanz neu starten); gelingt sie → Factory-Optimizer; schlägt sie fehl → Ohne Mensch nicht lösbar („Auslieferung fehlgeschlagen — die alte Board-Instanz läuft weiter“)
   - Muss → Nacharbeit; höchstens 2×
   - `anforderung_falsch` oder `kriterium_fehlt` → Detailplanung
+
+### Factory-Optimizer
+- **Betritt die Karte die Spalte** (Betreiber 2026-11-26, „Cheaper, Safer, Faster“): der Director lost eine der drei Eigenschaften aus, gleich verteilt, mit `python3 -c "import random; print(random.choice(['Cheaper','Safer','Faster']))"`, und nennt das Los im Kommentar. Dann ermittelt der **factory-optimizer** (eigener Lauf, höchstens 30 Minuten, Los und Orte der Ablaufdaten im Auftrag) **einen** Optimierungsschritt für die Factory, der diese Eigenschaft verbessert.
+  - Grundlage sind die Ablaufinformationen der gerade ausgelieferten Karte: die Transkripte und Berichte ihrer Läufe (`.factory/laeufe/<nr>-*`, abgelegte Transkripte), das Logbuch und die Kosteneinträge, die Commits der Karte auf `main`, die Kommentare, Wartezeiten und Gates.
+  - Vorher liest der factory-optimizer `factory-optimizer.log` im Root der Factory ganz: was schon vorgeschlagen oder umgesetzt wurde und was es gebracht hat. Er schlägt nichts doppelt vor und bewertet im selben Zug frühere Einträge, wenn die Karte dazu Messwerte liefert (Spalte „Ergebnis“).
+  - **Keine Verschlechterung** (Betreiber 2026-11-26): Der Schritt verbessert die ausgeloste Eigenschaft, ohne eine der beiden anderen zu verschlechtern. Billiger oder schneller durch Weglassen von Prüfungen (Reviews, Gate, Tests, Proben) oder durch schwächere Modelle an prüfenden Stellen geht nicht; sicherer durch zusätzliche teure oder langsame Läufe ebenso wenig. Gesucht sind Schritte, die Verschwendung entfernen: doppelte Arbeit, Warten, Fehlversuche, Nacharbeit, zu breite Lektüre, falsch geschnittene Läufe. Der Eintrag nennt je Eigenschaft die erwartete Wirkung (besser / gleich) mit Begründung; wer „schlechter“ nicht ausschließen kann, schlägt den Schritt nicht vor.
+  - Der Schritt ist konkret (Ort, Änderung, Messgröße) und in höchstens 30 Minuten umsetzbar. Der factory-optimizer schreibt nichts, er liefert den Log-Eintrag im Bericht. Nach der Nachprüfung hängt der Director den Eintrag an. Gilt der Schritt der Projektschicht (`AI-Team/`), setzt der Director ihn gleich um. Gilt er Rollen, Rollenwissen, `gemeinsam/` oder Werkzeugen der Factory, kommt er zusätzlich als Vorschlag nach `rollen/director/vorschlaege.md`, umgesetzt wird er erst mit `/factory lehren`.
+  - Eintrag: genau ein Block am Ende von `factory-optimizer.log` (Format im Kopf der Datei): Datum, Karte, Eigenschaft, Befund mit Beleg, Schritt, erhoffter Gewinn mit Messgröße, Status, Ergebnis. Commit im Factory-Repo `[Factory] director: factory-optimizer.log — <Eigenschaft> nach #<nr>`.
+- **Entscheidung**
+  - Eintrag geschrieben → Erledigt (danach Push und Release wie bei jedem Erledigt, Retrospektive)
+  - findet sich in 30 Minuten kein belegbarer Schritt → trotzdem ein Eintrag „kein Schritt“ mit dem, was geprüft wurde, → Erledigt
