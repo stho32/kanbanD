@@ -9,8 +9,10 @@ use std::ops::Range;
 
 /// Version der Einteilung im `ETag` des Gesamt-Diffs (Legacy-Review #234): jede Änderung der Einteilung erhöht diese Version.
 /// Sie steht neben `GRENZEN_VERSION`, die auch die `ETag`s von `diff.rs` und `nachfolger.rs` trägt; 2 seit ADR-0032 N8
-/// (netto unverändert erscheint nirgends, Folge gruppenweise bis zum Fixpunkt, `datei=` bis 20 MB).
-pub const EINTEILUNG_VERSION: u32 = 2;
+/// (netto unverändert erscheint nirgends, Folge gruppenweise bis zum Fixpunkt, `datei=` bis 20 MB), 3 seit ADR-0032 N10
+/// (R00255: die Pfadangabe `D_karte` läuft nur mit fremden Pfaden, Antworten ohne `datei=` wechseln von `ganz_als_folge`
+/// zu netto).
+pub const EINTEILUNG_VERSION: u32 = 3;
 
 /// Bytegrenze des Namenslaufs (Startwert, Hypothese, ADR-0032 N6.8; etwa 40.000 Einträge).
 pub const GRENZE_NAMEN: usize = 4_194_304;
@@ -300,9 +302,11 @@ impl Einteilung {
         d.pfade_roh.iter().all(|p| self.karte.contains(p))
     }
 
-    /// Die Pfadangabe `D_karte` und ihre Länge in Byte.
+    /// Die Pfadangabe `D_karte` läuft und ist zu lang in Byte. Ohne fremden Pfad läuft keine Pfadangabe (`:213` im
+    /// Dienst): der Netto-Lauf liest dann ohne Angabe, und die Grenze schützte einen Lauf, der nicht stattfindet
+    /// (R00255 AK 3, ADR-0032 N10.3 Punkt 2).
     pub fn pfadangabe_zu_lang(&self) -> bool {
-        self.karte.iter().map(Vec::len).sum::<usize>() > GRENZE_PFADANGABE
+        !self.fremd.is_empty() && self.karte.iter().map(Vec::len).sum::<usize>() > GRENZE_PFADANGABE
     }
 }
 

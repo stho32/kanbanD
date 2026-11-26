@@ -243,9 +243,9 @@ async fn ak03_pfadangabe_nur_mit_fremden_pfaden() {
 
     // ohne fremden Pfad: netto, 2.000 gezeigte von 9.000, kein ganz_als_folge
     let d = liste(&lauf.adresse, 1, "").await;
-    assert_eq!(d["hinweise"], json!([]), "kein ganz_als_folge: {d}");
+    assert!(d["hinweise"].as_array().unwrap().iter().all(|h| h["art"] != "ganz_als_folge"), "kein ganz_als_folge: {d}");
     assert!(!d["spanne"].is_null(), "{d}");
-    assert_eq!(kappe(&d), json!({"art": "dateien_gekappt", "gezeigt": 2_000, "gesamt": 9_000}), "{d}");
+    assert_eq!(d["hinweise"], json!([{"art": "dateien_gekappt", "gezeigt": 2_000, "gesamt": 9_000}]), "{d}");
     assert!(dateien(&d).iter().all(|f| !ist_folge(f)), "nur Netto-Einträge: {d}");
 
     // der letzte Pfad liegt hinter dem Schnitt der Liste → 200 mit Netto-Eintrag `A`
