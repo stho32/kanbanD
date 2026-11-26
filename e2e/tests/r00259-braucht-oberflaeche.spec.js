@@ -28,15 +28,16 @@ function ausgangslage(extra = {}) {
 const ALS_CL = { headers: { 'X-KanbanD-Wer': 'cl', 'X-KanbanD-Instanz': 'lauf-1' } };
 const karte = (page, nr) => page.locator(`.ka[data-id="${nr}"]`);
 const chipAnKarte = (page, nr) => karte(page, nr).locator('.wt-chip');
-const depImFenster = (page, nr) => page.locator(`#fenster .wt-dep`).filter({ has: page.locator(`[data-arg="${nr}"]`) });
 const labelFeld = page => page.locator('#fenster [data-af="labels"]');
 
-/** Öffnet das Aufgabenfenster der Karte `nr` und schaltet auf die Ansicht `name`. */
+/** Öffnet das Aufgabenfenster der Karte `nr` und schaltet auf die Ansicht `name`. `kdTest.gezeichnet()` ist bei offenem Fenster
+ *  nicht wahr (die Adresse und die geladene Datei stehen außerhalb des zuletzt geladenen Stands) — gewartet wird auf den Dialog. */
 async function fensterOeffnen(page, nr, name = 'Details') {
+  if (await page.locator('#fenster').count()) { await page.keyboard.press('Escape'); await expect(page.locator('#fenster')).toHaveCount(0); }
   await karte(page, nr).locator('.id').click();
-  await expect(page.locator('#fenster')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: `Aufgabe #${nr}` })).toBeVisible();
   await reiter(page, name);
-  await bereit(page, page.locator('#fenster'));
+  await expect(page.locator('#fenster .mod-body')).toBeVisible();
 }
 
 /** Die erste Anfrage `GET /api/aufgaben` und alle Anfragen zählen; null lässt den Zähler laufen. */
