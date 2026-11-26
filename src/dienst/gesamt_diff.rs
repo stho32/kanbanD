@@ -700,6 +700,11 @@ fn text(mut diff: Gesamtdiff) -> String {
 /// `ETag` (ADR-0032 N6.10, E3): alle Verweise der Karte wörtlich in Reihenfolge, Fingerabdruck der Zweigspitzen,
 /// Anwendung, Wurzel (R00236, ADR-0042 Punkt 6), `datei`, `format`, Version der Grenzen und Version der Einteilung.
 fn etag(verweise: &[String], spitzen: &str, anwendung: &str, wurzel: &Path, anfrage: &Diffanfrage) -> String {
+    etag_mit(verweise, spitzen, anwendung, wurzel, anfrage, EINTEILUNG_VERSION)
+}
+
+/// Wie [`etag`], mit wählbarer Version der Einteilung — die Probe zu R00255 AK 7 rechnet den Wert vor dem Fix nach.
+fn etag_mit(verweise: &[String], spitzen: &str, anwendung: &str, wurzel: &Path, anfrage: &Diffanfrage, einteilung_version: u32) -> String {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     let format = match anfrage.format {
         Diffformat::Json => "json",
@@ -709,7 +714,7 @@ fn etag(verweise: &[String], spitzen: &str, anwendung: &str, wurzel: &Path, anfr
     for v in verweise {
         teile.extend([v.as_bytes(), b"\0"]);
     }
-    let (version, einteilung) = (GRENZEN_VERSION.to_be_bytes(), EINTEILUNG_VERSION.to_be_bytes());
+    let (version, einteilung) = (GRENZEN_VERSION.to_be_bytes(), einteilung_version.to_be_bytes());
     teile.extend([b"\x01".as_slice(), spitzen.as_bytes(), b"\0", anwendung.as_bytes(), b"\0", wurzel.as_os_str().as_encoded_bytes(), b"\0", anfrage.datei.as_deref().unwrap_or("\u{1}").as_bytes(), b"\0", format.as_bytes(), b"\0", &version, &einteilung]);
     for b in teile.iter().flat_map(|t| t.iter()) {
         h ^= u64::from(*b);
@@ -1068,5 +1073,46 @@ mod tests {
         let (folgen, weg, abgeschnitten, listen) = ergebnis.unwrap_or_else(|f| panic!("{f:?}"));
         assert_eq!((folgen.len(), weg, abgeschnitten, listen.len()), (0, 0, true, 1));
         assert!(matches!(mit_datei, Err(Fehler::NichtGefunden(m)) if m.contains("commit= und datei=")));
+    }
+
+    // R00255 AK 5 (ADR-0032 N10.3 Punkt 3): `datei_fehlt` nur bei vollständigen Namen. Der Namenslauf ist an seiner
+    // (verkleinerten) Grenze gekappt — ein Pfad hinter dem Schnitt der Namen ist nicht „in keinem Kartencommit“, sondern
+    // hinter dem Schnitt; sind die Namen vollständig, bleibt der Text. Mutant m5 macht die erste Zusicherung rot.
+    #[test]
+    fn datei_fehlt_nur_bei_vollstaendigen_namen() {
+        let mut s = Stand::neu();
+        std::fs::create_dir_all(s.r.join("d")).unwrap();
+        for i in 0..60 {
+            std::fs::write(s.r.join(format!("d/{i:02}")), format!("{i}\n")).unwrap();
+        }
+        let k1 = s.commit(None, None, "K1 viele");
+        s.karte(2, &[k1]);
+        let mut k = Kanban::neu(s.board.clone());
+        // kappt den Namenslauf nach etwa 20 der 60 Einträge
+        k.grenze_namen = 2_000;
+        let fehler = |k: &Kanban, datei: &str| match k.diff_lesen(2, &anfrage(&[("datei", datei)], None), frist()) {
+            Err(Fehler::NichtGefunden(t)) => t,
+            anders => panic!("datei={datei}: kein 404: {anders:?}"),
+        };
+        let (a, _) = lesen(&k, 2, &anfrage(&[("datei", "d/59")], None));
+        let (d, _) = json(&a);
+        assert_eq!((d["dateien"][0]["neu"].as_str(), d["dateien"][0]["status"].as_str()), (Some("d/59"), Some("A")), "{d}");
+        let hinten = fehler(&k, "nicht/da");
+        assert!(!hinten.contains("in keinem Kartencommit") && hinten.contains("commit="), "{hinten}");
+        // vollständige Namen: derselbe Pfad behält „in keinem Kartencommit“
+        k.grenze_namen = crate::modell::GRENZE_NAMEN;
+        assert!(fehler(&k, "nicht/da").contains("in keinem Kartencommit"), "vollständige Namen");
+    }
+
+    // R00255 AK 7 (ADR-0032 N10.3 Punkt 4): E2 ändert Antworten ohne `datei=`, also wechselt die Version der Einteilung
+    // im `ETag` — ein `If-None-Match` mit dem `ETag` von vor dem Fix darf kein 304 mehr bekommen.
+    #[test]
+    fn etag_waechst_mit_der_einteilung_version() {
+        let verweise = [format!("kd:{}", "a".repeat(40))];
+        let a = anfrage(&[], None);
+        let jetzt = etag(&verweise, "s", "kd", Path::new("/w"), &a);
+        assert_eq!(EINTEILUNG_VERSION, 3, "R00255 AK 7: Version der Einteilung");
+        assert_eq!(jetzt, etag_mit(&verweise, "s", "kd", Path::new("/w"), &a, 3), "{jetzt}");
+        assert_ne!(etag_mit(&verweise, "s", "kd", Path::new("/w"), &a, 2), jetzt, "der ETag vor dem Fix ist ein anderer");
     }
 }

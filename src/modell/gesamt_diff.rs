@@ -662,6 +662,22 @@ mod tests {
         assert_eq!(folge, ["a1", "a2", "b1", "b2"]);
     }
 
+    // R00255 AK 3 (ADR-0032 N10.3 Punkt 2): die Pfadangabe `D_karte` ist nur zu lang, wenn sie auch läuft — ohne fremden
+    // Pfad liest der Netto-Lauf ohne Angabe (`:213`), und die Grenze schützt einen Lauf, der nicht stattfindet. Mutant m3
+    // (ohne Bedingung `D_fremd`) macht die erste Zusicherung rot.
+    #[test]
+    fn pfadangabe_nur_zu_lang_mit_fremden_pfaden() {
+        let lang = |i: usize| format!("{i:05}-{}", "x".repeat(1_500)).into_bytes();
+        let karte = |n: usize| -> Vec<Eintragspfade> { (0..n).map(|i| vec![lang(i)]).collect() };
+        let ohne: HashMap<String, Vec<Eintragspfade>> = [(A.to_string(), karte(750))].into();
+        let e = Einteilung::aus(&ohne, &menge(&[A]));
+        assert!(e.karte.iter().map(Vec::len).sum::<usize>() > GRENZE_PFADANGABE, "Vorbedingung: D_karte über 1 MB");
+        assert!(!e.pfadangabe_zu_lang(), "ohne fremden Pfad läuft keine Pfadangabe");
+        let mit: HashMap<String, Vec<Eintragspfade>> = [(A.to_string(), karte(750)), (B.to_string(), vec![pfade(&["fremd"])])].into();
+        let e = Einteilung::aus(&mit, &menge(&[A]));
+        assert!(e.pfadangabe_zu_lang(), "mit fremdem Pfad läuft die Angabe und ist zu lang");
+    }
+
     // Code-Review B2 (#214): die Pfadangabe nimmt jeden Eintrag ganz, dessen Pfad sie trifft — `d/x` trifft `d/x/inner`,
     // dessen Partner `b` kommt mit; `d/xy` und `d/x2` trifft sie nicht
     #[test]
