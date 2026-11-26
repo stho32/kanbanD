@@ -3001,15 +3001,22 @@ async function titelSpeichern(wert) {
 async function labelsSpeichern(wert) {
   const u = S.ui, nummer = u.offen;
   if (ichNoetig()) { render(); return; }
-  entwurfAbschicken(LABELS_FELD, wert);
   const a = aufgabe(nummer);
   if (!a) return;
   const gedeutet = (a.labels || []).filter(l => nummerAusLabel(l) !== null);
   const felder = String(wert).split(',').map(s => s.trim()).filter(Boolean);
-  const gelungen = await aufgabeAendern(nummer, { labels: [...gedeutet, ...felder] }, LABELS_FELD);
-  if (u.offen !== nummer) return;
-  if (gelungen) u.entwurf = null;
-  render();
+  const ausloeser = `${anfrageName('PATCH', '/api/aufgaben/' + nummer)} labels`;
+  try {
+    await durchDieSchlange(() => api('PATCH', '/api/aufgaben/' + nummer, { labels: [...gedeutet, ...felder] }));
+    // Der Erfolg eines fremden Felds lässt dessen abgelehnte Eingabe stehen (G-3): nur den eigenen Entwurf räumen.
+    if (u.entwurf && u.entwurf.feld === LABELS_FELD) u.entwurf = null;
+    gespeichertMelden(null, ausloeser);
+  } catch (f) {
+    // die abgelehnte Eingabe bleibt im Feld stehen (AK 10, ADR-0035 N1.7); die Meldung nennt Wortlaut und Feld
+    entwurfAbschicken(LABELS_FELD, wert);
+    fensterMelden(f.message, LABELS_FELD, ausloeser);
+  }
+  if (u.offen === nummer) render();
 }
 
 /** Felder, deren Eingabe abgeschickt und noch nicht beantwortet ist. Der Text steht dann noch im Feld, ist aber kein

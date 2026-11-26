@@ -154,11 +154,16 @@ test.describe('R00212 Herkunft als Text ohne Auflösung', () => {
     await expect(page.locator('a.org')).toHaveCount(0);
   });
 
-  test('AK 4: kein „wartet auf“ trotz Braucht in der WBS, braucht:2 bleibt als Label', async ({ page }) => {
+  // R00259 (Karte #235) interpretiert das Label `braucht:<n>` an Karte und Fenster; R00212 AK 4 galt ausdrücklich „bis #228“
+  // („die Labels `braucht:<nr>` bleiben sichtbar“, R00212 Z. 17). Geblieben ist: Braucht aus der WBS erzeugt nichts.
+  test('AK 4: keine „wartet auf“-Zeile aus der WBS; das Label braucht:2 zeigt jetzt den Chip „wartet auf #2“ (R00259)', async ({ page }) => {
     await starten(page);
-    await expect(karte(page, 2).locator('.wartet')).toHaveCount(0);
+    // #2 trägt im WBS `Braucht` von I0007 — das zählt nicht (R00212), also kein Chip an #2
+    await expect(karte(page, 2).locator('.wartet, .wt-chip')).toHaveCount(0);
     await expect(karte(page, 2)).not.toContainText('wartet auf');
-    await expect(karte(page, 1).locator('.lbl', { hasText: 'braucht:2' })).toHaveCount(1);
+    // #1 trägt das Label `braucht:2`; mit R00259 wird daraus der Chip, nicht mehr ein Label-Chip
+    await expect(karte(page, 1).locator('.wt-chip')).toHaveText('wartet auf #2');
+    await expect(karte(page, 1).locator('.lbl', { hasText: 'braucht:2' })).toHaveCount(0);
     for (const nr of [1, 2]) {
       await expect(karte(page, nr)).not.toContainText('⧗');
     }
@@ -168,7 +173,8 @@ test.describe('R00212 Herkunft als Text ohne Auflösung', () => {
     expect(await page.locator('#fenster .k').evaluateAll(l => l.filter(e => !e.textContent.trim()).length), 'kein leeres .k').toBe(0);
     await page.keyboard.press('Escape');
     await fensterOeffnen(page, 1);
-    await expect(page.getByLabel('Labels')).toHaveValue('braucht:2');
+    await expect(page.getByLabel('Labels')).toHaveValue('');
+    await expect(page.locator('#fenster .wt-dep .wt-t')).toHaveText('wartet auf #2 zwei');
   });
 
   test('AK 5: neue Herkunft erscheint als Chip, ✕ und Rückgängig stellen sie an derselben Stelle wieder her', async ({ page }) => {
