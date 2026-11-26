@@ -1326,6 +1326,17 @@ ${rahmen}<g id="bd-balken">${balken}</g><line class="bd-null" x1="${(links - hal
 <text class="achse bd-skala" x="${skalaX}" y="${nulllinie - hoehe + 4}">+${b.skala}</text><text class="achse bd-skala" x="${skalaX}" y="${nulllinie + hoehe + 4}">−${b.skala}</text>`;
 }
 const zahl1 = x => x == null ? '—' : x.toFixed(1).replace('.', ',');
+/** Netto mit Vorzeichen (R00254): positive mit „+“, negative mit U+2212, ein auf 0,0 gerundeter Wert ohne Vorzeichen. */
+const nettoZahl = x => {
+  if (x == null) return '—';
+  const r = Math.round(x * 10) / 10;
+  if (r === 0) return '0,0';
+  return (r > 0 ? '+' : '−') + Math.abs(r).toFixed(1).replace('.', ',');
+};
+/** Netto-Summe (ganzzahlig) mit Vorzeichen: „+2“, „−2“, „0“. */
+const nettoSumme = x => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x);
+/** Richtungswort zum Netto (R00254): „baut ab“, „staut auf“, „ausgeglichen“. */
+const nettoWort = x => x > 0 ? 'baut ab' : x < 0 ? 'staut auf' : 'ausgeglichen';
 /** „Erledigt heißt“ des gewählten Boards (R00166): der Zielblock aus der Board-Datei, aufgelöst unter dem Berichtsfilter. */
 function erledigtHeisst() {
   let zielspalte = null;
@@ -1523,10 +1534,11 @@ ${fadenkreuz(FLUSS_O, unten)}
 }
 
 /* Durchsatz je Zeitraum (R00122, Artboard D0006 „Durchsatz“): je Kalenderperiode ein Balkenpaar — links der Zugang ab der
-   Von-Spalte, rechts der Abgang, die Aufgaben, die das Ziel erreicht haben — mit gestrichelter Ø-Linie des Abgangs;
-   „Zugang ab“ wählt die Von-Spalte (R00167, Zeichnung #durchsatz-von), „Erledigt heißt“ das Ziel (R00166).
-   Rechnung: durchsatz() in web/berichte.js. */
-const DUS_B = 800, DUS_H = 272, DUS_L = 44, DUS_R = 120, DUS_O = 24, DUS_U = 44;
+   Von-Spalte, rechts der Abgang, die Aufgaben, die das Ziel erreicht haben — mit gestrichelten Ø-Linien für Zugang und
+   Abgang (R00254); „Zugang ab“ wählt die Von-Spalte (R00167, Zeichnung #durchsatz-von), „Erledigt heißt“ das Ziel (R00166).
+   Rechnung: durchsatz() in web/berichte.js. Die Fläche ist 900 breit, die Zeichenfläche bleibt 636 (DUS_R = 220) — der
+   breitere rechte Rand trägt die längeren Ø-Beschriftungen (R00254, Zeichnung #durchsatz-zahlen). */
+const DUS_B = 900, DUS_H = 272, DUS_L = 44, DUS_R = 220, DUS_O = 24, DUS_U = 44;
 /** Einheitenwort („je Woche“) der Auflösung. */
 const dusWort = e => (DURCHSATZ_EINHEITEN.find(([k]) => k === e) || [null, ''])[1];
 /** Zusatz „bis „B““ der Durchsatz-Texte bei gewähltem Zielblock (R00166 AK 10), eingefasst von `davor` und `danach`; ohne Wahl leer. */
@@ -1564,29 +1576,32 @@ ${vDurchsatzFlaeche(d, einheit, ziel.worte, zugang)}${vDurchsatzLegende(d, einhe
 ${vDurchsatzTabelle(d, einheit, zugang)}
 ${d.ausgenommen ? vDurchsatzNicht(d.ausgenommen) : ''}</div>`;
 }
-/** Kennzahlenzeile (M4, R00167): Zugang und Abgang je mit Summe und Ø je Periode, dazu die Zahl der Perioden — alle folgen
-    der Auflösung; ohne gezeigten Zugang steht allein der Abgang. */
+/** Kennzahlenzeile (R00254): drei Zeilen je Kalendertag — Zugang, Abgang und Netto (Netto nur mit gezeigtem Zugang),
+    dazu die Zahl der Perioden. Die Ø ändern sich beim Umschalten der Auflösung nicht; Netto = Abgang − Zugang, mit
+    Vorzeichen und Richtungswort. */
 function vDurchsatzKennzahlen(d, zielWorte, zugang) {
-  const n = d.perioden.length, je = dusWort(d.einheit);
+  const n = d.perioden.length;
   let zugangZahl = '';
-  if (zugang) zugangZahl = `<span><i class="k-zugang"></i>Zugang <b>${d.zugangGesamt}</b>${dusAb(zugang, ' ')} · Ø <b>${zahl1(d.zugangDurchschnitt)}</b> ${je}</span>`;
-  return `<div class="kennzahlen" id="dus-kennzahl">${zugangZahl}<span><i class="k-abgang"></i>Abgang <b>${d.gesamt}</b>${dusBis(zielWorte, ' ')} · Ø <b>${zahl1(d.durchschnitt)}</b> ${je}</span><span><b>${n}</b> ${n === 1 ? 'Periode' : 'Perioden'}</span></div>`;
+  if (zugang) zugangZahl = `<span><i class="k-zugang"></i>Zugang <b>${d.zugangGesamt}</b>${dusAb(zugang, ' ')} · Ø <b>${zahl1(d.zugangJeTag)}</b> je Tag</span>`;
+  const netto = zugang ? `<span>Netto <b>${nettoSumme(d.nettoGesamt)}</b> · Ø <b>${nettoZahl(d.nettoJeTag)}</b> je Tag · ${nettoWort(d.nettoGesamt)}</span>` : '';
+  return `<div class="kennzahlen" id="dus-kennzahl">${zugangZahl}<span><i class="k-abgang"></i>Abgang <b>${d.gesamt}</b>${dusBis(zielWorte, ' ')} · Ø <b>${zahl1(d.abgangJeTag)}</b> je Tag</span>${netto}<span><b>${n}</b> ${n === 1 ? 'Periode' : 'Perioden'}</span></div>`;
 }
 /** Auflösungs-Umschalter (M3): .seg-Radiogruppe mit zugänglichem Namen, sichtbarem Auswahlzustand, per Tastatur bedienbar. */
 function vDurchsatzUm(einheit) {
   return `<div class="dus-um"><span class="bf-k">Auflösung</span><span class="seg" role="radiogroup" aria-label="Auflösung">${DURCHSATZ_EINHEITEN.map(([k, t]) => `<span class="${k === einheit ? 'an' : ''}" role="radio" aria-checked="${k === einheit}" data-act="dus-einheit" data-arg="${k}">${t}</span>`).join('')}</span></div>`;
 }
 const vDurchsatzNicht = n => `<div class="kennzahlen" id="dus-nicht"><span>Nicht enthalten: ausgenommen <b>${n}</b></span></div>`;
-/** Legende: die zwei Balken und die Ø-Linie des Abgangs; die Zahlen stehen in Tabelle und Tooltip (keine Farbe allein).
-    Darunter, was der Zugang zählt — „erstmals“, deshalb darf er vom „+ hinzugekommen“ des Burndowns abweichen (R00167 AK 8).
-    Ohne gezeigten Zugang entfallen sein Eintrag und die zwei Sätze. */
+/** Legende: die zwei Balken und je gezeigter Größe eine Ø-Linie mit Einheit (R00254); die Zahlen stehen in Tabelle und
+    Tooltip (keine Farbe allein). Darunter, was der Zugang zählt — „erstmals“, deshalb darf er vom „+ hinzugekommen“ des
+    Burndowns abweichen (R00167 AK 8). Ohne gezeigten Zugang entfallen sein Eintrag, seine Ø-Linie und die zwei Sätze. */
 function vDurchsatzLegende(d, einheit, zielWorte, zugang) {
-  let zugangEintrag = '', zugangSaetze = '';
+  let zugangEintrag = '', zugangRate = '', zugangSaetze = '';
   if (zugang) {
     zugangEintrag = `<span class="fluss-le"><span class="fluss-sw zugang"></span>Zugang (erstmals ab „${esc(zugang.name)}“)</span>`;
+    zugangRate = `<span class="fluss-le"><span class="fluss-linie zugang"></span>Ø Zugang ${zahl1(d.zugangDurchschnitt)} ${dusWort(einheit)}</span>`;
     zugangSaetze = `\n<p class="bd-hinweis" id="dus-zugang-satz">„Zugang“ zählt jede Aufgabe einmal: in der Periode, in der sie ${esc(zugang.worte.genannt)} oder eine Spalte rechts davon erstmals erreicht; Rückläufer zählen nicht erneut.<br>Deshalb darf der Zugang vom „+ hinzugekommen“ des Burndowns abweichen: dort zählt Nacharbeit jedes Mal.</p>`;
   }
-  return `<div class="fluss-leg" aria-label="Legende">${zugangEintrag}<span class="fluss-le"><span class="fluss-sw"></span>Abgang: erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span><span class="fluss-le"><span class="fluss-linie f"></span>Ø Abgang ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>${zugangSaetze}`;
+  return `<div class="fluss-leg" aria-label="Legende">${zugangEintrag}<span class="fluss-le"><span class="fluss-sw"></span>Abgang: erledigte Aufgaben${dusBis(zielWorte, ' (', ')')}</span>${zugangRate}<span class="fluss-le"><span class="fluss-linie f"></span>Ø Abgang ${zahl1(d.durchschnitt)} ${dusWort(einheit)}</span><span class="rechts">zeigt nur, filtert nicht</span></div>${zugangSaetze}`;
 }
 /** Tooltip einer Periode: „03.11.2026 · Zugang 2 ab „Arbeit“ · Abgang 0 bis „B““ — der Zugang nur, wenn er gezeigt wird. */
 function dusTip(p, einheit, zielWorte, zugang) {
@@ -1607,8 +1622,8 @@ function dusBalken(p, x, sy, unten, masse, zugang) {
   return rechtecke;
 }
 /** Die Zeichenfläche: je Periode ein Balkenpaar (Zugang in --kd-agent, Abgang in --kd-accent) auf einer y-Skala bis zum
-    höchsten Wert beider, Grundlinie und eine Marke je Periode (auch bei 0), gestrichelte Ø-Linie des Abgangs in --kd-warn
-    mit Halo-Beschriftung, x-Achse je Auflösung. */
+    höchsten Wert beider, Grundlinie und eine Marke je Periode (auch bei 0), zwei gestrichelte Ø-Linien mit Einheit
+    (Zugang in --kd-agent, Abgang in --kd-warn) mit Halo-Beschriftung, x-Achse je Auflösung. */
 function vDurchsatzFlaeche(d, einheit, zielWorte, zugang) {
   const t = d.perioden;
   let max = Math.max(1, ...t.map(x => x.anzahl));
@@ -1628,12 +1643,17 @@ function vDurchsatzFlaeche(d, einheit, zielWorte, zugang) {
       : `<text class="achse achse-x" x="${x}" y="${unten + 22}" text-anchor="middle">${esc(m.oben)}</text>`;
   };
   S.diagrammTip = tg => { const p = t.find(x => tg >= x.von && tg < x.bis); return p ? dusTip(p, einheit, zielWorte, zugang) : ''; };
-  const svg = `<svg class="diagramm dus" viewBox="0 0 ${DUS_B} ${DUS_H}" role="img" aria-label="Durchsatz je Zeitraum: Zugang und Abgang je Periode" ${achsAttribut(DUS_L, breite, t[0].von, t1)}>
+  const rate = (wert, klasse, wort) => `<line class="rate${klasse}" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${sy(wert)}" y2="${sy(wert)}"></line><text class="ratetext${klasse}" x="${DUS_L + breite + 8}" y="${sy(wert) + 4}">${wort} ${zahl1(wert)} ${dusWort(einheit)}</text>`;
+  const raten = (zugang ? rate(d.zugangDurchschnitt, ' zugang', 'Ø Zugang') : '') + rate(d.durchschnitt, '', 'Ø Abgang');
+  /* Die Marken sitzen in der Mitte ihres Zeitraums, die Achse übersetzt eine Position linear in einen Tag und rundet auf
+     den nächsten (`tagAnPosition`, + 12 h). Damit der Zeiger über der Marke den Zeitraum der Marke trifft, beginnt die
+     Achse einen halben Tag vor dem ersten Zeitraum — dann liegt der halbe Tag der Rundung genau in der Zeitraummitte. */
+  const svg = `<svg class="diagramm dus" viewBox="0 0 ${DUS_B} ${DUS_H}" role="img" aria-label="Durchsatz je Zeitraum: Zugang und Abgang je Periode" ${achsAttribut(DUS_L, breite, t[0].von - 432e5, t1 - 432e5)}>
 ${ticks.map(v => `<line class="gitter" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${sy(v)}" y2="${sy(v)}"></line><text class="achse" x="${DUS_L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`).join('')}
 <line class="grund" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${unten}" y2="${unten}"></line>
 ${t.map((x, i) => dusBalken(x, xs(i), sy, unten, masse, zugang)).join('')}
 ${marken.map(i => `<line class="marke" x1="${xs(i).toFixed(1)}" x2="${xs(i).toFixed(1)}" y1="${unten}" y2="${unten + 5}"></line>`).join('')}
-<line class="rate" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${sy(d.durchschnitt)}" y2="${sy(d.durchschnitt)}"></line><text class="ratetext" x="${DUS_L + breite + 8}" y="${sy(d.durchschnitt) + 4}">Ø Abgang ${zahl1(d.durchschnitt)}</text>
+${raten}
 ${marken.map(achse).join('')}
 ${fadenkreuz(DUS_O, unten)}
 </svg>`;

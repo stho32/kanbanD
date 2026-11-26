@@ -1205,6 +1205,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .fluss-sw{width:14px;height:12px;background:var(--kd-accent);border:1px solid var(--kd-line);flex:none}
 .fluss-linie{width:16px;height:0;border-top:2px solid var(--kd-accent);flex:none}
 .fluss-linie.f{border-top-style:dashed;border-top-color:var(--kd-warn)}
+.fluss-linie.zugang{border-top-style:dashed;border-top-color:var(--kd-agent)}
 .fluss-leg .rechts{margin-left:auto;color:var(--kd-muted);font-size:11px}
 .fluss-tabs{margin:var(--kd-s3) 0;font-size:12px}
 .fluss-tabs>summary{cursor:pointer;color:var(--kd-accent-ink);min-height:24px;box-sizing:border-box}
@@ -1267,7 +1268,9 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 #dus-kennzahl span{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 6px}
 #tooltip .k-zugang,#tooltip .k-abgang{margin-right:5px}
 .dflaeche .dus .rate{stroke:var(--kd-warn);stroke-width:2;stroke-dasharray:6 4}
+.dflaeche .dus .rate.zugang{stroke:var(--kd-agent);stroke-dasharray:2 3}
 .dflaeche .dus .ratetext{font-family:var(--kd-font);font-size:12px;font-weight:600;fill:var(--kd-warn);paint-order:stroke;stroke:var(--kd-surface);stroke-width:3.5;stroke-linejoin:round}
+.dflaeche .dus .ratetext.zugang{fill:var(--kd-agent-ink)}
 
 /* ── Ansicht „Commits“ im Aufgabenfenster (R00205, Artboard D0009 `#commits-ansicht`): Tabelle breit, bis 640 px je Verweis vier Reihen.
    Titel, Autor, Zweignamen und Gründe umbrechen (overflow-wrap:anywhere) und werden nie abgeschnitten (kein nowrap, kein overflow:hidden). ── */

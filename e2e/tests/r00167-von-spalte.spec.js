@@ -230,9 +230,9 @@ test('R00167 US-1, AK 1, AK 8 (B0819): ohne Wahl steht der Zugang ab der ersten 
     await berichtAm0411(page, k, 'durchsatz');
     expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['3', '0'], ['0', '0'], ['0', '1']], summe: ['Summe', '3', '1'] });
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
-    await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', 'Netto −2 · Ø −0,7 je Tag · staut auf', '3 Perioden']);
     await tooltipAm(page, 2).toBe('02.11.2026 · Zugang 3 · Abgang 0');
-    await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Backlog“)', 'Abgang: erledigte Aufgaben', 'Ø Abgang 0,3 je Tag']);
+    await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Backlog“)', 'Abgang: erledigte Aufgaben', 'Ø Zugang 1,0 je Tag', 'Ø Abgang 0,3 je Tag']);
     await expect(page.locator('.fluss-leg .rechts')).toHaveText('zeigt nur, filtert nicht');
     await expect(zugangSatz(page)).toHaveText(SATZ('Backlog'));
     expect(k.lies(BOARD), 'Standard: kein Schlüssel in der Datei').not.toContain('fever');
@@ -246,10 +246,10 @@ test('R00167 US-1, US-2, AK 1, AK 4, AK 8 (B0819, Abnahme der Karte #157): „Zu
     await waehle(page, zugangAb, 'Spalte „Arbeit“', 'Arbeit');
     expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Zugang', 'Abgang'], jeTag: [['0', '0'], ['2', '0'], ['0', '1']], summe: ['Summe', '2', '1'] });
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode · ab „Arbeit“');
-    await expect(kennzahlen(page)).toHaveText(['Zugang 2 ab „Arbeit“ · Ø 0,7 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await expect(kennzahlen(page)).toHaveText(['Zugang 2 ab „Arbeit“ · Ø 0,7 je Tag', 'Abgang 1 · Ø 0,3 je Tag', 'Netto −1 · Ø −0,3 je Tag · staut auf', '3 Perioden']);
     await tooltipAm(page, 3).toBe('03.11.2026 · Zugang 2 ab „Arbeit“ · Abgang 0');
     await tooltipAm(page, 4).toBe('04.11.2026 · Zugang 0 ab „Arbeit“ · Abgang 1');
-    await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Arbeit“)', 'Abgang: erledigte Aufgaben', 'Ø Abgang 0,3 je Tag']);
+    await expect(legende(page)).toHaveText(['Zugang (erstmals ab „Arbeit“)', 'Abgang: erledigte Aufgaben', 'Ø Zugang 0,7 je Tag', 'Ø Abgang 0,3 je Tag']);
     await expect(zugangSatz(page)).toHaveText(SATZ('Arbeit'));
     const [leg, satz] = await Promise.all([page.locator('.fluss-leg'), zugangSatz(page)].map(o => o.boundingBox()));
     expect(satz.y, 'die zwei Sätze stehen unter der Legende').toBeGreaterThanOrEqual(leg.y + leg.height);
@@ -268,7 +268,7 @@ test('R00167 AK 1 (B0818): je Periode ein Balkenpaar um die Marke — Zugang lin
     expect(await masse(abgang), 'Abgang 1 am 04.11.: rechts der Marke').toEqual([[575, 126, 47, 102]]);
     await expect(svg.locator('line.marke')).toHaveCount(3);
     await expect(svg.locator('text.achse:not(.achse-x)')).toHaveText(['0', '1', '2']);
-    await expect(svg.locator('text.ratetext')).toHaveText('Ø Abgang 0,3');
+    await expect(svg.locator('text.ratetext')).toHaveText(['Ø Zugang 0,7 je Tag', 'Ø Abgang 0,3 je Tag']);
     const stil = ort => ort.evaluate(e => { const s = getComputedStyle(e); return { flaeche: s.fill, kontur: s.stroke, staerke: s.strokeWidth }; });
     const [z, a] = [await stil(zugang), await stil(abgang)];
     expect(z.staerke).toBe('2px');
@@ -291,6 +291,7 @@ test('R00167 US-4, AK 5 (B0818): „Zugang ab“ = Erledigt — kein Zugang in K
     expect(await tabelleJeTag(page)).toEqual({ kopf: ['Zeitraum', 'Abgang'], jeTag: [['0'], ['0'], ['1']], summe: ['Summe', '1'] });
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
     await expect(kennzahlen(page)).toHaveText(['Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await expect(diagramm(page).locator('text.ratetext')).toHaveText(['Ø Abgang 0,3 je Tag']);
     await expect(diagramm(page).locator('rect.balken.zugang')).toHaveCount(0);
     expect(await masse(diagramm(page).locator('rect.balken')), 'die Skala folgt allein dem Abgang').toEqual([[575, 24, 47, 204]]);
     await tooltipAm(page, 4).toBe('04.11.2026 · Abgang 1');
@@ -306,7 +307,7 @@ test('R00167 AK 6 (B0819): `from-column: Abnahme` rechnet und beschriftet wie oh
     await expect(hinweisWeg(page)).toBeVisible();
     expect((await tabelleJeTag(page)).jeTag).toEqual([['3', '0'], ['0', '0'], ['0', '1']]);
     await expect(kopftext(page)).toHaveText('· Zugang und Abgang je Periode');
-    await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', '3 Perioden']);
+    await expect(kennzahlen(page)).toHaveText(['Zugang 3 · Ø 1,0 je Tag', 'Abgang 1 · Ø 0,3 je Tag', 'Netto −2 · Ø −0,7 je Tag · staut auf', '3 Perioden']);
     await expect(legende(page).first()).toHaveText('Zugang (erstmals ab „Backlog“)');
   } finally { await k.stoppen(); }
 });
