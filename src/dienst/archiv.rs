@@ -115,11 +115,13 @@ impl Kanban {
         }
         super::ohne_doppelte(nummern.iter().copied())?;
         let _sperre = self.gesperrt();
+        // Eine Momentaufnahme für alle Nummern, gebaut **nach** `gesperrt()` (ADR-0044 E1).
+        let mut verzeichnis = self.ordner().verzeichnis()?;
         let mut geaendert = vec![];
         let mut dateien = vec![];
         let jetzt = uhr::jetzt();
         for nr in nummern {
-            let mut a = self.ordner().aufgabe(*nr)?;
+            let mut a = verzeichnis.aufgabe(*nr)?;
             if a.archiviert.is_some() == archivieren {
                 continue;
             }

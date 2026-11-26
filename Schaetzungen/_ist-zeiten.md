@@ -1229,3 +1229,4 @@ Nie vom User erfragen.
 | 2026-11-26 | Karte #236 R00255 | B1361 Tagprobe 17.000/45.000 Pfade im echten Programm (Last 1,2–1,7), Mutanten m1–m5 je getötet, volles Gate | Standard | 1-2h | 0,6h | 0,6h | autonom |
 | 2026-11-26 | Karte #241 R00257 | B1365 Abnahme-Proben rot: Listing-Zähler (AK 1, 300 Listings heute), Grenze (AK 4, heute 404/201), Pfadregel (AK 2) und Lebensdauer (AK 3) als Wächter; Zähler `cfg(test)` thread-lokal | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-26 | Karte #241 R00257 | B1366 `Aufgabenverzeichnis`: ein Listing, Nummer → Pfade, Pfadregel R00123/B0573; `aufgabe`/`aufgabenpfad` als Aufrufe derselben Momentaufnahme, Rückfall auf den Inhalt höchstens einmal | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-26 | Karte #241 R00257 | B1367 die drei Sammelwege fragen die Momentaufnahme nach `gesperrt()`; AK 1 grün (Listings ≤ 3 unabhängig von n), AK 3 grün | Standard | 1-2h | 0,3h | 0,3h | autonom |

@@ -26,6 +26,8 @@ impl Kanban {
     pub fn mehrere_auf_board_legen(&self, wer: &Person, slug: &str, nummern: &[u32], spalte: Option<&str>) -> Result<Vec<u32>, Fehler> {
         super::ohne_doppelte(nummern.iter().copied())?;
         let _sperre = self.gesperrt();
+        // Eine Momentaufnahme für die Existenzprüfung aller Nummern, gebaut **nach** `gesperrt()` (ADR-0044 E1).
+        let mut verzeichnis = self.ordner().verzeichnis()?;
         let mut b = self.ordner().board(slug)?;
         if let Some(s) = spalte.filter(|s| !b.spalten.iter().any(|x| x.name == *s)) {
             return Err(Fehler::Ungueltig(format!("Spalte „{s}“ gibt es auf „{}“ nicht", b.titel)));
@@ -34,7 +36,7 @@ impl Kanban {
         let mut gelegt = vec![];
         let mut name = String::new();
         for nr in nummern {
-            self.ordner().aufgabe(*nr)?;
+            verzeichnis.aufgabe(*nr)?;
             match b.aufnehmen(*nr, spalte, None) {
                 Ok(n) => {
                     name = n;

@@ -54,6 +54,9 @@ impl Kanban {
         super::ohne_doppelte(aenderungen.iter().map(|(n, _)| *n))?;
         let e = self.ordner().einstellungen()?.unwrap_or_default();
         let _sperre = self.gesperrt();
+        // Die Momentaufnahme entsteht **nach** `gesperrt()` und lebt nur hier (ADR-0044 E1): ein Listing für alle
+        // Einträge statt eines je Eintrag, damit die Sperrdauer linear mit n wächst statt mit n × m.
+        let mut verzeichnis = self.ordner().verzeichnis()?;
         let boards = self.boards_fuer_klassen(aenderungen.iter().map(|(_, a)| a))?;
         let mut ergebnis = vec![];
         let mut geaendert = vec![];
@@ -61,7 +64,7 @@ impl Kanban {
         let mut dateien = vec![];
         let mut tuer = Tuer::neu(self);
         for (nummer, aenderung) in aenderungen {
-            let mut a = self.ordner().aufgabe(*nummer)?;
+            let mut a = verzeichnis.aufgabe(*nummer)?;
             let vorher = a.labels.clone();
             let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, *nummer, &e)).map_err(|f| Fehler::Ungueltig(format!("#{nummer}: {f}")))?;
             tuer.pruefen(*nummer, &vorher, &a.labels).map_err(|f| vorsatz(f, &format!("#{nummer}: ")))?;
