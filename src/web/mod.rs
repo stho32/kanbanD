@@ -33,6 +33,8 @@ pub struct App {
     pub kanban: Arc<Kanban>,
     pub ereignisse: broadcast::Sender<Ereignis>,
     ende: watch::Receiver<bool>,
+    /// das Protokoll dieser Instanz (ADR-0001 N1.7 Regel 1)
+    protokoll: crate::protokoll::Protokoll,
     /// der gebundene Port der Instanz; 0, wenn der Router ohne Horcher gebaut ist
     port: u16,
     _waechter: Option<Arc<notify::RecommendedWatcher>>,
@@ -46,19 +48,30 @@ pub fn router(ordner: PathBuf) -> Router {
 /// `port` ist der Port, an den der Horcher gebunden ist (R00183) — nicht der verlangte: das Programm weicht aus.
 /// Wird `ende` wahr, schließen sich die Ereignisströme — sonst wartet ein geordnetes Beenden ewig auf sie.
 pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) -> Router {
-    let kanban = Arc::new(Kanban::neu(ordner.clone()));
+    router_bauen(ordner, port, ende, crate::protokoll::Protokoll::stumm())
+}
+
+/// Wie [`router_mit_ende`], mit dem Protokoll der Instanz: der Betrieb reicht Datei+stderr herein, ein Test eine
+/// Sammler-Senke (N1.7 Regel 1, R00258 AK 1–12).
+pub fn router_mit_protokoll(ordner: PathBuf, port: u16, protokoll: crate::protokoll::Protokoll) -> Router {
+    router_bauen(ordner, port, watch::channel(false).1, protokoll)
+}
+
+fn router_bauen(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
+    let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner.clone(), protokoll.clone()));
     let (ereignisse, _) = broadcast::channel(256);
     let tx = ereignisse.clone();
+    let melder = protokoll.clone();
     let waechter = match waechter::starten(ordner, kanban.eigene(), move |e| {
         let _ = tx.send(e);
     }) {
         Ok(w) => Some(Arc::new(w)),
         Err(e) => {
-            eprintln!("Ordner wird nicht beobachtet ({e}) — Änderungen von außen erscheinen erst nach Neuladen.");
+            melder.schreiben(crate::protokoll::Stufe::Warn, crate::protokoll::Ereignis::OrdnerNichtBeobachtet, &[("grund", e.to_string())]);
             None
         }
     };
-    let app = App { kanban, ereignisse, ende, port, _waechter: waechter };
+    let app = App { kanban, ereignisse, ende, protokoll, port, _waechter: waechter };
     // Router und OpenAPI-Beschreibung aus einer Quelle (R00093): jeder Handler trägt sein #[utoipa::path]
     let (router, api) = OpenApiRouter::with_openapi(openapi::ApiDoc::openapi())
         .routes(routes!(ereignisstrom))

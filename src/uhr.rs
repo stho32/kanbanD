@@ -4,7 +4,52 @@
 //! gilt als Ortszeit. Gerechnet wird über den Moment in UTC, nie über den Text.
 
 use crate::format::aufgabe::ZEITFORMAT;
-use chrono::{DateTime, Duration, FixedOffset, Local, LocalResult, NaiveDateTime, Offset, TimeZone, Timelike, Utc};
+use chrono::{DateTime, Duration, FixedOffset, Local, LocalResult, NaiveDate, NaiveDateTime, Offset, TimeZone, Timelike, Utc};
+use std::sync::Mutex;
+
+/// Die Uhr, deren Zeit das Protokoll liest (ADR-0001 N1.2 Regel 2): im Betrieb die Ortszeit, im Test eine feste.
+/// Logik bekommt die Zeit als Eingabe, statt selbst auf die Uhr zu sehen (`testbarer-entwurf.md`).
+pub trait Uhr: Send + Sync {
+    /// Der jetzige Moment mit seinem Versatz — der Zeitstempel einer Protokollzeile.
+    fn jetzt(&self) -> DateTime<FixedOffset>;
+    /// Das Ortsdatum dieses Moments — dafür, wann rotiert und was aufbewahrt wird.
+    fn heute(&self) -> NaiveDate {
+        self.jetzt().date_naive()
+    }
+}
+
+/// Die Ortszeit des Rechners (Betrieb).
+pub struct Ortsuhr;
+
+impl Uhr for Ortsuhr {
+    fn jetzt(&self) -> DateTime<FixedOffset> {
+        Local::now().fixed_offset()
+    }
+}
+
+/// Eine Uhr, die sich stellen lässt (Test, N1.7 Regel 5) — kein Warten auf die Wanduhr.
+pub struct FesteUhr(Mutex<DateTime<FixedOffset>>);
+
+impl FesteUhr {
+    pub fn neu(zeitpunkt: DateTime<FixedOffset>) -> FesteUhr {
+        FesteUhr(Mutex::new(zeitpunkt))
+    }
+
+    /// `2026-11-23T14:19:05.123+01:00` — volle Genauigkeit samt Millisekunden, wie ein Protokollzeitstempel.
+    pub fn aus_rfc3339(text: &str) -> FesteUhr {
+        FesteUhr::neu(DateTime::parse_from_rfc3339(text).expect("fester Testzeitpunkt"))
+    }
+
+    pub fn stellen(&self, zeitpunkt: DateTime<FixedOffset>) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = zeitpunkt;
+    }
+}
+
+impl Uhr for FesteUhr {
+    fn jetzt(&self) -> DateTime<FixedOffset> {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
 
 /// Ein Zeitpunkt, wie er in einer Datei steht: Wanduhr und — wenn angegeben — ihr Versatz zu UTC.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

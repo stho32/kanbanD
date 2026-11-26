@@ -8,6 +8,7 @@ pub mod format;
 pub mod git;
 pub mod modell;
 pub mod nachricht;
+pub mod protokoll;
 pub mod start;
 pub mod uhr;
 pub mod verlauf;

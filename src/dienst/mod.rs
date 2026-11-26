@@ -79,6 +79,8 @@ pub struct Kanban {
     ordner: Ordner,
     sperre: Mutex<()>,
     eigene: Eigene,
+    /// das Protokoll dieser Instanz (ADR-0001 N1.7 Regel 1)
+    protokoll: crate::protokoll::Protokoll,
     /// Startsekunde je laufendem Timer (Aufgabe, Kürzel) — die Datei kennt nur Minuten (R00068)
     timer_beginn: Mutex<HashMap<(u32, String), std::time::Instant>>,
     /// flüchtiger Cache der Zweiglisten je Arbeits-Repository (R00204, ADR-0032 N1.3); nie während eines Git-Prozesses gesperrt
@@ -154,7 +156,12 @@ impl Schritt {
 
 impl Kanban {
     pub fn neu(wurzel: PathBuf) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN, grenze_netto_datei: crate::modell::GRENZE_DATEILISTE_EINZELN, grenze_folge_liste: crate::modell::GRENZE_DATEILISTE,
+        Kanban::neu_mit_protokoll(wurzel, crate::protokoll::Protokoll::stumm())
+    }
+
+    /// Wie [`Kanban::neu`], mit dem Protokoll der Instanz (Betrieb: Datei und stderr; Test: Sammler).
+    pub fn neu_mit_protokoll(wurzel: PathBuf, protokoll: crate::protokoll::Protokoll) -> Kanban {
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), protokoll, timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN, grenze_netto_datei: crate::modell::GRENZE_DATEILISTE_EINZELN, grenze_folge_liste: crate::modell::GRENZE_DATEILISTE,
             #[cfg(test)]
             nach_dem_belegen: Mutex::default(),
             #[cfg(test)]
@@ -168,6 +175,11 @@ impl Kanban {
 
     pub fn ordner(&self) -> &Ordner {
         &self.ordner
+    }
+
+    /// Das Protokoll dieser Instanz (ADR-0001 N1.7 Regel 1).
+    pub fn protokoll(&self) -> &crate::protokoll::Protokoll {
+        &self.protokoll
     }
 
     /// Was kanbanD selbst geschrieben hat — der Wächter unterscheidet so eigene von externen Änderungen.
