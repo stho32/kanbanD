@@ -1249,9 +1249,9 @@ function vKreuz() {
 const achsDatum = (ms, x, y) => { const [tagMonat, jahr] = achsenMarke(ms); return `<text class="achse achse-x" x="${x}" y="${y}" text-anchor="middle"><tspan x="${x}">${tagMonat}</tspan><tspan x="${x}" dy="12">${jahr}</tspan></text>`; };
 const achsAttribut = (l, breite, t0, t1, stetig) => `data-achse="${[l, breite, t0, t1, stetig ? 1 : 0].join(',')}"`;
 const fadenkreuz = (o, u) => `<line class="fadenkreuz" id="fadenkreuz" y1="${o}" y2="${u}" x1="-10" x2="-10"></line>`;
-function vDiagrammFlaeche(svg, extra = '') {
+function vDiagrammFlaeche(svg, extra = '', nach = '') {
   const an = !!S.ui.vollbild;
-  return `<div class="dflaeche${extra}${an ? ' vollbild' : ''}"><button class="btn vollbild-knopf" data-act="vollbild" aria-pressed="${an}" aria-label="${an ? 'Vollbild beenden' : 'Diagramm im Vollbild'}" title="${an ? 'Vollbild beenden (Esc)' : 'Diagramm im Vollbild'}">${an ? '✕ Vollbild beenden' : '⛶ Vollbild'}</button>${svg}<div class="tooltip" id="tooltip" hidden></div></div>`;
+  return `<div class="dflaeche${extra}${an ? ' vollbild' : ''}"><button class="btn vollbild-knopf" data-act="vollbild" aria-pressed="${an}" aria-label="${an ? 'Vollbild beenden' : 'Diagramm im Vollbild'}" title="${an ? 'Vollbild beenden (Esc)' : 'Diagramm im Vollbild'}">${an ? '✕ Vollbild beenden' : '⛶ Vollbild'}</button>${svg}${nach}<div class="tooltip" id="tooltip" hidden></div></div>`;
 }
 
 /* Burndown: eine Serie (offen) in der Akzentfarbe, Umfang als neutrale Bezugslinie. */
@@ -1625,7 +1625,9 @@ function dusBalken(p, x, sy, unten, masse, zugang) {
 }
 /** Die Zeichenfläche: je Periode ein Balkenpaar (Zugang in --kd-agent, Abgang in --kd-accent) auf einer y-Skala bis zum
     höchsten Wert beider, Grundlinie und eine Marke je Periode (auch bei 0), zwei gestrichelte Ø-Linien mit Einheit
-    (Zugang in --kd-agent, Abgang in --kd-warn) mit Halo-Beschriftung, x-Achse je Auflösung. */
+    (Zugang in --kd-agent, Abgang in --kd-warn) mit Halo-Beschriftung, x-Achse je Auflösung. Seit R00254 steht die Zahl
+    jeder Periode mittig über ihrem Balken (auch 0, an der Grundlinie); passen nicht alle Zahlen, entfällt keine einzelne,
+    sondern alle, und unter der Fläche erklärt ein Satz warum. */
 function vDurchsatzFlaeche(d, einheit, zielWorte, zugang) {
   const t = d.perioden;
   let max = Math.max(1, ...t.map(x => x.anzahl));
@@ -1647,6 +1649,20 @@ function vDurchsatzFlaeche(d, einheit, zielWorte, zugang) {
   S.diagrammTip = tg => { const p = t.find(x => tg >= x.von && tg < x.bis); return p ? dusTip(p, einheit, zielWorte, zugang) : ''; };
   const rate = (wert, klasse, wort) => `<line class="rate${klasse}" x1="${DUS_L}" x2="${DUS_L + breite}" y1="${sy(wert)}" y2="${sy(wert)}"></line><text class="ratetext${klasse}" x="${DUS_L + breite + 8}" y="${sy(wert) + 4}">${wort} ${zahl1(wert)} ${dusWort(einheit)}</text>`;
   const raten = (zugang ? rate(d.zugangDurchschnitt, ' zugang', 'Ø Zugang') : '') + rate(d.durchschnitt, '', 'Ø Abgang');
+  /* Zahlen an den Balken (R00254): mittig über jedem Balken, 4 Einheiten über seiner Oberkante, die 0 an der Grundlinie;
+     die breiteste Zahl entscheidet für alle. Bei Wegfall steht der Satz unter der Fläche. */
+  const werte = t.flatMap(p => zugang ? [p.zugang, p.anzahl] : [p.anzahl]);
+  const ziffern = Math.max(1, ...werte.map(w => String(w).length));
+  const zahlbar = zahlenPassen(t.length, zugang ? 2 : 1, breite, ziffern);
+  const zahl = (wert, x, oben) => `<text class="zahl" x="${x.toFixed(1)}" y="${(oben - 4).toFixed(1)}" text-anchor="middle">${wert}</text>`;
+  /* Die Oberkante ist die gezeichnete Kante: der hohle Zugangsbalken ist um 1 eingerückt, bei 0 die Grundlinie. */
+  const oben = (wert, mitZugang) => wert === 0 ? unten : sy(wert) + (mitZugang && !masse.zugangVoll ? 1 : 0);
+  const zahlen = zahlbar ? t.map((p, i) => {
+    const mitte = xs(i);
+    const zugangsZahl = zugang ? zahl(p.zugang, mitte - masse.paar / 2 + masse.breite / 2, oben(p.zugang, true)) : '';
+    return zugangsZahl + zahl(p.anzahl, mitte + masse.luecke / 2 + masse.breite / 2, oben(p.anzahl, false));
+  }).join('') : '';
+  const satz = zahlbar ? '' : '<p class="dus-satz">Zu viele Perioden für Zahlen an den Balken — gröbere Auflösung wählen oder die Tabellenansicht öffnen.</p>';
   /* Die Marken sitzen in der Mitte ihres Zeitraums, die Achse übersetzt eine Position linear in einen Tag und rundet auf
      den nächsten (`tagAnPosition`, + 12 h). Damit der Zeiger über der Marke den Zeitraum der Marke trifft, beginnt die
      Achse einen halben Tag vor dem ersten Zeitraum — dann liegt der halbe Tag der Rundung genau in der Zeitraummitte. */
@@ -1656,10 +1672,11 @@ ${ticks.map(v => `<line class="gitter" x1="${DUS_L}" x2="${DUS_L + breite}" y1="
 ${t.map((x, i) => dusBalken(x, xs(i), sy, unten, masse, zugang)).join('')}
 ${marken.map(i => `<line class="marke" x1="${xs(i).toFixed(1)}" x2="${xs(i).toFixed(1)}" y1="${unten}" y2="${unten + 5}"></line>`).join('')}
 ${raten}
+${zahlen}
 ${marken.map(achse).join('')}
 ${fadenkreuz(DUS_O, unten)}
 </svg>`;
-  return vDiagrammFlaeche(svg);
+  return vDiagrammFlaeche(svg, '', satz);
 }
 /** Die textliche Entsprechung (M5): je Periode eine Zeile mit Zugang, Abgang und Netto (R00254: Abgang − Zugang, mit
     Vorzeichen, „0“ ohne Vorzeichen), „Summe“ als th scope=row, im tastaturerreichbaren .bericht-rahmen; ohne gezeigten
