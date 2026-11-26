@@ -197,38 +197,25 @@ impl Ordner {
     /// trägt die Nummer nur in `id`), und eine defekte nummerierte Datei bleibt auffindbar (R00123/B0573).
     /// Der Normalfall liest nur die Dateinamen des Ordners und eine Datei — nicht alle 5000 Aufgaben je Aufruf (#131).
     pub fn aufgabenpfad(&self, nummer: u32) -> Result<String, Fehler> {
-        let nummeriert: Vec<String> = self
-            .markdown_dateien(aufgabe::ORDNER)?
-            .into_iter()
-            .filter(|(stamm, _)| aufgabe::nummer_aus_dateiname(stamm) == Some(nummer))
-            .map(|(_, rel)| rel)
-            .collect();
-        for pfad in &nummeriert {
-            let text = self.lies(pfad)?.unwrap_or_default();
-            if aufgabe::lesen(pfad.rsplit('/').next().unwrap_or_default(), &text).is_ok() {
-                return Ok(pfad.clone());
-            }
-        }
-        if let Some(erster) = nummeriert.first() {
-            return Ok(erster.clone());
-        }
-        let (gut, defekt) = self.aufgaben()?;
-        if let Some(a) = gut.iter().find(|a| a.nummer == nummer) {
-            return Ok(format!("{}/{}", aufgabe::ORDNER, a.datei));
-        }
-        defekt
-            .iter()
-            .find(|d| d.pfad.rsplit('/').next().and_then(aufgabe::nummer_aus_dateiname) == Some(nummer))
-            .map(|d| d.pfad.clone())
-            .ok_or_else(|| Fehler::NichtGefunden(format!("Aufgabe #{nummer} gibt es nicht")))
+        self.verzeichnis()?.aufgabenpfad(nummer)
     }
 
     /// Die Aufgabe zur Nummer; eine defekte Datei ist nur lesbar.
     pub fn aufgabe(&self, nummer: u32) -> Result<Aufgabe, Fehler> {
-        let pfad = self.aufgabenpfad(nummer)?;
-        let text = self.lies(&pfad)?.unwrap_or_default();
-        let datei = pfad.rsplit('/').next().unwrap_or_default().to_string();
-        aufgabe::lesen(&datei, &text).map(ohne_abgelaufene).map_err(|e| Fehler::Defekt(format!("{pfad}: {e} — nur lesbar, bis die Datei repariert ist")))
+        self.verzeichnis()?.aufgabe(nummer)
+    }
+
+    /// Die Momentaufnahme der Dateinamen von `aufgaben/` (ADR-0044 E1): **ein** Listing, daraus die Pfadregel
+    /// R00123/B0573 für beliebig viele Nummern. Ein Einzelweg baut sie für seine eine Nummer; ein Sammelweg baut sie
+    /// einmal nach `gesperrt()` und fragt in der Schleife nur sie.
+    pub fn verzeichnis(&self) -> Result<Aufgabenverzeichnis<'_>, Fehler> {
+        let mut nummeriert: std::collections::HashMap<u32, Vec<String>> = std::collections::HashMap::new();
+        for (stamm, rel) in self.markdown_dateien(aufgabe::ORDNER)? {
+            if let Some(nr) = aufgabe::nummer_aus_dateiname(&stamm) {
+                nummeriert.entry(nr).or_default().push(rel);
+            }
+        }
+        Ok(Aufgabenverzeichnis { ordner: self, nummeriert, inhalt: None })
     }
 
     /// Höchste Nummer unter allen Dateinamen in `aufgaben/` plus 1 — auch defekte Dateien zählen.
@@ -273,6 +260,73 @@ impl Ordner {
         liste.sort();
         Ok(liste)
     }
+}
+
+/// Die Momentaufnahme der Dateinamen von `aufgaben/` (ADR-0044 E1, Option B): **ein** Listing, daraus die Pfadregel
+/// R00123/B0573 für beliebig viele Nummern. Sie trägt dieselbe Regel wie der Einzelweg — es gibt eine Implementierung,
+/// nicht zwei — und lebt nur im Sperrbereich eines Sammelwegs (oder für einen einzelnen Aufruf): ein lokaler Wert,
+/// **nie** ein Feld in `Kanban` und nie über die Anfrage hinaus gehalten. Der Rückfall auf den Inhalt (`aufgaben()`)
+/// läuft höchstens einmal je Momentaufnahme und erst, wenn keine nummerierte Datei die Nummer trägt.
+pub struct Aufgabenverzeichnis<'o> {
+    ordner: &'o Ordner,
+    /// Nummer → nummerierte Pfade in Namensreihenfolge (aus dem einen Listing)
+    nummeriert: std::collections::HashMap<u32, Vec<String>>,
+    /// Der Rückfall auf den Inhalt, beim ersten Bedarf gelesen
+    inhalt: Option<(Vec<Aufgabe>, Vec<DefekteDatei>)>,
+}
+
+impl Aufgabenverzeichnis<'_> {
+    /// Pfad der Aufgabendatei zur Nummer: die erste nach Dateinamen sortierte nummerierte Datei, die sich lesen lässt;
+    /// sonst die erste nummerierte (auch eine defekte, dann 423); sonst entscheidet der Inhalt (`id` in einer von Hand
+    /// benannten Datei); sonst 404.
+    pub fn aufgabenpfad(&mut self, nummer: u32) -> Result<String, Fehler> {
+        Ok(self.pfad_und_text(nummer)?.0)
+    }
+
+    /// Die Aufgabe zur Nummer; eine defekte Datei ist nur lesbar. Der Text wird **einmal** gelesen: `pfad_und_text`
+    /// gibt ihn mit dem Pfad zurück, `aufgabe` deutet ihn — zwei Lesevorgänge wie früher werden einer.
+    pub fn aufgabe(&mut self, nummer: u32) -> Result<Aufgabe, Fehler> {
+        let (pfad, text) = self.pfad_und_text(nummer)?;
+        let datei = dateiname(&pfad).to_string();
+        aufgabe::lesen(&datei, &text).map(ohne_abgelaufene).map_err(|e| Fehler::Defekt(format!("{pfad}: {e} — nur lesbar, bis die Datei repariert ist")))
+    }
+
+    /// Pfad **und** Text der Datei zur Nummer; der Text der gefundenen Datei kommt ohne zweiten Zugriff mit.
+    fn pfad_und_text(&mut self, nummer: u32) -> Result<(String, String), Fehler> {
+        let ordner = self.ordner;
+        if let Some(pfade) = self.nummeriert.get(&nummer) {
+            let mut erste: Option<(String, String)> = None;
+            for pfad in pfade {
+                let text = ordner.lies(pfad)?.unwrap_or_default();
+                if aufgabe::lesen(dateiname(pfad), &text).is_ok() {
+                    return Ok((pfad.clone(), text));
+                }
+                if erste.is_none() {
+                    erste = Some((pfad.clone(), text));
+                }
+            }
+            // Keine nummerierte Datei ist lesbar: die erste bleibt auffindbar (R00123/B0573).
+            return Ok(erste.expect("mindestens ein nummerierter Pfad"));
+        }
+        if self.inhalt.is_none() {
+            self.inhalt = Some(ordner.aufgaben()?);
+        }
+        let (gut, defekt) = self.inhalt.as_ref().expect("eben gelesen");
+        let pfad = if let Some(a) = gut.iter().find(|a| a.nummer == nummer) {
+            format!("{}/{}", aufgabe::ORDNER, a.datei)
+        } else if let Some(d) = defekt.iter().find(|d| aufgabe::nummer_aus_dateiname(dateiname(&d.pfad)) == Some(nummer)) {
+            d.pfad.clone()
+        } else {
+            return Err(Fehler::NichtGefunden(format!("Aufgabe #{nummer} gibt es nicht")));
+        };
+        let text = ordner.lies(&pfad)?.unwrap_or_default();
+        Ok((pfad, text))
+    }
+}
+
+/// Der Dateiname eines relativen Pfades.
+fn dateiname(pfad: &str) -> &str {
+    pfad.rsplit('/').next().unwrap_or_default()
 }
 
 /// Meldung zu einem Board-Namen außerhalb der Form; Steuerzeichen (NUL) kommen nie roh in die Antwort.
@@ -423,6 +477,36 @@ mod tests {
         assert_eq!(o.aufgabenpfad(8).unwrap(), "aufgaben/0008-kaputt.md", "die defekte Datei bleibt über den Dateinamen auffindbar");
         assert_eq!(o.aufgabenpfad(9).unwrap(), "aufgaben/von-hand.md", "der Inhalt entscheidet, wenn kein Dateiname die Nummer trägt");
         assert!(matches!(o.aufgabenpfad(99), Err(Fehler::NichtGefunden(_))));
+    }
+
+    // R00257 AK 1 (ADR-0044 E1, Option B): die Momentaufnahme listet `aufgaben/` einmal und fällt höchstens einmal
+    // auf den Inhalt zurück — zwei von Hand benannte Dateien kosten zwei Listings, nicht drei. Die Pfadregel bleibt
+    // dieselbe wie am Einzelweg (R00123/B0573).
+    #[test]
+    fn verzeichnis_listet_einmal_und_faellt_hoechstens_einmal_zurueck() {
+        let (tmp, o) = ordner_mit_fabrik();
+        std::fs::create_dir_all(tmp.path().join("aufgaben")).unwrap();
+        std::fs::write(tmp.path().join("aufgaben/0007-sieben.md"), "---\nid: 7\ntitle: sieben\n---\n").unwrap();
+        std::fs::write(tmp.path().join("aufgaben/von-hand.md"), "---\nid: 9\ntitle: neun\n---\n").unwrap();
+        std::fs::write(tmp.path().join("aufgaben/noch-eine.md"), "---\nid: 11\ntitle: elf\n---\n").unwrap();
+        super::zaehler::zuruecksetzen();
+        let mut v = o.verzeichnis().unwrap();
+        assert_eq!(v.aufgabenpfad(7).unwrap(), "aufgaben/0007-sieben.md");
+        assert_eq!(v.aufgabenpfad(9).unwrap(), "aufgaben/von-hand.md");
+        assert_eq!(v.aufgabenpfad(11).unwrap(), "aufgaben/noch-eine.md");
+        assert!(matches!(v.aufgabenpfad(99), Err(Fehler::NichtGefunden(_))));
+        assert_eq!(super::zaehler::listings(), 2, "ein Listing der Momentaufnahme und höchstens eines für den Inhalt");
+    }
+
+    // R00257 AK 1: `aufgabe` liest die gefundene Datei einmal — Pfadprüfung und Lesen in einem Zugriff, nicht zwei.
+    #[test]
+    fn aufgabe_liest_die_gefundene_datei_einmal() {
+        let (tmp, o) = ordner_mit_fabrik();
+        std::fs::create_dir_all(tmp.path().join("aufgaben")).unwrap();
+        std::fs::write(tmp.path().join("aufgaben/0007-sieben.md"), "---\nid: 7\ntitle: sieben\n---\n").unwrap();
+        super::zaehler::zuruecksetzen();
+        assert_eq!(o.aufgabe(7).unwrap().titel, "sieben");
+        assert_eq!((super::zaehler::listings(), super::zaehler::einzeldateien()), (1, 1), "ein Listing und eine Einzeldateilesung");
     }
 
     #[test]
