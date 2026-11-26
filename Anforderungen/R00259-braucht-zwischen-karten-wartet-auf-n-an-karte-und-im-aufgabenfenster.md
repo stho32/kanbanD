@@ -8,9 +8,9 @@ datum: 2026-11-26
 
 ## Beschreibung
 
-Karte #235, Scheibe **S2 Oberfläche** von [ADR-0035](../Dokumentation/ADRs/0035-braucht-zwischen-karten-als-label.md) (Punkt 7 und Nachtrag N1, Punkte 1–8; Abnahme-Probe S2). S1 ([R00214](R00214-braucht-zwischen-karten-deutung-pruefung-an-der-tuer-und-lesefeld-in-der-api.md)) liefert je Aufgabe `braucht: [{nummer, titel, erledigt}]`; diese Anforderung zeigt es. Entscheidungen des PO (`AI-Team/po-entscheidungen.md` Z. 706–708): die Karte zeigt eine fehlende Abhängigkeit als denselben Chip mit Sanduhr, Tooltip „#n fehlt“, zugänglicher Name „wartet auf #n, fehlt“, Warnfarbe nur im Fenster; offene „wartet auf“ stehen auch an Karten der letzten Spalte.
+Karte #235, Scheibe **S2 Oberfläche** von [ADR-0035](../Dokumentation/ADRs/0035-braucht-zwischen-karten-als-label.md) (Punkt 7 und Nachtrag N1, Punkte 1–8; Abnahme-Probe S2). S1 ([R00214](R00214-braucht-zwischen-karten-deutung-pruefung-an-der-tuer-und-lesefeld-in-der-api.md)) liefert je Aufgabe `braucht: [{nummer, titel, erledigt}]`; diese Anforderung zeigt es. Entscheidungen des PO (`AI-Team/po-entscheidungen.md` Z. 706–708, 724–733): die Karte zeigt eine fehlende Abhängigkeit als denselben Chip mit Sanduhr, Tooltip „#n fehlt“, zugänglicher Name „wartet auf #n, fehlt“, Warnfarbe nur im Fenster; offene „wartet auf“ stehen auch an Karten der letzten Spalte.
 
-Die Gestaltung zeichnet der gestalter: [D0002](../Dokumentation/Wireframes/D0002.dc.html) (Chip mit Sanduhr; zwei Chips bei 320 px) und [D0003](../Dokumentation/Wireframes/D0003.dc.html) (drei Zustände, ×, Fehlertext bei 400, Herkunfts-Chip als `span.org`); der product-owner gibt frei. Die Kriterien nennen diese **Zustände**, nicht Pixel; sie gelten auch, solange die Artboards noch nicht gezeichnet sind.
+Die Gestaltung zeichnet der gestalter: [D0002](../Dokumentation/Wireframes/D0002.dc.html) (Chip mit Sanduhr; zwei Chips bei 320 px) und [D0003](../Dokumentation/Wireframes/D0003.dc.html) (drei Zustände, ×, Fehlertext bei 400, Herkunfts-Chip als `span.org`); der product-owner hat am 2026-11-26 freigegeben (Z. 732). Die Kriterien nennen diese **Zustände**, nicht Pixel; sie gelten auch, solange die Artboards noch nicht gezeichnet sind.
 
 Zahlt ein auf: [Vision](R00000-vision.md) — „Die Aufgaben sind der Stand“, „`Braucht`-Beziehungen bleiben echte Abhängigkeiten zwischen Karten“ (Vision Z. 106–107).
 
@@ -36,13 +36,13 @@ Seit R00214 kann ein Agent per API fragen, worauf eine Karte wartet; ein Mensch 
 - Der zugängliche Name der Karte nennt „wartet auf #n“, bei fehlender Datei „wartet auf #n, fehlt“.
 - Die Karte zeigt ihre offenen Abhängigkeiten in jeder Spalte, auch in der letzten.
 - Der Chip ist kein eigenes Bedienelement der Karte; der Klick öffnet die Karte selbst.
-- Bei 320 px bleiben zwei Chips sichtbar (Umbruch), ohne Querscrollen.
+- Bei 320 px bleiben zwei Chips sichtbar (bei Bedarf Umbruch), ohne Querscrollen; auch sechs offene Abhängigkeiten liegen bei 320 px ganz im Bild, ohne Querscrollen.
 
 **Aufgabenfenster** (Reiter „Details“ und schmale Spalte im Inhalt)
 - Drei Zustände: offen „wartet auf #n Titel“; erledigt „#n erledigt“ (gedämpft); fehlt „#n fehlt“ (Warnung). Der Zustand steht im Wortlaut, nicht nur in der Farbe.
 - Klick auf „wartet auf“ oder „erledigt“ öffnet die gebrauchte Karte über `…/aufgabe/<n>`, auch auf einem anderen Board oder archiviert; „#n fehlt“ ist nicht klickbar.
 - Das Label-Feld zeigt nur die übrigen Labels; die Abhängigkeiten stehen als Chips in derselben Zeile davor. Speichern schickt die gedeuteten Labels der gespeicherten Liste wörtlich und in ihrer Reihenfolge mit, danach die Einträge des Felds.
-- **×** an einer Abhängigkeit entfernt **jedes** Label, das auf diese Nummer deutet (auch `BRAUCHT:12` neben `braucht:12`), per `PATCH labels`; Hinweis mit Rückgängig. Rückgängig fügt das Label neu hinzu und geht durch die Tür von R00214 (ist die Karte inzwischen gelöscht, zeigt der Hinweis die 400).
+- **×** an einer Abhängigkeit entfernt **jedes** Label, das auf diese Nummer deutet (auch `BRAUCHT:12` neben `braucht:12`), per `PATCH labels`; Hinweis „Abhängigkeit #n entfernt“ mit „rückgängig“. „rückgängig“ fügt das Label neu hinzu und geht durch die Tür von R00214 (ist die Karte inzwischen gelöscht, zeigt der Hinweis den Wortlaut des Servers, „Aufgabe #n gibt es nicht (braucht:n)“).
 - **400 am Label-Feld** (jede, nicht nur `braucht:`): die Eingabe bleibt im Feld stehen, das Feld trägt `aria-invalid="true"` und verweist mit `aria-describedby` auf die Fenstermeldung mit dem Wortlaut des Servers; nichts wird geschrieben.
 
 **Aktualität**
@@ -64,7 +64,7 @@ Seit R00214 kann ein Agent per API fragen, worauf eine Karte wartet; ein Mensch 
 - [ ] **AK 2** Gegeben die Ausgangslage und das Fenster #2 offen. Wenn ein anderer Agent #1 per API nach „Fertig“ zieht, dann tragen #2 und #3 binnen 1 s und ohne Neuladen keinen Chip „wartet auf“, und das Fenster #2 zeigt „#1 erledigt“ (gedämpft). Zurück nach „Offen“: beide Chips sind wieder da. (Rechenbeispiel: erledigt = archiviert ODER letzte Spalte.)
 - [ ] **AK 3** Gegeben #5, von Hand mit `braucht:999` committet (keine Datei 999). Wenn das Board gezeigt wird, dann trägt #5 einen Chip „wartet auf #999“ mit Sanduhr und dem Tooltip „#999 fehlt“, ohne Warnfarbe; sein zugänglicher Name lautet „… wartet auf #999, fehlt“.
 - [ ] **AK 4** Gegeben #6 „Fertig-Karte“ in „Fertig“ mit `braucht:1` (#1 in Offen). Wenn das Board gezeigt wird, dann trägt #6 den Chip „wartet auf #1“ und ihr zugänglicher Name nennt ihn; ist #1 erledigt, trägt #6 keinen.
-- [ ] **AK 5** Gegeben #3 mit `braucht:1` und `braucht:7` (#7 in Offen, beide offen) bei 320 px Breite. Wenn das Board gezeigt wird, dann sind beide Chips sichtbar (Umbruch), und das Board scrollt nicht quer.
+- [ ] **AK 5** Gegeben #3 mit `braucht:1` und `braucht:7` (#7 in Offen, beide offen) bei 320 px Breite. Wenn das Board gezeigt wird, dann sind beide Chips sichtbar (bei Bedarf Umbruch), und das Board scrollt nicht quer. **Variante:** sechs offene Abhängigkeiten bei 320 px — alle sechs Chips ganz im Bild (jedes Chip-Rechteck innerhalb der Karte), kein Querscrollen.
 
 ### Aufgabenfenster
 
@@ -74,8 +74,8 @@ Seit R00214 kann ein Agent per API fragen, worauf eine Karte wartet; ein Mensch 
 ### Label-Feld und ×
 
 - [ ] **AK 8** Gegeben das Fenster #2. Wenn das Label-Feld gezeigt wird, dann steht darin „ui“, nicht „braucht:1“. Gibt die Person „ui, prio“ ein und speichert, dann trägt die Datei `braucht:1`, `ui`, `prio` in dieser Folge (ein Commit) und der Chip „wartet auf #1“ bleibt.
-- [ ] **AK 9** Gegeben das Fenster #2. Wenn × an „wartet auf #1“ gedrückt wird, dann trägt die Datei kein `braucht:1` mehr, `ui` bleibt, genau ein Commit entsteht, die Karte trägt keinen Chip; Rückgängig stellt das Label wieder her. Gegeben #2 von Hand mit `[braucht:1, BRAUCHT:1]`: ein × entfernt beide. Gegeben #1 inzwischen gelöscht: Rückgängig zeigt im Hinweis „Aufgabe #1 gibt es nicht (braucht:1)“ und schreibt nichts.
-- [ ] **AK 10** Gegeben das Fenster #5. Wenn die Person `braucht:999` ins Label-Feld schreibt und speichert, dann zeigt die Fenstermeldung „Aufgabe #999 gibt es nicht (braucht:999)“, das Feld behält „braucht:999“, trägt `aria-invalid="true"` und `aria-describedby` auf die Meldung; die Datei ist bytegleich, kein Commit. Ebenso `braucht:5` → „#5 kann nicht auf sich selbst warten“; ebenso eine 400 ohne `braucht` (z. B. ein Label über der Längengrenze) → Eingabe bleibt, Meldung im Wortlaut des Servers. Nach erfolgreichem Speichern ist das Feld nicht mehr ungültig.
+- [ ] **AK 9** Gegeben das Fenster #2. Wenn × an „wartet auf #1“ gedrückt wird, dann trägt die Datei kein `braucht:1` mehr, `ui` bleibt, genau ein Commit entsteht, die Karte trägt keinen Chip; der Hinweis lautet „Abhängigkeit #1 entfernt“ mit „rückgängig“ (Nummer wie am Chip „#n“, nicht `braucht:1`), und „rückgängig“ stellt das Label wieder her. Gegeben #2 von Hand mit `[braucht:1, BRAUCHT:1]`: ein × entfernt beide. Gegeben #1 inzwischen gelöscht: „rückgängig“ zeigt im Hinweis den Wortlaut des Servers „Aufgabe #1 gibt es nicht (braucht:1)“ und schreibt nichts.
+- [ ] **AK 10** Gegeben das Fenster #5 aus der Ausgangslage (ohne Labels) — nicht die von Hand mit `braucht:999` aus AK 3. Wenn die Person `braucht:999` ins Label-Feld schreibt und speichert, dann zeigt die Fenstermeldung „Aufgabe #999 gibt es nicht (braucht:999)“, das Feld behält „braucht:999“, trägt `aria-invalid="true"` und `aria-describedby` auf die Meldung; die Datei ist bytegleich, kein Commit. Ebenso `braucht:5` → „#5 kann nicht auf sich selbst warten“; ebenso eine 400 ohne `braucht` (z. B. ein Label über der Längengrenze) → Eingabe bleibt, Meldung im Wortlaut des Servers. Nach erfolgreichem Speichern ist das Feld nicht mehr ungültig.
 
 ### Deutung und Aufbau
 
@@ -98,7 +98,7 @@ Seit R00214 kann ein Agent per API fragen, worauf eine Karte wartet; ein Mensch 
 
 ### Ablauf (Vorplanung — welche Bubbles es am Ende werden, entscheidet der entwickler)
 
-Siehe WBS I0249 (B1382–B1392). Interactor-Regel: Die Deutung ist eine reine Funktion; DOM-Zeichnen und Ereignisse sind dünne Adapter. Ebene je Kriterium: Unit AK 11 (und `kartenName` zu AK 1/3/4); Integration entfällt (keine API-Änderung); E2E AK 1–10, 12 (Darstellung, Live, Tastatur, Aria sind Browser-Eigenes, kein Hot Path außer AK 2).
+Siehe WBS I0249 (B1382–B1393). Interactor-Regel: Die Deutung ist eine reine Funktion; DOM-Zeichnen und Ereignisse sind dünne Adapter. Ebene je Kriterium: Unit AK 11 (und `kartenName` zu AK 1/3/4); Integration entfällt (keine API-Änderung); E2E AK 1–10, 12 (Darstellung, Live, Tastatur, Aria sind Browser-Eigenes, kein Hot Path außer AK 2).
 
 ### Hinweise
 
@@ -112,13 +112,13 @@ Siehe WBS I0249 (B1382–B1392). Interactor-Regel: Die Deutung ist eine reine Fu
 
 ## Abhängigkeiten
 
-- **Abhängig von:** [R00214](R00214-braucht-zwischen-karten-deutung-pruefung-an-der-tuer-und-lesefeld-in-der-api.md) (S1, erledigt: Lesefeld und Tür); Artboards D0002/D0003 (gestalter, Freigabe product-owner) für AK 14 — der Bau der Funktion beginnt ohne sie.
+- **Abhängig von:** [R00214](R00214-braucht-zwischen-karten-deutung-pruefung-an-der-tuer-und-lesefeld-in-der-api.md) (S1, erledigt: Lesefeld und Tür); Artboards D0002/D0003 (gestalter) für AK 14 — der product-owner hat am 2026-11-26 freigegeben (D0002 frei; D0003 frei mit Änderung, Nachzeichnung durch den gestalter ohne erneute Vorlage, `AI-Team/po-entscheidungen.md` Z. 732); der Bau der Funktion beginnt ohne sie.
 - **Blockiert:** nichts.
 
 ## Offene Fragen
 
-- **Frage an den PO 1** (Empfehlung: ja): Zeigt die Karte „wartet auf“ auch dann, wenn die Abhängigkeit auf einem anderen Board liegt? Ja — die Aussage hängt am Stand der Karte, nicht am Board (R00214: erledigt auf irgendeinem Board in der letzten Spalte).
-- **Frage an den PO 2** (Empfehlung: nur ein Chip je Nummer, beliebig viele Chips ohne Obergrenze, die Zeile bricht um): Wie viele Chips zeigt eine Karte mit sehr vielen Abhängigkeiten (etwa 10)? Eine Kürzung („+3“) wäre ein stiller Verlust (Projektschicht „Lesart mit stillem Verlust“).
+- **Frage an den PO 1 — entschieden** (2026-11-26, `AI-Team/po-entscheidungen.md` Z. 724, Lauf 235-product-owner-2): **Ja.** Die Karte zeigt „wartet auf #n“ auch, wenn die gebrauchte Karte auf einem anderen Board liegt; Chip und Tooltip hängen nur an `braucht` der geladenen Aufgabe (`erledigt` rechnet der Server über alle Boards), das Fenster öffnet sie über `…/aufgabe/<n>` (ADR-0035 N1.8).
+- **Frage an den PO 2 — entschieden** (2026-11-26, `AI-Team/po-entscheidungen.md` Z. 725): **Alle offenen Chips, ein Chip je Nummer, ohne Obergrenze; die Zeile bricht um, keine Kürzung „+3“.** Die Umbruch-Variante mit sechs Chips bei 320 px steht in AK 5; der Hinweis-Wortlaut in AK 9 (Z. 726), die Klarstellung zu AK 10 (Z. 728) und die Gestaltfreigabe (Z. 732).
 
 ## Manuelle Vorbereitungstätigkeiten
 
@@ -142,3 +142,4 @@ Auslöser ist #226/#228: Abhängigkeiten stehen als stumme Label-Chips an den Ka
 - Abnahme-Probe wörtlich aus ADR-0035 N1 (Punkte 1–10), ergänzt um die zwei Punkte des PO (Z. 706–708: „#n fehlt“ an der Karte, offene „wartet auf“ in der letzten Spalte → AK 3, 4).
 - Entschieden ohne Rückfrage (Empfehlung, Lauf 235-planer-1): AK 10 gilt für jede 400 des Label-Felds (ADR N1.7); „erledigt“ ist an der Karte unsichtbar, im Fenster gedämpft; fehlende Datei zählt als offen (R00214 AK 6).
 - Verworfen (ADR-0035 N1, Varianten zu 5): Feld zeigt weiter alle Labels; Chips ersetzen das Feld.
+- Nachgezogen nach den Entscheidungen des PO vom 2026-11-26 (`AI-Team/po-entscheidungen.md` Z. 724–733, Lauf 235-planer-2): AK 5 „bei Bedarf Umbruch“ mit der Variante sechs Chips bei 320 px (Z. 725, 729); AK 9 Hinweis „Abhängigkeit #n entfernt“ mit „rückgängig“ (Z. 726); AK 10 „#5 aus der Ausgangslage“ (Z. 728); die beiden offenen Fragen sind entschieden (Z. 724, 725).
