@@ -195,6 +195,14 @@ async fn ak05_fall_10001_nur_genaue_umbenennungen() {
     // der Hinweis steht auch bei datei=, an erster Stelle
     assert_eq!(s["hinweise"][0], json!({"art": "umbenennung_eingeschraenkt", "dateien": 10_001, "schwelle": 10_000}), "{}", s["hinweise"]);
     assert_eq!(r["hinweise"][0], json!({"art": "umbenennung_eingeschraenkt", "dateien": 10_001, "schwelle": 10_000}), "{}", r["hinweise"]);
+    // die Liste (gekappt, ohne Pfadangabe) trägt dieselben Einträge mit ihren Stücken: D, R und A an ihrem Platz
+    for (name, status) in [("a/r.txt", "D"), ("b/gleich.txt", "R"), ("b/s.txt", "A")] {
+        let e = datei(&d, name);
+        assert_eq!(&e["status"], &json!(status), "{name} in der Liste: {e}");
+    }
+    assert!(datei(&d, "a/r.txt")["patch"].as_str().unwrap_or_default().contains("-5"), "{}", datei(&d, "a/r.txt"));
+    assert!(datei(&d, "b/s.txt")["patch"].as_str().unwrap_or_default().contains("+X"), "{}", datei(&d, "b/s.txt"));
+    assert_eq!(datei(&d, "b/gleich.txt")["aehnlichkeit"], json!(100));
     // b/gleich.txt bleibt R mit 100
     let g = datei_holen(&lauf.adresse, &l.k, "b/gleich.txt").await;
     let f = datei(&g, "b/gleich.txt");
@@ -244,8 +252,11 @@ async fn ak07_ein_urteil_je_commit_in_den_befehlszeilen() {
         assert!(z.contains("-M100%") || ist_zaehllauf(z), "Fall 10.001: {}", kurz(z));
     }
     // ein Gesamt-Diff über den Fall 10.001 startet `diff-tree` nur mit `-M50% -l1000` (der Körper bleibt vollständig)
+    // und trägt den Hinweis nicht (AK 9, PO Z. 701: im Gesamt-Diff kein Satz)
     spur_leeren(&spur);
-    assert_eq!(holen(&lauf.adresse, "", None).await.status, 200);
+    let g = holen(&lauf.adresse, "", None).await;
+    assert_eq!(g.status, 200);
+    assert!(!hat_hinweis(&g.json(), "umbenennung_eingeschraenkt"), "der Gesamt-Diff trägt den Hinweis nicht");
     let dt: Vec<String> = laeufe(&spur).into_iter().filter(|z| z.contains("diff-tree")).collect();
     assert!(!dt.is_empty(), "Gesamt-Diff ohne diff-tree");
     for z in &dt {

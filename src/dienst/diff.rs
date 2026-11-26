@@ -2,7 +2,7 @@
 //! Patch-Lauf mit Bytegrenze, einzeln nachladen; live aus dem Arbeits-Repository, nur lesend, ohne die Sperre.
 
 use crate::git::arbeitsrepo::{self, Arbeitsrepofehler, Diffart, Umbenennungssuche, Vergleich};
-use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, angabe_passt, aus_stuecken, dateiliste, diffdatei, getroffen, im_bezug_zugeordnet, lauf_der_liste, nicht_zugeordnet_im_bezug, patches_zuordnen, roh_lesen, zahlen_im_bezug, zahlen_mit_pfaden};
+use crate::modell::{Diffdatei, GRENZE_DATEILISTE, GRENZE_DATEILISTE_EINZELN, GRENZE_EINZELN, GRENZE_PATCH_LAUF, Fassung, Hinweis, Rohdatei, Verteilung, abschliessen, angabe_passt, aus_stuecken, dateiliste, diffdatei, getroffen, im_bezug_zugeordnet, lauf_der_liste, nicht_zugeordnet_im_bezug, patches_zuordnen, patches_zuordnen_nachsichtig, roh_lesen, zahlen_im_bezug, zahlen_mit_pfaden};
 use std::path::Path;
 use std::time::Instant;
 
@@ -57,6 +57,11 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, umbenennung: Um
         hinweise.push(Hinweis::DateienGekappt { gezeigt: dateien.len(), gesamt });
     }
     let (im_lauf, mit_pfadangabe) = lauf_der_liste(&mut dateien, gesamt);
+    // Über der Schwelle (`NurGleiche`) gibt es keine unscharfen Umbenennungen nachzubilden (R00253, ADR-0032 N11.3):
+    // die genauen findet der Lauf über den Blob-Hash. Die Pfadangabe brächte dort nur Kosten — der Abschluss nimmt bei
+    // einem Typwechsel Datei → Ordner jede Datei darunter mit (gemessen bei 75.000 Einträgen: 9.892 Pfade, 15,25 s
+    // gegen 2,02 s ohne Angabe) — und ist nach N7.8 ohnehin kein Beleg. Sie bleibt dem vollen Urteil vorbehalten.
+    let mit_pfadangabe = mit_pfadangabe && umbenennung == Umbenennungssuche::Voll;
     hinweise.extend(dateien.iter().filter(|d| d.pfad_zu_lang()).map(|d| Hinweis::ZuGrossZumAnzeigen { datei: d.name().to_string() }));
     if im_lauf.is_empty() {
         return Ok(Diffinhalt { dateien, hinweise });
@@ -79,9 +84,15 @@ fn liste_lesen(wurzel: &Path, vergleich: Vergleich, gesamt: u64, umbenennung: Um
         // getroffener Eintrag hinter dem Schnitt der Liste fehlt im Bezug — wer kein Stück hat, ist `nachladen`, nie 500
         nicht_zugeordnet_im_bezug(&mut dateien, &im_lauf, &bezug, &angabe, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung);
     } else {
-        // ohne Pfadangabe gegen die vollständige Liste: streng, ein fehlendes Stück ist ein Fehler (N7.8)
+        // ohne Pfadangabe gegen die Liste: streng, ein fehlendes Stück ist ein Fehler (N7.8). Ist die Liste gekappt,
+        // teilen Einträge hinter der Kappe Blob und Art mit Einträgen des Laufs — ein übriges Stück gehört zu keinem
+        // von beiden sicher; dann bricht nichts ab (`nachsichtig`, R00253).
         let patch = arbeitsrepo::diff_tree(wurzel, vergleich, Diffart::Patch, umbenennung, &[], GRENZE_PATCH_LAUF, frist)?;
-        patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
+        if (dateien.len() as u64) < gesamt {
+            patches_zuordnen_nachsichtig(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
+        } else {
+            patches_zuordnen(&mut dateien, &im_lauf, &patch.ausgabe, patch.abgeschnitten, Verteilung::Liste, fassung).map_err(Inhaltsfehler::Form)?;
+        }
     }
     Ok(Diffinhalt { dateien, hinweise })
 }

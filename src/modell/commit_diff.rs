@@ -294,6 +294,16 @@ pub fn patches_zuordnen(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8]
     zuordnen(dateien, im_lauf, aus, abgeschnitten, verteilung, fassung, true).map(|_| ())
 }
 
+/// Wie [`patches_zuordnen`], aber nachsichtig (R00253): läuft der Patch-Lauf ohne Pfadangabe gegen eine **gekappte**
+/// Dateiliste, teilen Einträge hinter der Kappe Blob und Art mit Einträgen des Laufs — ein übriges Stück gehört damit zu
+/// keinem von beiden sicher, und die strenge Schlußprüfung („Stück gehört zu einer Datei des Laufs“) kann nicht halten.
+/// Wie im Lauf mit Pfadangabe ([`nicht_zugeordnet_im_bezug`], N7.8) bricht eine Datei ohne alle ihre Stücke nichts ab —
+/// sie ist `nachladen` (Liste) bzw. `gross` (einzeln) —, die übrigen behalten ihren Patch. Ein Stück landet nur auf
+/// einem Eintrag mit demselben Blob-Paar und derselben Art, trägt also nie einen fremden Patch.
+pub fn patches_zuordnen_nachsichtig(dateien: &mut [Diffdatei], im_lauf: &[usize], aus: &[u8], abgeschnitten: bool, verteilung: Verteilung, fassung: Fassung) -> Result<(), String> {
+    zuordnen(dateien, im_lauf, aus, abgeschnitten, verteilung, fassung, false).map(|_| ())
+}
+
 /// Der Kern von [`patches_zuordnen`]. `streng`: wie dort beschrieben. Nicht streng (ein Lauf mit Pfadangabe, ADR-0032
 /// N7.8): eine Datei ohne alle ihre Stücke bricht nichts ab — sie wird wie nach einem Abbruch behandelt (`nachladen` bzw.
 /// `gross`), die übrigen behalten ihren Patch, übrige Stücke sind fremd. Liefert die Stellen (aus `im_lauf`) der Dateien

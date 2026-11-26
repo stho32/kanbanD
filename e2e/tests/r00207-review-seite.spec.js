@@ -743,6 +743,27 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     await expect(page.locator('.rv-gekappt')).toHaveText('2.000 von 2.431 Dateien gezeigt. Die übrigen stehen nicht in dieser Liste; der Commit liegt vollständig im Repository.');
   });
 
+  /* ── R00253 AK 9: die Hinweiszeile „umbenennung_eingeschraenkt“ steht mit Symbol über den Dateien, vor der Kappungszeile ── */
+
+  test('R00253 AK 9: umbenennung_eingeschraenkt steht als Zeile mit Symbol und Satz vor der Kappungszeile', async ({ page }) => {
+    await page.route('**/api/aufgaben/7/diff?**', async route => {
+      const antwort = await route.fetch();
+      const json = await antwort.json();
+      json.hinweise.push({ art: 'umbenennung_eingeschraenkt', dateien: 10001, schwelle: 10000 }, { art: 'dateien_gekappt', gezeigt: 2000, gesamt: 10000 });
+      await route.fulfill({ response: antwort, json });
+    });
+    await merkmaleOeffnen(page);
+    const umb = page.locator('.rv-umb');
+    await expect(umb).toHaveText('Sehr großer Commit (10.001 Dateien): Umbenennungen werden nur erkannt, wenn der Inhalt gleich blieb. Umbenannte und zugleich geänderte Dateien erscheinen als gelöscht und neu.');
+    await expect(umb.locator('svg')).toHaveCount(1, { timeout: 2000 });
+    // vor der Kappungszeile: im DOM und im Bild
+    const lage = await page.evaluate(() => {
+      const a = document.querySelector('.rv-umb'), b = document.querySelector('.rv-gekappt:not(.rv-umb)');
+      return { folgt: Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), oben: a.getBoundingClientRect().top < b.getBoundingClientRect().top };
+    });
+    expect(lage).toEqual({ folgt: true, oben: true });
+  });
+
   test('AK 4: Budget an #8 — vier Dateien offen, die fünfte zu mit „anzeigen“; ihr Aufklappen fragt den Server nicht; Blöcke ≤ 500 mit content-visibility', async ({ page }) => {
     const z = zaehlen(page);
     await page.goto(reviewAdresse(k, 8, `kd:${rep.e}`));
