@@ -1,6 +1,6 @@
 # ADR-0026: E2E-Tests warten auf den Zielzustand statt auf Zeit — fünf Regeln und zwei Hilfen in `e2e/tests/hilfen.js`
 
-**Status**: Vorgeschlagen (Nachträge N1–N4; N4 Regel 11 an eine Probe gebunden)
+**Status**: Vorgeschlagen (Nachträge N1–N5; N4 Regel 11 an eine Probe gebunden; N5 Regel 12 aufgenommen, Karte #280)
 **Datum**: 2026-11-14
 **Entscheider**: Claude (autonom, architekt, Auftrag Betreiber 2026-11-14, Karte #139)
 **Kontext-Anforderung**: — (Sammelkarte #139 „E2E-Wackler: Tests warten auf Zustand statt auf Zeit“, ohne WBS-Knoten)
@@ -249,3 +249,23 @@ Review-Punkt wie oben:
 - **r00223**: Variante mit 1,5 s verzögertem `POST …/fieber/cache` und eine Variante, die in jedem Frame neu zeichnet (wie N3). Beide sind heute rot und nach dem Fix je 10 von 10 Mal grün. Mutante: Aufklappen per Klick und spätere Lesung, die Variante wird rot.
 - **ak03 sowie `:209`/`:213`**: Variante mit künstlich langsamem Leser: Der Client schreibt den vollen Körper und liest erst 300 ms nach dem Schreibfehler. Sie ist heute rot, denn der reqwest-Weg liefert den Fehler statt der Antwort, und nach dem Fix 10 von 10 Mal grün. Mutante: Der Server liest den Körper vor der Prüfung, dann scheitert die Probe an der Lesefrist bzw. an 413 statt 409.
 - **r00148 (entscheidet Regel 11)**: Der Halter steht vor `page.goto`. Mutante: Der Halter wird erst nach dem Laden angelegt. Die Diagnose aus #198 bleibt. Die Regel wird `Akzeptiert`, wenn das Gate in 10 vollen Läufen mit Last kein Rot an r00148:515 zeigt. Bis dahin gilt die Regel als Vorschlag.
+
+## Nachtrag 2026-11-26: Zeitmaße laufen als Lastprobe mit Lastbedingung, nicht im Gate (Karte #280)
+
+**Anlass**: Die Long-Task-Probe von R00249 AK 9 (`longtask` ≤ 150 ms, ADR-0040 Punkt 6, ADR-0042 Q2) war im vollen Gate auf `main` lastabhängig rot — dreimal von drei bei Rechnerlast 2,5–4,8 (160/162 ms; im Worktree #233 187 ms), während derselbe Stand ruhig (Last ~1,5) beim Scrollen 109–118 ms maß (R00256, #278). `longtask` misst die **Wanduhr-Zeit** des Hauptfadens: verliert der Zeichenprozess unter CPU-Konkurrenz die CPU, wächst die gemessene Dauer, ohne dass die Seite mehr arbeitet (Faktor 1,3–1,5, darüber flach). Ein Zeiturteil im Gate urteilt damit über die Maschine, nicht über die Seite — und die Last stammt im vollen Lauf aus dem Gate selbst (4 Worker treiben diesen Rechner auf etwa 10 bei 8 Kernen, #168). Dieselbe Klasse tragen `r00248:528`, `r00217:365/393` und `r00247:445` (Wanduhr-Grenze 150 ms im Gate).
+
+**Belegt (Code, ausgeliefert)**: R00256 ist auf `main` gebaut und abgenommen (B1362–B1364, `d24a1c37`, `df8379e7`, `3ec65f4e`): die Zeitmessung von AK 9 liegt in einem Beschreibungsrumpf mit `test.skip(!process.env.KD_LASTPROBE, 'Lastprobe: nur ausdrücklich (KD_LASTPROBE=1), Last < 2')` (`e2e/tests/r00249-review-nebeneinander.spec.js:633`), die Last kommt aus `/proc/loadavg`; im Gate erscheint der Fall als `skipped`, das zeitfreie Verhalten (5.000 Tabellenzeilen, Leseposition Δtop ≤ 36 px über 30 Wiederholungen) bleibt im Gate und wird von Mutant m14 getötet (Anker auf dem Kopf der Datei → 56.670 px Versatz). Vorbild auf der Rust-Ebene: `#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]` (`tests/lastprobe_r00206.rs:23`, `-- --ignored`).
+
+### N5 Regel 12: Ein Zeitmaß urteilt nicht im Gate — es läuft als Lastprobe mit genannter Last
+
+12. **Ein Kriterium, das Wanduhr-Zeit misst (`longtask`/`PerformanceObserver`, eine Dauer in ms), steht nicht als Gate-Kriterium in der Suite.** Im Gate bleibt nur das **zeitfreie** Verhalten desselben Kriteriums (Zustand, Anzahl, Position), bewacht durch einen Mutanten. Das Zeitmaß läuft **nur ausdrücklich** (`KD_LASTPROBE=1`) und **nur bei Last < 2** (1-Minuten-Wert aus `/proc/loadavg`); der Lauf nennt Last und Messwerte in der Ausgabe und in der Messdatei. Bei Last ≥ 2 meldet der Lauf „keine Messung: Last < 2 nötig“ statt eines stillen Grüns, und im Gate erscheint der Fall als `skipped` mit dem Grund. Gilt für E2E (`e2e/tests/*.spec.js`) und Rust (`tests/*.rs`). Eine Zeitgrenze, die das Gate selbst trägt, ist ein Befund — auch wenn sie heute grün ist, denn das Gate erzeugt die Last, die sie kippt.
+
+**Nicht entschieden**: Ob eine einzelne Grenze richtig gesetzt ist (die 150 ms aus ADR-0040 Punkt 6 und ADR-0042 Q2), entscheidet sich je Kriterium am Abstand zum ruhigen Messwert (≥ 30 %, `rollen/planer/zeitkriterien.md`) — diese Regel ändert die Grenze nicht, sie nimmt sie nur aus dem Gate. Die drei übrigen Wanduhr-Grenzen im Gate (`r00248:528`, `r00217:365/393`, `r00247:445`) sind nicht Teil dieser Aufnahme, sondern eine eigene Karte (WBS I0246).
+
+### Durchsetzung
+
+Review-Punkt für `code-reviewer` und `architektur-reviewer`: eine Zeitgrenze (`longtask`, eine Dauer in ms) als **Gate**-Kriterium in `e2e/tests/*.spec.js` oder `tests/*.rs` ist ein Befund; sie gehört in einen `KD_LASTPROBE`- bzw. `#[ignore]`-Lauf mit genannter Last.
+
+### Probe (Abnahme)
+
+`KD_LASTPROBE=1 npx playwright test tests/r00249-review-nebeneinander.spec.js -g "AK 9 Lastprobe" --workers=1` bei Last < 2 grün, bei Last ≥ 2 „keine Messung: Last < 2 nötig“; im Gate `1 skipped`. Mutant (m14): Anker der zeitfreien Gate-Probe auf den Kopf der Datei statt auf die oberste Zeile → die Gate-Probe wird rot.
