@@ -2249,3 +2249,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-24 | #269 | Erledigt | architekt | bestanden | 0 min | A00009 N7 auf Ist (bb0f62cc) · claude · opus · Lauf 269-architekt-2 · 0,50 $ · Karte gesamt 47,59 $ |
 | 2026-11-26 | #233 | Detailplanung | planer | bestanden | 6 min | R00253 (10 AK), I0243 mit B1342–B1349, ADR-0032 N10→N11 mechanisch · claude · opus · Lauf 233-planer-1 · 2,41 $ · Karte gesamt 7,60 $ |
 | 2026-11-26 | #277 | Architektur | product-owner | bestanden | 4 min | 5 Entscheidungen Z. 718–723, nicht richtungsweisend · claude · opus · Lauf 277-product-owner-1 · 1,57 $ · Karte gesamt 1,57 $ |
+| 2026-11-26 | #236 | Detailplanung | entwickler | bestanden | 8 min | Probe P1/P3/P4: heute rot wie in N10 erwartet; E1–E3 tragen nach Codelesung; Pflichtlektüre gekürzt (gemeinsam/gelerntes.md nicht) · claude · sonnet · Lauf 236-entwickler-1 · 0,33 $ · Karte gesamt 2,83 $ |
