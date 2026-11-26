@@ -82,3 +82,4 @@ Auslöser: Der Durchsatz zeigt nur, was fertig wird — ob im selben Zeitraum me
 
 - Heimat: I0157 unter D0006 mit F0132 (AK 2, 3a, 5, 6, 9) und F0133 (AK 1, 3b, 4, 7, 8, 10). Die Nummern der Kriterien folgen der Liste des architekt; AK 3 ist nach Feature in Datei (3a) und Zahlen (3b) geteilt.
 - Optionen: vor der Planung entschieden — eigener Schlüssel auf oberster Ebene mit eigener Route und `report-filter` als Speicherort sind verworfen (ADR-0027 N3 Punkt 2); „Von“ als reiner Filter ist verworfen (Bedienelement ohne Wirkung, Karte #157).
+- Vermerk 2026-11-26 (Karte #277): AK 8 (Ø Zugang und Ø Abgang je Periode in der Kennzahl) gilt ab [R00254](R00254-durchsatz-drei-durchschnitte-je-tag-und-zahlen-an-den-balken.md) in dessen Fassung: Ø je Kalendertag, unabhängig von der Auflösung, dazu Netto; der Ø je Periode steht an der Ø-Linie. Diese Anforderung bleibt abgenommen.

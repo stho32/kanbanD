@@ -195,3 +195,4 @@ Verworfen: B (keine Zahl je Periode), C (kein Bild, der Bericht wäre überflüs
 
 **Verwiesenes**
 - Kernpunkte der Beratung product-owner 2026-11-03 (übliche Kanban-Funktionen, die fehlen): Durchsatz je Zeitraum, Priorität niedrig bis mittel; Beleg: Durchsatz nur in der Prognose (`web/ansicht.js:940`), kein eigener Bericht. Kartenherkunft #34. Referenz: Kanbanflow, Jira.
+- Vermerk 2026-11-26 (Karte #277): Die Kennzahlenzeile dieser Anforderung (M4, Kriterien 1 und 2: „Ø <x> je Tag|je Woche|je Monat“, wechselt mit der Auflösung) gilt ab [R00254](R00254-durchsatz-drei-durchschnitte-je-tag-und-zahlen-an-den-balken.md) in dessen Fassung: drei Ø (Zugang, Abgang, Netto) immer je Kalendertag; der Ø je Periode steht an der Ø-Linie. Diese Anforderung bleibt abgenommen.
