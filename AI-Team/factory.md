@@ -157,6 +157,7 @@ Das Board, das der Betreiber für das Projekt beobachtet, ist zugleich die Insta
 1. `cargo install --path /home/shoff/Projekte/kanbanD --locked` (installiert nach `~/.cargo/bin/kanbanD`);
 2. die Board-Instanz neu starten: alte PID beenden, `~/.cargo/bin/kanbanD /home/shoff/Projekte/Kanban-Boards/kanbanD-Kanbanboard --port 7422 --kein-browser` neu starten (losgelöst, PID in `.claude/factory/board.pid` des Projekts), `GET /api/zustand` muss antworten;
 3. eine Logbuchzeile mit Version bzw. Commit. Schlägt die Installation fehl, bleibt die alte Instanz laufen, und die Karte wird eine Befundkarte.
+4. **Push und Release** (Betreiber 2026-11-26: „Wenn du eine Karte fertigstellst, dann pushe bitte nach GitHub und stelle sicher, dass der Release Flow korrekt gelaufen ist.“): nach grünem Gate auf `main` und gelungener Auslieferung `git push github main`; 8–19 Uhr zusätzlich `git push origin main --tags` (gitnas, nachts aus). Danach den Lauf von `.github/workflows/release.yml` abwarten (`gh run list --workflow release.yml -R stho32/kanbanD`, `gh run watch`) und prüfen, dass das neue Release mit Tag und Artefakten da ist (`gh release view -R stho32/kanbanD`); Tags von GitHub holen (`git fetch github --tags`). Bei reinen Dokument-Pushes läuft der Workflow nicht (paths-ignore). Schlägt der Workflow fehl: Vorrang-Karte, kein weiterer Push. Kein Force-Push, keine `karte/*`-Zweige.
 
 Rückmeldungen gibt der Betreiber von sich aus („wenn ich was zu nörgeln habe, sage ich es“). Sie werden über den PO zu Karten im Backlog.
 
