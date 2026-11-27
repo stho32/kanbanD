@@ -13,6 +13,11 @@ path = "src/main.rs"
 name = "kanband"
 path = "src/lib.rs"
 
+[features]
+# Erzeugt die Lizenzhinweise (examples/lizenzen.rs). Getrennt, damit `cargo install`
+# und `cargo build --all-targets` mit `RUSTFLAGS=-D warnings` nichts Totes sehen.
+lizenzen = []
+
 [dependencies]
 axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal", "fs"] }
