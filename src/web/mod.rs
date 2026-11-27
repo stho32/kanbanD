@@ -84,6 +84,28 @@ pub fn router_mit_kanban(kanban: Arc<Kanban>, port: u16, protokoll: crate::proto
     router_bauen(kanban, port, watch::channel(false).1, protokoll, episoden_neu())
 }
 
+/// Wie [`router_mit_kanban`], gibt dazu den Episodenzustand heraus, damit Proben ihn schließen (R00269 AK 8).
+pub fn router_mit_kanban_und_episoden(kanban: Arc<Kanban>, port: u16, protokoll: crate::protokoll::Protokoll) -> (Router, Arc<Mutex<Episoden>>) {
+    let episoden = episoden_neu();
+    (router_bauen(kanban, port, watch::channel(false).1, protokoll, episoden.clone()), episoden)
+}
+
+/// Wie [`router_mit_ende_und_protokoll`], gibt dazu den Episodenzustand heraus — `main` schließt die Episoden nach
+/// dem geordneten Beenden (R00269 AK 8).
+pub fn router_mit_ende_protokoll_und_episoden(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> (Router, Arc<Mutex<Episoden>>) {
+    let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
+    let episoden = episoden_neu();
+    (router_bauen(kanban, port, ende, protokoll, episoden.clone()), episoden)
+}
+
+/// Beendet die offenen Episoden und schreibt ihre Ende-Zeilen (R00269 AK 8, ADR-0001 N1.4 Regel 5). `main` ruft das
+/// nach dem geordneten Beenden auf; ein zweiter Aufruf und ein Aufruf ohne offene Episode schreiben nichts.
+pub fn episoden_beenden(episoden: &Mutex<Episoden>, protokoll: &crate::protokoll::Protokoll) {
+    for zeile in episoden.lock().unwrap_or_else(|e| e.into_inner()).beenden() {
+        zeile.schreiben(protokoll);
+    }
+}
+
 fn router_bauen(kanban: Arc<Kanban>, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll, episoden: Arc<Mutex<Episoden>>) -> Router {
     let ordner = kanban.ordner().wurzel().to_path_buf();
     let (ereignisse, _) = broadcast::channel(256);

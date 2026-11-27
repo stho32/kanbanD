@@ -25,6 +25,13 @@ impl Drop for Laufendes {
     }
 }
 
+impl Laufendes {
+    /// Der Log-Ordner dieser Wegwerf-Instanz (`--log-ordner`) — R00269 AK 8 liest daraus die letzte Zeile nach SIGTERM.
+    pub fn log_ordner(&self) -> Option<&Path> {
+        self._log.as_ref().map(|t| t.path())
+    }
+}
+
 /// SIGTERM, damit das Programm geordnet endet (und seine Coverage schreibt); notfalls hart.
 pub fn geordnet_beenden(kind: &mut Child) {
     let _ = Command::new("kill").args(["-TERM", &kind.id().to_string()]).status();

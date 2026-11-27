@@ -51,6 +51,8 @@ struct Probe {
     sammler: Sammler,
     uhr: Arc<FesteUhr>,
     kanban: Arc<Kanban>,
+    protokoll: Protokoll,
+    episoden: Arc<std::sync::Mutex<kanband::dienst::episoden::Episoden>>,
 }
 
 impl Probe {
@@ -75,8 +77,8 @@ impl Probe {
             kanban = kanban.mit_antwortbudget(bytes);
         }
         let kanban = Arc::new(kanban);
-        let app = kanband::web::router_mit_kanban(kanban.clone(), 0, protokoll);
-        Probe { _tmp: tmp, _arbeit: arbeit, commit, app, sammler, uhr, kanban }
+        let (app, episoden) = kanband::web::router_mit_kanban_und_episoden(kanban.clone(), 0, protokoll.clone());
+        Probe { _tmp: tmp, _arbeit: arbeit, commit, app, sammler, uhr, kanban, protokoll, episoden }
     }
 
     /// Belegt alle Plätze der Lesegrenze, bis der Rückgabewert fällt (AK 1).
@@ -203,6 +205,70 @@ async fn ak4_fluten_des_antwortbudgets_ohne_belegt_max() {
     let ende = probe.zeilen().into_iter().find(|z| z.contains(" INFO Episode beendet ")).expect("Ende-Zeile");
     assert!(ende.contains("ursache=antwortbudget") && ende.contains("abweisungen=3") && ende.contains("dauer_ms="), "{ende}");
     assert!(!ende.contains("belegt_max"), "das Antwortbudget hat kein belegt_max: {ende}");
+}
+
+// ---- AK 8: die Episode endet beim geordneten Beenden --------------------------------------------------------
+
+#[tokio::test]
+async fn ak8_beim_geordneten_beenden_endet_die_episode() {
+    let probe = Probe::neu();
+    let plaetze = probe.lesegrenze_fuellen();
+    let (status, _) = probe.rufen("GET", "api/aufgaben/1/commits", "cl", None).await;
+    assert_eq!(status, 503);
+    drop(plaetze);
+    assert_eq!(probe.zaehle(" WARN abgewiesen "), 1);
+    // derselbe Aufruf, den `main` nach `axum::serve(...).with_graceful_shutdown(...).await` macht
+    kanband::web::episoden_beenden(&probe.episoden, &probe.protokoll);
+    assert_eq!(probe.zaehle(" INFO Episode beendet "), 1, "{:?}", probe.zeilen());
+    let ende = probe.zeilen().into_iter().find(|z| z.contains(" INFO Episode beendet ")).unwrap();
+    assert!(ende.contains("ursache=lesegrenze") && ende.contains("abweisungen=1"), "{ende}");
+    // ein zweiter Aufruf schreibt nichts
+    kanband::web::episoden_beenden(&probe.episoden, &probe.protokoll);
+    assert_eq!(probe.zaehle(" INFO Episode beendet "), 1, "kein zweiter Aufruf: {:?}", probe.zeilen());
+    // ein Aufruf ohne offene Episode schreibt nichts
+    let ohne = Probe::neu();
+    kanband::web::episoden_beenden(&ohne.episoden, &ohne.protokoll);
+    assert_eq!(ohne.zaehle(" INFO Episode beendet "), 0, "{:?}", ohne.zeilen());
+}
+
+// ---- AK 8 Tagprobe: die letzte Zeile der Logdatei nach SIGTERM ist die Ende-Zeile ---------------------------
+
+/// Tagprobe im echten Programm: 30 ungelesene Verbindungen füllen das Antwortbudget (Muster R00208 AK 8), die
+/// abgewiesenen beginnen eine Episode; danach SIGTERM an die eigene Instanz — die letzte Zeile der Logdatei ist
+/// die ` INFO Episode beendet `-Zeile. **Nicht nachts fahren** (Auftrag); deshalb `#[ignore]`.
+#[tokio::test]
+#[ignore = "Tagprobe: startet das echte Programm und sendet SIGTERM; nachts nicht fahren"]
+async fn ak8_tagprobe_sigterm_schliesst_die_episode() {
+    let (_arbeit, arbeit) = gemeinsam::arbeits_repository("# App\n");
+    let gross: String = (0..170_000).map(|i| format!("{:<44}\n", format!("gross-{i}"))).collect();
+    std::fs::write(arbeit.join("gross.txt"), gross).unwrap();
+    gemeinsam::git(&arbeit, &["add", "-A"]);
+    gemeinsam::git(&arbeit, &["-c", "user.name=K", "-c", "user.email=k@k", "commit", "-q", "-m", "gross"]);
+    let commit = gemeinsam::git(&arbeit, &["rev-parse", "HEAD"]);
+    let board = tempfile::tempdir().unwrap();
+    lage(board.path(), &arbeit, &commit);
+    let path = gemeinsam::langsames_git(&arbeit, gemeinsam::LANGSAM_D);
+    let mut lauf = gemeinsam::starten_mit(board.path(), &["--port", "0"], &[("PATH", &path)]);
+    let log = lauf.log_ordner().expect("Log-Ordner der Instanz").join("kanbanD.log");
+    let pfad = format!("api/aufgaben/1/diff?commit=kc:{commit}&datei=gross.txt");
+    let g = gemeinsam::gestaffelt(&lauf.adresse, &pfad, 30);
+    assert!(g.verbindungen.iter().any(|(_, s)| *s == 503), "mindestens eine Abweisung am Antwortbudget");
+    drop(g); // die gehaltenen Verbindungen schließen, damit das geordnete Beenden nicht auf sie wartet
+    gemeinsam::geordnet_beenden(&mut lauf.kind);
+    let text = std::fs::read_to_string(&log).unwrap_or_default();
+    let letzte = text.lines().filter(|z| !z.trim().is_empty()).next_back().unwrap_or_default().to_string();
+    assert!(letzte.contains(" INFO Episode beendet ") && letzte.contains("ursache=antwortbudget"), "letzte Zeile: {letzte}\n---\n{text}");
+}
+
+// ---- AK 8 Wächter: `main` hakt das Beenden der Episoden nach dem geordneten Beenden ein ---------------------
+
+/// Wächter (Muster R00258 AK 22): der Aufruf steht in `main` **nach** `with_graceful_shutdown`. Er lässt den
+/// Mutanten (f) „Beenden ohne Haken“ rot werden — die In-Process-Probe ruft `episoden_beenden` selbst.
+#[test]
+fn ak8_main_hakt_das_beenden_der_episoden_ein() {
+    let main = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/main.rs")).unwrap();
+    let nach_serve = main.split("with_graceful_shutdown").nth(1).expect("with_graceful_shutdown in main.rs");
+    assert!(nach_serve.contains("episoden_beenden("), "main ruft episoden_beenden nach dem geordneten Beenden:\n{nach_serve}");
 }
 
 // ---- AK 10: der Messwert steht nur im Log, Antworten und Routen bleiben unverändert ------------------------

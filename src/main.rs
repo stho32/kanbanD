@@ -65,12 +65,16 @@ async fn starten(auftrag: Startauftrag, ordner: std::path::PathBuf, protokoll: P
         browser::oeffnen(&protokoll, &adresse);
     }
     let (ende, ende_rx) = tokio::sync::watch::channel(false);
-    let router = kanband::web::router_mit_ende_und_protokoll(ordner, port, ende_rx, protokoll.clone());
+    let (router, episoden) = kanband::web::router_mit_ende_protokoll_und_episoden(ordner, port, ende_rx, protokoll.clone());
     let signal = async move {
         beenden_verlangt().await;
         let _ = ende.send(true);
     };
-    if let Err(e) = axum::serve(listener, router).with_graceful_shutdown(signal).await {
+    let ergebnis = axum::serve(listener, router).with_graceful_shutdown(signal).await;
+    // Nach dem geordneten Beenden enden die offenen Episoden der Kapazitätsgrenzen (ADR-0001 N1.4 Regel 5,
+    // R00269 AK 8): sonst bliebe die letzte Episode ohne Ende-Zeile.
+    kanband::web::episoden_beenden(&episoden, &protokoll);
+    if let Err(e) = ergebnis {
         protokoll.schreiben(Stufe::Error, Ereignis::Fehlgeschlagen, &[("grund", format!("Server beendet mit Fehler: {e}"))]);
         return ExitCode::FAILURE;
     }
