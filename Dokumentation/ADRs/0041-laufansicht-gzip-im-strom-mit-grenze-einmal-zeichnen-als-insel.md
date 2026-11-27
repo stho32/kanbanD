@@ -740,3 +740,94 @@ Qualitätsziele (Szenarien mit Maß):
 1. **Wortlaut des Text-Markers** (Z. 645 nennt „Commit nicht mehr an der Karte“). Von 89 Aufrufen standen 33 nie an der Karte (Commits früherer Phasen, Punkt 2 „Belegt“); „nicht mehr“ sagt dort etwas Falsches. Empfehlung: **„Commit nicht an der Karte“**, davor Kurzhash und Titel aus der Belegzeile. Alternative: bei „nicht mehr“ bleiben, nur für Commits der letzten Phase richtig.
 2. **Commits früherer Phasen an der Karte**: Soll die Karte künftig die Spannen **aller** Wachen tragen (Änderung in der Factory, nicht in kanbanD)? Empfehlung: **ja, als eigene Karte an den Director**; #269 braucht sie nicht, denn ohne sie steht der Text-Marker. Mit ihr verlinkt der Marker auch Commits von `architekt`, `planer` und `product-owner`.
 3. **Wortlaut des Satzes im Kopf**, wenn die Commits der Karte nicht gelesen werden können (Fehler, Frist): Empfehlung **„Commits der Karte nicht lesbar“**, gedämpft, kein Fehlerrot, ohne Ansage (der Lauf selbst ist lesbar).
+
+## Nachtrag 2026-11-27 N8: Zeitachse — Striche je Commit, Verdichtung nach Abstand als zweiter Durchlauf im Browser, Gruppe neben dem Bild mit einem Tab-Stopp (Karte #271)
+
+**Status bleibt `Akzeptiert`.** Karte #271 (Ausbaustufe 2 von #269, WBS B1327 Status `ausbau`, R00251 FA 7, AK 7 und die Strich-Teile von AK 8, US-4) macht dasselbe Verhalten in der Zeitachse sichtbar, das N7 Punkt 6 schon forderte. N8 **ersetzt in N7 Punkt 6** die Sätze zur Verdichtung („Striche derselben Stelle werden einer … Mehr als 100 Striche werden wie die Fächer zu höchstens 100 verdichtet") durch die Verdichtung nach Abstand und legt die Technik der Striche, der Gruppe und des Tastaturmodells fest. Alles andere aus N7 gilt weiter; Server, OpenAPI und Format bleiben, wie sie sind (die Marker stehen schon in `web/lauf-commits.js` aus Stufe 1).
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #271, Lauf 271-architekt-1)
+**Erprobt durch**: — (der Auftrag sagt „nichts bauen"; gelesen sind Code und Zeichnung, keine Probe gefahren). Stand `2bce092a` (Zweig `karte/271`).
+
+### Belegt
+
+- **Code**: `laufZeitachseHtml` (`web/lauf.js:1216–1233`) zeichnet die Zeitachse als `div.lv-balken[role="img"]` (Stücke bis 200, darüber Fächer, `faecherBilden`/`zeitachseAbschliessen` `:731–770`) samt `LEGENDE` (drei Arten, `:1202`) und `zeitachseLesetext` (`:1211`); die Position eines Stücks ist `anteil` der Gesamtdauer über `flex-grow`. In `vLauf` (`web/app.js:2715`) ist die Zeitachse ein **Geschwister** des Rumpfs und **außerhalb der Insel** `ol.lv-l#lv-insel` — sie wird bei **jedem** `render()` des Kopfs neu gebaut, die Insel bleibt (N1 Punkt 5). Ein Fenstergröße-Wechsel löst kein `render()` aus. `commitMarker(zeilen, schritte, karte)` (`web/lauf-commits.js:24`) liefert rein `Map<Schrittnummer, Marker[]>`, Marker `{art:'link', verweis, kurzhash, titel}` bzw. `{art:'text', kurzhash, titel}`; das Modul kennt weder DOM noch `fetch`. Die Marker-Zeile `.lv-cm` steht unmittelbar nach der Schrittzeile (Stufe 1, N7 Punkt 6).
+- **Zeichnung** D0009 `#laufansicht` Bild 15: `ul.lv-ck` (Geschwister des Balkens, `aria-label="Commits an der Zeitachse"`), je Strich `li style="left:8.1%"` mit `button.lv-ckb data-act="lv-springe" data-ziel="lv-cm1"`, Beschriftung `span.t` = Kurzhash (Festbreite) bzw. „3 Commits", darunter der Strich (`i`, verdichtet 4 px). Freigegeben mit Änderung, PO Z. 664 (a): jeder Knopf im Bau `min-block-size ≥ --kd-ziel` in der **Höhe**, Breite wie gezeichnet.
+- **Regel** M1 (UX-Vorprüfung, R00251 FA 7, wörtlich): von links nach rechts geht ein Strich in den vorigen Knopf auf, wenn ihre Mitten **< 24 px** auseinanderlägen oder ihre Beschriftungen sich überschneiden würden (Mittenabstand < halbe Summe der Beschriftungsbreiten); der zusammengefasste Knopf steht an der Stelle seines **ersten** Strichs und heißt „<n> Commits", n = Summe der Marker. Danach liegen die Mitten benachbarter Knöpfe ≥ 24 px auseinander, Knöpfe mit Beschriftung ≥ um die Beschriftungsbreite, und keine Beschriftungen überschneiden sich — bei 320 px wie bei 1280 px. Unabhängig davon höchstens 100 Striche. M2: Knöpfe in `role="group"` „Commits der Zeitachse" **neben** dem `role="img"`, Namen „Commit <hash>, zur Zeile springen" / „<n> Commits, zur ersten Zeile springen"; ein Tab-Stopp mit Pfeiltasten. PO Z. 691: Legende „Commit" nur mit mindestens einem Strich, sonst byte-gleich. WBS B1327: Pfeile und Pos1/Ende, ≤ 2 Tabs bis zum ersten Schritt, Sprung mit Fokus und vollständig sichtbarem Fokusumriss.
+- **Es gibt heute kein `.lv-ck`/`.lv-ckb` in `web/kd-app.css`** (nur in der Zeichnung): Stufe 2 ist ungebaut. Die Verdichtung braucht **gemessene** Beschriftungsbreiten; die Zuordnung (N7) ist rein.
+
+### Optionen
+
+**Verdichtung nach Abstand** (M1 braucht echte Breiten)
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **D1 — zwei Durchläufe: reiner Kern rechnet Position und Zusammenfassung, der Browser misst nach dem Einsetzen und ruft den reinen Kern erneut** (gewählt) | M1 wörtlich erfüllt (echte Breiten, 320 wie 1280 px); der Kern bleibt Node-testbar; keine angenommene Breite | layout-abhängig, also nur der Kern ist in Node prüfbar; ein zweiter Layout-Durchlauf je Zeichnen |
+| D2 — feste Pixel-Schwelle rein, aus `%`-Positionen und angenommener Achsenbreite | rein, ein Durchlauf | bei 320 px falsch (Beschriftungen überschneiden sich), hängt an einer Annahme über Schrift und Breite; verfehlt M1 |
+| D3 — nur CSS (`min-width`/Überlappung erlaubt) | kein JS | kein „n Commits"; verfehlt M1 und die Summen-Regel |
+
+**Ort und Wiederholung** (die Zeitachse steht außerhalb der Insel)
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **Z1 — Zeitachse bleibt außerhalb der Insel; Verdichtung im selben Vorgang nach dem ersten Einsetzen; bei Breitenwechsel ein `ResizeObserver` am Balken, der nur messen und verdichten wiederholt** (gewählt) | M1 gilt bei jeder Breite; kein Neulesen, kein neues `render()`; Positionen folgen von selbst (`left:%`) | ein Beobachter, der messen und neu einsetzen darf |
+| Z2 — Verdichtung einmalig beim Lesen, eingefroren | am wenigsten Code | bei Breitenwechsel falsche Mitten oder Überschneidung (verfehlt M1 „320 wie 1280 px") |
+| Z3 — Zeitachse in die Insel holen, mit ihr einmal zeichnen | „einmal zeichnen" wörtlich | widerspricht N1 Punkt 5 (Insel nur bei gleichem Schlüssel) und der Filter-Mechanik; die Zeitachse gehört zum Kopf |
+
+**Tastaturmodell** (M2: ein Tab-Stopp, Pfeiltasten)
+
+| Variante | Stärke | Schwäche |
+|---|---|---|
+| **T1 — `role="group"` mit `roving tabindex`: der fokussierte Knopf trägt `tabindex="0"`, alle anderen `-1`; Pfeil links/rechts, Pos1/Ende bewegen den Fokus mit** (gewählt) | genau ein Tab-Stopp, M2 wörtlich; übliches Muster für eine Knopfleiste | etwas Zustand (welcher Knopf ist der Halter) |
+| T2 — natürliche Tab-Reihenfolge (jeder Knopf ein Tab-Stopp) | kein Zustand | verfehlt M2 („ein Tab-Stopp") und WBS B1327 („≤ 2 Tabs bis zum ersten Schritt") |
+| T3 — `role="listbox"`/Optionen | weitere Tastatur (Pfeile) eingebaut | Knöpfe sind keine Auswahl; die Rolle passt nicht (die Knöpfe springen, sie wählen nicht) |
+
+### Entscheidung
+
+**Gewählt: D1, Z1, T1.** In Kauf genommen: Die Verdichtung ist layout-abhängig, deshalb prüft Node nur den reinen Kern, die Einhaltung bei echter Breite prüft die E2E-Probe. Ein sehr schmaler Balken kann alle Striche zu einem einzigen Knopf zusammenziehen; der Knopf steht dann an der Stelle des ersten Strichs und kann vom „Schwerpunkt" der Gruppe bis ~24 px abweichen. Die Lösung hängt an gemessenen Breiten, also an der geladenen Schrift.
+
+1. **Ort und Reinheit** (wie N4/N7): Alles Rechnende bleibt in **`web/lauf-commits.js`**:
+   - `zeitachseStriche(auswertung, marker, karte)` → je Strich `{schrittNr, anteil, art, kurzhash?, titel, anzahl}`. `anteil` ist die kumulierte Dauer bis zum Ergebnis des Schritts geteilt durch die Gesamtdauer — **derselbe Maßstab wie die Stücke und Fächer** (N1 Punkt 2, N7 Punkt 6); er kommt aus der einen Auswertung (`laufAuswerten`, N1 Punkt 6), ohne Rückblick. Marker am selben Schritt verschmelzen zu einer Stelle (`anzahl` = Zahl der Marker an dieser Stelle), Beschriftung „<n> Commits".
+   - `stricheVerdichten(striche, breitenPx, achsenBreitePx)` → die verdichteten Knöpfe nach M1. **Rein**: bekommt die Positionen (`anteil`), die gemessenen Beschriftungsbreiten (px) und die Achsenbreite (px) und rechnet den links→rechts-Durchlauf. Konstanten `MITTE_ABSTAND = 24` (px) und `STRICHE = 100` stehen in `web/lauf-commits.js`. Reine Funktionen haben keine Kenntnis von DOM oder Schrift; Node prüft sie mit vorgegebenen Breiten.
+   - `web/lauf.js` baut das HTML (`lv-ck`, `lv-ckb`, `span.t`, `i`) und ruft `stricheVerdichten` nur, um zu zeichnen; `web/app.js` **misst** die gerenderten Breiten (`getBoundingClientRect`) und setzt die verdichtete Leiste ein. `web/app.js` rechnet keine Positionen.
+2. **Zwei Durchläufe im selben Vorgang** (Z1): Beim Zeichnen der Zeitachse werden die Knöpfe zuerst unverdichtet an `left:<anteil*100>%` gesetzt. **Unmittelbar danach, in derselben Aufgabe**, werden ihre Breiten gemessen, `stricheVerdichten` aufgerufen und nur die Knopfleiste (`ul.lv-ck` mit den `li`/`button`) ersetzt; der Balken und die Zeiten bleiben. Kein asynchroner zweiter Schritt (kein Flackern: gemessen und ersetzt wird vor dem nächsten Bild), **kein Neulesen** des Transkripts. Die Breiten gelten erst, wenn die Schrift geladen ist (`document.fonts.ready`), sonst kommt bei verzögert geladener Schrift eine zweite Messung nach.
+3. **Breitenwechsel** (Z1): Ein `ResizeObserver` am Balken wiederholt **nur** Schritt 2 (messen + verdichten + Knopfleiste ersetzen), **ohne** `render()` und **ohne** Anfrage. Unverdichtet ist die Position ohnehin richtig (`left:%`), nur die Verdichtung hängt an der Breite. Wiederholt wird nur bei geänderter Achsenbreite (Vergleich der letzten Breite), und das Ergebnis wird je `(Achsenbreite, Strichzahl)` gemerkt, damit ein laufender Beobachter nicht je Bild messen muss. Verworfen: erst beim nächsten Zeichnen neu verdichten (Z2) — bis dahin falsche Mitten, verfehlt M1.
+4. **Gruppe und Tastatur** (M2, T1): Die Knöpfe stehen in einem `div[role="group"][aria-label="Commits der Zeitachse"]`, **Geschwister** des `role="img"`-Balkens, nicht darin. Der Balken bleibt aus der Tab-Reihenfolge (ein Bild mit Lesetext). **Ein** Tab-Stopp über `roving tabindex`: genau ein Knopf trägt `tabindex="0"` (beim ersten Zeichnen der erste, sonst der zuletzt fokussierte), die übrigen `-1`; Pfeil links/rechts bewegt den Fokus auf den vorigen/nächsten Knopf und setzt den Halter mit, Pos1/Ende auf den ersten/letzten. Namen wörtlich M2: `aria-label` „Commit <kurzhash>, zur Zeile springen" bzw. „<n> Commits, zur ersten Zeile springen"; die sichtbare Beschriftung (`span.t`) ist der Kurzhash bzw. „<n> Commits". Der Fokusumriss ist im Balken nicht abgeschnitten (`overflow: visible` bzw. Rand), Messprobe `getBoundingClientRect` des Knopfs gegen den Balken.
+5. **Sprung** (N7 Punkt 6, unverändert): Ein Knopf springt wie die Top 3 über `data-act` (`lauf-springe`) zur (ersten) Marker-Zeile `lv-cm<nr>`, `scrollIntoView`, Fokus auf die Zeile; nie über `href="#…"` (der Hash ist die Adresse der Seite, ADR-0029). Beim Sprung in die Insel mit `content-visibility` gilt das Nachführen aus N1 „Nach dem Bau"; bei `prefers-reduced-motion` ohne weiches Scrollen.
+6. **Verdichtung nach Abstand (M1 wörtlich, D1)**: von links nach rechts; ein Strich geht in den vorigen Knopf auf, wenn die Mitten **< 24 px** auseinanderlägen oder die Beschriftungen sich überschnitten (Mittenabstand < halbe Summe der Beschriftungsbreiten). Der zusammengefasste Knopf steht an der Stelle des **ersten** Strichs (`left` unverändert) und heißt „<n> Commits", n = **Summe der Marker** (nicht der Striche davor). Danach: Mitten benachbarter Knöpfe ≥ 24 px, Knöpfe mit Beschriftung ≥ um die Beschriftungsbreite, keine Überschneidungen. Unabhängig davon **höchstens 100 Knöpfe** (§ schließt an N7 Punkt 6 an). Alles in `stricheVerdichten`, geprüft an den Grenzen (genau 24 px / 23,9 px, genau Beschriftungsbreite / ein Pixel weniger).
+7. **Zielfläche** (PO Z. 664 (a), bestätigt): jeder Knopf im Bau `min-block-size: max(--kd-ziel, …)` in der **Höhe**, auf jeder Breite; die **Breite bleibt wie gezeichnet**. Gemessen wird die Zielfläche (Z. 652), nicht der Strich.
+8. **Legende und Lesetext** (PO Z. 691, Z. 527/530): Die Legende führt „Commit" **nur**, wenn mindestens ein Strich da ist; ohne Strich bleibt die Zeitachse byte-gleich (Regressionsgrenze). Der Lesetext der Zeitachse nennt die Zahl der Commits („…, 1 Commit" / „…, n Commits"), ein Teil mit 0 entfällt wie bisher.
+9. **Filter und einmal zeichnen** (unberührt): Die Striche gehören zur Zeitachse **außerhalb** der Insel; ein Filter wechselt weiter nur Attribute an der Wurzel der Insel und lässt die Striche stehen. Die Position der Striche ist unabhängig davon, ob Stücke (≤ 200) oder Fächer (> 200) gezeichnet sind (derselbe `anteil`-Maßstab). Live-Ereignisse zeichnen den Kopf und damit die Zeitachse neu; die Verdichtung läuft dabei erneut (billig: ≤ 100 Knöpfe), die Insel bleibt.
+
+### Pre-Mortem
+
+| Wie es scheitert | Früh-Indikator | Gegenmittel |
+|---|---|---|
+| Erste Messung vor der geladenen Schrift: Beschriftungen sind noch breiter/schmaler, Knöpfe überschneiden sich nach dem Laden | M1-Probe bei kalter Schrift rot | nach `document.fonts.ready` eine zweite Messung (Punkt 2) |
+| `ResizeObserver` feuert je Bild und misst je Bild | Ruckeln beim Ziehen der Fenstergröße | nur bei geänderter Achsenbreite wiederholen, Ergebnis je `(Breite, Strichzahl)` merken (Punkt 3) |
+| Ein Knopf über dem Balken fängt Klicks ab | — | der Balken ist `role="img"` ohne Aktion; unkritisch, kein Verhaltensverlust |
+| `elementFromPoint(Mitte)` trifft den Nachbarn | M1-Probe rot | die Verdichtung garantiert Nicht-Überlappung (Mitten ≥ 24 px, Beschriftungen getrennt); Nachbar-Abstände klein halten |
+
+### Durchsetzung
+
+- **Node-Tests `stricheVerdichten`/`zeitachseStriche`** (`e2e/einheit/`), mit vorgegebenen Breiten (kein DOM):
+  - 40 gleichmäßige Striche, Beschriftungsbreite 20 px, Achse 300 px → verdichtet; **Σn über alle Knöpfe = 40**; Mitten benachbarter Knöpfe ≥ 24 px; kein Knopfpaar mit überschneidenden Beschriftungen.
+  - Zwei Knöpfe, deren Beschriftungen sich bei 24-px-Mittenabstand noch überschneiden → zusammen (die zweite Bedingung greift).
+  - Grenzen: Mittenabstand genau 24 px bleibt getrennt, 23,9 px geht auf; Abstand genau Beschriftungsbreite bleibt, ein Pixel weniger geht auf.
+  - Der zusammengefasste Knopf trägt den `left`-Wert des **ersten** Strichs.
+  - 101 Striche → höchstens 100 Knöpfe. Keine Striche → leere Liste (Zeitachse byte-gleich).
+  - `zeitachseStriche`: drei Marker am selben Schritt → ein Knopf „3 Commits"; Marker ohne gültige Zeit entfallen; `anteil` = kumulierte Dauer / Gesamtdauer (gleicher Wert wie das Stück/das Fach an dieser Stelle).
+- **E2E (Chromium headless, T17 aus R00251 „Tests", verzögert antwortende Route)**, bei 1280 px und bei 320 px (grobem Zeiger), hell und dunkel:
+  - **M1 wörtlich**: `document.elementFromPoint(Mitte)` jedes Knopfs liefert genau diesen Knopf; Mitten benachbarter Knöpfe ≥ 24 px; Knöpfe mit Beschriftung ≥ um die Beschriftungsbreite; keine Beschriftungen überschneiden sich; Σn = Zahl der Marker.
+  - **M2 wörtlich**: die Knöpfe stehen in `role="group"` mit `aria-label` „Commits der Zeitachse" **neben** dem `role="img"` (der `role="img"` enthält keinen Knopf); Namen „Commit <kurzhash>, zur Zeile springen" / „<n> Commits, zur ersten Zeile springen".
+  - **Tastatur**: genau **ein** Knopf mit `tabindex="0"` (Zähler = 1); nach Tab liegt der Fokus im ersten Knopf, ≤ 2 Tabs bis dorthin; Pfeil rechts/links bewegt den Fokus mit, Pos1/Ende auf den ersten/letzten; der Fokusumriss ist vollständig sichtbar (nicht abgeschnitten). Bei `prefers-reduced-motion` springt der Sprung ohne weiches Scrollen, Fokus auf der Marker-Zeile.
+  - **Breitenwechsel**: Fenster von 1280 auf 320 px (und zurück) → die Knopfzahl/Mitten/Überschneidung sind neu eingehalten (ResizeObserver), **ohne** neue `GET …/transkripte`- bzw. `GET …/commits`-Anfrage (Zähler); die Insel bleibt (`el.__probe`).
+  - **Legende/Lesetext**: ohne Strich kein „Commit" und byte-gleiche Zeitachse; Lesetext „1 Commit" bzw. „n Commits". Filter „nur Fehler" lässt die Striche stehen.
+  - **Zielfläche**: jeder Knopf `getBoundingClientRect().height ≥ --kd-ziel` bei 320 px mit grobem Zeiger (±1).
+- **Mutanten** (in eigener Kopie, je von einem benannten Test getötet): **m12** keine Verdichtung an gleicher Stelle; **m15** nur gleiche Stelle, nicht nach Abstand; **m16** Knöpfe innerhalb des `role="img"`; **m17** Legende „Commit" auch ohne Strich (alle aus R00251 „Tests"). **Neu in N8**: m18 die 24-px-Bedingung weggelassen (nur Beschriftungsbreite); m19 Verdichtung beim Breitenwechsel nicht wiederholt; m20 „n" zählt die Knöpfe statt der Marker; m21 jeder Knopf ein Tab-Stopp statt roving.
+- **Review-Punkt `architektur-reviewer`**: gerechnet wird nur in `web/lauf-commits.js` (rein); `web/app.js` misst nur und rechnet keine Position; kein zweiter Weg, der `anteil` rechnet; der Breitenwechsel löst keine Anfrage und kein `render()` aus.
+- **Review-Punkt `ux-reviewer`/`security-reviewer`**: Name, Gruppe, Rollen, Fokusumriss und Zielfläche wie M2/PO Z. 664; in `href`, `title`, `data-*` oder eine Anfrage fließt weiterhin **kein** Text aus dem Transkript (der Sprung nutzt nur `data-act`/`data-ziel` aus den Kartenmarkern, `data-ziel` ist `lv-cm<nr>` mit einer Zahl).
+
+### Folgeaufgaben
+
+- [ ] **planer**: B1327 (Status `ausbau`) in **zwei Bubbles** schneiden (Rolling Wave, wie schon vermerkt): **1 „Lage und Verdichtung"** (`zeitachseStriche`, `stricheVerdichten`, zwei Durchläufe, `ResizeObserver`) und **2 „Gruppe, Tastatur, Sprung, Legende, Lesetext"**; eine Anforderung, höchstens zehn Kriterien. Die Abnahme-Proben aus „Durchsetzung" sind je Bubble zu verteilen; die Mutanten m12, m15–m21 mit je benanntem rotem Test.
+- [ ] **gestalter**: **keine Neuzeichnung nötig** für die Strich-Teile — D0009 Bild 15 zeigt Lage, Kurzhash-Beschriftung, verdichteten Strich „3 Commits", Legende „Commit" und den Lesetext; PO Z. 664 hat es freigegeben (Änderung (a) Höhe). Was Bild 15 **nicht** zeichnet und Bau-Eigenschaft ist: die Rolle `role="group"` statt `ul` (Punkt 4), die neuen Knopf-Namen (M2), der Tastatur-Fokusumriss und die Zielfläche bei 320 px. Optional kann der gestalter den Fokusumriss bei 320 px ergänzen; nicht blockierend, keine neue Freigabe nötig.
+- [ ] **Modell** nachführen nach dem Bau (A00009): `web/lauf-commits.js` um `zeitachseStriche`/`stricheVerdichten`, die Zeitachse-Striche und die Gruppe.
