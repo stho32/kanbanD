@@ -60,6 +60,18 @@ const lage = (selektor) => async page => {
 /** Zwei Bilder abwarten: erst danach ist der gescrollte Block `content-visibility:auto` gerechnet (ADR-0026 Regeln 1–3). */
 const zweiBilder = page => page.evaluate(() => new Promise(fertig => requestAnimationFrame(() => requestAnimationFrame(fertig))));
 
+/** Hält Anfragen auf `muster` an, bis die Probe sie freigibt; `angehalten()` zählt die gehaltenen (Vorbild r00207). */
+async function halten(page, muster) {
+  const tore = [];
+  await page.route(muster, async route => {
+    let frei; const tor = new Promise(f => { frei = f; }); tore.push(frei);
+    const wert = await tor;
+    // eine inzwischen abgebrochene Anfrage ist kein Testfehler
+    try { if (wert) await route.fulfill({ status: wert.status, contentType: 'application/json', body: JSON.stringify(wert.body) }); else await route.continue(); } catch { /* abgebrochen */ }
+  });
+  return { frei: (i, wert) => tore[i](wert), angehalten: () => tore.length };
+}
+
 test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
   let k;
   test.beforeEach(async ({ page, context }) => {
@@ -148,6 +160,12 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
     await page.reload();
     await page.locator('#rv-insel .rv-gk, #review .rv-leer').first().waitFor();
     expect(await ausserhalb(), 'nach Neuladen').toBe(true);
+    // Blättern zu einem anderen Commit (AK 5, PO Z. 743): der Kopf bleibt ausserhalb von #review
+    await expect(page.locator('#rv-pos')).toHaveText('8 von 9');
+    await page.locator('#rv-zurueck').click();
+    await expect(page.locator('#rv-pos')).toHaveText('7 von 9');
+    await page.locator('#rv-insel .rv-gk, #review .rv-leer').first().waitFor();
+    expect(await ausserhalb(), 'nach Blättern').toBe(true);
     await page.locator('#rv-u-alle').click();
     await page.locator('#rv-insel section.df, #review .rv-leer').first().waitFor();
     expect(await ausserhalb(), '„Alle Aenderungen“').toBe(true);
@@ -163,6 +181,24 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
       await expect(page.locator('#rv-kopf'), `kein Kopf: ${adresse}`).toHaveCount(0);
       await expect(page.locator('#review .rv-ls, #review .rv-meld, #review .rv-leer').first()).toHaveCount(1);
     }
+  });
+
+  test('AK 5: nach einem Diff-Fehler mit „Erneut versuchen“ liegt der Kopf wieder ausserhalb von #review', async ({ page }) => {
+    const s = seite(page);
+    const ausserhalb = () => page.evaluate(() => { const k = document.getElementById('rv-kopf'), r = document.getElementById('review'); return k && r ? !r.contains(k) : null; });
+    const h = await halten(page, '**/api/aufgaben/9/diff?**');
+    await page.goto(commitAdresse(k, 9, kopfRepository().n));
+    await expect.poll(() => h.angehalten()).toBe(1);
+    h.frei(0, { status: 503, body: { fehler: 'Git antwortete nicht rechtzeitig.' } });
+    await expect(page.locator('#review .rv-meld')).toContainText('Zeitgrenze überschritten.');
+    await expect(page.locator('#rv-kopf'), 'im Fehlerzustand gibt es keinen Kopf').toHaveCount(0);
+    await expect(page.locator('#review .rv-ls'), 'die Commit-Leiste bleibt in #review').toHaveCount(1);
+    await page.locator('#rv-erneut').click();
+    await expect.poll(() => h.angehalten()).toBe(2);
+    h.frei(1, null);
+    await expect(s.kopf).toHaveCount(1);
+    expect(await ausserhalb(), 'nach „Erneut versuchen“').toBe(true);
+    expect(await s.kopfImBild(), 'der Kopf ist sichtbar').toBe(true);
   });
 
   /* ── AK 6: Breiten und Bedienung (D0009 Bild 11) ── */
