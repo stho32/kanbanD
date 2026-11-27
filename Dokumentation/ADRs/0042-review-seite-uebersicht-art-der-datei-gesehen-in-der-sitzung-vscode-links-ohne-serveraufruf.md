@@ -1,6 +1,6 @@
 # ADR-0042: Review-Seite übersichtlicher — Art der Datei aus festen Pfadregeln, „Gesehen“ nur in der Sitzung, Wortmarke über Präfix und Suffix, Pfad und VS Code über `vscode://file` mit der Wurzel aus der Diff-Antwort, „Diff in VS Code“ ohne Serveraufruf durch „Patch herunterladen“ ersetzt
 
-**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt. Nachtrag N2 (2026-11-22, Akzeptiert): Punkt 6 ergänzt (`ETag` von „Ein Commit“ mit dem Startordner, ohne Git, kein eigener Versionsteil), Wortlaute an Punkt 3 nach N1.2. Nachtrag N3 (2026-11-23, Akzeptiert): Fingerabdruck von N1.4 ohne `patch`. Nachtrag N4 (2026-11-23, Akzeptiert): Meldung bei nicht speicherbarem „Gesehen“ ersetzt „ohne Meldung“ (Punkt 2, N1.4, N3). Nachtrag N5 (2026-11-23, Akzeptiert): Punkt 8 präzisiert (Umbrechen in `localStorage` statt `sessionStorage`, Breite der Blöcke als Eigenschaft `--bb`, Umbruch nur per Klasse, Leseposition wird gehalten). Nachtrag N6 (2026-11-23, Akzeptiert): Punkt 8 „Nebeneinander“ festgelegt (`data-z` je Code-Zelle, Neuzeichnen nur der Code-Bereiche, Lesezeile als Anker ersetzt den Anker von N5.3, Ausrichtung i gegen i, Hinweiszeile, Blöcke zu 500 Tabellenzeilen nach der Gegenüberstellung, `localStorage` `kanbanD.nebeneinander`, Schalter als `input[role=switch]` statt `aria-pressed`). Nachtrag N7 (2026-11-23, Akzeptiert): Sprung beim Aufwärtsrollen bei „Umbrechen an“ — `overflow-anchor: auto` nur bei `umbr`, Höhenschätzung bleibt, Halten beim Umschalten bleibt (schreibt N5.3 fort, nimmt die Inkauf-Sätze zu Sprüngen in N5.3, N6.2, N6.5 für „an“ zurück; durch Messprobe entschieden).
+**Status**: Akzeptiert (Punkte 1, 3, 4, 5, 6 und 7). Punkt 2 („Gesehen“ nur in der Sitzung) Akzeptiert vorbehaltlich der Frage an den product-owner, ob „Gesehen“ dauerhaft gelten soll; bis zur Antwort gilt die Sitzung. Nachtrag N1 (2026-11-22, Akzeptiert): Punkt 2 durch N1.4 ersetzt („Gesehen“ dauerhaft in `localStorage`, product-owner), Punkte 6, 7 und 9 präzisiert, Aufklapper bis 1099 px und Modul `web/review-uebersicht.js` ergänzt. Nachtrag N2 (2026-11-22, Akzeptiert): Punkt 6 ergänzt (`ETag` von „Ein Commit“ mit dem Startordner, ohne Git, kein eigener Versionsteil), Wortlaute an Punkt 3 nach N1.2. Nachtrag N3 (2026-11-23, Akzeptiert): Fingerabdruck von N1.4 ohne `patch`. Nachtrag N4 (2026-11-23, Akzeptiert): Meldung bei nicht speicherbarem „Gesehen“ ersetzt „ohne Meldung“ (Punkt 2, N1.4, N3). Nachtrag N5 (2026-11-23, Akzeptiert): Punkt 8 präzisiert (Umbrechen in `localStorage` statt `sessionStorage`, Breite der Blöcke als Eigenschaft `--bb`, Umbruch nur per Klasse, Leseposition wird gehalten). Nachtrag N6 (2026-11-23, Akzeptiert): Punkt 8 „Nebeneinander“ festgelegt (`data-z` je Code-Zelle, Neuzeichnen nur der Code-Bereiche, Lesezeile als Anker ersetzt den Anker von N5.3, Ausrichtung i gegen i, Hinweiszeile, Blöcke zu 500 Tabellenzeilen nach der Gegenüberstellung, `localStorage` `kanbanD.nebeneinander`, Schalter als `input[role=switch]` statt `aria-pressed`). Nachtrag N7 (2026-11-23, Akzeptiert): Sprung beim Aufwärtsrollen bei „Umbrechen an“ — `overflow-anchor: auto` nur bei `umbr`, Höhenschätzung bleibt, Halten beim Umschalten bleibt (schreibt N5.3 fort, nimmt die Inkauf-Sätze zu Sprüngen in N5.3, N6.2, N6.5 für „an“ zurück; durch Messprobe entschieden). Nachtrag N8 (2026-11-27, Akzeptiert, Karte #268): das Speicherformat von „Gesehen“ bleibt unverändert; der Leseweg zerlegt den `alle`-Schlüssel in `(anwendung, pfad)` plus Fingerabdruck, und „seit dem Haken geändert“ ist der Zustand „genauer Schlüssel fehlt, ein Schlüssel derselben Datei mit anderem Fingerabdruck steht in der Menge“; der Zähler zählt weiter nur genaue Schlüssel.
 **Datum**: 2026-11-22
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #252, Lauf 252-architekt-1)
 **Kontext-Anforderung**: — (Karte #252, Auftrag des Betreibers vom 2026-11-22 nach dem Entwurf „Review ‚Ein Commit‘ – Vorschlag“; die Anforderungen schreibt der planer). Bezug: R00207, R00210, R00217, R00224; ADR-0030 Punkt 4, ADR-0032 (N2.4, N4 S2, N5.1, N6.9), ADR-0033 (Punkte 5 und 8, N1), ADR-0040; Artboard D0009
@@ -447,3 +447,80 @@ Gewählt: **(c2)**. Verworfen: (a), weil die Probe zeigt, dass eine „genaue“
 - **Preis**: Die Rolle hat zwei Zustände der Verankerung, abhängig von `umbr`. Wer `.rv{overflow-anchor:none}` liest, muss die Ausnahme kennen; der Kommentar an der Regel nennt sie.
 - **Inkauf**: Browser ohne Scroll-Anker springen weiter. Bei „an“ ist das Halten nach dem Laden einer Leiste Sicherung statt Wirkung.
 - **Unverändert**: die Höhenschätzung (N5.3), das Halten beim Umschalten (N5.3, N6.2), `overflow-anchor: none` bei „aus“ (R00210 FA 8).
+
+
+## Nachtrag 2026-11-27 N8: „Seit dem Haken geändert“ — das Speicherformat bleibt, der alte Fingerabdruck wird aus dem vorhandenen Schlüssel gelesen (Formatfrage der Karte #268, R00246 US-5/AK 5)
+
+**Status `Akzeptiert`.** Der Nachtrag beantwortet die Formatfrage der Karte #268 („Vorher klärt der architekt das Speicherformat“). Der Text der Punkte 1–9 und von N1 bis N7 bleibt stehen. Wo er abweicht, gilt dieser Nachtrag.
+**Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #268, Lauf 268-architekt-1)
+**Erprobt durch**: Code von `main` gelesen (`web/review-uebersicht.js:275–341`, `:375–399`; `web/app.js:1443`, `:1466–1495`, `:1511`, `:1536`; `e2e/einheit/r00246-gesehen.test.js`). Nichts gebaut.
+
+### N8.1 Anlass und Frage
+
+R00246 (S3, #257) lässt in „Alle Änderungen“ eine Datei als gesehen gelten, wenn ihr Schlüssel — der den Fingerabdruck trägt — im gespeicherten Feld steht (Punkt 2, N1.4, N3). Ändert ein neuer Commit die Datei, ist der Schlüssel ein anderer, und die Datei gilt wieder als ungesehen (US-5, AK 5). Das ist heute **still**: der Mensch sieht keinen Unterschied zwischen „nie geprüft“ und „geprüft, seither geändert“. Karte #268 will den Unterschied als sichtbaren Text zeigen, ohne den Zähler falsch werden zu lassen. Frage der Karte: Braucht das ein anderes Speicherformat?
+
+### N8.2 Belegt (Code von `main`)
+
+- Der Schlüssel einer Datei in „Alle Änderungen“ enthält den Fingerabdruck: `alle\u0000<anwendung>\u0000<pfad>\u0000<fingerabdruck>` (`alleDateiSchluessel`, `web/review-uebersicht.js:381–383`). Der Fingerabdruck bildet sich über `status`, `alt`, `neu`, `plus`, `minus`, `binaer` bzw. die Folge-Schritte, **nie** über `patch` (`fingerabdruck`, `:386–390`; N3.1).
+- „Gesehen“ ist ein Mengentest auf genau diesen Schlüssel: `r.gesehen.has(alleDateiSchluessel(antwort.anwendung, d))` (`web/app.js:1536`, ebenso `:1443`, `:1511`, `:1969`).
+- Der Schreibweg fügt hinzu und entfernt nur den genannten Schlüssel (`gesehenAnwenden`, `:318–325`); ein Schlüssel, dessen Fingerabdruck nicht mehr zum Stand passt, **bleibt** in der Menge stehen. Er ist der gespeicherte *alte* Fingerabdruck — heute wird er nie gelesen.
+- In „Ein Commit“ ist der Schlüssel `<voller hash>\u0000<pfad>` (`commitDateiSchluessel`, `:377–379`): kein Fingerabdruck, denn ein anderer Commit ist eine andere Seite (AK 2: dieselbe Datei in einem anderen Commit ist dort ungesehen).
+
+### N8.3 Optionen
+
+| Option | Stärke | Schwäche |
+|---|---|---|
+| **F1 — Format unverändert; der „geändert“-Zustand wird aus dem vorhandenen Schlüssel gelesen** (gewählt) | kein neues Feld, kein Versionszeichen, keine Migration; die heute gespeicherten Haken bleiben gültig; die Tests von R00246 bleiben wörtlich; der alte Fingerabdruck wird nicht neu abgelegt — er steht schon da | der Leseweg muss den Schlüssel wieder zerlegen; die Menge wächst, wenn dieselbe Datei nach jeder Änderung erneut abgehakt wird (eine Zeile je Haken) |
+| F2 — `gesehen` wird eine Liste von Gegenständen `{anwendung, pfad, fingerabdruck}` bzw. `{hash, pfad}` | die Identität `(anwendung, pfad)` wird ausdrücklich, je Datei genau ein Eintrag | ein neues Speicherformat im Browser-Speicher mit Lesemigration; die Tests von R00246, die den Schlüssel wörtlich prüfen (AK 2, 5, 6), müssten ihre Erwartung ändern (R00246 AK 10 will das nicht); größerer Eingriff für eine Härtung |
+| F3 — wie F1, aber der Schreibweg ersetzt den Eintrag derselben `(anwendung, pfad)` (eine Zeile je Datei) | die Speichermenge bleibt klein; „geändert“ heißt eindeutig „seit dem letzten Haken geändert“; bei einer Rückkehr zu einem früher geprüften Inhalt gilt die Datei wieder als ungesehen (genauer) | der Schreibweg bekommt eine zweite Aufgabe (nach Identität ersetzen, nicht nur den Schlüssel umschalten); mehr Verhalten für dieselbe Anzeige |
+
+Gewählt: **F1**. Der alte Fingerabdruck liegt schon im Schlüssel (N8.2); die Karte verlangt kein neues Feld, nur dass er gespeichert *bleibt* — und er bleibt, weil der Schreibweg ihn nie entfernt. F2 tauscht eine Migration und geänderte Tests gegen eine Schreibweise ein, die dieselbe Frage schon beantwortet. F3 nimmt das Wenige aus F1 mit, ändert aber den Schreibweg und den Sinn von „geändert“; das ist nicht Teil dieser Karte (Vermerk in N8.7).
+
+### N8.4 Entscheidung
+
+1. **Das Speicherformat bleibt unverändert.** `kanbanD.gesehen.<slug>.<nr>` bleibt `{"zeit": <ms>, "gesehen": [<schlüssel>…]}` mit den beiden Schlüsselformen aus N1.4 und N3. Kein neues Feld, kein Versionszeichen, keine Migration; die heute in Browsern liegenden Haken bleiben ohne Zutun gültig. **Damit ändern sich die gespeicherten Daten nicht, und das Label `datenformat` wird für die Karte nicht vorgeschlagen** — es träfe ohnehin nicht: dieser Speicher ist der Browser-Speicher, nicht das Dateiformat des Board-Ordners oder die API (`AI-Team/factory.md:219`; R00246, „kein Datenformat im Board“).
+2. **Der Leseweg bekommt einen Vertrag über den Schlüssel.** Ein `alle`-Schlüssel wird an `\u0000` in genau vier Felder zerlegt: `[alle, anwendung, pfad, fingerabdruck]`. Die **Datei-Identität** ist das Paar `(anwendung, pfad)`, der Fingerabdruck ist **Datum** an ihr. Weder `anwendung` noch `pfad` darf `\u0000` enthalten (Git verbietet es im Pfad, das Register in der Anwendung); ein Schlüssel, der nicht vier Felder ergibt, ist ein fremder Schlüssel und wird nur auf Gleichheit geprüft, nie zerlegt.
+3. **Der Zustand einer Datei in „Alle Änderungen“** ergibt sich aus der Menge:
+   - `gesehen` — der genaue Schlüssel `alle\u0000anwendung\u0000pfad\u0000<fingerabdruck_aktuell>` steht in der Menge;
+   - `geaendert` (der Hinweis) — der genaue Schlüssel fehlt, aber ein Schlüssel **derselben `(anwendung, pfad)` mit anderem Fingerabdruck** steht in der Menge;
+   - `offen` — sonst.
+   In „Ein Commit“ gibt es nur `gesehen` und `offen`: dort ist der Hash die Identität, und US-5 nennt „Alle Änderungen“.
+4. **Der Zähler bleibt wahr.** Gezählt werden nur die `gesehen`-Dateien; eine `geaendert`-Datei zählt nicht mit. `n` bleibt die Zahl aller Dateien der Liste (FA 2). Der Hinweis ändert nur die Anzeige, nie die Menge und nie den Zähler.
+5. **Der alte Fingerabdruck bleibt gespeichert.** Ein Schlüssel derselben `(anwendung, pfad)` wird nicht entfernt, wenn sich die Datei ändert (F1); erst ein neuer Haken setzt den Schlüssel mit dem *neuen* Fingerabdruck daneben. So kann der Hinweis zeigen, solange er gilt.
+6. **Der Hinweis ist Text, nicht nur Farbe** (Ziel der Karte), steht an der Datei (Dateikopf und/oder Zeile der Liste, Anlehnung an D0009) und trägt einen zugänglichen Namen. Der **Wortlaut ist eine Entscheidung des product-owner** (wie Z. 537, 641) und gehört vor den Bau ins Protokoll; `gestalter`/`ux-reviewer` prüfen Ort, Kontrast und Breite (D0009 zeichnet diesen Zustand nicht, R00246 „Artboard“).
+
+### N8.5 Durchsetzung (Abnahme-Proben für den planer)
+
+- **Einheit, reine Funktion** in `web/review-uebersicht.js` (Node; Menge und eine aktuelle Datei `(anwendung, pfad, fingerabdruck)` hinein):
+  - der genaue Schlüssel steht darin → `gesehen`;
+  - nur ein Schlüssel derselben `(anwendung, pfad)` mit anderem Fingerabdruck → `geaendert`;
+  - kein Schlüssel dieser `(anwendung, pfad)` → `offen`;
+  - ein Schlüssel **einer anderen Anwendung** oder eines **anderen Pfades** → `offen`, nicht `geaendert`;
+  - ein Ein-Commit-Schlüssel (`<hash>\u0000<pfad>`) wird nie als `alle`-Schlüssel gelesen.
+- **Rundlauf des Lesewegs**: `alle\u0000<anwendung>\u0000<pfad>\u0000<fp>` zerlegt sich in vier Felder und wieder zusammengesetzt zeichengleich; ein Pfad mit Bidi-/Steuerzeichen (ADR-0033 Punkt 8) und ein Anwendungsname mit Leerzeichen überstehen; ein Schlüssel ohne die vier Felder gilt als fremd.
+- **Schreibweg unverändert**: ein Haken an einer Datei ändert nur ihren Schlüssel; der Schlüssel derselben Datei mit anderem Fingerabdruck bleibt stehen; die Obergrenze von 200 Karten und ein werfender Speicher verhalten sich wie bisher (R00246 AK 6, 7).
+- **E2E** (US-5, erweitert): Aufgabe #3 in „Alle Änderungen“, `src/a.rs` abgehakt → „1 von 5 gesehen“; Commit K3b (eine Zeile) → nach dem Neuladen „0 von 5 gesehen“, `src/a.rs` offen **und** mit dem sichtbaren Text-Hinweis; ein erneuter Haken → „1 von 5 gesehen“ und der Hinweis ist weg. Eine gleichnamige Datei einer anderen Anwendung bleibt ohne Hinweis und ohne Haken. „Änderungen anzeigen“ an einer großen Datei nimmt den Haken nicht weg und setzt keinen Hinweis.
+- **Mutanten**, je von einem benannten Test getötet:
+  - (a) der Hinweis feuert ohne Fingerabdruckvergleich (jeder Schlüssel der `(anwendung, pfad)` genügt) → eine Datei, deren aktueller Fingerabdruck gespeichert ist, zeigt den Hinweis → rot;
+  - (b) der Zähler zählt die `(anwendung, pfad)` statt des genauen Schlüssels → eine geänderte Datei zählt als gesehen („1 von 5“ statt „0 von 5“) → rot;
+  - (c) der Leseweg erkennt nur einen Anfang (Präfix) und nimmt den ersten Fund → ein Schlüssel einer anderen Anwendung/Datei erzeugt einen Hinweis → rot;
+  - (d) der Hinweis wird auch in „Ein Commit“ gesetzt → rot;
+  - (e) der Ein-Commit-Schlüssel wird als `alle`-Schlüssel gelesen → rot.
+
+### N8.6 Inkauf
+
+- Die Lücke des Fingerabdrucks (N3.3) trifft auch den Hinweis: eine Änderung, die `plus`, `minus`, `status` und die Pfade gleich lässt (eine Zeile ersetzt), ergibt keinen Hinweis und gilt weiter als gesehen. Die Stufe aus N3.4 (`blob` je Datei) schließt beide zugleich.
+- Die Menge wächst je Datei mit jedem Haken nach einer Änderung (F1). Sie bleibt klein (wenige Zeichen je Haken) und ist von der Obergrenze je *Karte* nicht erfasst. Fällt das im Betrieb auf, ist F3 (eine Zeile je Datei) die erste Maßnahme — eigene Karte, kein Teil von #268.
+- Der Hinweis hängt am Fingerabdruck, nicht an einer Zeit: kehrt der Inhalt zu einem früher geprüften Stand zurück, gilt die Datei wieder als gesehen und der Hinweis verschwindet. Das ist die ehrliche Lesart von „gesehen“ (F1 gegenüber F3).
+
+### N8.7 Folgeentscheidungen / Aufgaben
+
+- [ ] product-owner: Wortlaut des Hinweises (und ob er im Dateikopf, in der Zeile der Liste oder an beiden steht).
+- [ ] gestalter: D0009 `#review-uebersicht` um den Zustand „geprüft, seither geändert“ ergänzen (hell/dunkel, schmale Breite) — der Zustand ist dort nicht gezeichnet.
+- Nicht Teil dieser Entscheidung: F3 (Ersetzen je Datei), das `blob`-Feld aus N3.4, ein Hinweis in „Ein Commit“.
+
+### N8 Konsequenzen
+
+- **Positiv**: kein neues Feld, keine Migration, die bestehenden Haken bleiben. „Gesehen“, „seit dem Haken geändert“ und der Zähler sind drei Aussagen aus einem Feld; Server und API bleiben unberührt.
+- **Preis**: der Leseweg hat jetzt einen Vertrag über den Schlüssel (vier Felder je `alle`-Schlüssel); ein künftiger Wechsel des Schlüsselformats (etwa N3.4) muss ihn mitziehen.
+- **Unverändert**: der Schlüssel und sein Fingerabdruck (N1.4, N3.1), der Zähler und die Obergrenze (FA 2, 9), der Fehlerpfad (N4), die Zählung von `n` (FA 2).
