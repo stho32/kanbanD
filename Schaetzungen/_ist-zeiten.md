@@ -1280,3 +1280,7 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #250 R00263 | Nacharbeit A1 (Sollte): `cargo build --all-targets --features lizenzen` + `cargo test --features lizenzen` im Release-Prüfjob | Standard | 0,2h | 0,1h | 0,1h | autonom |
 | 2026-11-27 | Karte #250 R00263 | Nacharbeit Optional: `web/LIZENZEN.md` nennt sich als Obermenge, tower-Pin im Ausliefer-Test gelöst, Ein-/Mehrzahl | Standard | 0,2h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #250 R00263 | Nacharbeit Rechtschreibung (Sollte 1–4): Abhängigkeitsgraphen, Meldung groß, „eine normale Abhängigkeit“; Gelerntes-Zeile B1 | Standard | 0,2h | 0,1h | 0,1h | autonom |
+| 2026-11-27 | Karte #268 R00265 | B1440 Zustand je Datei in „Alle Änderungen“ (rein, Node) | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #268 R00265 | B1441 Hinweis in Dateiliste und Dateikopf zeichnen | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #268 R00265 | B1442 Gewand `.ru-hg` (Breite, Themen, Kontrast, Zugänglichkeit) | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #268 R00265 | B1443 Probe im echten Programm, Mutanten (a)–(e), volles Gate | Standard | 0,5-1h | 0,7h | 0,7h | autonom |
