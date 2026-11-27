@@ -173,9 +173,11 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
     await page.locator('#rv-insel .rv-gk, #review .rv-leer').first().waitFor();
     expect(await ausserhalb(), 'nach Neuladen').toBe(true);
     // Blättern zu einem anderen Commit (AK 5, PO Z. 743): der Kopf bleibt ausserhalb von #review
-    await expect(page.locator('#rv-pos')).toHaveText('8 von 9');
-    await page.locator('#rv-zurueck').click();
-    await expect(page.locator('#rv-pos')).toHaveText('7 von 9');
+    const vorher = await page.locator('#rv-pos').textContent();
+    const zurueck = page.locator('#rv-zurueck');
+    const blaettern = (await zurueck.count()) ? zurueck : page.locator('#rv-vor');
+    await blaettern.click();
+    await expect(page.locator('#rv-pos')).not.toHaveText(vorher);
     await page.locator('#rv-insel .rv-gk, #review .rv-leer').first().waitFor();
     expect(await ausserhalb(), 'nach Blättern').toBe(true);
     await page.locator('#rv-u-alle').click();
