@@ -304,6 +304,62 @@ pub fn enthaltene(komplett: &Metadaten, auswahl: &Auswahl) -> Result<Vec<Paket>,
     Ok(pakete)
 }
 
+/// Ein ausgenommenes Paket mit Grund, wie es der Generator ausgibt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ausnahme {
+    pub name: String,
+    pub version: String,
+    pub grund: AusnahmeGrund,
+}
+
+/// Baut die Ausnahmeliste mit Name, Version und Grund.
+pub fn ausnahmen(komplett: &Metadaten, auswahl: &Auswahl) -> Vec<Ausnahme> {
+    auswahl
+        .ausnahmen
+        .iter()
+        .filter_map(|(id, grund)| {
+            komplett.pakete.get(id).map(|info| Ausnahme {
+                name: info.name.clone(),
+                version: info.version.clone(),
+                grund: *grund,
+            })
+        })
+        .collect()
+}
+
+/// Formt die enthaltenen und ausgenommenen Pakete zu `web/LIZENZEN.md`.
+pub fn formatiere(pakete: &[Paket], ausnahmen: &[Ausnahme]) -> String {
+    let mut text = String::new();
+    text.push_str(concat!(
+        "# Lizenzhinweise der eingebetteten Rust-Pakete\n\n",
+        "kanbanD ist ein einzelnes Programm, in das die Oberfläche eingebettet ist. Es gibt\n",
+        "damit auch die Rust-Pakete weiter, aus denen es gebaut ist. Diese Datei nennt sie mit\n",
+        "Lizenz und Urhebertext. Quelle der Wahrheit ist `Cargo.lock`; erzeugt mit\n",
+        "`cargo run --features lizenzen --example lizenzen` und geprüft von `tests/lizenzen.rs`.\n\n",
+        "## Enthaltene Pakete\n\n",
+    ));
+    for p in pakete {
+        text.push_str(&format!(
+            "### {} {}\nLizenz: {}\nUrhebertext:\n\n{}\n\n",
+            p.name,
+            p.version,
+            p.lizenz,
+            p.urhebertext.trim_end()
+        ));
+    }
+    text.push_str(concat!(
+        "## Ausgenommene Pakete\n\n",
+        "Nicht enthaltene Pakete aus `Cargo.lock` mit Grund: `dev` nur Testabhängigkeit,\n",
+        "`build` nur Bauabhängigkeit, `plattformfremd` nur für andere Ziele, `workspace` kanbanD selbst.\n\n",
+        "| Paket | Version | Grund |\n",
+        "| --- | --- | --- |\n",
+    ));
+    for a in ausnahmen {
+        text.push_str(&format!("| {} | {} | {} |\n", a.name, a.version, a.grund.wort()));
+    }
+    text
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -463,5 +519,49 @@ mod tests {
             Fehler::PaketOhneLizenz { paket } => assert_eq!(paket, "a 1.0.0"),
             andere => panic!("erwartet PaketOhneLizenz, war {andere:?}"),
         }
+    }
+
+    #[test]
+    fn ausnahmen_tragen_name_version_grund() {
+        let komplett = lesen(KOMPLETT).unwrap();
+        let ziel = lesen(ZIEL).unwrap();
+        let a = auswahl(&komplett, &[&ziel, &ziel]);
+
+        let paare: Vec<(String, String, &str)> = ausnahmen(&komplett, &a)
+            .iter()
+            .map(|x| (x.name.clone(), x.version.clone(), x.grund.wort()))
+            .collect();
+        assert_eq!(
+            paare,
+            vec![
+                ("b".to_string(), "1.0.0".to_string(), "dev"),
+                ("d".to_string(), "1.0.0".to_string(), "plattformfremd"),
+                ("ws".to_string(), "0.1.0".to_string(), "workspace"),
+            ]
+        );
+    }
+
+    #[test]
+    fn formatiere_schreibt_vier_felder_und_ausnahmen() {
+        let pakete = vec![Paket {
+            name: "a".to_string(),
+            version: "1.0.0".to_string(),
+            lizenz: "MIT".to_string(),
+            urhebertext: "Copyright 2026 Ada\n".to_string(),
+        }];
+        let ausnahmen = vec![Ausnahme {
+            name: "b".to_string(),
+            version: "2.0.0".to_string(),
+            grund: AusnahmeGrund::Dev,
+        }];
+
+        let text = formatiere(&pakete, &ausnahmen);
+        assert!(text.contains("## Enthaltene Pakete"), "{text}");
+        assert!(text.contains("### a 1.0.0"), "Name und Version: {text}");
+        assert!(text.contains("Lizenz: MIT"), "Lizenzfeld");
+        assert!(text.contains("Urhebertext:"), "Urhebertextfeld");
+        assert!(text.contains("Copyright 2026 Ada"), "Urhebertext");
+        assert!(text.contains("## Ausgenommene Pakete"), "Ausnahmenabschnitt");
+        assert!(text.contains("| b | 2.0.0 | dev |"), "Ausnahmenzeile: {text}");
     }
 }

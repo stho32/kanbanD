@@ -18,6 +18,10 @@ path = "src/lib.rs"
 # und `cargo build --all-targets` mit `RUSTFLAGS=-D warnings` nichts Totes sehen.
 lizenzen = []
 
+[[example]]
+name = "lizenzen"
+required-features = ["lizenzen"]
+
 [dependencies]
 axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal", "fs"] }
