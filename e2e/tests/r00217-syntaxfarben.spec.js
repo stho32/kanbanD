@@ -1,8 +1,12 @@
 // R00217 Syntaxfarben in der Review-Seite (Karte #216, I0207, Scheibe B4, ADR-0040) — AK 1–10 im echten Programm gegen echtes Git.
 // Ausgangslage: farben-hilfen.js (R mit K1 an #2, K2 an #3, K3 an #4). Über Farbe wird erst geurteilt, wenn der Diffbereich
 // `data-farbe="ja"` oder `"nein"` trägt — ereignisgenau, nie nach Zeit (ADR-0026). Konsole im Testkörper urteilen, dann abbauen.
+// AK 1 trägt kein Zeitmaß mehr im Gate (R00260): die Gate-Fälle prüfen vollständigen Text, `data-farbe`, Zeilen und Blöcke; das
+// Wanduhr-Maß (Long Task ≤ 150 ms) läuft als Lastprobe außerhalb des Gates, nur ausdrücklich mit `KD_LASTPROBE=1` und bei Last < 2
+// (`KD_LASTPROBE=1 npx playwright test tests/r00217-syntaxfarben.spec.js -g "AK 1 Lastprobe" --workers=1`, Last aus `/proc/loadavg`);
+// im Gate erscheint sie als `skipped`.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, mutanteEinsetzen, kontrastAm } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, kontrastAm, lastLesen } = require('./hilfen');
 const fs = require('fs');
 const path = require('path');
 const { farbenRepository, farbenVorbereiten, kommentarAnlegen } = require('./farben-hilfen');
@@ -393,6 +397,58 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     expect(ersteUndLetzte).toEqual([10000, ['let'], ['let'], 21]);
     // Long Tasks ab `data-farbe="laeuft"` als Beobachtung ohne Grenze (R00260): das Wanduhr-Maß misst die Lastprobe
     await langeSeit(page, tLaeuft, 'lang.rs ab laeuft');
+  });
+
+  /* ── AK 1 Lastprobe (R00260): das Wanduhr-Maß außerhalb des Gates, nur ausdrücklich (KD_LASTPROBE=1) und bei Last < 2;
+        im Gate erscheint sie als `skipped`, ohne KD_LASTPROBE misst sie nicht ── */
+
+  test.describe('Lastprobe', () => {
+    test.skip(!process.env.KD_LASTPROBE, 'Lastprobe: nur ausdrücklich (KD_LASTPROBE=1), Last < 2');
+
+    /** Die längste Aufgabe des Hauptfadens ab `t0` in ms (Wanduhr, nur die Lastprobe misst hier). */
+    const laengsteSeit = (page, t0) => page.evaluate(t => Math.max(0, ...window.kdLang.filter(e => e.start >= t).map(e => e.dauer)), t0);
+
+    /** Meldet Last und je Datei die längste Aufgabe der Lastprobe in die Ausgabe, als Annotation und mit `KD_MESS_AUS` in eine Datei (R00260 AK 6, 7). */
+    function messungMelden(werte, last) {
+      const teile = ['feindlich.md', 'feindlich.html', 'feindlich.js', 'lang.rs'].map(p => `${p} ${werte[p]} ms`);
+      const zeile = `AK 1 Lastprobe Last ${last.toFixed(2)} | ${teile.join(' | ')}`;
+      console.log(zeile);
+      test.info().annotations.push({ type: 'AK 1 Lastprobe', description: zeile });
+      if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify({ last, ...werte }) + '\n');
+    }
+
+    test('AK 1 Lastprobe: feindlich.* und lang.rs — je Datei die längste Aufgabe ≤ 150 ms', async ({ page }) => {
+      const last = lastLesen();
+      console.log(`AK 1 Lastprobe: Last ${last.toFixed(2)} — Grenze 150 ms, Messung nur bei Last < 2`);
+      test.skip(last >= 2, `keine Messung: Last < 2 nötig (Last ${last.toFixed(2)})`);
+      test.setTimeout(60000);
+      await langeAufgabenBeobachten(page);
+      await page.goto(reviewAdresse(k, 3));
+      await expect(page.locator('#rv-insel .df')).toHaveCount(4);
+      await alleZu(page);
+      const werte = {};
+      for (const pfad of ['feindlich.md', 'feindlich.html', 'feindlich.js']) {
+        const t0 = await jetzt(page);
+        await aufklappen(page, pfad);
+        await expect(bereich(page, pfad)).toHaveAttribute('data-farbe', 'laeuft');
+        expect(await farbeAbwarten(page, pfad), pfad).toBe('nein');
+        werte[pfad] = await laengsteSeit(page, t0);
+      }
+      // lang.rs: die längste Aufgabe ab `data-farbe="laeuft"` (das ungefärbte Zeichnen davor gehört zu R00207, nicht zu AK 1)
+      await page.goto(reviewAdresse(k, 4));
+      const anzeigen = datei(page, 'lang.rs').getByRole('button', { name: 'Änderungen anzeigen' });
+      await expect(anzeigen).toBeVisible();
+      const t0 = await jetzt(page);
+      await anzeigen.click();
+      expect(await farbeAbwarten(page, 'lang.rs', 15000)).toBe('ja');
+      const tLaeuft = await page.evaluate(() => window.kdLaeuft['Änderungen in lang.rs']);
+      expect(tLaeuft).toBeGreaterThan(t0);
+      werte['lang.rs'] = await laengsteSeit(page, tLaeuft);
+      messungMelden(werte, last);
+      for (const pfad of ['feindlich.md', 'feindlich.html', 'feindlich.js', 'lang.rs']) {
+        expect(werte[pfad], `${pfad}: längste Aufgabe ≤ 150 ms`).toBeLessThanOrEqual(150);
+      }
+    });
   });
 
   /** Eine Rust-Datei mit genau `laenge` Zeichen Patch, Zeilen höchstens 1.000 Zeichen, jede beginnt mit `fn`. */
