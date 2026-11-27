@@ -100,4 +100,113 @@ test.describe('R00264 „Ein Commit“ genau eine Ansage', () => {
     expect(ladesaetze.length, 'höchstens ein Ladesatz').toBeLessThanOrEqual(1);
     expect(await knotenGleich(page), 'derselbe Meldungsknoten über die zweite Zeichnung').toBe(true);
   });
+
+  /* ── AK 2: Nachbarübergänge derselben Ansicht mit gehaltener Liste: je genau eine Ergebnisansage ── */
+
+  for (const [name, f] of Object.entries(FAELLE)) {
+    test(`AK 2: Diff endet mit ${name} — genau eine Ergebnisansage, derselbe Meldungsknoten`, async ({ page }) => {
+      await meldungenZaehlen(page);
+      const zaehler = await ansagenZaehlen(page);
+      const liste = await halten(page, url => istListe(url, 1));
+      await fest(page, url => istDiff(url, 1), f.wert.status, f.wert.body);
+      await page.goto(reviewAdresse(k, 1, `kd:${rep.k3}`));
+      await expect.poll(() => liste.angehalten()).toBe(1);
+      await expect(page.locator('#review .rv-meld')).toContainText(f.satz);
+      expect(await knotenMerken(page)).toBe(true);
+      const vorher = await meldungen(page);
+      await zaehler.beginnen();
+      liste.frei(0);
+      await expect.poll(() => meldungen(page)).toBeGreaterThan(vorher);
+      const { ergebnisse, ladesaetze } = einordnen(await zaehler.eintraege());
+      expect(meldansagen(ergebnisse), name).toEqual([]);
+      expect(ladesaetze.length, name).toBeLessThanOrEqual(1);
+      expect(await knotenGleich(page), name).toBe(true);
+    });
+  }
+
+  test('AK 2: „Verweis ungültig“ — genau eine Ergebnisansage, die Seitenmeldung', async ({ page }) => {
+    const zaehler = await ansagenZaehlen(page);
+    await page.goto(reviewAdresse(k, 1, 'zz'));
+    await expect(page.locator('#review .rv-meld')).toContainText('Verweis ungültig.');
+    const { ergebnisse, ladesaetze } = einordnen(await zaehler.eintraege());
+    const texte = meldansagen(ergebnisse);
+    expect(texte).toHaveLength(1);
+    expect(texte[0]).toContain('Verweis ungültig.');
+    expect(ladesaetze.length).toBeLessThanOrEqual(1);
+  });
+
+  /* ── AK 2: „Aufgabe gibt es nicht“, „Erneut versuchen“, Neuladen ── */
+
+  test('AK 2: „Aufgabe gibt es nicht“ — genau eine Ergebnisansage, die Seitenmeldung', async ({ page }) => {
+    const zaehler = await ansagenZaehlen(page);
+    const diff = await halten(page, url => istDiff(url, 999)); // hält den Diff, damit die unbekannte Aufgabe zuerst entschieden ist
+    await page.goto(reviewAdresse(k, 999, `kd:${rep.k3}`));
+    await expect(page.locator('#review .rv-meld')).toContainText('Aufgabe #999 gibt es nicht.');
+    await expect(page.locator('#rv-meld')).toBeFocused();
+    expect(diff.angehalten()).toBe(1);
+    const { ergebnisse, ladesaetze } = einordnen(await zaehler.eintraege());
+    const texte = meldansagen(ergebnisse);
+    expect(texte).toHaveLength(1);
+    expect(texte[0]).toContain('Aufgabe #999 gibt es nicht.');
+    expect(ladesaetze.length).toBeLessThanOrEqual(1);
+  });
+
+  test('AK 2: „Erneut versuchen“ endet erneut mit Fehler — genau eine neue Ergebnisansage', async ({ page }) => {
+    const erst = FAELLE['500'], dann = FAELLE['503 Zeitgrenze'];
+    await fest(page, url => istDiff(url, 1), erst.wert.status, erst.wert.body);
+    await page.goto(reviewAdresse(k, 1, `kd:${rep.k3}`));
+    await expect(page.locator('#review .rv-meld')).toContainText(erst.satz);
+    const zaehler = await ansagenZaehlen(page);
+    await routenZuruecksetzen(page);
+    await fest(page, url => istDiff(url, 1), dann.wert.status, dann.wert.body);
+    await zaehler.beginnen();
+    await page.locator('#rv-erneut').click();
+    await expect(page.locator('#review .rv-meld')).toContainText(dann.satz);
+    const { ergebnisse, ladesaetze } = einordnen(await zaehler.eintraege());
+    expect(meldansagen(ergebnisse)).toEqual([await page.locator('#review .rv-meld').evaluate(e => e.textContent.trim())]);
+    expect(ladesaetze.length).toBeLessThanOrEqual(1);
+  });
+
+  test('AK 2: Neuladen nach der ersten Zeichnung — genau eine Ergebnisansage', async ({ page }) => {
+    await meldungenZaehlen(page);
+    const zaehler = await ansagenZaehlen(page);
+    const liste = await halten(page, url => istListe(url, 1));
+    const f = FAELLE['404 repository_fehlt'];
+    await fest(page, url => istDiff(url, 1), f.wert.status, f.wert.body);
+    await page.goto(reviewAdresse(k, 1, `kd:${rep.k3}`));
+    await expect.poll(() => liste.angehalten()).toBe(1);
+    await expect(page.locator('#review .rv-meld')).toContainText(f.satz);
+    await page.reload();
+    await expect(page.locator('#review .rv-meld')).toContainText(f.satz);
+    const { ergebnisse, ladesaetze } = einordnen(await zaehler.eintraege());
+    expect(meldansagen(ergebnisse)).toHaveLength(1);
+    expect(meldansagen(ergebnisse)[0]).toContain(f.satz);
+    expect(ladesaetze.length).toBeLessThanOrEqual(1);
+  });
+
+  test('AK 2: Neuladen nach der zweiten Zeichnung — genau eine Ergebnisansage', async ({ page }) => {
+    await meldungenZaehlen(page);
+    const zaehler = await ansagenZaehlen(page);
+    const liste = await halten(page, url => istListe(url, 1));
+    const f = FAELLE['404 repository_fehlt'];
+    await fest(page, url => istDiff(url, 1), f.wert.status, f.wert.body);
+    await page.goto(reviewAdresse(k, 1, `kd:${rep.k3}`));
+    await expect.poll(() => liste.angehalten()).toBe(1);
+    await expect(page.locator('#review .rv-meld')).toContainText(f.satz);
+    liste.frei(0);
+    await expect(page.locator('#rv-l1')).toBeVisible();
+    // reload: ein neuer Commits-Request wird gehalten (tor 1), die Diff-404 zeichnet die Meldung, dann die Liste die zweite Zeichnung
+    await page.reload();
+    await expect.poll(() => liste.angehalten()).toBe(2);
+    await expect(page.locator('#review .rv-meld')).toContainText(f.satz);
+    const vorher = await meldungen(page);
+    zaehler.beginnen();
+    liste.frei(1);
+    await expect.poll(() => meldungen(page)).toBeGreaterThan(vorher);
+    await expect(page.locator('#rv-l1')).toBeVisible();
+    const { ergebnisse, ladesaetze } = einordnen(await zaehler.eintraege());
+    expect(meldansagen(ergebnisse), 'keine zweite Ansage nach dem Neuladen').toEqual([]);
+    expect(ladesaetze.length).toBeLessThanOrEqual(1);
+    expect(await page.locator('#review .rv-meld').getAttribute('role')).toBe('status');
+  });
 });
