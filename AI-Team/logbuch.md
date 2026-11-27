@@ -2319,3 +2319,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-27 | #239 | Auto-Reviews | code-reviewer | bestanden | 1 min | Wiederholung: B1 geschlossen, AK 4 über Router, kein Rückschritt · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 239-code-reviewer-2 · 0,11 $ · Karte gesamt 7,99 $ |
 | 2026-11-27 | #239 | Auto-Reviews | security-reviewer | bestanden | 3 min | Wiederholung: Muss 1 und 2 geschlossen, kein Rückschritt · claude · sonnet · Lauf 239-security-reviewer-2 |
 | 2026-11-27 | #239 | Entwicklertest | entwicklertester | bestanden | 5 min | US-1..7 bestanden, kein Muss · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 239-entwicklertester-1 · 0,16 $ · Karte gesamt 8,15 $ |
+| 2026-11-27 | #239 | Kennzahlen | — | — | 86 h 0 min | Läufe 13 (befund 2, bestanden 11) · Rollenzeit 5 h 12 min · Wartezeit 15 s · Nacharbeiten 1 · Kosten 8,15 $ · Durchlauf 86 h 0 min |
