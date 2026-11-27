@@ -480,6 +480,7 @@ function kopfBauen(basis) {
   h.schritte = [];
   for (let i = 1; i <= 7; i++) h.schritte.push(aenderungsCommit(r, `S${i} Schritt ${i}`, { [`src/s${i}.rs`]: `fn s${i}() {}\n` }));
   h.n = aenderungsCommit(r, 'K-N lange Zeile', { 'src/a.rs': reihe(250, 'a neu'), 'src/l.rs': `${UM_A}\n`, 'src/z.rs': 'z neu\n' });
+  h.leer = aenderungsCommit(r, 'N-Leer ohne Dateien', {});
   aenderungsCommit(s, 'W0 Vorgänger', { 'docs/n.md': '# n\n\nEnde\n' });
   h.w1 = aenderungsCommit(s, 'W1', { 'docs/n.md': '# n\n\nlet a = 2;\n\nEnde\n' });
   return h;
@@ -498,7 +499,7 @@ function kopfRepository() {
 
 /** Aufgaben: #9 K-N mit den sieben Schritten und W1 (neun Einträge), #10 K-N allein (zwei Einträge). Register `kd`, `wb`. */
 function kopfVorbereiten(h) {
-  return aufgabenVorbereiten(h, { 9: [...h.schritte.map(x => `kd:${x}`), `kd:${h.n}`, `wb:${h.w1}`], 10: [`kd:${h.n}`] });
+  return aufgabenVorbereiten(h, { 9: [...h.schritte.map(x => `kd:${x}`), `kd:${h.n}`, `wb:${h.w1}`], 10: [`kd:${h.n}`], 11: [`kd:${h.leer}`] });
 }
 
 /* ── Ausgangslage von R00246 (Gesehen): eigene Repositories nach R00235, dazu K3b (src/a.rs +1 Zeile, Kind von K3), KG (eine geänderte

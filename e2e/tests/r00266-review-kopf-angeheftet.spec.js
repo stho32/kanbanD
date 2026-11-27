@@ -3,7 +3,7 @@
 // (N6.2), Sprungziele und Scroll-Anker (N7) bleiben unverändert. Ausgangslage: review-hilfen.js `kopfRepository` (K-N mit langer Zeile).
 // Schichten: Testfälle → Testsprache (`seite`) → Treiber (Selektoren, Adressen, Messungen nur hier) → Programm.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastFarben } = require('./hilfen');
 const { kopfRepository, kopfVorbereiten } = require('./review-hilfen');
 
 /* ── Treiber: Adressen, Selektoren, Messungen ── */
@@ -135,5 +135,120 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
     const zeile = await obersteZeile(page);
     expect(zeile, 'eine Zeile `tr` steht an der Oberkante von #review').not.toBeNull();
     expect(zeile.imAnker, 'die Zeile liegt in der Insel, nicht im Rückfall').toBe(true);
+  });
+
+  /* ── AK 5: Jeder Zustand, Neuladen und Ansichtswechsel ── */
+
+  test('AK 5: der Kopf liegt in den Zustaenden mit Schaltern ausserhalb von #review, in den anderen gibt es keinen', async ({ page }) => {
+    const s = seite(page);
+    const ausserhalb = () => page.evaluate(() => { const k = document.getElementById('rv-kopf'), r = document.getElementById('review'); return k && r ? !r.contains(k) : null; });
+    await s.commitOeffnen(k, 9, kopfRepository().n);
+    expect(await ausserhalb(), 'geladene Ansicht: Kopf ausserhalb von #review').toBe(true);
+    await expect(page.locator('#review .rv-ls'), 'die Commit-Leiste bleibt in #review').toHaveCount(1);
+    await page.reload();
+    await page.locator('#rv-insel .rv-gk, #review .rv-leer').first().waitFor();
+    expect(await ausserhalb(), 'nach Neuladen').toBe(true);
+    await page.locator('#rv-u-alle').click();
+    await page.locator('#rv-insel section.df, #review .rv-leer').first().waitFor();
+    expect(await ausserhalb(), '„Alle Aenderungen“').toBe(true);
+    await expect(page.locator('#review .rv-ls')).toHaveCount(1);
+    // Zustaende ohne Schalter: kein sichtbarer Kopf
+    for (const [adresse, anker] of [
+      [`${k.adresse}#/aufgaben/aufgabe/999/review`, '#review .rv-meld'],
+      [`${k.adresse}#/aufgaben/aufgabe/9/review?commit=zz`, '#review .rv-meld'],
+      [commitAdresse(k, 11, kopfRepository().leer), '#review .rv-leer'],
+    ]) {
+      await page.goto(adresse);
+      await page.locator(anker).waitFor();
+      await expect(page.locator('#rv-kopf'), `kein Kopf: ${adresse}`).toHaveCount(0);
+      await expect(page.locator('#review .rv-ls, #review .rv-meld, #review .rv-leer').first()).toHaveCount(1);
+    }
+  });
+
+  /* ── AK 6: Breiten und Bedienung (D0009 Bild 11) ── */
+
+  for (const thm of ['light', 'dark']) {
+    for (const breite of [320, 414, 980, 1280]) {
+      test(`AK 6: ${thm} ${breite} px — kein Querrollen, Kopf sichtbar und bedienbar, deckende Flaeche, Umbruch und Zielgroessen`, async ({ page }) => {
+        const s = seite(page);
+        await thema(page, thm);
+        await breiteSetzen(page, breite, 800);
+        await s.commitOeffnen(k, 9, kopfRepository().n);
+        await expect(s.kopf).toHaveCount(1);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'kein Querrollen').toBe(true);
+        expect(await s.kopfImBild()).toBe(true);
+        const stil = await s.kopf.evaluate(e => { const st = getComputedStyle(e); const r = e.getBoundingClientRect(); return { grund: st.backgroundColor, hoehe: r.height, zeilen: (() => { const rs = Array.from(e.querySelectorAll('label.ru-sch, .btn'), c => c.getBoundingClientRect()).sort((a, b) => a.top - b.top); let n = 0, unten = -1e9; for (const q of rs) if (q.top >= unten - 2) { n++; unten = q.bottom; } else unten = Math.max(unten, q.bottom); return n; })() }; });
+        expect(stil.grund, 'deckende Flaeche (Alpha 1)').toMatch(/^(oklch|rgb|rgba|#)/);
+        expect(stil.grund.includes('/ 0)') || stil.grund.includes('rgba(0, 0, 0, 0)'), 'Alpha ist 1').toBe(false);
+        if (breite === 320) expect(stil.zeilen, 'hoechstens zwei Zeilen bei 320 px').toBeLessThanOrEqual(2);
+        // die Schalterwoerter stehen ganz
+        for (const wort of ['Alle einklappen', 'Umbrechen', 'Nebeneinander']) {
+          const knoepfe = await page.getByText(wort, { exact: true }).evaluateAll(es => es.map(e => e.getBoundingClientRect().width));
+          expect(knoepfe.length, `${wort} ist da`).toBeGreaterThan(0);
+        }
+        // Zielgroesse und Kontrast
+        const ziele = await page.locator('#rv-kopf label.ru-sch, #rv-kopf .btn').evaluateAll(es => es.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+        for (const [b, h] of ziele) expect(Math.min(b, h), 'Zielgroesse >= 24 px').toBeGreaterThanOrEqual(24);
+        const paare = await page.locator('#rv-kopf .btn').evaluateAll(es => es.map(e => { const st = getComputedStyle(e); return [st.color, getComputedStyle(e.closest('#rv-kopf')).backgroundColor]; }));
+        for (const [text, grund] of paare) expect(await kontrastFarben(page, text, grund), 'Text >= 4,5:1').toBeGreaterThanOrEqual(4.5);
+        // Tab erreicht „Zum Code“ (erstes Element), dann Umbrechen und Nebeneinander; die Leertaste schaltet um
+        await page.locator('#rv-rueckweg').focus();
+        await page.keyboard.press('Tab');
+        await expect(page.locator('#rv-zc')).toBeFocused();
+        await page.keyboard.press('Tab');
+        await expect(page.locator('#rv-alle')).toBeFocused();
+        await page.keyboard.press('Tab');
+        await expect(s.eingabe).toBeFocused();
+        await page.keyboard.press('Space');
+        await expect(s.eingabe).toBeChecked();
+        await page.keyboard.press('Space');
+        await expect(s.eingabe).not.toBeChecked();
+      });
+    }
+  }
+
+  /* ── AK 6a: Flaeche im niedrigen Fenster und bei Zoom ── */
+
+  test('AK 6a: 320 x 480 und 640 x 360 (200 % Zoom) — Kopf + .rv-kz <= halbe #main-Hoehe, #review >= 200 px', async ({ page }) => {
+    const s = seite(page);
+    await s.commitOeffnen(k, 9, kopfRepository().n);
+    for (const [breite, hoehe] of [[320, 480], [640, 360]]) {
+      await breiteSetzen(page, breite, hoehe);
+      await expect(s.kopf).toHaveCount(1);
+      const m = await page.evaluate(() => {
+        const main = document.getElementById('main'), rolle = document.getElementById('review'), kz = document.querySelector('.rv-kz');
+        const geschwister = Array.from(main.children).filter(e => e !== rolle).reduce((s2, e) => s2 + e.getBoundingClientRect().height, 0);
+        return { kopfFlaeche: geschwister, main: main.clientHeight, rolle: rolle.clientHeight, scroll: rolle.scrollHeight };
+      });
+      expect(m.kopfFlaeche, `Kopf + .rv-kz <= 50 % von #main (${breite}x${hoehe})`).toBeLessThanOrEqual(0.5 * m.main);
+      expect(m.rolle, `#review >= 200 px (${breite}x${hoehe})`).toBeGreaterThanOrEqual(200);
+      expect(m.scroll, 'Dateiliste und Code sind durch Rollen erreichbar').toBeGreaterThan(m.rolle);
+      // die Kopfhoehe ist mit und ohne Tastaturfokus gleich
+      const ohne = await s.kopf.evaluate(e => e.getBoundingClientRect().height);
+      await page.locator('#rv-zc').focus();
+      const mit = await s.kopf.evaluate(e => e.getBoundingClientRect().height);
+      expect(Math.abs(mit - ohne), 'kein Hoehenwechsel bei Fokus').toBeLessThanOrEqual(0.5);
+    }
+  });
+
+  /* ── AK 6 bei grobem Zeiger (D0009 Bild 11: zwei Zeilen bei 320 px) ── */
+
+  test.describe('grober Zeiger', () => {
+    test.use({ hasTouch: true });
+    test('AK 6: 320 px grober Zeiger — hoechstens zwei Zeilen, die Schalterwoerter stehen ganz, Ziele >= 48 px', async ({ page }) => {
+      const s = seite(page);
+      await breiteSetzen(page, 320, 480);
+      expect(await page.evaluate(() => matchMedia('(pointer:coarse)').matches), 'grober Zeiger').toBe(true);
+      await s.commitOeffnen(k, 9, kopfRepository().n);
+      await expect(s.kopf).toHaveCount(1);
+      const zeilen = await s.kopf.evaluate(e => { const rs = Array.from(e.querySelectorAll('label.ru-sch, .btn'), c => c.getBoundingClientRect()).sort((a, b) => a.top - b.top); let n = 0, unten = -1e9; for (const q of rs) if (q.top >= unten - 2) { n++; unten = q.bottom; } else unten = Math.max(unten, q.bottom); return n; });
+      expect(zeilen, 'hoechstens zwei Zeilen bei 320 px').toBeLessThanOrEqual(2);
+      for (const wort of ['Alle einklappen', 'Umbrechen', 'Nebeneinander']) {
+        const masse = await page.getByText(wort, { exact: true }).evaluateAll(es => es.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+        expect(masse.length, `${wort} ist da`).toBeGreaterThan(0);
+        for (const [b, h] of masse) expect(Math.min(b, h), `${wort} >= 48 px`).toBeGreaterThanOrEqual(48);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    });
   });
 });
