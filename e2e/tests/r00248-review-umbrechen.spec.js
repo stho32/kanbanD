@@ -473,13 +473,12 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
     });
   }
 
-  /* ── AK 7 Tempo und kein Neuaufbau (US-5): Messung mit Ausgabe; die Grenze steht nach der Messung (Abstand ≥ 30 %) ── */
+  /* ── AK 7 Tempo und kein Neuaufbau (US-5): der Gate-Fall prüft Zeilen, Knoten und Anfragen ohne Zeitmaß; das Wanduhr-Maß misst die Lastprobe (R00260) ── */
 
-  test('AK 7: K-Last — Umschalten und Scrollen ohne Long Task über die Grenze, dieselben Zeilenknoten, keine Anfrage', async ({ page }) => {
+  test('AK 7: K-Last — Umschalten und Scrollen, dieselben Zeilenknoten, keine Anfrage', async ({ page }) => {
     test.setTimeout(120000);
     const s = seite(page);
     await breiteSetzen(page, 980, 800);
-    await page.addInitScript(langeAufgabenSammeln);
     await s.commitOeffnen(k, 10, umbrechenRepository().u3);
     const anzeigen = s.datei('src/gross.rs').getByRole('button', { name: 'Änderungen anzeigen' });
     await anzeigen.click();
@@ -496,36 +495,19 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       const schritt = () => { const vorher = r.scrollTop; r.scrollTop += r.clientHeight * 0.8; if (r.scrollTop === vorher) fertig(); else requestAnimationFrame(schritt); };
       requestAnimationFrame(schritt);
     }));
-    const laengste = t => page.evaluate(von => Math.max(0, ...window.kdLang.filter(e => e.start >= von).map(e => e.dauer)), t);
-    // heutiger Stand: Scrollen bei „aus“ (Vergleichswert)
-    const tAus = await page.evaluate(() => performance.now());
-    await bisEnde();
-    await zweiBilder(page);
-    const scrollenAus = await laengste(tAus);
-    const t0 = await page.evaluate(() => performance.now());
+    // Umschalten und Scrollen müssen dieselben Zeilenknoten behalten (Mutant m5: Umschalten zeichnet die Seite neu)
     await s.schalter.click();
     await expect(s.eingabe).toBeChecked();
     await zweiBilder(page);
-    const nachUmschalten = await page.evaluate(t => Math.max(0, ...window.kdLang.filter(e => e.start >= t).map(e => e.dauer)), t0);
-    // von oben bis zum Ende der Datei scrollen, ein Bild je Schritt
     await s.bereich('src/gross.rs').scrollIntoViewIfNeeded();
-    const t1 = await page.evaluate(() => performance.now());
     await bisEnde();
     await zweiBilder(page);
-    const beimScrollen = await page.evaluate(t => Math.max(0, ...window.kdLang.filter(e => e.start >= t).map(e => e.dauer)), t1);
-    const t2 = await page.evaluate(() => performance.now());
     await s.schalter.click();
     await expect(s.eingabe).not.toBeChecked();
     await zweiBilder(page);
-    const zurueck = await page.evaluate(t => Math.max(0, ...window.kdLang.filter(e => e.start >= t).map(e => e.dauer)), t2);
-    const messung = { scrollenAus, nachUmschalten, beimScrollen, zurueck, workers: test.info().config.workers };
-    test.info().annotations.push({ type: 'AK 7 Messung', description: JSON.stringify(messung) });
-    console.log(`AK 7 Messung ${JSON.stringify(messung)}`);
-    if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify(messung) + '\n');
     const knoten = await s.bereich('src/gross.rs').evaluate(b => { const z = b.querySelectorAll('tr'); return [z[0].kdMarke, z[z.length - 1].kdMarke]; });
     expect(knoten, 'dieselben Zeilenknoten').toEqual(['erste', 'letzte']);
     expect(anfragen, 'keine Anfrage').toEqual([]);
-    expect(Math.max(nachUmschalten, beimScrollen, zurueck), 'Long Task').toBeLessThanOrEqual(150);
   });
 
   /* ── AK 7 (Erweiterung, PO Z. 679, ADR-0042 N7.4 P1/P2): Hinaufrollen nach frischem Laden springt nicht ── */
