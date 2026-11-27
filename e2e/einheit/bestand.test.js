@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { offeneAufgaben, praefixe, vorschlag, bestandNachLabels, dringendste, zellName, achsenNachWahl, zielfilter, FILTER_LEER } = require('../../web/berichte.js');
 const { passt } = require('../../web/filter.js');
+const { messung, SPRUNG } = require('./hilfen/lastprobe.js');
 
 const aufgabe = (nummer, labels, klasse = '', mehr = {}) => ({ nummer, titel: `A${nummer}`, klasse, labels, zustaendige: [], archiviert: false, ...mehr });
 const boardMit = (eingang, fertig = []) => ({ slug: 'fabrik', spalten: [{ name: 'Eingang', aufgaben: eingang }, { name: 'Fertig', aufgaben: fertig }] });
@@ -136,12 +137,21 @@ test('B0347 dringendste: erste Klasse der Reihenfolge, unbekannte danach, ohne K
   assert.strictEqual(dringendste([], KLASSEN), null);
 });
 
-test('B0347 Leistung: 500 offene Aufgaben, 30 × 30 Werte in unter 200 ms gerechnet', () => {
-  const aufgaben = Array.from({ length: 500 }, (_, i) => aufgabe(i + 1, [`repo:r${i % 30}`, `nc:${100 + (i * 7) % 30}`], KLASSEN[i % 3]));
-  const board = boardMit(aufgaben.map(a => a.nummer));
+/** 500 offene Aufgaben in 30 Spalten × 30 Werten — Grundlage des Leistungsfalls (B0347). */
+const vieleAufgaben = () => Array.from({ length: 500 }, (_, i) => aufgabe(i + 1, [`repo:r${i % 30}`, `nc:${100 + (i * 7) % 30}`], KLASSEN[i % 3]));
+
+test('B0347 Leistung: 500 offene Aufgaben, 30 × 30 Werte ergeben 31 Zeilen, 31 Spalten, gesamt 500', () => {
+  const aufgaben = vieleAufgaben();
+  const t = bestandNachLabels(aufgaben, boardMit(aufgaben.map(a => a.nummer)), KLASSEN, 'repo', 'nc');
+  assert.deepStrictEqual([t.zeilen.length, t.spalten.length, t.summen.gesamt], [31, 31, 500]);
+});
+
+test('B0347 Leistung Lastprobe: 500 offene Aufgaben, 30 × 30 Werte in unter 200 ms gerechnet', SPRUNG, () => {
+  const aufgaben = vieleAufgaben();
   const start = performance.now();
-  const t = bestandNachLabels(aufgaben, board, KLASSEN, 'repo', 'nc');
+  const t = bestandNachLabels(aufgaben, boardMit(aufgaben.map(a => a.nummer)), KLASSEN, 'repo', 'nc');
   const dauer = performance.now() - start;
+  if (!messung('B0347 Lastprobe bestandNachLabels 500 Aufgaben', `${dauer.toFixed(1)} ms (Grenze 200 ms)`)) return;
   assert.deepStrictEqual([t.zeilen.length, t.spalten.length, t.summen.gesamt], [31, 31, 500]);
   assert.ok(dauer < 200, `${dauer.toFixed(1)} ms`);
 });

@@ -6,6 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const satz = require('../../web/lauf-satz.js');
 const { shellUmbruch, kuerzungHtml, editDiff, gekuerztErkennen, groesseDeutsch, systemhinweiseTrennen, systemhinweiseZaehlen, testzeileFinden, aufrufSatz, ergebnisSatz, jsonZeilen, SATZ_GRENZEN } = satz;
+const { messung, SPRUNG } = require('./hilfen/lastprobe.js');
 const t13 = require('../tests/laufansicht-t13.js');
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -627,7 +628,7 @@ test('Vorgriff gleich an drei Orten: je Zeichen U+0000–U+FFFF mit erlaubter un
   assert.deepStrictEqual(abweichend, []);
 });
 
-test('farbenErlaubt: höchstens 2.000 Spannen je Ergebnis — 2.000 ja, 2.001 nein; 1.200 gedämpfte ja; 3.000 rote nein; 3 MiB ESC[31m ohne Text ja, rasch', () => {
+test('farbenErlaubt: höchstens 2.000 Spannen je Ergebnis — 2.000 ja, 2.001 nein; 1.200 gedämpfte ja; 3.000 rote nein; 3 MiB ESC[31m ohne Text ja', () => {
   assert.strictEqual(SATZ_GRENZEN.farben, 2000);
   assert.strictEqual(farbenErlaubt(`${E}[31mx${E}[0m `.repeat(2000)), true);
   assert.strictEqual(farbenErlaubt(`${E}[31mx${E}[0m `.repeat(2001)), false);
@@ -635,9 +636,16 @@ test('farbenErlaubt: höchstens 2.000 Spannen je Ergebnis — 2.000 ja, 2.001 ne
   assert.strictEqual(farbenErlaubt(`${E}[31mx${E}[0m`.repeat(3000)), false);
   assert.strictEqual(farbenErlaubt(`${E}[31mrot über\n`.repeat(2001)), false, 'eine Spanne je Zeile');
   assert.strictEqual(farbenErlaubt('ohne Folge'), true);
-  const beginn = Date.now();
   assert.strictEqual(farbenErlaubt(`${E}[31m`.repeat(3 * 1048576 / 5)), true);
-  assert.ok(Date.now() - beginn < 2000, `${Date.now() - beginn} ms`);
+});
+
+test('farbenErlaubt Lastprobe: 3 MiB ESC[31m ohne Text in unter 2000 ms', SPRUNG, () => {
+  const beginn = Date.now();
+  const erlaubt = farbenErlaubt(`${E}[31m`.repeat(3 * 1048576 / 5));
+  const dauer = Date.now() - beginn;
+  if (!messung('farbenErlaubt Lastprobe 3 MiB ESC[31m', `${dauer} ms (Grenze 2000 ms)`)) return;
+  assert.strictEqual(erlaubt, true);
+  assert.ok(dauer < 2000, `${dauer} ms`);
 });
 
 /* ── R00244: Übersetzung im Ergebnis-Satz (AK 1–5, ADR-0041 N6 Punkt 1–5) ── */

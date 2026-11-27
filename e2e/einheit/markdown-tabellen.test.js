@@ -5,6 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { markdownHtml } = require('../../web/markdown.js');
 const { pruefeStruktur, linkAdressen, ERLAUBTE_PROTOKOLLE } = require('./hilfen/markdown-struktur.js');
+const { messung, SPRUNG } = require('./hilfen/lastprobe.js');
 
 const AUF = '<div class="md-tab" tabindex="0" role="group" aria-label="Tabelle"><table>';
 const ZU = '</table></div>';
@@ -204,17 +205,25 @@ test('Zufallslauf: 6000 Eingaben aus Strichen, Marken und Adressen — jede Ausg
 const MAX_SPALTEN = 50, MAX_ZELLEN = 5000;
 const gitter = (spalten, zeilen) => `${'a|'.repeat(spalten)}\n${'-|'.repeat(spalten)}\n${'x\n'.repeat(zeilen)}`;
 
-test('Größe: 2000 Spalten × 2000 Zeilen bleiben Text — kleine Ausgabe, schnell, alles sichtbar', () => {
+test('Größe: 2000 Spalten × 2000 Zeilen bleiben Text — kleine Ausgabe, alles sichtbar', () => {
+  const eingabe = gitter(2000, 2000);
+  const html = markdownHtml(eingabe);
+  console.log(`Größe: ${eingabe.length} Zeichen Eingabe → ${html.length} Zeichen Ausgabe`);
+  assert.ok(html.length < 4 * eingabe.length, `Ausgabe ${html.length} Zeichen aus ${eingabe.length}`);
+  assert.ok(!html.includes('<table'));
+  assert.strictEqual(html, `<p>${eingabe.trimEnd().split('\n').join('<br>')}</p>`);
+  pruefeStruktur(html);
+});
+
+test('Größe Lastprobe: 2000 Spalten × 2000 Zeilen in unter 200 ms gerechnet', SPRUNG, () => {
   const eingabe = gitter(2000, 2000);
   const beginn = process.hrtime.bigint();
   const html = markdownHtml(eingabe);
   const dauerMs = Number(process.hrtime.bigint() - beginn) / 1e6;
-  console.log(`Größe: ${eingabe.length} Zeichen Eingabe → ${html.length} Zeichen Ausgabe in ${dauerMs.toFixed(1)} ms`);
-  assert.ok(html.length < 4 * eingabe.length, `Ausgabe ${html.length} Zeichen aus ${eingabe.length}`);
+  if (!messung('Größe Lastprobe 2000 × 2000', `${eingabe.length} Zeichen → ${html.length} Zeichen in ${dauerMs.toFixed(1)} ms (Grenze 200 ms)`)) return;
   assert.ok(dauerMs < 200, `${dauerMs.toFixed(0)} ms`);
   assert.ok(!html.includes('<table'));
   assert.strictEqual(html, `<p>${eingabe.trimEnd().split('\n').join('<br>')}</p>`);
-  pruefeStruktur(html);
 });
 
 test('Größe: genau an der Grenze entsteht noch eine Tabelle, eine Spalte oder eine Zeile darüber nicht mehr', () => {
@@ -234,13 +243,28 @@ test('Größe: genau an der Grenze entsteht noch eine Tabelle, eine Spalte oder 
   assert.ok(markdownHtml(`${gitter(MAX_SPALTEN + 1, 1)}\n| a |\n|---|`).endsWith(tabelle('<th>a</th>')));
 });
 
-test('Größe: ein Kopf mit 50 000 Strichen kostet keine Rechenzeit, mit und ohne Trennzeile', () => {
-  for (const eingabe of [`${'a|'.repeat(50000)}\n${'-|'.repeat(50000)}`, `${'a|'.repeat(50000)}\n-|-|`, Array.from({ length: 300 }, () => 'a|'.repeat(300)).join('\n')]) {
+/** Die drei Eingaben des 50-000-Striche-Falls: Kopf ohne Rumpf, Kopf mit Trennzeile, 300 Reihen zu 300 Spalten. */
+const kopfEingaben = [
+  ['Kopf ohne Rumpf', `${'a|'.repeat(50000)}\n${'-|'.repeat(50000)}`],
+  ['Kopf mit Trennzeile', `${'a|'.repeat(50000)}\n-|-|`],
+  ['300 × 300', Array.from({ length: 300 }, () => 'a|'.repeat(300)).join('\n')],
+];
+
+test('Größe: ein Kopf mit 50 000 Strichen bleibt Text — klein und ohne Tabelle, mit und ohne Trennzeile', () => {
+  for (const [name, eingabe] of kopfEingaben) {
+    const html = markdownHtml(eingabe);
+    assert.ok(!html.includes('<table') && html.length < 2 * eingabe.length, name);
+  }
+});
+
+test('Größe Lastprobe: ein Kopf mit 50 000 Strichen in unter 200 ms gerechnet', SPRUNG, () => {
+  for (const [name, eingabe] of kopfEingaben) {
     const beginn = process.hrtime.bigint();
     const html = markdownHtml(eingabe);
     const dauerMs = Number(process.hrtime.bigint() - beginn) / 1e6;
-    assert.ok(dauerMs < 200, `${dauerMs.toFixed(0)} ms`);
-    assert.ok(!html.includes('<table') && html.length < 2 * eingabe.length);
+    if (!messung(`Größe Lastprobe ${name}`, `${dauerMs.toFixed(0)} ms (Grenze 200 ms)`)) return;
+    assert.ok(dauerMs < 200, `${name}: ${dauerMs.toFixed(0)} ms`);
+    assert.ok(!html.includes('<table') && html.length < 2 * eingabe.length, name);
   }
 });
 
