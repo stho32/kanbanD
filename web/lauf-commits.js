@@ -297,10 +297,12 @@
   /**
    * Striche (`zeitachseStriche`), ihre im Browser gemessenen Beschriftungsbreiten in px und die Achsenbreite in px → die Knöpfe
    * von links nach rechts. Ein Strich geht in den vorigen Knopf auf, wenn ihre Mitten weniger als `MITTE_ABSTAND` auseinander
-   * lägen **oder** ihre Beschriftungen sich überschneiden würden (Mittenabstand < halbe Summe der Beschriftungsbreiten); der
+   * lägen **oder** ihre Beschriftungsrechtecke sich überschnitten (linke Kante < rechte Kante − 0,5 px); dabei wird der Platz
+   * der Randform mitgerechnet (`.an` dehnt die Beschriftung am Anfang nach rechts, `.re` am Ende nach links). Der
    * zusammengefasste Knopf behält Stelle (`anteil` des ersten Strichs), Sprungmarke, Kurzhash und Titel, zählt `anzahl` = Summe
-   * der Marker und `strichZahl` = Zahl der zusammengefassten Striche. `rand` nennt die Stelle, deren Beschriftung sonst aus der
-   * Achse ragte (`'links'` für den Anfang, `'rechts'` für den Spiegel). Nach `STRICHE` Knöpfen endet die Liste.
+   * der Marker und `strichZahl` = Zahl der zusammengefassten Striche; seine Breite ist die größte der zusammengefassten. `rand`
+   * nennt die Stelle, deren Beschriftung sonst aus der Achse ragte (`'links'` für den Anfang, `'rechts'` für den Spiegel). Nach
+   * `STRICHE` Knöpfen endet die Liste.
    */
   function stricheVerdichten(striche, breitenPx, achsenBreitePx) {
     const knopf = [];
@@ -308,7 +310,7 @@
       const breite = breitenPx[i] || 0;
       const mitte = striche[i].anteil * achsenBreitePx;
       const voriger = knopf[knopf.length - 1];
-      if (voriger && (mitte - voriger.mitte < MITTE_ABSTAND || mitte - voriger.mitte < (voriger.breite + breite) / 2)) {
+      if (voriger && zuNah(voriger, mitte, breite, achsenBreitePx)) {
         voriger.anzahl += striche[i].anzahl;
         voriger.strichZahl++;
         voriger.breite = Math.max(voriger.breite, breite);
@@ -318,6 +320,22 @@
       knopf.push({ ...striche[i], strichZahl: 1, breite, mitte });
     }
     return knopf.map(({ mitte, ...rest }) => ({ ...rest, rand: randForm(rest.anteil * achsenBreitePx, rest.breite, achsenBreitePx) }));
+  }
+
+  /** Liegt der nächste Strich zu nah am vorigen Knopf: die Mitten weniger als `MITTE_ABSTAND` auseinander oder die
+      Beschriftungsrechtecke überlappend (`rechte Kante ≤ linke Kante + 0,5 px`, ADR-0041 N8 Punkt 6). */
+  function zuNah(voriger, mitte, breite, achsenBreitePx) {
+    if (mitte - voriger.mitte < MITTE_ABSTAND) return true;
+    return kanten(mitte, breite, achsenBreitePx).links < kanten(voriger.mitte, voriger.breite, achsenBreitePx).rechts - 0.5;
+  }
+
+  /** Die linke und rechte Kante der Beschriftung eines Knopfs in px: außerhalb der Achse liegt die Beschriftung an ihrer
+      eigenen Strichstelle (`.an` dehnt nach rechts, `.re` spiegelt nach links), sonst mittig über dem Strich. */
+  function kanten(mitte, breite, achsenBreitePx) {
+    const rand = randForm(mitte, breite, achsenBreitePx);
+    if (rand === 'links') return { links: mitte, rechts: mitte + breite };
+    if (rand === 'rechts') return { links: mitte - breite, rechts: mitte };
+    return { links: mitte - breite / 2, rechts: mitte + breite / 2 };
   }
 
   /** Wo die mittige Beschriftung aus der Achse ragte, wird sie an ihre eigene Strichstelle gelegt: `'links'` (Anfang) oder
