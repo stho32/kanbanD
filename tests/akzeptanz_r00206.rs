@@ -513,6 +513,34 @@ async fn ak11_einzeln_nachladen() {
     assert!(a.status != 503, "{}", a.status);
 }
 
+/// Lastprobe (R00261 AK 8, B3): die Liste antwortet in unter 5 s, obwohl das Git-Skript endlos Dateien nennt — der Lauf
+/// endet an der 1-MB-Grenze der Dateiliste, nicht an der Gesamtgrenze von 10 s.
+#[tokio::test]
+#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+async fn ak11_lastprobe_dateiliste_antwortet_rasch() {
+    let lastwert = last();
+    eprintln!("R00206 ak11 Lastprobe: Last unter 2 nötig (Last jetzt {lastwert:.2})");
+    if lastwert >= 2.0 {
+        eprintln!("R00206 ak11 keine Messung: Last < 2 nötig (Last {lastwert:.2}) — kein Wert gilt als bestanden");
+        return;
+    }
+    let l = ausgangslage();
+    let h = commit(&l.a.r, "Stern");
+    l.anhaengen(&[&h]);
+    let pfad = git_skript(&l.a, "case \"$*\" in *diff-tree*--raw*) while :; do printf ':000000 100644 0000000000000000000000000000000000000000 1111111111111111111111111111111111111111 A\\0%01000d\\0' 0; done;; esac");
+    let lauf = l.starten(&[("PATH", &pfad)]);
+    let start = Instant::now();
+    let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}"), None).await;
+    let dauer = start.elapsed();
+    eprintln!("R00206 ak11 Lastprobe: status {} nach {} ms, Last {:.2}", a.status, dauer.as_millis(), last());
+    assert!(a.status != 503 && dauer < Duration::from_secs(5), "{} nach {dauer:?}", a.status);
+}
+
+/// Die 1-Minuten-Last der Maschine aus `/proc/loadavg` (R00261).
+fn last() -> f64 {
+    std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or_default().parse().unwrap_or(f64::MAX)
+}
+
 // ---- AK 12: format=patch und ETag · US-8 ------------------------------------------------------------------------------
 
 #[tokio::test]
@@ -618,6 +646,34 @@ async fn ak14_lesen_ohne_sperre_und_nur_lesend() {
     assert_eq!((lies(&l.a.board, "aufgaben/0001-commit-liste.md"), l.a.commit_zahl()), (datei_vorher, zahl));
     assert_eq!(r_stand(&l.a.r), r_vorher, "R unverändert");
     assert!(!l.a.r.join(".git/index.lock").exists());
+}
+
+/// Lastprobe (R00261 AK 8, B3): der PATCH wartet in unter einer Sekunde auf das lesende GET (5 s Schlaf im Skript).
+#[tokio::test]
+#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+async fn ak14_lastprobe_lesen_ohne_sperre() {
+    let lastwert = last();
+    eprintln!("R00206 ak14 Lastprobe: Last unter 2 nötig (Last jetzt {lastwert:.2})");
+    if lastwert >= 2.0 {
+        eprintln!("R00206 ak14 keine Messung: Last < 2 nötig (Last {lastwert:.2}) — kein Wert gilt als bestanden");
+        return;
+    }
+    let l = ausgangslage();
+    let schalter = l.a.basis.join("schalter");
+    std::fs::write(&schalter, "").unwrap();
+    let pfad = git_skript(&l.a, &format!("if [ -e {s} ]; then rm -f {s}; sleep 5; fi", s = schalter.display()));
+    let lauf = l.starten(&[("PATH", &pfad)]);
+    let adresse = lauf.adresse.clone();
+    let x1 = l.x1.clone();
+    let lesen = tokio::spawn(async move { holen(&adresse, 1, &format!("commit=kd:{x1}"), None).await });
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let start = Instant::now();
+    let (status, rumpf) = senden(reqwest::Method::PATCH, &lauf.adresse, "api/aufgaben/1", "sh", json!({"titel": "Diff neu"})).await;
+    let dauer = start.elapsed();
+    eprintln!("R00206 ak14 Lastprobe: PATCH {} ms, Last {:.2}", dauer.as_millis(), last());
+    assert_eq!(status, 200, "{rumpf}");
+    assert!(dauer < Duration::from_secs(1), "PATCH wartete {dauer:?} auf das Lesen");
+    drop(lesen);
 }
 
 // ---- AK 16 (a): feindliche Konfiguration, Attribute, Umgebung · US-6 (Abnahme-Probe der Karte) ---------------------
