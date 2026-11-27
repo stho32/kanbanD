@@ -65,6 +65,13 @@ jobs:
       - name: Rust-Tests
         run: cargo test
 
+      # Die Erzeugung der Lizenzhinweise liegt hinter dem Feature `lizenzen`; ohne diesen
+      # Lauf prüft kein Gate ihre Auswahl-Logik (A1, #250 Nacharbeit).
+      - name: Bauen und Tests mit dem Feature `lizenzen`
+        run: |
+          cargo build --all-targets --features lizenzen
+          cargo test --features lizenzen
+
       - name: JavaScript-Unit-Tests
         run: node --test "e2e/einheit/*.js"
 
