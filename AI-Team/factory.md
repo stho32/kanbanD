@@ -283,7 +283,7 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
 ### Entwicklertest
 - **Betritt die Karte die Spalte**: entwicklertester fährt die User Story wörtlich im echten Programm, am reviewten Stand des Kartenzweigs. Wissen im Auftrag: Befunde aus Reviews und Tests.
 - **Entscheidung**
-  - bestanden → Zusammenführen (Gate auf `main`; rot → Nacharbeit); grün → Auslieferung (`bash AI-Team/ausliefern.sh`, höchstens 20 Minuten: kanbanD aus main installieren und die Board-Instanz neu starten); gelingt sie → Factory-Optimizer; schlägt sie fehl → Ohne Mensch nicht lösbar („Auslieferung fehlgeschlagen — die alte Board-Instanz läuft weiter“)
+  - bestanden → Zusammenführen (Gate auf `main`; rot → Nacharbeit); grün → Auslieferung (`bash AI-Team/ausliefern.sh`, höchstens 20 Minuten: kanbanD aus main installieren und die Board-Instanz neu starten); gelingt sie → Factory-Optimizer (sein Lauf startet schon nach dem Fast-Forward, parallel zum Gate; Erledigt erst nach grünem Gate, Auslieferung und Eintrag — Director-Regeln „Merge-Wache“); schlägt sie fehl → Ohne Mensch nicht lösbar („Auslieferung fehlgeschlagen — die alte Board-Instanz läuft weiter“)
   - Muss → Nacharbeit; höchstens 2×
   - `anforderung_falsch` oder `kriterium_fehlt` → Detailplanung
 
