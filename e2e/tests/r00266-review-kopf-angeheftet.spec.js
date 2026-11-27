@@ -72,6 +72,18 @@ async function halten(page, muster) {
   return { frei: (i, wert) => tore[i](wert), angehalten: () => tore.length };
 }
 
+/** Der Alpha-Wert einer berechneten Farbe: `oklch(… / 0.5)`, `color(srgb … / 0.5)`, `rgba(…, 0.5)` oder ohne Angabe 1. */
+const alphaVon = (farbe) => {
+  const s = String(farbe).trim();
+  const schraeg = s.match(/\/\s*([\d.]+)\s*\)/);
+  if (schraeg) return Number(schraeg[1]);
+  const rgba = s.match(/^rgba\([^)]*,\s*([\d.]+)\s*\)$/);
+  if (rgba) return Number(rgba[1]);
+  const hex8 = s.match(/^#([0-9a-f]{6})([0-9a-f]{2})$/i);
+  if (hex8) return parseInt(hex8[2], 16) / 255;
+  return 1;
+};
+
 test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
   let k;
   test.beforeEach(async ({ page, context }) => {
@@ -88,7 +100,7 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
       const s = seite(page);
       await breiteSetzen(page, breite, 800);
       await s.commitOeffnen(k, 9, kopfRepository().n);
-      // bis unter die erste Datei rollen: die erste Zeile der langen Datei (src/l.rs, 407-Zeichen-Zeile) steht oben
+      // bis unter die erste Datei rollen: die 60. Zeile der ersten Datei (src/a.rs) steht oben
       const erste = page.locator('#rv-d0 .df-sc tr').filter({ has: page.locator('[data-z]') }).nth(60);
       await rollenAuf(erste, 0);
       await zweiBilder(page);
@@ -215,7 +227,7 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
         expect(await s.kopfImBild()).toBe(true);
         const stil = await s.kopf.evaluate(e => { const st = getComputedStyle(e); const r = e.getBoundingClientRect(); return { grund: st.backgroundColor, hoehe: r.height, zeilen: (() => { const rs = Array.from(e.querySelectorAll('label.ru-sch, .btn'), c => c.getBoundingClientRect()).sort((a, b) => a.top - b.top); let n = 0, unten = -1e9; for (const q of rs) if (q.top >= unten - 2) { n++; unten = q.bottom; } else unten = Math.max(unten, q.bottom); return n; })() }; });
         expect(stil.grund, 'deckende Flaeche (Alpha 1)').toMatch(/^(oklch|rgb|rgba|#)/);
-        expect(stil.grund.includes('/ 0)') || stil.grund.includes('rgba(0, 0, 0, 0)'), 'Alpha ist 1').toBe(false);
+        expect(alphaVon(stil.grund), `Alpha ist 1 (${stil.grund})`).toBe(1);
         if (breite === 320) expect(stil.zeilen, 'hoechstens zwei Zeilen bei 320 px').toBeLessThanOrEqual(2);
         // die Schalterwoerter stehen ganz
         for (const wort of ['Alle einklappen', 'Umbrechen', 'Nebeneinander']) {
