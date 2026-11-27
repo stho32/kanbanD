@@ -720,6 +720,35 @@ async fn muss2_enkel_haelt_die_pipe() {
     assert!(befunde.is_empty(), "{befunde:#?}");
 }
 
+/// Lastprobe (R00267 AK 3): die Spannen der vier `muss2`-Varianten. Die untere Schranke der Frist (`10 s ≤ d ≤ 15 s`
+/// außerhalb der Gruppe) und die obere (`d ≤ 5 s` in der Gruppe) sind ein Leistungsurteil und laufen nur ausdrücklich
+/// bei ruhiger Maschine (Last < 2). Vorbild `ak08_lastprobe_lesen_ohne_sperre`.
+#[tokio::test]
+#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+async fn muss2_lastprobe_spanne() {
+    let l = last();
+    eprintln!("muss2 Lastprobe: Last unter 2 nötig (Last jetzt {l:.2})");
+    if l >= 2.0 {
+        eprintln!("muss2 keine Messung: Last < 2 nötig (Last {l:.2}) — kein Wert gilt als bestanden");
+        return;
+    }
+    for enkel in ENKEL.iter() {
+        let (antworten, pids, _marken, _protokoll) = mit_enkel(enkel, 1).await;
+        let (status, d) = antworten[0];
+        eprintln!("muss2 Lastprobe {}: {status} nach {d:?}, Last {:.2}", enkel.name, last());
+        for p in &pids {
+            let _ = std::process::Command::new("kill").arg("-9").arg(p).status();
+        }
+        if enkel.in_der_gruppe {
+            assert_eq!(status, 200, "{}: {antworten:?}", enkel.name);
+            assert!(d <= Duration::from_secs(5), "{}: {d:?} in der Gruppe", enkel.name);
+        } else {
+            assert_eq!(status, 503, "{}: {antworten:?}", enkel.name);
+            assert!(d >= Duration::from_secs(10) && d <= Duration::from_secs(15), "{}: {d:?} außerhalb der Gruppe", enkel.name);
+        }
+    }
+}
+
 // ---- Nacharbeit 1, Security Muss 3: höchstens 4 Git-Prozesse für das Lesen gleichzeitig ----------------------------
 
 #[tokio::test]
