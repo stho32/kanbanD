@@ -6,6 +6,7 @@
   const { sichtbarHtml, sichtbarText } = typeof module !== 'undefined' ? require('./diff.js') : window;
   const { geld, inCent } = typeof module !== 'undefined' ? require('./kosten.js') : window;
   const satz = typeof module !== 'undefined' ? require('./lauf-satz.js') : window;
+  const { markerZiele } = typeof module !== 'undefined' ? require('./lauf-commits.js') : window;
 
   /** Grenze des Lesens (ADR-0041 Punkt 4): 16 MiB entpackt, gezählt vor dem Dekodieren, und 20.000 Zeilen — 10-mal der größte
       echte Lauf. Die Zahlen stehen nie in der Oberfläche (PO Z. 468). */
@@ -188,8 +189,9 @@
     const laengste = a.top3.length ? a.top3[0].dauer : null;
     const tokens = tokenKontext(a.tokens);
     const commitMarker = commits ? commits.marker : new Map();
+    const commitZiele = commits ? markerZiele(commitMarker) : new Map();
     const commitAdresse = commits ? commits.adresse : null;
-    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, wurzeln: a.wurzeln, laengste, tokens, esc, budget, commitMarker, commitAdresse };
+    return { schrittAm, gepaart, lueckeVor, eintragAm, eingeklappt: a.eingeklappt, wurzeln: a.wurzeln, laengste, tokens, esc, budget, commitMarker, commitZiele, commitAdresse };
   }
 
   /** Neue Tokens je Träger (Nummer der Zeile) und die Folgezeilen einer Antwort aus der Auswertung; ohne `tokens` beide leer. */
@@ -217,17 +219,20 @@
     const luecke = z.lueckeVor.get(zeile.nr);
     let davor = '';
     if (luecke) davor = lueckeHtml(luecke, z.laengste, artAttribut(zeileArt(zeile.eintrag, z.eingeklappt[zeile.nr])));
-    return davor + eintragHtml(zeile, z) + commitZeilenHtml(z.commitMarker.get(zeile.nr), z);
+    return davor + eintragHtml(zeile, z) + commitZeilenHtml(zeile.nr, z);
   }
 
-  /* ── Commit-Marker (R00251 FA 6, D0009 `#laufansicht` Bild 15): eigene Zeilen unmittelbar nach der Schrittzeile, nie in ihr ── */
+  /* ── Commit-Marker (R00251 FA 6, D0009 `#laufansicht` Bild 15): eigene Zeilen unmittelbar nach der Schrittzeile, nie in ihr;
+     seit R00268 trägt jede Marker-Zeile ihre Sprungmarke (`markerZiele`: `lv-cm<n>` für Link-Marker, `lv-cmt` für Text-Marker) ── */
 
   const COMMIT_SYMBOL = '<span class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M3 12h5M16 12h5"/></svg></span>';
   const NICHT_AN_DER_KARTE = 'Commit nicht an der Karte';
 
-  function commitZeilenHtml(marker, z) {
+  function commitZeilenHtml(nr, z) {
+    const marker = z.commitMarker.get(nr);
     if (!marker) return '';
-    return marker.map(m => (m.art === 'link' ? commitLinkHtml(m, z) : commitTextHtml(m, z))).join('');
+    const ziele = z.commitZiele.get(nr) || [];
+    return marker.map((m, i) => (m.art === 'link' ? commitLinkHtml(m, ziele[i], z) : commitTextHtml(m, ziele[i], z))).join('');
   }
 
   /** Der Titel eines Markers, gebucht gegen das Budget des Laufs wie jeder andere fremde Text (Security-Review #269 Muss 1). */
@@ -235,14 +240,14 @@
 
   /** Link-Fassung: das `<a>` umschließt Wort, Kurzhash und Titel aus der Karte (PO Z. 697); die Adresse kommt nur aus dem Verweis der
       Karte über `adresse`, nie aus dem Transkript. */
-  function commitLinkHtml(m, z) {
+  function commitLinkHtml(m, id, z) {
     const { esc } = z;
-    return `<li class="lv-cm" tabindex="-1">${COMMIT_SYMBOL}<a class="m" href="${esc(z.commitAdresse(m.verweis))}" data-act="lauf-commit" data-arg="${esc(m.verweis)}"><span class="k">Commit</span> <span class="mono">${esc(m.kurzhash)}</span> <span class="ti">${commitTitelHtml(m.titel, z)}</span></a></li>`;
+    return `<li class="lv-cm" id="${id}" tabindex="-1">${COMMIT_SYMBOL}<a class="m" href="${esc(z.commitAdresse(m.verweis))}" data-act="lauf-commit" data-arg="${esc(m.verweis)}"><span class="k">Commit</span> <span class="mono">${esc(m.kurzhash)}</span> <span class="ti">${commitTitelHtml(m.titel, z)}</span></a></li>`;
   }
 
   /** Text-Fassung aus der Belegzeile: Kurzhash (nur als Hex), Titel und „Commit nicht an der Karte“, ohne Link (PO Z. 658). */
-  function commitTextHtml(m, z) {
-    return `<li class="lv-cm text" tabindex="-1">${COMMIT_SYMBOL}<span class="k">Commit</span> <span class="m"><span class="mono">${z.esc(m.kurzhash)}</span> <span class="ti">${commitTitelHtml(m.titel, z)}</span></span> <span class="n">${NICHT_AN_DER_KARTE}</span></li>`;
+  function commitTextHtml(m, id, z) {
+    return `<li class="lv-cm text" id="${id}" tabindex="-1">${COMMIT_SYMBOL}<span class="k">Commit</span> <span class="m"><span class="mono">${z.esc(m.kurzhash)}</span> <span class="ti">${commitTitelHtml(m.titel, z)}</span></span> <span class="n">${NICHT_AN_DER_KARTE}</span></li>`;
   }
 
   const LUECKE_WORT = { denken: 'denkt', warten: 'wartet' };
@@ -1201,7 +1206,14 @@
   /* ── Zeitachse (R00239 FA 3, PO Z. 520 (9), 527, 528; Zeichnung D0009 `#laufansicht` Notiz „Zeitachse (B)“) ── */
 
   const ACHSEN_WORT = { werkzeug: 'Werkzeuge', denken: 'Denken', warten: 'Warten' };
-  const LEGENDE = `<ul class="lv-leg" aria-hidden="true">${ACHSEN_ARTEN.map(art => `<li><i class="${LUECKE_KLASSE[art]}"></i>${ACHSEN_WORT[art]}</li>`).join('')}</ul>`;
+
+  /** Die Legende: die drei Arten und — nur wenn die Zeitachse Striche zeigt — der Eintrag „Commit“ (R00268 FA 8, PO Z. 691); ohne
+      Strich bleibt sie Zeichen für Zeichen wie vor der Anforderung. */
+  function legendeHtml(mitCommit) {
+    const eintraege = ACHSEN_ARTEN.map(art => `<li><i class="${LUECKE_KLASSE[art]}"></i>${ACHSEN_WORT[art]}</li>`);
+    if (mitCommit) eintraege.push('<li><i class="c"></i>Commit</li>');
+    return `<ul class="lv-leg" aria-hidden="true">${eintraege.join('')}</ul>`;
+  }
 
   /** Uhrzeit eines Zeitpunkts in ms als `hh:mm:ss` in Ortszeit, abgerundet auf die Sekunde. */
   function uhrzeitAusMs(ms) {
@@ -1209,21 +1221,32 @@
     return `${zwei(d.getHours())}:${zwei(d.getMinutes())}:${zwei(d.getSeconds())}`;
   }
 
-  /** „Zeitachse: Werkzeuge <Dauer>, Denken <Dauer>, Warten <Dauer>“ — ein Teil mit 0 ms entfällt (PO Z. 527). */
-  function zeitachseLesetext(a) {
+  /** „Zeitachse: Werkzeuge <Dauer>, Denken <Dauer>, Warten <Dauer>“ — ein Teil mit 0 ms entfällt (PO Z. 527); mit Strichen endet
+      der Text mit der Zahl der Commits (R00268 FA 8). */
+  function zeitachseLesetext(a, zahl = null) {
     const teile = ACHSEN_ARTEN.filter(art => a[art] > 0).map(art => `${ACHSEN_WORT[art]} ${dauerText(a[art])}`);
-    return `Zeitachse: ${teile.join(', ')}`;
+    const text = `Zeitachse: ${teile.join(', ')}`;
+    if (!zahl) return text;
+    return `${text}, ${commitZahlText(zahl)}`;
+  }
+
+  /** „6 Commits“, „1 Commit“, bei gekürzter Anzeige „100 von 101 Commits“ — gezeigt und gesamt in Markern (FA 1, FA 8). */
+  function commitZahlText({ gesamt, gezeigt }) {
+    const wort = gesamt === 1 ? 'Commit' : 'Commits';
+    if (gezeigt < gesamt) return `${gezeigt} von ${gesamt} ${wort}`;
+    return `${gesamt} ${wort}`;
   }
 
   /** Ein Stück: Breite nach Anteil über `flex-grow`, mindestens 1 px; Trennlinie und Muster stehen im inneren Element (CSS). */
   const stueckHtml = s => `<span class="${LUECKE_KLASSE[s.art]}" style="flex-grow:${s.dauer}" title="${ACHSEN_WORT[s.art]} ${dauerText(s.dauer)} ab ${uhrzeitAusMs(s.ab)}"><i></i></span>`;
   const fachHtml = f => `<span class="${LUECKE_KLASSE[f.art]}" title="überwiegend ${ACHSEN_WORT[f.art]}, ${uhrzeitAusMs(f.ab)}–${uhrzeitAusMs(f.bis)}"><i></i></span>`;
 
-  /** Die Zeitachse aus der Auswertung (FA 3) und den Strichen (`zeitachseStriche`): Überschrift, Legende immer mit drei Arten,
-      Balken als Bild mit Lesetext, darunter erste und letzte Zeit. Mit Strichen steht neben dem Balken die Knopfleiste
-      (`.lv-ck`, beim Zeichnen unverdichtet, gleich danach ersetzt) und dahinter die unverdichtete Messleiste (`.lv-mess`, unsichtbar,
-      aus ihr misst der Browser die Beschriftungsbreiten); ohne Striche bleibt die Zeitachse wie vor R00268. Gerechnet wird hier nichts. */
-  function laufZeitachseHtml(a, striche = []) {
+  /** Die Zeitachse aus der Auswertung (FA 3) und den gezeigten Stellen (`stricheAnzeigen`): Überschrift, Legende immer mit drei
+      Arten (mit Strichen dazu „Commit“), Balken als Bild mit Lesetext, darunter erste und letzte Zeit. Mit Strichen steht neben dem
+      Balken die Knopfleiste (`.lv-ck` in der Gruppe „Commits der Zeitachse“, beim Zeichnen unverdichtet, gleich danach ersetzt) und
+      dahinter die unverdichtete Messleiste (`.lv-mess`, unsichtbar, aus ihr misst der Browser die Beschriftungsbreiten); ohne
+      Striche bleibt die Zeitachse wie vor R00268. Gerechnet wird hier nichts. */
+  function laufZeitachseHtml(a, anzeige = null, halter = null) {
     if (!a || !a.zeitachse) return '';
     const z = a.zeitachse;
     let teile = z.stuecke.map(stueckHtml), klasse = 'lv-balken';
@@ -1231,28 +1254,51 @@
       teile = z.faecher.map(fachHtml);
       klasse += ' faecher';
     }
-    const balken = `<div class="${klasse}" role="img" aria-label="${zeitachseLesetext(a)}">${teile.join('')}</div>`;
-    const mitte = striche.length ? `<div class="lv-bw">${balken}<div class="lv-ck">${strichLeisteHtml(striche)}</div><div class="lv-mess" aria-hidden="true">${strichLeisteHtml(striche)}</div></div>` : balken;
+    const stellen = anzeige ? anzeige.stellen : [];
+    const zahl = stellen.length ? { gesamt: anzeige.gesamt, gezeigt: anzeige.gezeigt } : null;
+    const balken = `<div class="${klasse}" role="img" aria-label="${zeitachseLesetext(a, zahl)}">${teile.join('')}</div>`;
+    const mitte = stellen.length
+      ? `<div class="lv-bw">${balken}<div class="lv-ck" role="group" aria-label="Commits der Zeitachse">${strichLeisteHtml(stellen, halter)}</div><div class="lv-mess" aria-hidden="true">${strichMessHtml(stellen)}</div></div>`
+      : balken;
     const zeiten = `<div class="lv-za-zeit" aria-hidden="true"><span>${uhrzeitAusMs(z.erste)}</span><span>${uhrzeitAusMs(z.erste + z.gesamt)}</span></div>`;
-    return `<section class="lv-za" aria-labelledby="lv-za-t"><div class="lv-za-kopf"><h2 id="lv-za-t">Zeitachse</h2>${LEGENDE}</div>${mitte}${zeiten}</section>`;
+    return `<section class="lv-za" aria-labelledby="lv-za-t"><div class="lv-za-kopf"><h2 id="lv-za-t">Zeitachse</h2>${legendeHtml(stellen.length > 0)}</div>${mitte}${zeiten}</section>`;
   }
 
   /* ── Die Strich-Knöpfe (R00268; D0009 `#laufansicht` Bild 15, CSS `.lv-ck`/`.lv-ckb`) ── */
 
-  /** Ein Knopf je Stelle: Beschriftung `.t` (Kurzhash bzw. „<n> Commits“) über dem Strich `i`; `anteil` setzt die Stelle
-      (`left`), `rand` die Randform (`.an` am Anfang, `.re` als Spiegel). Kurzhash und Zahl kommen aus der Karte bzw. aus dem
-      Lauf und tragen nur Hex-Zeichen und Ziffern. */
-  function strichKnopfHtml(k) {
-    let form = '';
-    if (k.rand === 'links') form = ' an';
-    if (k.rand === 'rechts') form = ' re';
-    const beschriftung = k.anzahl > 1 ? `${k.anzahl} Commits` : `<span class="mono">${k.kurzhash}</span>`;
-    const dicker = k.anzahl > 1 ? ' class="mehr"' : '';
-    return `<div class="lv-ckz${form}" style="left:${(k.anteil * 100).toFixed(4)}%"><button type="button" class="lv-ckb"><span class="t">${beschriftung}</span><i${dicker}></i></button></div>`;
+  /** Die Randform eines Knopfs: `.an` am Anfang, `.re` als Spiegel, sonst keine. */
+  function strichForm(k) {
+    if (k.rand === 'links') return ' an';
+    if (k.rand === 'rechts') return ' re';
+    return '';
   }
 
-  /** Die Knöpfe der Zeitachse als Inhalt einer Leiste; nach dem Messen ersetzt der Browser die Knopfleiste durch die verdichteten. */
-  const strichLeisteHtml = knoepfe => knoepfe.map(strichKnopfHtml).join('');
+  /** Beschriftung und Strichdicke eines Knopfs: Kurzhash bzw. „<n> Commits“, der Strich bei mehreren Commits dicker. */
+  function strichInhalt(k) {
+    return { beschriftung: k.anzahl > 1 ? `${k.anzahl} Commits` : `<span class="mono">${k.kurzhash}</span>`, dicker: k.anzahl > 1 ? ' class="mehr"' : '' };
+  }
+
+  /** Ein Strich-Knopf der sichtbaren Leiste: Beschriftung `.t` über dem Strich `i`; `anteil` setzt die Stelle (`left`). Der Name
+      nennt den sichtbaren Text (FA 4), genau ein Knopf trägt `tabindex="0"` (FA 5, der Halter), der Sprung führt über
+      `data-act`/`data-arg` zur Marker-Zeile (`data-ziel` ist derselbe Wert, der Name aus R00268 und der Zeichnung). Kurzhash, Zahl
+      und Ziel kommen aus der Karte bzw. dem Lauf und tragen nur Hex-Zeichen, Ziffern und das Markenwort. */
+  function strichKnopfHtml(k, istHalter) {
+    const { beschriftung, dicker } = strichInhalt(k);
+    const name = k.anzahl > 1 ? `${k.anzahl} Commits, zur ersten Zeile springen` : `Commit ${k.kurzhash}, zur Zeile springen`;
+    const tabindex = istHalter ? '0' : '-1';
+    return `<div class="lv-ckz${strichForm(k)}" style="left:${(k.anteil * 100).toFixed(4)}%"><button type="button" class="lv-ckb" tabindex="${tabindex}" data-act="lauf-springe" data-arg="${k.ziel}" data-ziel="${k.ziel}" aria-label="${name}"><span class="t">${beschriftung}</span><i${dicker}></i></button></div>`;
+  }
+
+  /** Die Knöpfe der Zeitachse als Inhalt der Knopfleiste; nach dem Messen ersetzt der Browser sie durch die verdichteten. Genau ein
+      Knopf trägt `tabindex="0"`: der Halter, beim ersten Zeichnen der erste (FA 5). */
+  function strichLeisteHtml(knoepfe, halter = null) {
+    const hatHalter = knoepfe.some(k => k.ziel === halter);
+    return knoepfe.map((k, i) => strichKnopfHtml(k, hatHalter ? k.ziel === halter : i === 0)).join('');
+  }
+
+  /** Die Messleiste: dieselben Beschriftungen ohne Knopf-Eigenschaften — aus ihr misst `web/app.js` die Breiten (R00268 FA 3).
+      Kein Knopf, kein Tab-Stopp, keine Aktion, kein Marker-Ziel; unsichtbar und für Hilfstechnik ausgenommen. */
+  const strichMessHtml = knoepfe => knoepfe.map(k => `<span class="mess-t">${strichInhalt(k).beschriftung}</span>`).join('');
 
   /* ── Zustände der Seite (FA 7, FA 8, FA 11; Bilder 2, 4, 5): Meldungen, Ansage und Rumpf ── */
 
@@ -1310,5 +1356,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { laufZeitachseHtml, strichLeisteHtml, FILTER_VORGABE, laufFilterHtml, laufZeigenWert, laufFilterAnsage, laufSprungFilter, laufKeineFehlerHtml, tokenKurz, tokenLesetext, tokenVoll, tokenZahlHtml, neueTokensText, neueTokensHtml, laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { laufZeitachseHtml, strichLeisteHtml, strichMessHtml, FILTER_VORGABE, laufFilterHtml, laufZeigenWert, laufFilterAnsage, laufSprungFilter, laufKeineFehlerHtml, tokenKurz, tokenLesetext, tokenVoll, tokenZahlHtml, neueTokensText, neueTokensHtml, laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

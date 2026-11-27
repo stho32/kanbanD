@@ -285,6 +285,15 @@
     return ziele;
   }
 
+  /** Die gezeigten Stellen und die Zahlen der Ansage (FA 1, FA 8): höchstens `STRICHE` Stellen, `gezeigt` zählt die Marker der
+      gezeigten Stellen, `gesamt` alle Marker — bei einer Kürzung nennt der Lesetext beide Zahlen. */
+  function stricheAnzeigen(stellen) {
+    const gezeigt = stellen.slice(0, STRICHE);
+    return { stellen: gezeigt, gezeigt: markerZahl(gezeigt), gesamt: markerZahl(stellen) };
+  }
+
+  const markerZahl = stellen => stellen.reduce((summe, stelle) => summe + stelle.anzahl, 0);
+
   /**
    * Striche (`zeitachseStriche`), ihre im Browser gemessenen Beschriftungsbreiten in px und die Achsenbreite in px → die Knöpfe
    * von links nach rechts. Ein Strich geht in den vorigen Knopf auf, wenn ihre Mitten weniger als `MITTE_ABSTAND` auseinander
@@ -319,5 +328,5 @@
     return null;
   }
 
-  Object.assign(ziel, { commitMarker, zeitachseStriche, stricheVerdichten, markerZiele, COMMIT_GRENZEN, MITTE_ABSTAND, STRICHE });
+  Object.assign(ziel, { commitMarker, zeitachseStriche, stricheVerdichten, stricheAnzeigen, markerZiele, COMMIT_GRENZEN, MITTE_ABSTAND, STRICHE });
 })(typeof module !== 'undefined' ? module.exports : window);

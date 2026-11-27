@@ -132,10 +132,11 @@ test('ebenen: Kontextmenü startet auf dem aktiven Eintrag, bei offenem Untermen
 const fs = require('node:fs');
 const path = require('node:path');
 const WEB = path.join(__dirname, '../../web');
-/** Erlaubte Anzahl .focus()-Aufrufe je Funktion (PO-Entscheidung Z. 109): ein zusätzlicher Aufruf in einer erlaubten Funktion ist ebenso ein Befund. */
+/** Erlaubte Anzahl .focus()-Aufrufe je Funktion (PO-Entscheidung Z. 109): ein zusätzlicher Aufruf in einer erlaubten Funktion ist ebenso ein Befund.
+    `laufStrichTasten` ist der Tastenzweig der Knopfleiste der Zeitachse: dort wandern die Pfeile und Pos1/Ende über die Knöpfe (R00268 FA 5). */
 const ERLAUBT = new Map([
   ['fokusSetzen', 1], ['fokusVersuchen', 1], ['ersterTabbarer', 1], ['fallenTaste', 1], ['popMenueTaste', 1], ['gewaehltesRadioFokussieren', 1],
-  ['fensterTaste', 1], ['fensterMenueTaste', 1], ['listenTaste', 1], ['brettTaste', 1], ['keydown', 1],
+  ['fensterTaste', 1], ['fensterMenueTaste', 1], ['listenTaste', 1], ['brettTaste', 1], ['keydown', 1], ['laufStrichTasten', 1],
 ]);
 const ANFANG = /^\s*function (\w+)\(|^document\.addEventListener\('(keydown)'|^(?:document|window)\.addEventListener\('(\w+)'|^(?:const|let|var) (\w+) = (?:async )?(?:\([^)]*\)|\w+) =>/;
 /** Eine andere Zeile auf oberster Ebene beendet die umgebende Funktion — außer schließende Klammer, Kommentar und Fortsetzung. */

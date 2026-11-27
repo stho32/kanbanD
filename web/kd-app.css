@@ -2009,6 +2009,9 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-cm a.m{align-items:center;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
 .lv-cm a.m .k{color:inherit}
 .lv-cm a.m:focus-visible{outline:2px solid var(--kd-accent-ink);outline-offset:2px}
+/* R00268 FA 6 (S4): die Marker-Zeile selbst trägt den Sprungfokus — Umriss ≥ 2 px, ganz im Blick, hell wie dunkel (--kd-accent-ink
+   auf --kd-surface 10,0 / 9,8), innen liegend, damit ihn der Balken, die Zeitachse oder der Seitenrand nicht abschneiden. */
+.lv-cm:focus{outline:2px solid var(--kd-accent-ink);outline-offset:-3px}
 .lv-cm .mono{flex:none;font-size:12px}
 .lv-cm .ti{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lv-cm .n{flex:none}
@@ -2095,6 +2098,8 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-leg i.d,.lv-balken>.d{background:var(--kd-agent)}
 .lv-leg i.t,.lv-balken>.t{background:var(--kd-mensch)}
 .lv-leg i.t{background:repeating-linear-gradient(135deg,var(--kd-mensch) 0 4px,var(--kd-mensch-weak) 4px 6px)}
+/* Der Legendeneintrag „Commit“ (R00268 FA 8, PO Z. 691): der Strich der Zeitachse, 2 px in --kd-text mit 1 px Rand (D0009). */
+.lv-leg i.c{width:2px;height:12px;background:var(--kd-text);box-shadow:0 0 0 1px var(--kd-surface)}
 .lv-balken{display:flex;height:16px;min-width:0}
 .lv-balken>span{flex-basis:0;flex-shrink:1;min-width:1px;container-type:inline-size}
 .lv-balken.faecher>span{flex-grow:1;min-width:0}
@@ -2108,6 +2113,9 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 .lv-bw{position:relative;margin-top:20px}
 .lv-ck,.lv-mess{position:absolute;inset:0;pointer-events:none}
 .lv-mess{visibility:hidden;overflow:hidden}
+/* Die Beschriftung der Messleiste trägt dieselben Schriftwerte wie `.lv-ckb .t` — gemessen wird die Breite, die der Knopf zeigt. */
+.lv-mess .mess-t{display:inline-block;font-family:inherit;font-weight:600;font-size:11.5px;line-height:17px;white-space:nowrap;padding:0 2px}
+.lv-mess .mess-t .mono{font-size:11.5px}
 .lv-ckz{position:absolute;top:-20px;bottom:-3px;transform:translateX(-50%)}
 .lv-ckz.an{transform:translateX(0)}
 .lv-ckz.re{transform:translateX(-100%)}

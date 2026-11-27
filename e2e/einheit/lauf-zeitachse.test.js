@@ -4,6 +4,7 @@ process.env.TZ = 'Europe/Berlin';
 const test = require('node:test');
 const assert = require('node:assert');
 const { laufAuswerten } = require('../../web/lauf.js');
+const { stricheAnzeigen } = require('../../web/lauf-commits.js');
 const { T1_ZEILEN } = require('../tests/laufansicht-t1.js');
 
 const e = (nr, art, wer, zeit, text = 'x') => ({ nr, eintrag: { art, wer, text, zeit, name: null } });
@@ -159,4 +160,47 @@ test('AK 3: T10 — 200 Fächer ohne Breitenangabe, Tooltip „überwiegend …�
   assert.match(t11, /<div class="lv-balken" role="img"/);
   const t11Titel = attr(t11, 'title');
   assert.deepStrictEqual([t11Titel.length, t11Titel[0], t11Titel[199]], [200, 'Werkzeuge 1 s ab 10:30:00', 'Denken 1 s ab 10:33:19']);
+});
+
+/* ── R00268 B1466: die Knopfleiste der Zeitachse zeichnen (FA 4, FA 5, FA 8, PO Z. 664 a, 691) ── */
+
+test('R00268: Knopfleiste — Gruppe neben dem Bild, Namen mit dem sichtbaren Text, genau ein Tab-Stopp, Legende und Lesetext mit Commit', () => {
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', um(1)), e(2, 'werkzeugergebnis', 'werkzeug', um(2))], false);
+  const stellen = [
+    { schrittNr: 2, anteil: 0.25, art: 'link', kurzhash: 'abc1234', titel: 'Titel eins', anzahl: 1, ziel: 'lv-cm1' },
+    { schrittNr: 4, anteil: 0.5, art: 'text', kurzhash: 'e5f6a7b', titel: 'Titel zwei', anzahl: 3, ziel: 'lv-cmt' },
+    { schrittNr: 6, anteil: 1, art: 'link', kurzhash: 'def5678', titel: 'Titel drei', anzahl: 1, ziel: 'lv-cm4' },
+  ];
+  const html = laufZeitachseHtml(a, stricheAnzeigen(stellen));
+  assert.match(html, /<div class="lv-ck" role="group" aria-label="Commits der Zeitachse">/);
+  assert.strictEqual((html.match(/role="img"/g) || []).length, 1, 'nur der Balken ist ein Bild');
+  const balken = /<div class="lv-balken[^>]*>(.*?)<\/div>/.exec(html)[1];
+  assert.doesNotMatch(balken, /lv-ckb/, 'kein Knopf im Bild');
+  assert.match(html, /style="left:25.0000%"><button type="button" class="lv-ckb" tabindex="0" data-act="lauf-springe" data-arg="lv-cm1" data-ziel="lv-cm1" aria-label="Commit abc1234, zur Zeile springen"><span class="t"><span class="mono">abc1234<\/span><\/span><i><\/i><\/button>/);
+  assert.match(html, /<button type="button" class="lv-ckb" tabindex="-1" data-act="lauf-springe" data-arg="lv-cmt" data-ziel="lv-cmt" aria-label="3 Commits, zur ersten Zeile springen"><span class="t">3 Commits<\/span><i class="mehr"><\/i><\/button>/);
+  assert.strictEqual((html.match(/tabindex="0"/g) || []).length, 1, 'genau ein Tab-Stopp');
+  assert.strictEqual((html.match(/tabindex="-1"/g) || []).length, 2);
+  assert.match(html, /<li><i class="c"><\/i>Commit<\/li>/);
+  assert.match(html, /aria-label="Zeitachse: Werkzeuge [^"]*, 5 Commits"/);
+  assert.match(html, /<div class="lv-mess" aria-hidden="true"><span class="mess-t">/);
+  assert.doesNotMatch(html, /lv-mess[^>]*>[^<]*<button/, 'die Messleiste trägt keine Knöpfe');
+});
+
+test('R00268: Randform — der erste Knopf steht an seiner Strichstelle (`.an`), der letzte als Spiegel (`.re`)', () => {
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', um(1)), e(2, 'werkzeugergebnis', 'werkzeug', um(2))], false);
+  const stellen = [
+    { schrittNr: 2, anteil: 0, art: 'link', kurzhash: 'abc1234', titel: 'Titel eins', anzahl: 1, ziel: 'lv-cm1', rand: 'links' },
+    { schrittNr: 6, anteil: 1, art: 'link', kurzhash: 'def5678', titel: 'Titel drei', anzahl: 1, ziel: 'lv-cm2', rand: 'rechts' },
+  ];
+  const html = laufZeitachseHtml(a, stricheAnzeigen(stellen));
+  assert.match(html, /<div class="lv-ckz an" style="left:0.0000%">/);
+  assert.match(html, /<div class="lv-ckz re" style="left:100.0000%">/);
+});
+
+test('R00268 FA 1: mehr als 100 Stellen werden gekürzt — die Ansage nennt gezeigte und alle Marker', () => {
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', um(1)), e(2, 'werkzeugergebnis', 'werkzeug', um(2))], false);
+  const stellen = Array.from({ length: 101 }, (_, i) => ({ schrittNr: i + 1, anteil: i / 101, art: 'link', kurzhash: 'abc1234', titel: 'Titel', anzahl: 1, ziel: `lv-cm${i + 1}` }));
+  const html = laufZeitachseHtml(a, stricheAnzeigen(stellen));
+  assert.strictEqual((html.match(/class="lv-ckb"/g) || []).length, 100);
+  assert.match(html, /aria-label="Zeitachse: Werkzeuge [^"]*, 100 von 101 Commits"/);
 });

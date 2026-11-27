@@ -292,7 +292,7 @@ test('web/lauf-commits.js überschreibt im Browser keinen Namen eines anderen Mo
   const namen = datei => [...fs.readFileSync(path.join(ordner, datei), 'utf8').matchAll(/Object\.assign\(ziel, \{([^}]*)\}\);/g)]
     .flatMap(m => m[1].split(',').map(n => n.trim().split(':')[0].trim()).filter(Boolean));
   const eigene = namen('lauf-commits.js');
-  assert.deepStrictEqual(eigene, ['commitMarker', 'zeitachseStriche', 'stricheVerdichten', 'markerZiele', 'COMMIT_GRENZEN', 'MITTE_ABSTAND', 'STRICHE']);
+  assert.deepStrictEqual(eigene, ['commitMarker', 'zeitachseStriche', 'stricheVerdichten', 'stricheAnzeigen', 'markerZiele', 'COMMIT_GRENZEN', 'MITTE_ABSTAND', 'STRICHE']);
   for (const datei of fs.readdirSync(ordner).filter(d => d.endsWith('.js') && d !== 'lauf-commits.js')) assert.deepStrictEqual(namen(datei).filter(n => eigene.includes(n)), [], datei);
   const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
   for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);

@@ -2616,6 +2616,7 @@ async function transkriptLesen(pfad, abbruchSignal, quelle) {
     const commits = laufCommitMarker(gelesen.zeilen, auswertung, await quelle.karte, quelle.adresse);
     laufZeitachseSchriftenGeprueft = false;
     LAUF_ZEITACHSE_GEMERKT.clear();
+    laufStrichHalter = null;
     return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, commits, striche: zeitachseStriche(auswertung, commits.marker), bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung, commits) };
   } catch (g) {
     // FA 8: Server, Verbindung, Entpacken, `fehlt` — jede andere Ausnahme beim Lesen oder Zeichnen heißt „verarbeiten“ (PO Z. 495)
@@ -2711,7 +2712,7 @@ function vLauf() {
   if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter), laufSeitenfeldBreit())}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
   const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten, commits: e && e.commits }, esc);
   let zeitachse = '';
-  if (e && e.art === 'eintraege') zeitachse = laufZeitachseHtml(e.auswertung, e.striche);
+  if (e && e.art === 'eintraege') zeitachse = laufZeitachseHtml(e.auswertung, stricheAnzeigen(e.striche || []), laufStrichHalter);
   let leiste = '';
   if (zeile) leiste = laeufeLeisteHtml(zeile, esc, groesse, laeufeBlaetternHtml(laufFolge(v), kennung => laufAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, kennung }), esc));
   return `<div class="lv" id="lauf">${leiste}${kopf}${zeitachse}${laufRumpfHtml(v, insel, esc)}</div>`;
@@ -2770,8 +2771,10 @@ function laufInselText(e) {
    Beschriftungen, `stricheVerdichten` rechnet die Knöpfe und nur die Knopfleiste wird ersetzt. Nach den geladenen Schriften folgt
    eine zweite Messung. Ein Fenstergröße-Wechsel wiederholt nur Messen und Verdichten — ohne `render()` und ohne Anfrage. */
 
-/** Der Stand der gezeichneten Zeitachse: Knopfleiste, Balkenbereich, gerundete Achsenbreite, Striche, Beobachter. */
+/** Der Stand der gezeichneten Zeitachse: Knopfleiste, Messleiste, Balkenbereich, gerundete Achsenbreite, Striche, Beobachter. */
 let laufZeitachseStand = null;
+/** Der Knopf der Zeitachse, der den Tab-Stopp trägt (`data-arg`); null heißt: der erste (R00268 FA 5). */
+let laufStrichHalter = null;
 /** Die verdichteten Knöpfe je „Achsenbreite|Strichzahl“: ein laufender Beobachter rechnet nicht je Bild neu. */
 const LAUF_ZEITACHSE_GEMERKT = new Map();
 /** Hat dieser Lauf schon nach den geladenen Schriften gemessen? Ein Durchlauf je gelesenem Lauf, nicht je Neuzeichnen. */
@@ -2784,14 +2787,50 @@ function laufZeitachseNachher() {
   if (!leiste) { laufZeitachseAbraeumen(); return; }
   if (laufZeitachseStand && laufZeitachseStand.leiste === leiste) return;
   laufZeitachseAbraeumen();
-  const stand = { leiste, mess: document.querySelector('#lauf .lv-mess'), bereich: leiste.closest('.lv-bw'), striche: e.striche || [], breite: 0, beobachter: null };
+  const stand = { leiste, mess: document.querySelector('#lauf .lv-mess'), bereich: leiste.closest('.lv-bw'), striche: stricheAnzeigen(e.striche || []).stellen, breite: 0, beobachter: null };
   stand.beobachter = new ResizeObserver(() => laufZeitachseBreiteGeaendert());
   stand.beobachter.observe(stand.bereich);
   laufZeitachseStand = stand;
+  laufStrichTasten(leiste);
   laufStrichDurchlauf(false);
   if (laufZeitachseSchriftenGeprueft) return;
   laufZeitachseSchriftenGeprueft = true;
   document.fonts.ready.then(() => { if (laufZeitachseStand === stand) laufStrichDurchlauf(true); });
+}
+
+/** Die Tastatur der Gruppe (R00268 FA 5): Pfeile und Pos1/Ende wandern über die Knöpfe und tragen den Tab-Stopp mit; der zuletzt
+    fokussierte Knopf ist der Halter. Einmal je Knopfleiste angehängt. */
+function laufStrichTasten(leiste) {
+  if (leiste.dataset.tasten) return;
+  leiste.dataset.tasten = 'an';
+  leiste.addEventListener('keydown', e => {
+    const knopf = e.target.closest('.lv-ckb');
+    if (!knopf) return;
+    const knoepfe = [...leiste.querySelectorAll('.lv-ckb')];
+    const stelle = knoepfe.indexOf(knopf);
+    let ziel = null;
+    if (e.key === 'ArrowRight') ziel = knoepfe[stelle + 1];
+    if (e.key === 'ArrowLeft') ziel = knoepfe[stelle - 1];
+    if (e.key === 'Home') ziel = knoepfe[0];
+    if (e.key === 'End') ziel = knoepfe[knoepfe.length - 1];
+    if (!ziel) return;
+    e.preventDefault();
+    ziel.focus();
+    laufStrichHalterSetzen(leiste, ziel.dataset.arg);
+  });
+  leiste.addEventListener('focusin', e => {
+    const knopf = e.target.closest('.lv-ckb');
+    if (knopf) laufStrichHalterSetzen(leiste, knopf.dataset.arg);
+  });
+}
+
+/** Den Tab-Stopp auf den Knopf mit dem Ziel `ziel` legen: genau ein Knopf trägt `tabindex="0"`, die übrigen `-1` (R00268 FA 5). */
+function laufStrichHalterSetzen(leiste, ziel) {
+  const knoepfe = [...leiste.querySelectorAll('.lv-ckb')];
+  const halter = knoepfe.find(k => k.dataset.arg === ziel) || knoepfe[0];
+  if (!halter) return;
+  laufStrichHalter = halter.dataset.arg;
+  for (const knopf of knoepfe) knopf.setAttribute('tabindex', knopf === halter ? '0' : '-1');
 }
 
 /** Der Balken der Zeitachse hat seine Breite geändert: messen, verdichten, Knopfleiste ersetzen — sonst nichts. */
@@ -2802,12 +2841,17 @@ function laufZeitachseBreiteGeaendert() {
   laufStrichDurchlauf(false);
 }
 
-/** Ein Durchlauf: (neu) messen, verdichten, nur die Knopfleiste ersetzen. */
+/** Ein Durchlauf: (neu) messen, verdichten, nur die Knopfleiste ersetzen. Stand der Fokus in der Leiste, kehrt er über den Sicherer
+    (`fokusSetzen`) auf denselben Knopf zurück, statt auf `body` zu fallen (R00268 FA 5). */
 function laufStrichDurchlauf(neuMessen) {
   const stand = laufZeitachseStand;
   if (!stand) return;
   stand.breite = Math.round(stand.bereich.getBoundingClientRect().width);
-  stand.leiste.innerHTML = strichLeisteHtml(laufZeitachseKnopfe(stand, neuMessen));
+  const fokusVorher = fokusstand(document.activeElement, [stand.leiste]);
+  const fokusZiel = fokusVorher ? document.activeElement.dataset.arg : null;
+  stand.leiste.innerHTML = strichLeisteHtml(laufZeitachseKnopfe(stand, neuMessen), fokusZiel || laufStrichHalter);
+  laufStrichHalterSetzen(stand.leiste, fokusZiel || laufStrichHalter);
+  if (fokusVorher) fokusSetzen(fokusVorher);
 }
 
 /** Die verdichteten Knöpfe der Achse: aus dem Merker für dieselbe Achsenbreite und Strichzahl, sonst aus den an der Messleiste
@@ -2818,7 +2862,7 @@ function laufZeitachseKnopfe(stand, neuMessen) {
   const schluessel = `${stand.breite}|${stand.striche.length}`;
   const gemerkt = LAUF_ZEITACHSE_GEMERKT.get(schluessel);
   if (gemerkt && !neuMessen) return gemerkt;
-  stand.mess.innerHTML = strichLeisteHtml(stand.striche);
+  stand.mess.innerHTML = strichMessHtml(stand.striche);
   let knoepfe = stricheVerdichten(stand.striche, beschriftungsbreiten(stand.mess), stand.breite);
   for (let runde = 0; runde < 4; runde++) {
     const feiner = stricheVerdichten(stand.striche, breitenJeKnopf(stand, knoepfe), stand.breite);
@@ -2830,13 +2874,13 @@ function laufZeitachseKnopfe(stand, neuMessen) {
   return knoepfe;
 }
 
-/** Die gemessenen Beschriftungsbreiten (`getBoundingClientRect`) der Kinder einer Leiste, der Reihe nach. */
-const beschriftungsbreiten = leiste => [...leiste.children].map(kind => kind.querySelector('.t').getBoundingClientRect().width);
+/** Die gemessenen Beschriftungsbreiten (`getBoundingClientRect`) der Kinder der Messleiste, der Reihe nach. */
+const beschriftungsbreiten = leiste => [...leiste.children].map(kind => kind.getBoundingClientRect().width);
 
 /** Je Strich die Breite der Beschriftung, die sein Knopf trägt: die Messleiste zeigt die Knöpfe, gemessen wird am ersten Kind
     jedes Knopfes, die übrigen Striche des Knopfes erben seinen Wert. */
 function breitenJeKnopf(stand, knoepfe) {
-  stand.mess.innerHTML = strichLeisteHtml(knoepfe);
+  stand.mess.innerHTML = strichMessHtml(knoepfe);
   const knopfBreite = beschriftungsbreiten(stand.mess);
   return knoepfe.flatMap((knopf, i) => Array(knopf.strichZahl).fill(knopfBreite[i]));
 }
