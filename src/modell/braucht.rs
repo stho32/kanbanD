@@ -45,12 +45,34 @@ pub fn deuten(label: &str) -> Deutung {
 
 const PRAEFIX: &str = "braucht:";
 
+/// Ein Schlüssel der Mengenarbeit mit der Zählernaht (R00261 AK 4): **jeder Gleichheitsvergleich** zählt einen Schritt —
+/// auch der innerhalb eines `Vec`-Nachschlags. Die Menge entscheidet über den Hash und vergleicht wenige Einträge, ein
+/// linearer Nachschlag (`Vec::contains`) vergliche den ganzen Bestand. Im Programm ist `zaehler::vergleich` leer, die
+/// Hülle kostet nichts (auch `Hash` ist von Hand geschrieben, damit die Ableitung nicht mit dem eigenen `PartialEq` streitet).
+#[derive(Debug)]
+struct Gesehen<T>(T);
+
+impl<T: PartialEq> PartialEq for Gesehen<T> {
+    fn eq(&self, andere: &Gesehen<T>) -> bool {
+        zaehler::vergleich();
+        self.0 == andere.0
+    }
+}
+
+impl<T: Eq> Eq for Gesehen<T> {}
+
+impl<T: std::hash::Hash> std::hash::Hash for Gesehen<T> {
+    fn hash<H: std::hash::Hasher>(&self, zustand: &mut H) {
+        self.0.hash(zustand);
+    }
+}
+
 /// Die gedeuteten Nummern in der Reihenfolge der Labels; dieselbe Nummer einmal (beim ersten Vorkommen).
-/// Linear in der Zahl der Labels (AK 16): die Menge prüft, die Liste hält die Reihenfolge. Die Arbeit je Label zählt
-/// `zaehler` (Test; R00261 AK 4).
+/// Linear in der Zahl der Labels (AK 16): die Menge prüft, die Liste hält die Reihenfolge. Nachschlag und Vergleich je
+/// Label zählt `zaehler` (Test; R00261 AK 4).
 pub fn braucht_nummern(labels: &[String]) -> Vec<u32> {
-    let mut gesehen: HashSet<u32> = HashSet::new();
-    labels.iter().filter_map(|l| if let Deutung::Nummer(n) = deuten(l) { Some(n) } else { None }).filter(|n| { zaehler::schritt(); gesehen.insert(*n) }).collect()
+    let mut gesehen: HashSet<Gesehen<u32>> = HashSet::new();
+    labels.iter().filter_map(|l| if let Deutung::Nummer(n) = deuten(l) { Some(n) } else { None }).filter(|n| { zaehler::nachschlag(); gesehen.insert(Gesehen(*n)) }).collect()
 }
 
 /// Die Nummern, die auf einem der Boards in dessen letzter Spalte liegen — einmal gerechnet, je Aufgabe nachgeschlagen.
@@ -92,10 +114,10 @@ pub fn unbekannt_meldung(nummer: u32) -> String {
 
 /// Die neu hinzukommenden Labels mit dem Präfix `braucht:` — „neu“ heißt: in der gespeicherten Liste steht es nicht,
 /// verglichen ohne Groß/Klein. Unverändert mitgeschickte Labels prüft die Tür nie (wie `klasse`, R00195).
-/// Linear in der Zahl der Labels (AK 16). Die Arbeit je Label zählt `zaehler` (Test; R00261 AK 4).
+/// Linear in der Zahl der Labels (AK 16). Nachschlag und Vergleich je Label zählt `zaehler` (Test; R00261 AK 4).
 pub fn neue_braucht_labels<'a>(vorher: &[String], nachher: &'a [String]) -> Vec<&'a str> {
-    let gespeichert: HashSet<String> = vorher.iter().map(|l| l.trim().to_lowercase()).collect();
-    nachher.iter().map(|l| l.as_str()).filter(|l| { zaehler::schritt(); deuten(l) != Deutung::Keine && !gespeichert.contains(&l.trim().to_lowercase()) }).collect()
+    let gespeichert: HashSet<Gesehen<String>> = vorher.iter().map(|l| Gesehen(l.trim().to_lowercase())).collect();
+    nachher.iter().map(|l| l.as_str()).filter(|l| { zaehler::nachschlag(); deuten(l) != Deutung::Keine && !gespeichert.contains(&Gesehen(l.trim().to_lowercase())) }).collect()
 }
 
 /// Prüft die neuen `braucht:`-Labels der Aufgabe `nummer` der Reihe nach — Form, Selbstbezug, unbekannte Nummer; der
@@ -103,9 +125,9 @@ pub fn neue_braucht_labels<'a>(vorher: &[String], nachher: &'a [String]) -> Vec<
 /// Liefert die neuen Kanten `nummer → n` als Ziele in Label-Reihenfolge, jedes einmal.
 pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) -> Result<Vec<u32>, String> {
     let mut ziele = vec![];
-    let mut gesehen: HashSet<u32> = HashSet::new();
+    let mut gesehen: HashSet<Gesehen<u32>> = HashSet::new();
     for label in neue {
-        zaehler::schritt();
+        zaehler::nachschlag();
         let n = match deuten(label) {
             Deutung::Nummer(n) => n,
             Deutung::Falsch | Deutung::Keine => return Err(FORM_MELDUNG.into()),
@@ -116,7 +138,7 @@ pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) ->
         if !gibt_es(n) {
             return Err(unbekannt_meldung(n));
         }
-        if gesehen.insert(n) {
+        if gesehen.insert(Gesehen(n)) {
             ziele.push(n);
         }
     }
@@ -243,9 +265,10 @@ fn weg(kanten: &BTreeMap<u32, Vec<u32>>, von: u32, nach: u32) -> Option<Vec<u32>
 }
 
 /// Zählernähte der Arbeit (R00261 AK 4, Frage 1): statt einer Wanduhr-Grenze zählt der Test die Schritte. `schritte`
-/// zählt die betrachteten Einträge der Mengenarbeit (`braucht_nummern`, `neue_braucht_labels`, `an_der_tuer`), `suchen`
-/// die Läufe der Komponentenrechnung in `kreis_suchen`. Thread-lokal, damit parallele Tests nicht mitzählen; nur unter
-/// `cfg(test)` übersetzt — im Programm kostet die Naht nichts.
+/// zählt **Nachschläge und Gleichheitsvergleiche** der Mengenarbeit (`braucht_nummern`, `neue_braucht_labels`,
+/// `an_der_tuer`), `suchen` die Läufe der Komponentenrechnung in `kreis_suchen`. Ein linearer Nachschlag (`Vec::contains`)
+/// vergleicht je Anfrage den ganzen Bestand und überschreitet die Schranke — die Menge vergleicht wenige Einträge.
+/// Thread-lokal, damit parallele Tests nicht mitzählen; nur unter `cfg(test)` übersetzt.
 #[cfg(test)]
 mod zaehler {
     use std::cell::Cell;
@@ -268,7 +291,13 @@ mod zaehler {
         SUCHEN.with(Cell::get)
     }
 
-    pub(super) fn schritt() {
+    /// Ein Nachschlag in einer Mengenarbeit.
+    pub(super) fn nachschlag() {
+        SCHRITTE.with(|c| c.set(c.get() + 1));
+    }
+
+    /// Ein Gleichheitsvergleich beim Nachschlag (aus `Gesehen::eq`) — auch der in einem linearen Suchlauf.
+    pub(super) fn vergleich() {
         SCHRITTE.with(|c| c.set(c.get() + 1));
     }
 
@@ -280,7 +309,8 @@ mod zaehler {
 /// Im Programm sind die Zählernähte leer; `cfg(not(test))` hält die Aufrufe in den Funktionen ohne `#[cfg]`-Streuung.
 #[cfg(not(test))]
 mod zaehler {
-    pub(super) fn schritt() {}
+    pub(super) fn nachschlag() {}
+    pub(super) fn vergleich() {}
     pub(super) fn suche() {}
 }
 
@@ -398,7 +428,7 @@ mod tests {
         assert_eq!(an_der_tuer(5, &[], gibt_es), Ok(vec![]));
     }
 
-    // ---- AK 16 (B1095, R00261): linear in der Zahl der Labels — die Arbeit gezählt, ohne Wanduhr-Grenze --------------
+    // ---- AK 16 (B1095, R00261): linear in der Zahl der Labels — die Schritte gezählt, ohne Wanduhr-Grenze ------------
 
     /// Führt `f` aus und misst die Schritte der Mengenarbeit (R00261 AK 4): vorher zurücksetzen, nachher lesen.
     fn arbeit<T>(f: impl FnOnce() -> T) -> (T, usize) {
@@ -407,65 +437,88 @@ mod tests {
         (ergebnis, super::zaehler::schritte())
     }
 
-    /// Die Schranke der Arbeit je Label: ein Nachschlag ist ein Schritt; ein quadratischer Vergleich wäre ein Vielfaches.
+    /// Die Schranke der Schritte je Label: ein Nachschlag und wenige Vergleiche; ein linearer Suchlauf vergliche je
+    /// Anfrage den ganzen Bestand und läge weit darüber.
     const JE_LABEL: usize = 4;
 
-    /// Prüft Ergebnis und Arbeit eines Falls: höchstens `JE_LABEL × n` Schritte für `n` Labels.
-    fn linear<T: PartialEq + std::fmt::Debug>(was: String, n: usize, erwartet: T, f: impl FnOnce() -> T) {
-        let (ergebnis, schritte) = arbeit(f);
-        assert_eq!(ergebnis, erwartet, "{was}: Ergebnis");
-        assert!(schritte <= JE_LABEL * n, "{was}: {schritte} Schritte bei n = {n} (linear wären höchstens {})", JE_LABEL * n);
+    fn schranke(was: &str, n: usize, schritte: usize) {
+        assert!(schritte <= JE_LABEL * n, "{was}, n = {n}: {schritte} Schritte (linear wären höchstens {})", JE_LABEL * n);
     }
 
     #[test]
-    fn ak16_neue_braucht_labels_arbeit_ist_linear() {
+    fn ak16_neue_braucht_labels_schritte_wachsen_linear() {
         for n in [1_000, 10_000, 100_000] {
             let gespeichert: Vec<String> = (0..n).map(|i| format!("q{i}")).collect();
             let braucht: Vec<String> = (0..n).map(|i| format!("braucht:{}", i + 10)).collect();
             let gross: Vec<String> = (0..n).map(|i| format!("BRAUCHT:{}", i + 10)).collect();
             let mut umgekehrt = braucht.clone();
             umgekehrt.reverse();
-            linear(format!("verschiedene, n = {n}"), n, n, || neue_braucht_labels(&gespeichert, &braucht).len());
-            linear(format!("dieselben, n = {n}"), n, 0, || neue_braucht_labels(&braucht, &braucht).len());
-            linear(format!("umgekehrt, n = {n}"), n, 0, || neue_braucht_labels(&gross, &umgekehrt).len());
+            let (neu, schritte) = arbeit(|| neue_braucht_labels(&gespeichert, &braucht));
+            assert_eq!((neu.len(), neu.first().map(|s| s.to_string()), neu.last().map(|s| s.to_string())), (n, Some("braucht:10".to_string()), Some(format!("braucht:{}", n + 9))), "verschiedene, n = {n}");
+            schranke("verschiedene", n, schritte);
+            let (neu, schritte) = arbeit(|| neue_braucht_labels(&braucht, &braucht));
+            assert_eq!(neu.len(), 0, "dieselben, n = {n}");
+            schranke("dieselben", n, schritte);
+            let (neu, schritte) = arbeit(|| neue_braucht_labels(&gross, &umgekehrt));
+            assert_eq!(neu.len(), 0, "umgekehrt, n = {n}");
+            schranke("umgekehrt", n, schritte);
         }
     }
 
     #[test]
-    fn ak16_braucht_nummern_arbeit_ist_linear() {
+    fn ak16_braucht_nummern_schritte_wachsen_linear() {
         for n in [1_000, 10_000, 100_000] {
             let braucht: Vec<String> = (0..n).map(|i| format!("braucht:{}", i + 1)).collect();
             let dieselbe: Vec<String> = (0..n).map(|_| "braucht:7".to_string()).collect();
             let mut umgekehrt = braucht.clone();
             umgekehrt.reverse();
-            linear(format!("verschiedene, n = {n}"), n, n, || braucht_nummern(&braucht).len());
-            linear(format!("dieselbe, n = {n}"), n, 1, || braucht_nummern(&dieselbe).len());
-            linear(format!("umgekehrt, n = {n}"), n, n, || braucht_nummern(&umgekehrt).len());
+            let (nummern, schritte) = arbeit(|| braucht_nummern(&braucht));
+            assert_eq!((nummern.len(), nummern.first().copied(), nummern.last().copied()), (n, Some(1), Some(n as u32)), "verschiedene, n = {n}");
+            schranke("verschiedene", n, schritte);
+            let (nummern, schritte) = arbeit(|| braucht_nummern(&dieselbe));
+            assert_eq!(nummern, vec![7], "dieselbe, n = {n}");
+            schranke("dieselbe", n, schritte);
+            let (nummern, schritte) = arbeit(|| braucht_nummern(&umgekehrt));
+            assert_eq!((nummern.len(), nummern.first().copied(), nummern.last().copied()), (n, Some(n as u32), Some(1)), "umgekehrt, n = {n}");
+            schranke("umgekehrt", n, schritte);
         }
     }
 
     #[test]
-    fn ak16_tuer_arbeit_ist_linear() {
+    fn ak16_tuer_schritte_wachsen_linear() {
         for n in [1_000, 10_000, 100_000] {
             let l: Vec<String> = (0..n).map(|i| format!("braucht:{}", i + 2)).collect();
             let neue = l.iter().map(String::as_str).collect::<Vec<_>>();
-            linear(format!("verschiedene Ziele, n = {n}"), n, Ok(n), || an_der_tuer(1, &neue, |_| true).map(|z| z.len()));
+            let (ziele, schritte) = arbeit(|| an_der_tuer(1, &neue, |_| true));
+            assert_eq!(ziele.map(|z| (z.len(), z.first().copied(), z.last().copied())), Ok((n, Some(2), Some(n as u32 + 1))), "verschiedene Ziele, n = {n}");
+            schranke("verschiedene Ziele", n, schritte);
         }
     }
 
-    /// Statisch (AK 16): außerhalb der Tests wird `.contains` nur auf Mengen gerufen — jeder Empfänger ist als
-    /// `HashSet`/`BTreeSet` deklariert, nie eine Liste.
+    /// Statisch (AK 16): außerhalb der Tests wird `.contains` nur auf Mengen gerufen — der Empfänger ist **in derselben
+    /// Funktion** als `HashSet`/`BTreeSet` deklariert, nie als Liste. Eine gleichnamige Menge in einer anderen Funktion
+    /// (etwa `gesehen` in `an_der_tuer`) deckt einen Listen-Empfänger nicht (B4 des Code-Reviews).
     #[test]
     fn ak16_contains_nur_auf_mengen() {
         let quelle = include_str!("braucht.rs");
         let code = &quelle[..quelle.find("#[cfg(test)]").expect("Testmodul")];
         let mengen = ["HashSet", "&HashSet", "BTreeSet", "&BTreeSet"];
-        for (zeile, text) in code.lines().enumerate() {
+        let zeilen: Vec<&str> = code.lines().collect();
+        let mut funktionsanfang = vec![0usize; zeilen.len()];
+        let mut anfang = 0usize;
+        for (i, z) in zeilen.iter().enumerate() {
+            if z.starts_with("fn ") || z.starts_with("pub fn ") || z.starts_with("pub(crate) fn ") {
+                anfang = i;
+            }
+            funktionsanfang[i] = anfang;
+        }
+        for (i, text) in zeilen.iter().enumerate() {
             for (stelle, _) in text.match_indices(".contains(") {
                 let vorn = &text[..stelle];
-                let name = &vorn[vorn.rfind(|c: char| !(c.is_alphanumeric() || c == '_')).map_or(0, |i| i + 1)..];
-                let als_menge = mengen.iter().any(|m| code.contains(&format!("{name}: {m}<")));
-                assert!(!name.is_empty() && als_menge, "braucht.rs:{}: `{name}.contains` — keine Menge", zeile + 1);
+                let name = &vorn[vorn.rfind(|c: char| !(c.is_alphanumeric() || c == '_')).map_or(0, |k| k + 1)..];
+                let rumpf = zeilen[funktionsanfang[i]..=i].join("\n");
+                let als_menge = mengen.iter().any(|m| rumpf.contains(&format!("{name}: {m}<")));
+                assert!(!name.is_empty() && als_menge, "braucht.rs:{}: `{name}.contains` — keine Menge in derselben Funktion", i + 1);
             }
         }
     }
