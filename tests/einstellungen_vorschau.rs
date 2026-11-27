@@ -4,7 +4,7 @@ mod gemeinsam;
 
 use gemeinsam::git;
 use kanband::dienst::{Einstellungsvorschau, Kanban};
-use kanband::fehler::Fehler;
+use kanband::fehler::{Fehler, Ursache};
 use kanband::modell::{Art, Einstellungen, Klasse, Person, Signal};
 use std::path::{Path, PathBuf};
 
@@ -128,7 +128,7 @@ fn v5_gleichlauf_h_und_varianten() {
     let zitiert = h().replace(QUELLEN, &format!("\"signals\": {{}}\n{QUELLEN}"));
     assert_eq!(gleichlauf("\"signals\": {} zitiert (Rücklesen)", &zitiert, &sh, &|e| e.signale.push(warten())).err(), Some(handform("signals")));
     let doppelt = gleichlauf("Kürzel doppelt", &h(), &sh, &|e| e.personen.push(Person { kuerzel: "sh".into(), name: "Zweiter".into(), art: Art::Mensch, aktiv: true }));
-    assert!(matches!(doppelt, Err(Fehler::Ungueltig(_))), "{doppelt:?}");
+    assert!(matches!(doppelt, Err(Fehler::Ungueltig(_)) | Err(Fehler::Inhalt { ursache: Ursache::Eingabe, .. })), "{doppelt:?}");
     let agent = Person { kuerzel: "ag".into(), name: "Agent A".into(), art: Art::Agent, aktiv: true };
     assert!(matches!(gleichlauf("Agent legt Mensch still", &h(), &agent, &|e| e.personen[0].aktiv = false), Err(Fehler::PersonenartVerboten { .. })));
     let neue_klasse = |e: &mut Einstellungen| e.klassen.push(Klasse { schluessel: "neu".into(), bezeichnung: "Neu".into(), farbe: "blue".into() });
@@ -194,7 +194,7 @@ fn v7_schreibt_nichts() {
     }
     assert_eq!(ergebnisse[0], Err(handform("people")), "Handform");
     assert_eq!(ergebnisse[1], Ok(true), "Signal: people bleibt unberührt, also keine Verweigerung");
-    assert!(matches!(ergebnisse[2], Err(Fehler::Ungueltig(_))), "ungültiges Kürzel: {:?}", ergebnisse[2]);
+    assert!(matches!(ergebnisse[2], Err(Fehler::Ungueltig(_)) | Err(Fehler::Inhalt { ursache: Ursache::Eingabe, .. })), "ungültiges Kürzel: {:?}", ergebnisse[2]);
     assert_eq!(l.head(), head, "kein Commit");
     assert_eq!(git(&l.pfad, &["status", "--porcelain"]), "", "nichts im Arbeitsbaum");
     assert_eq!((l.datei(), mtime()), (text, vorher), "Bytes und mtime gleich");

@@ -36,7 +36,7 @@ impl Kanban {
         self.aufgabe_schreiben(wer, nummer, |a| {
             let boards = self.boards_fuer_klassen(std::slice::from_ref(aenderung))?;
             let vorher = a.labels.clone();
-            let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, nummer, &e)).map_err(Fehler::Ungueltig)?;
+            let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, nummer, &e)).map_err(Fehler::from)?;
             let mut tuer = Tuer::neu(self);
             tuer.pruefen(nummer, &vorher, &a.labels)?;
             if let Some((_, meldung)) = tuer.kreis() {
@@ -67,7 +67,7 @@ impl Kanban {
         for (nummer, aenderung) in aenderungen {
             let mut a = verzeichnis.aufgabe(*nummer)?;
             let vorher = a.labels.clone();
-            let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, *nummer, &e)).map_err(|f| Fehler::Ungueltig(format!("#{nummer}: {f}")))?;
+            let felder = a.aendern(aenderung, &e, &klassengeltung(&boards, *nummer, &e)).map_err(|f| Fehler::ungueltig_mit_inhalt(format!("#{nummer}: {}", f.meldung), format!("#{nummer}: {}", f.grund)))?;
             tuer.pruefen(*nummer, &vorher, &a.labels).map_err(|f| vorsatz(f, &format!("#{nummer}: ")))?;
             if !felder.is_empty() {
                 geaendert.push(format!("#{nummer}"));

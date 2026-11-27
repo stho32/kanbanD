@@ -39,13 +39,13 @@ pub struct Kosteneintragsangaben {
 
 impl Kanban {
     pub fn kosteneintrag_anlegen(&self, wer: &Person, nr: u32, rumpf: &serde_json::Value) -> Result<Aufgabe, Fehler> {
-        let roh = Roheintrag::aus_anfrage(PFAD, rumpf).map_err(Fehler::Ungueltig)?;
+        let roh = Roheintrag::aus_anfrage(PFAD, rumpf).map_err(Fehler::from)?;
         self.aufgabe_schreiben(wer, nr, |a| anlegen(a, roh, Utc::now(), || Ok(self.ordner().boards()?.0)).map(Some))
     }
 
     /// Die Form des Rumpfs wird vor der Kennung geprüft: ein Typfehler ist 400, auch wenn es den Eintrag nicht gibt.
     pub fn kosteneintrag_aendern(&self, wer: &Person, nr: u32, kennung: &str, rumpf: &serde_json::Value) -> Result<Aufgabe, Fehler> {
-        let roh = Roheintrag::aus_anfrage(PFAD, rumpf).map_err(Fehler::Ungueltig)?;
+        let roh = Roheintrag::aus_anfrage(PFAD, rumpf).map_err(Fehler::from)?;
         let tokens_entfernen = rumpf.get("tokens").is_some_and(serde_json::Value::is_null);
         self.aufgabe_schreiben(wer, nr, |a| aendern(a, kennung, roh, tokens_entfernen, Utc::now(), || Ok(self.ordner().boards()?.0)))
     }

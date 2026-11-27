@@ -98,7 +98,7 @@ pub(crate) fn spalten_pruefen(spalten: &[String]) -> Result<(), Fehler> {
         return Err(Fehler::Ungueltig("Ein Spaltenname braucht 1–200 Zeichen ohne Zeilenumbruch".into()));
     }
     if let Some(d) = spalten.iter().enumerate().find(|(i, s)| spalten[..*i].contains(s)) {
-        return Err(Fehler::Ungueltig(format!("Spalte „{}“ ist doppelt", d.1)));
+        return Err(Fehler::ungueltig_mit_wert("Spalte „", d.1, "“ ist doppelt"));
     }
     Ok(())
 }

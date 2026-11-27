@@ -1,4 +1,4 @@
-use super::{Abhaengigkeit, Anwendungen, BRAUCHT_UEBER_LABELS, Einstellungen, Herkunftsschluessel, Klassengeltung, Kosten, Kosteneintrag};
+use super::{Abhaengigkeit, Anwendungen, BRAUCHT_UEBER_LABELS, Einstellungen, Herkunftsschluessel, Klassengeltung, Kosten, Kosteneintrag, Meldung, inhalt_laenge};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -431,9 +431,14 @@ pub struct Zaehlungsaenderung {
 
 pub const OHNE_HERKUNFT: &str = "thin air";
 
-/// Fehlertext für ein Signal, das nicht eingerichtet ist — `due` wird gerechnet und ist nie setzbar.
-pub fn signal_unbekannt(s: &str) -> String {
-    if s == crate::modell::SIGNAL_FAELLIG { format!("„{s}“ ist das Signal der Fälligkeit und wird gerechnet — die Fälligkeit setzt es") } else { format!("Signal „{s}“ steht nicht in kanbanD.md") }
+/// Fehlertext für ein Signal, das nicht eingerichtet ist — `due` wird gerechnet und ist nie setzbar. Der genannte
+/// Signalname ist ein Wert aus Rumpf/Query; im Protokoll steht nur seine Länge (R00258 FA 13).
+pub fn signal_unbekannt(s: &str) -> Meldung {
+    if s == crate::modell::SIGNAL_FAELLIG {
+        Meldung::ohne(format!("„{s}“ ist das Signal der Fälligkeit und wird gerechnet — die Fälligkeit setzt es"))
+    } else {
+        Meldung::mit(format!("Signal „{s}“ steht nicht in kanbanD.md"), format!("Signal „{}“ steht nicht in kanbanD.md", inhalt_laenge(s)))
+    }
 }
 
 /// Doppelte entfernen, Reihenfolge des ersten Auftretens behalten.
@@ -470,7 +475,7 @@ pub(crate) fn entfernbar<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
 impl Aufgabe {
     /// Wendet die Änderung an und liefert die Namen der Felder, die sich wirklich geändert haben.
     /// `klassen` sagt, welche Klasse die Aufgabe annehmen darf (ADR-0031 Regel 6); ein unveränderter Wert wird nicht geprüft.
-    pub fn aendern(&mut self, a: &Aufgabenaenderung, e: &Einstellungen, klassen: &Klassengeltung) -> Result<Vec<&'static str>, String> {
+    pub fn aendern(&mut self, a: &Aufgabenaenderung, e: &Einstellungen, klassen: &Klassengeltung) -> Result<Vec<&'static str>, Meldung> {
         if a.schluessel_mitgeschickt {
             return Err("Schlüssel ist nicht änderbar".into());
         }
@@ -498,7 +503,7 @@ impl Aufgabe {
         }
         if let Some(z) = &a.zustaendige {
             if let Some(f) = z.iter().find(|k| e.person(k).is_none()) {
-                return Err(format!("Person „{f}“ steht nicht in kanbanD.md"));
+                return Err(Meldung::mit(format!("Person „{f}“ steht nicht in kanbanD.md"), format!("Person „{}“ steht nicht in kanbanD.md", inhalt_laenge(f))));
             }
             neu.zustaendige = eindeutig(z.clone());
         }
@@ -510,7 +515,7 @@ impl Aufgabe {
             if let Some(d) = f
                 && NaiveDate::parse_from_str(d, "%Y-%m-%d").is_err()
             {
-                return Err(format!("Fälligkeit „{d}“: erwartet JJJJ-MM-TT"));
+                return Err(Meldung::mit(format!("Fälligkeit „{d}“: erwartet JJJJ-MM-TT"), format!("Fälligkeit „{}“: erwartet JJJJ-MM-TT", inhalt_laenge(d))));
             }
             neu.faellig = f.map(Into::into);
         }
@@ -519,8 +524,8 @@ impl Aufgabe {
             let anwendungen = Anwendungen::aus(&e.quellen);
             if let Some(f) = h.iter().find(|x| !herkunft_gueltig(x, &anwendungen)) {
                 return match Herkunftsschluessel::lesen(f).and_then(|s| s.kuerzel) {
-                    Some(k) => Err(format!("„{f}“: Anwendung „{k}“ steht nicht in kanbanD.md")),
-                    None => Err(format!("„{f}“ ist keine Herkunft — erwartet I0001, R00014, kd:I0001 oder thin air")),
+                    Some(k) => Err(Meldung::mit(format!("„{f}“: Anwendung „{k}“ steht nicht in kanbanD.md"), format!("„{}“: Anwendung „{}“ steht nicht in kanbanD.md", inhalt_laenge(f), inhalt_laenge(&k)))),
+                    None => Err(Meldung::mit(format!("„{f}“ ist keine Herkunft — erwartet I0001, R00014, kd:I0001 oder thin air"), format!("„{}“ ist keine Herkunft — erwartet I0001, R00014, kd:I0001 oder thin air", inhalt_laenge(f)))),
                 };
             }
             if h.len() > 1 && h.iter().any(|x| x == OHNE_HERKUNFT) {
@@ -548,8 +553,8 @@ impl Aufgabe {
         }
         if let Some(wert) = &a.estimate {
             // `estimate` kommt roh an und geht durch dieselbe Prüfung wie das Frontmatter (ADR-0023 Regel 4): jeder Fehler 400.
-            let yaml = wert.as_ref().map(serde_yaml::to_value).transpose().map_err(|_| GESCHAETZT_MELDUNG.to_string())?;
-            neu.geschaetzte_minuten = geschaetzte_minuten_pruefen(yaml.as_ref())?;
+            let yaml = wert.as_ref().map(serde_yaml::to_value).transpose().map_err(|_| Meldung::ohne(GESCHAETZT_MELDUNG))?;
+            neu.geschaetzte_minuten = geschaetzte_minuten_pruefen(yaml.as_ref()).map_err(Meldung::ohne)?;
         }
         let mut felder = vec![];
         for (name, geaendert) in [

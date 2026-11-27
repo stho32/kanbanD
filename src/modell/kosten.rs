@@ -1,6 +1,7 @@
 //! Preisetikett einer Aufgabe (R00105, ADR-0009): geschätzte API-Kosten in ganzen Cent.
 //! Ein Konstruktor prüft alle Inhaltsregeln — Datei und API rufen denselben.
 
+use super::{Meldung, inhalt_laenge};
 use serde_yaml::{Mapping, Value};
 
 /// Höchster Geldwert in Cent (1.000.000,00) — technischer Schutzwert für exakte `f64`- und JavaScript-Rechnung.
@@ -200,7 +201,7 @@ impl Kosten {
     /// Abschnitt `cost` aus YAML (Datei oder umgewandeltes JSON): erst die Form, dann [`Kosten::pruefen`].
     /// `cost` aus dem Rumpf einer Anfrage (roh, damit jeder Fehler 400 wird und nie 422): unbekannte Schlüssel
     /// sind hier ein Fehler, sonst gilt derselbe Leser wie für die Datei (ADR-0009 Entscheidung 4).
-    pub fn aus_anfrage(v: &serde_json::Value) -> Result<Kosten, String> {
+    pub fn aus_anfrage(v: &serde_json::Value) -> Result<Kosten, Meldung> {
         if let Some(m) = v.as_object() {
             nur_bekannte("cost", m, &KOSTEN_BEKANNT)?;
             let positionen = m
@@ -215,8 +216,8 @@ impl Kosten {
                 nur_bekannte(&format!("cost.items[{i}]"), p, &POSITION_BEKANNT)?;
             }
         }
-        let yaml = serde_yaml::to_value(v).map_err(|_| "cost: keine Zuordnung".to_string())?;
-        Kosten::lesen(&yaml)
+        let yaml = serde_yaml::to_value(v).map_err(|_| Meldung::ohne("cost: keine Zuordnung"))?;
+        Kosten::lesen(&yaml).map_err(Meldung::ohne)
     }
 
     pub fn lesen(v: &Value) -> Result<Kosten, String> {
@@ -284,9 +285,9 @@ fn nur_bekannte(
     pfad: &str,
     m: &serde_json::Map<String, serde_json::Value>,
     bekannt: &[&str],
-) -> Result<(), String> {
+) -> Result<(), Meldung> {
     match m.keys().find(|k| !bekannt.contains(&k.as_str())) {
-        Some(k) => Err(format!("{pfad}: unbekannter Schlüssel „{k}“")),
+        Some(k) => Err(Meldung::mit(format!("{pfad}: unbekannter Schlüssel „{k}“"), format!("{pfad}: unbekannter Schlüssel „{}“", inhalt_laenge(k)))),
         None => Ok(()),
     }
 }
@@ -954,12 +955,12 @@ mod tests {
         assert_eq!(p[0].weitere, vec![("quelle".to_string(), yaml("log"))]);
     }
 
-    fn angefragt(json: &str) -> Result<Kosten, String> {
+    fn angefragt(json: &str) -> Result<Kosten, Meldung> {
         Kosten::aus_anfrage(&serde_json::from_str(json).unwrap())
     }
 
     fn abgewiesen(json: &str) -> String {
-        angefragt(json).expect_err(json)
+        angefragt(json).expect_err(json).meldung
     }
 
     #[test]

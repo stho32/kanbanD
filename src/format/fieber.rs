@@ -2,7 +2,7 @@
 //! Berichtsfilter), je Tabellenzeile ein Tag mit erledigt, Umfang und dem prognostizierten Ende je Perzentil.
 
 use super::Formatfehler;
-use crate::modell::ist_datum;
+use crate::modell::{Meldung, inhalt_laenge, ist_datum};
 use serde::{Deserialize, Serialize};
 
 pub const ORDNER: &str = "berichte";
@@ -30,16 +30,17 @@ pub fn pfad(slug: &str) -> String {
 }
 
 impl Fiebertag {
-    /// Datum und Enden `JJJJ-MM-TT`, erledigt nicht über dem Umfang.
-    pub fn pruefen(&self) -> Result<(), String> {
+    /// Datum und Enden `JJJJ-MM-TT`, erledigt nicht über dem Umfang. Datum und Ende sind Werte aus dem Rumpf; im
+    /// Protokoll steht nur ihre Länge (R00258 FA 13).
+    pub fn pruefen(&self) -> Result<(), Meldung> {
         if !ist_datum(&self.datum) {
-            return Err(format!("Tag „{}“ ist nicht JJJJ-MM-TT", self.datum));
+            return Err(Meldung::mit(format!("Tag „{}“ ist nicht JJJJ-MM-TT", self.datum), format!("Tag „{}“ ist nicht JJJJ-MM-TT", inhalt_laenge(&self.datum))));
         }
         if self.erledigt > self.umfang {
-            return Err(format!("{}: erledigt {} liegt über dem Umfang {}", self.datum, self.erledigt, self.umfang));
+            return Err(Meldung::mit(format!("{}: erledigt {} liegt über dem Umfang {}", self.datum, self.erledigt, self.umfang), format!("{}: erledigt {} liegt über dem Umfang {}", inhalt_laenge(&self.datum), self.erledigt, self.umfang)));
         }
         if let Some(e) = self.ende7.iter().chain(&self.ende5).flatten().find(|e| !ist_datum(e)) {
-            return Err(format!("{}: Ende „{e}“ ist nicht JJJJ-MM-TT", self.datum));
+            return Err(Meldung::mit(format!("{}: Ende „{e}“ ist nicht JJJJ-MM-TT", self.datum), format!("{}: Ende „{}“ ist nicht JJJJ-MM-TT", inhalt_laenge(&self.datum), inhalt_laenge(e))));
         }
         Ok(())
     }
@@ -78,7 +79,7 @@ pub fn lesen(text: &str) -> Result<Vec<Fieberabschnitt>, Formatfehler> {
             ende7: [ende(zellen[3]), ende(zellen[4]), ende(zellen[5]), ende(zellen[6])],
             ende5: [ende(zellen[7]), ende(zellen[8]), ende(zellen[9]), ende(zellen[10])],
         };
-        t.pruefen().map_err(Formatfehler)?;
+        t.pruefen().map_err(|m| Formatfehler(m.meldung))?;
         a.tage.push(t);
     }
     Ok(abschnitte)

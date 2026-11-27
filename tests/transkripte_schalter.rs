@@ -3,7 +3,7 @@ mod gemeinsam;
 
 use gemeinsam::{git, lies};
 use kanband::dienst::{Kanban, Schalterantwort};
-use kanband::fehler::Fehler;
+use kanband::fehler::{Fehler, Ursache};
 use kanband::modell::{Art, Person};
 use std::path::{Path, PathBuf};
 
@@ -236,7 +236,7 @@ fn dienst_agent_schaltet_nie() {
 fn dienst_unbekanntes_board() {
     let l = lage();
     let vorher = commits(&l.pfad);
-    assert!(matches!(l.kanban.board_transkripte_setzen(&mensch(), "gibtsnicht", Some(true)), Err(Fehler::NichtGefunden(_))));
+    assert!(matches!(l.kanban.board_transkripte_setzen(&mensch(), "gibtsnicht", Some(true)), Err(Fehler::NichtGefunden(_)) | Err(Fehler::Inhalt { ursache: Ursache::Fehlt, .. })));
     assert_eq!(commits(&l.pfad), vorher);
 }
 

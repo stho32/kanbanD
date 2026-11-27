@@ -219,9 +219,9 @@ impl Kanban {
     pub fn handelnder(&self, kuerzel: Option<&str>) -> Result<Person, Fehler> {
         let kuerzel = kuerzel.map(str::trim).filter(|k| !k.is_empty()).ok_or_else(|| Fehler::Ungueltig("Wer handelt? Header X-KanbanD-Wer fehlt".into()))?;
         let e = self.ordner.einstellungen()?.ok_or_else(|| Fehler::Konflikt("Der Ordner ist noch nicht eingerichtet".into()))?;
-        let p = e.person(kuerzel).ok_or_else(|| Fehler::Ungueltig(format!("Person „{kuerzel}“ steht nicht in kanbanD.md")))?;
+        let p = e.person(kuerzel).ok_or_else(|| Fehler::ungueltig_mit_wert("Person „", kuerzel, "“ steht nicht in kanbanD.md"))?;
         if !p.aktiv {
-            return Err(Fehler::Ungueltig(format!("Person „{kuerzel}“ ist stillgelegt")));
+            return Err(Fehler::ungueltig_mit_wert("Person „", kuerzel, "“ ist stillgelegt"));
         }
         Ok(p.clone())
     }

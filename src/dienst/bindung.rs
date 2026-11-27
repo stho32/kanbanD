@@ -11,7 +11,7 @@ impl Kanban {
         let mut neu: Vec<String> = vec![];
         for k in kuerzel.iter().map(|k| k.trim()) {
             if !register.iter().any(|a| a.kuerzel == k) {
-                return Err(Fehler::Ungueltig(format!("Anwendung „{k}“ ist nicht registriert")));
+                return Err(Fehler::ungueltig_mit_wert("Anwendung „", k, "“ ist nicht registriert"));
             }
             if !neu.iter().any(|n| n == k) {
                 neu.push(k.to_string());

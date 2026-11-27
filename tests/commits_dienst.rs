@@ -4,7 +4,7 @@ mod gemeinsam;
 
 use gemeinsam::{git, lies, repo};
 use kanband::dienst::Kanban;
-use kanband::fehler::Fehler;
+use kanband::fehler::{Fehler, Ursache};
 use kanband::git::arbeitsrepo;
 use serde_json::json;
 use std::path::Path;
@@ -73,7 +73,7 @@ fn formfehler_starten_kein_git() {
     for boese in ["kd:--output=x", "kd:../x", "kd:3f2a9c1;rm -rf x", "kd:3f2a9c1 --all", "kd:3f2a 9c1", "kd:$(touch x)", "kd:3f2a9c1^{tree}", "xy:3f2a9c1"] {
         let vorher = arbeitsrepo::aufrufe();
         let f = k.commits_pruefen(1, &json!({"commits": [format!("kd:{}", r.k1), boese]})).unwrap_err();
-        assert!(matches!(&f, Fehler::Verweis { verweis, fehlt: false, .. } if verweis == boese), "{boese}: {f:?}");
+        assert!(matches!(&f, Fehler::Verweis { verweis, fehlt: false, .. } | Fehler::Inhalt { verweis: Some(verweis), ursache: Ursache::Eingabe, .. } if verweis == boese), "{boese}: {f:?}");
         assert_eq!(arbeitsrepo::aufrufe(), vorher, "{boese}: Git gestartet");
     }
 }

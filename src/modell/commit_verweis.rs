@@ -1,17 +1,19 @@
 //! Commit-Verweis `<kürzel>:<hash>` oder `<hash>` (R00202, ADR-0032 Punkte 1 und 3) — die Form prüfen und gegen das
 //! Register lesen, rein und **ohne Git**: eine Eingabe, die hier scheitert, erreicht Git nie (AK 6).
 
-use super::{Anwendung, Anwendungen, kuerzel_gueltig};
+use super::{Anwendung, Anwendungen, inhalt_laenge, kuerzel_gueltig};
 
 /// Kürzester Kurz-Hash, den eine Anfrage nennen darf.
 pub const HASH_MIN: usize = 7;
 /// Längster Hash: voller Hash eines SHA-256-Repositorys.
 pub const HASH_MAX: usize = 64;
 
-/// Eine Abweisung samt dem Verweis, wie er in der Anfrage stand (Fehlerform `{fehler, verweis}`, ADR-0003).
+/// Eine Abweisung samt dem Verweis, wie er in der Anfrage stand (Fehlerform `{fehler, verweis}`, ADR-0003). `grund`
+/// ist die Fassung fürs Protokoll: der Verweis steht dort nur als seine Länge (R00258 FA 13).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Verweisfehler {
     pub meldung: String,
+    pub grund: String,
     pub verweis: String,
 }
 
@@ -29,7 +31,7 @@ impl Verweisform {
             None => (None, text),
         };
         if kuerzel.is_some_and(|k| !kuerzel_gueltig(k)) || !hash_gueltig(hash) {
-            return Err(fehler(text, format!("„{}“ ist kein Commit-Verweis — erwartet <kürzel>:<hash> oder <hash> mit {HASH_MIN} bis {HASH_MAX} Zeichen 0-9a-f", crate::nachricht::wert(text))));
+            return Err(fehler(text, format!("„{}“ ist kein Commit-Verweis — erwartet <kürzel>:<hash> oder <hash> mit {HASH_MIN} bis {HASH_MAX} Zeichen 0-9a-f", crate::nachricht::wert(text)), format!("„{}“ ist kein Commit-Verweis — erwartet <kürzel>:<hash> oder <hash> mit {HASH_MIN} bis {HASH_MAX} Zeichen 0-9a-f", inhalt_laenge(text))));
         }
         Ok(Verweisform { kuerzel: kuerzel.map(String::from), hash: hash.to_ascii_lowercase() })
     }
@@ -40,8 +42,8 @@ fn hash_gueltig(hash: &str) -> bool {
     (HASH_MIN..=HASH_MAX).contains(&hash.len()) && hash.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-fn fehler(verweis: &str, meldung: String) -> Verweisfehler {
-    Verweisfehler { meldung, verweis: verweis.into() }
+fn fehler(verweis: &str, meldung: String, grund: String) -> Verweisfehler {
+    Verweisfehler { meldung, grund, verweis: verweis.into() }
 }
 
 /// Der Verweis gegen das Register: mit Kürzel eine registrierte Anwendung, ohne Kürzel nur die Standardanwendung —
@@ -49,8 +51,8 @@ fn fehler(verweis: &str, meldung: String) -> Verweisfehler {
 pub fn lesen<'a>(text: &str, anwendungen: &'a Anwendungen) -> Result<(&'a Anwendung, String), Verweisfehler> {
     let form = Verweisform::lesen(text)?;
     let anwendung = match &form.kuerzel {
-        Some(k) => anwendungen.alle().iter().find(|a| !k.is_empty() && a.kuerzel == *k).ok_or_else(|| fehler(text, format!("Anwendung „{k}“ ist nicht registriert")))?,
-        None => anwendungen.alle().iter().find(|a| a.kuerzel.is_empty()).ok_or_else(|| fehler(text, format!("„{}“ nennt keine Anwendung, und es gibt keine Standardanwendung — <kürzel>:<hash> schreiben", crate::nachricht::wert(text))))?,
+        Some(k) => anwendungen.alle().iter().find(|a| !k.is_empty() && a.kuerzel == *k).ok_or_else(|| fehler(text, format!("Anwendung „{k}“ ist nicht registriert"), format!("Anwendung „{}“ ist nicht registriert", inhalt_laenge(k))))?,
+        None => anwendungen.alle().iter().find(|a| a.kuerzel.is_empty()).ok_or_else(|| fehler(text, format!("„{}“ nennt keine Anwendung, und es gibt keine Standardanwendung — <kürzel>:<hash> schreiben", crate::nachricht::wert(text)), format!("„{}“ nennt keine Anwendung, und es gibt keine Standardanwendung — <kürzel>:<hash> schreiben", inhalt_laenge(text))))?,
     };
     Ok((anwendung, form.hash))
 }
@@ -63,6 +65,7 @@ pub const HOECHSTZAHL_PAARE: usize = 500;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ersetzungsfehler {
     pub meldung: String,
+    pub grund: String,
     pub verweis: Option<String>,
 }
 
@@ -81,7 +84,7 @@ pub struct Paar {
 /// Geprüft wird in dieser Reihenfolge: Rumpfform, Zahl der Paare, dann je Paar die Form von `alt`, sein Kürzel im Register,
 /// Form und Register von `neu`, gleiches Kürzel, und dass kein Verweis zweimal vorkommt (auch als Kette).
 pub fn ersetzungen_lesen(rumpf: &serde_json::Value, anwendungen: &Anwendungen) -> Result<Vec<Paar>, Ersetzungsfehler> {
-    let ohne_verweis = |meldung: String| Ersetzungsfehler { meldung, verweis: None };
+    let ohne_verweis = |meldung: String| Ersetzungsfehler { grund: meldung.clone(), meldung, verweis: None };
     let liste = rumpf
         .as_object()
         .filter(|o| o.len() == 1)
@@ -100,16 +103,16 @@ pub fn ersetzungen_lesen(rumpf: &serde_json::Value, anwendungen: &Anwendungen) -
         if let Some(k) = &alt.kuerzel
             && !anwendungen.alle().iter().any(|a| !k.is_empty() && a.kuerzel == *k)
         {
-            return Err(mit_verweis(alt_text, format!("Anwendung „{k}“ ist nicht registriert")));
+            return Err(mit_verweis(alt_text, format!("Anwendung „{k}“ ist nicht registriert"), format!("Anwendung „{}“ ist nicht registriert", inhalt_laenge(k))));
         }
         let (anwendung, neu_hash) = lesen(neu_text, anwendungen).map_err(Ersetzungsfehler::from)?;
         let kuerzel_neu = Some(anwendung.kuerzel.clone()).filter(|k| !k.is_empty());
         if alt.kuerzel != kuerzel_neu {
-            return Err(mit_verweis(neu_text, format!("„{}“ und „{}“ nennen nicht dieselbe Anwendung — ein Paar ersetzt innerhalb einer Anwendung", crate::nachricht::wert(alt_text), crate::nachricht::wert(neu_text))));
+            return Err(mit_verweis(neu_text, format!("„{}“ und „{}“ nennen nicht dieselbe Anwendung — ein Paar ersetzt innerhalb einer Anwendung", crate::nachricht::wert(alt_text), crate::nachricht::wert(neu_text)), format!("„{}“ und „{}“ nennen nicht dieselbe Anwendung — ein Paar ersetzt innerhalb einer Anwendung", inhalt_laenge(alt_text), inhalt_laenge(neu_text))));
         }
         for (text, schluessel) in [(alt_text, (alt.kuerzel.clone(), alt.hash.clone())), (neu_text, (kuerzel_neu.clone(), neu_hash.clone()))] {
             if gesehen.iter().any(|g| g.0 == schluessel.0 && (g.1.starts_with(&schluessel.1) || schluessel.1.starts_with(&g.1))) {
-                return Err(mit_verweis(text, format!("„{}“ kommt im Aufruf mehr als einmal vor (als alt oder neu, auch eine Kette oder ein Tausch)", crate::nachricht::wert(text))));
+                return Err(mit_verweis(text, format!("„{}“ kommt im Aufruf mehr als einmal vor (als alt oder neu, auch eine Kette oder ein Tausch)", crate::nachricht::wert(text)), format!("„{}“ kommt im Aufruf mehr als einmal vor (als alt oder neu, auch eine Kette oder ein Tausch)", inhalt_laenge(text))));
             }
             gesehen.push(schluessel);
         }
@@ -124,13 +127,13 @@ fn paar_texte(eintrag: &serde_json::Value) -> Option<(&str, &str)> {
     Some((o.get("alt")?.as_str()?, o.get("neu")?.as_str()?))
 }
 
-fn mit_verweis(verweis: &str, meldung: String) -> Ersetzungsfehler {
-    Ersetzungsfehler { meldung, verweis: Some(verweis.into()) }
+fn mit_verweis(verweis: &str, meldung: String, grund: String) -> Ersetzungsfehler {
+    Ersetzungsfehler { meldung, grund, verweis: Some(verweis.into()) }
 }
 
 impl From<Verweisfehler> for Ersetzungsfehler {
     fn from(f: Verweisfehler) -> Self {
-        Ersetzungsfehler { meldung: f.meldung, verweis: Some(f.verweis) }
+        Ersetzungsfehler { meldung: f.meldung, grund: f.grund, verweis: Some(f.verweis) }
     }
 }
 

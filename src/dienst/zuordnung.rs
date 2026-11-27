@@ -14,7 +14,7 @@ impl Kanban {
         let vorher = b.clone();
         let name = b.aufnehmen(nummer, spalte, index).map_err(|f| match f {
             Bewegfehler::SchonAufDemBoard => Fehler::Konflikt(format!("#{nummer} liegt schon auf „{}“", b.titel)),
-            _ => Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", spalte.unwrap_or("—"), b.titel)),
+            _ => Fehler::ungueltig_mit_wert("Spalte „", spalte.unwrap_or("—"), &format!("“ gibt es auf „{}“ nicht", b.titel)),
         })?;
         self.grenzen_pruefen(wer, &vorher, &b)?;
         self.aktion(wer, &format!("#{nummer} auf „{}“ gelegt ({})", crate::nachricht::wert(&b.titel), crate::nachricht::wert(&name)), &[Schritt::schreiben(board_pfad(&b.slug), self.board_text(&b, Some(&a))?)])?;
@@ -31,7 +31,7 @@ impl Kanban {
         let mut verzeichnis = self.ordner().verzeichnis()?;
         let mut b = self.ordner().board(slug)?;
         if let Some(s) = spalte.filter(|s| !b.spalten.iter().any(|x| x.name == *s)) {
-            return Err(Fehler::Ungueltig(format!("Spalte „{s}“ gibt es auf „{}“ nicht", b.titel)));
+            return Err(Fehler::ungueltig_mit_wert("Spalte „", s, &format!("“ gibt es auf „{}“ nicht", b.titel)));
         }
         let vorher = b.clone();
         let mut gelegt = vec![];
@@ -44,7 +44,7 @@ impl Kanban {
                     gelegt.push(*nr);
                 }
                 Err(Bewegfehler::SchonAufDemBoard) => {}
-                Err(_) => return Err(Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", spalte.unwrap_or("—"), b.titel))),
+                Err(_) => return Err(Fehler::ungueltig_mit_wert("Spalte „", spalte.unwrap_or("—"), &format!("“ gibt es auf „{}“ nicht", b.titel))),
             }
         }
         if !gelegt.is_empty() {

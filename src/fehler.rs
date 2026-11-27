@@ -1,4 +1,7 @@
 use crate::modell::Einstellung;
+/// Die Länge eines Inhalts fürs Protokoll: `<n Zeichen>` (R00258 FA 13, ADR-0001 N1.8 Regel 1) — der eine Ort im
+/// Modell, hier für die Dienst- und Webschicht weitergereicht.
+pub use crate::modell::inhalt_laenge;
 
 /// Warum eine Anfrage abgewiesen wurde — eine geschlossene Liste, abgebildet an genau einem Ort
 /// (`Fehler::ursache()`, R00258 FA 11, ADR-0001 N1.4 Regel 3). Nie aus dem Text der Meldung gelesen.
@@ -100,11 +103,6 @@ pub enum Fehler {
     Inhalt { meldung: String, grund: String, ursache: Ursache, verweis: Option<String> },
 }
 
-/// Die Länge eines Inhalts fürs Protokoll: `<n Zeichen>` (R00258 FA 13, ADR-0001 N1.8 Regel 1).
-pub fn inhalt_laenge(inhalt: &str) -> String {
-    format!("<{} Zeichen>", inhalt.chars().count())
-}
-
 impl Fehler {
     pub fn meldung(&self) -> &str {
         match self {
@@ -147,6 +145,22 @@ impl Fehler {
             Fehler::Inhalt { grund, .. } => grund.clone(),
             anders => anders.meldung().to_string(),
         }
+    }
+
+    /// Eine 400, deren Meldung einen Wert aus Rumpf oder Query einsetzt: der Rumpf nennt ihn im Wortlaut, das
+    /// Protokoll an seiner Stelle nur `<n Zeichen>` (R00258 FA 13). `vor` und `nach` rahmen den Wert.
+    pub fn ungueltig_mit_wert(vor: &str, wert: &str, nach: &str) -> Fehler {
+        Fehler::ungueltig_mit_inhalt(format!("{vor}{wert}{nach}"), format!("{vor}{}{nach}", inhalt_laenge(wert)))
+    }
+
+    /// Eine 404, deren Meldung einen Wert aus Rumpf oder Query einsetzt (R00258 FA 13).
+    pub fn nicht_gefunden_mit_wert(vor: &str, wert: &str, nach: &str) -> Fehler {
+        Fehler::nicht_gefunden_mit_inhalt(format!("{vor}{wert}{nach}"), format!("{vor}{}{nach}", inhalt_laenge(wert)))
+    }
+
+    /// Eine 409, deren Meldung einen Wert aus Rumpf oder Query einsetzt (R00258 FA 13).
+    pub fn konflikt_mit_wert(vor: &str, wert: &str, nach: &str) -> Fehler {
+        Fehler::konflikt_mit_inhalt(format!("{vor}{wert}{nach}"), format!("{vor}{}{nach}", inhalt_laenge(wert)))
     }
 
     /// Eine 400, deren Meldung Inhalt einsetzt (FA 13).
@@ -233,6 +247,14 @@ impl Fehler {
 impl From<std::io::Error> for Fehler {
     fn from(e: std::io::Error) -> Self {
         Fehler::Intern(format!("Dateizugriff: {e}"))
+    }
+}
+
+/// Eine Modell-Meldung (400) mit getrennten Fassungen für Rumpf und Protokoll (R00258 FA 13) — der eine Ort, an dem
+/// die Dienstschicht sie in einen [`Fehler`] umhüllt.
+impl From<crate::modell::Meldung> for Fehler {
+    fn from(m: crate::modell::Meldung) -> Fehler {
+        Fehler::ungueltig_mit_inhalt(m.meldung, m.grund)
     }
 }
 

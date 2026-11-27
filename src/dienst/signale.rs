@@ -11,7 +11,7 @@ impl Kanban {
         let e = self.ordner().einstellungen()?.unwrap_or_default();
         let signal = e.signal(schluessel);
         if an && signal.is_none() {
-            return Err(Fehler::Ungueltig(signal_unbekannt(schluessel)));
+            return Err(Fehler::from(signal_unbekannt(schluessel)));
         }
         let name = signal.map_or(schluessel, |s| s.bezeichnung.as_str()).to_string();
         self.aufgabe_schreiben(wer, nummer, |a| {

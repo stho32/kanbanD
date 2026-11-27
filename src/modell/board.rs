@@ -1,3 +1,4 @@
+use super::{Meldung, inhalt_laenge};
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 use std::collections::BTreeSet;
@@ -147,17 +148,18 @@ pub struct Termin {
 }
 
 impl Termin {
-    /// Name nicht leer, Datum JJJJ-MM-TT, Farbe ein Palettenname oder #Hex.
-    pub fn pruefen(&self) -> Result<(), String> {
+    /// Name nicht leer, Datum JJJJ-MM-TT, Farbe ein Palettenname oder #Hex. Name, Datum und Farbe sind Werte aus dem
+    /// Rumpf; im Protokoll steht nur ihre Länge (R00258 FA 13).
+    pub fn pruefen(&self) -> Result<(), Meldung> {
         if self.name.trim().is_empty() {
-            return Err("Ein Termin braucht einen Namen".into());
+            return Err(Meldung::ohne("Ein Termin braucht einen Namen"));
         }
         if !ist_datum(&self.datum) {
-            return Err(format!("Termin „{}“: Datum „{}“ ist nicht JJJJ-MM-TT", self.name, self.datum));
+            return Err(Meldung::mit(format!("Termin „{}“: Datum „{}“ ist nicht JJJJ-MM-TT", self.name, self.datum), format!("Termin „{}“: Datum „{}“ ist nicht JJJJ-MM-TT", inhalt_laenge(&self.name), inhalt_laenge(&self.datum))));
         }
         let farbe_ok = !self.farbe.is_empty() && (self.farbe.chars().all(|c| c.is_ascii_lowercase()) || (self.farbe.len() == 7 && self.farbe.starts_with('#') && self.farbe[1..].chars().all(|c| c.is_ascii_hexdigit())));
         if !farbe_ok {
-            return Err(format!("Termin „{}“: Farbe „{}“ ist kein Palettenname und kein #rrggbb", self.name, self.farbe));
+            return Err(Meldung::mit(format!("Termin „{}“: Farbe „{}“ ist kein Palettenname und kein #rrggbb", self.name, self.farbe), format!("Termin „{}“: Farbe „{}“ ist kein Palettenname und kein #rrggbb", inhalt_laenge(&self.name), inhalt_laenge(&self.farbe))));
         }
         Ok(())
     }
@@ -293,18 +295,19 @@ impl Berichtsfilter {
     }
 
     /// Bekannter Zeitraum; von und bis leer oder ein Datum; die Spalten des Kostenabschnitts einzeiliger Text.
-    pub fn pruefen(&self) -> Result<(), String> {
+    /// Zeitraum und Datumsangabe sind Werte aus dem Rumpf; im Protokoll steht nur ihre Länge (R00258 FA 13).
+    pub fn pruefen(&self) -> Result<(), Meldung> {
         if [&self.kosten_von_spalte, &self.kosten_bis_spalte].into_iter().any(|s| s.chars().any(char::is_control)) {
-            return Err("Die Spalte des Kostenabschnitts ist kein einzeiliger Text".into());
+            return Err(Meldung::ohne("Die Spalte des Kostenabschnitts ist kein einzeiliger Text"));
         }
         if !ZEITRAEUME.contains(&self.zeitraum.as_str()) {
-            return Err(format!("Zeitraum „{}“ ist unbekannt", self.zeitraum));
+            return Err(Meldung::mit(format!("Zeitraum „{}“ ist unbekannt", self.zeitraum), format!("Zeitraum „{}“ ist unbekannt", inhalt_laenge(&self.zeitraum))));
         }
         if !(1..=3650).contains(&self.messbasis_tage) {
-            return Err(format!("Messbasis {} Tage liegt nicht zwischen 1 und 3650", self.messbasis_tage));
+            return Err(Meldung::ohne(format!("Messbasis {} Tage liegt nicht zwischen 1 und 3650", self.messbasis_tage)));
         }
         if let Some(d) = [&self.von, &self.bis].into_iter().find(|d| !d.is_empty() && !ist_datum(d)) {
-            return Err(format!("„{d}“ ist nicht JJJJ-MM-TT"));
+            return Err(Meldung::mit(format!("„{d}“ ist nicht JJJJ-MM-TT"), format!("„{}“ ist nicht JJJJ-MM-TT", inhalt_laenge(d))));
         }
         Ok(())
     }
@@ -369,7 +372,7 @@ impl Klassengeltung {
 
     /// Die Abweisung nennt Board und Schlüssel — und `kanbanD.md` genau dann, wenn ein Eintrag dort die Klasse gültig
     /// machen würde: die Aufgabe liegt auf keinem Board, oder auf mindestens einem gilt die Vorgabe (ADR-0031 N2).
-    pub fn pruefen(&self, schluessel: &str) -> Result<(), String> {
+    pub fn pruefen(&self, schluessel: &str) -> Result<(), Meldung> {
         let fuehrt = |vorrat: &[String]| vorrat.iter().any(|k| k == schluessel);
         let gueltig = if self.boards.is_empty() { fuehrt(&self.vorgabe) } else { self.boards.iter().any(|b| fuehrt(&b.schluessel)) };
         if gueltig {
@@ -378,13 +381,16 @@ impl Klassengeltung {
         let vorgabe_gilt = self.boards.iter().any(|b| !b.eigener_satz);
         let dort_gilt = |vorrat: &[String]| if vorrat.is_empty() { "keine Klasse".to_string() } else { vorrat.join(", ") };
         let alle_boards = || self.boards.iter().map(|b| format!("„{}“", b.slug)).collect::<Vec<_>>().join(", ");
-        Err(match self.boards.as_slice() {
-            [] => format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE}"),
-            [b] if vorgabe_gilt => format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE} — auf dem Board „{}“ gilt die Vorgabe des Ordners: {}", b.slug, dort_gilt(&b.schluessel)),
-            [b] => format!("Klasse „{schluessel}“ gibt es auf dem Board „{}“ nicht — dort gilt: {}", b.slug, dort_gilt(&b.schluessel)),
-            _ if vorgabe_gilt => format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE} — kein Board der Aufgabe führt sie ({})", alle_boards()),
-            _ => format!("Klasse „{schluessel}“ gibt es auf keinem Board der Aufgabe ({})", alle_boards()),
-        })
+        // Der gesuchte Klassenschlüssel ist ein Wert aus dem Rumpf; im Protokoll steht nur seine Länge. Die Namen der
+        // Boards und die dort geltenden Klassenschlüssel sind Kennungen des Bestands und bleiben im Wortlaut (N1.8 Regel 2).
+        let (meldung, grund) = match self.boards.as_slice() {
+            [] => (format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE}"), format!("Klasse „{}“ {NICHT_IN_DER_VORGABE}", inhalt_laenge(schluessel))),
+            [b] if vorgabe_gilt => (format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE} — auf dem Board „{}“ gilt die Vorgabe des Ordners: {}", b.slug, dort_gilt(&b.schluessel)), format!("Klasse „{}“ {NICHT_IN_DER_VORGABE} — auf dem Board „{}“ gilt die Vorgabe des Ordners: {}", inhalt_laenge(schluessel), b.slug, dort_gilt(&b.schluessel))),
+            [b] => (format!("Klasse „{schluessel}“ gibt es auf dem Board „{}“ nicht — dort gilt: {}", b.slug, dort_gilt(&b.schluessel)), format!("Klasse „{}“ gibt es auf dem Board „{}“ nicht — dort gilt: {}", inhalt_laenge(schluessel), b.slug, dort_gilt(&b.schluessel))),
+            _ if vorgabe_gilt => (format!("Klasse „{schluessel}“ {NICHT_IN_DER_VORGABE} — kein Board der Aufgabe führt sie ({})", alle_boards()), format!("Klasse „{}“ {NICHT_IN_DER_VORGABE} — kein Board der Aufgabe führt sie ({})", inhalt_laenge(schluessel), alle_boards())),
+            _ => (format!("Klasse „{schluessel}“ gibt es auf keinem Board der Aufgabe ({})", alle_boards()), format!("Klasse „{}“ gibt es auf keinem Board der Aufgabe ({})", inhalt_laenge(schluessel), alle_boards())),
+        };
+        Err(Meldung::mit(meldung, grund))
     }
 }
 

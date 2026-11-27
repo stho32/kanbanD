@@ -8,7 +8,7 @@ use crate::modell::{Berichtsfilter, Person};
 impl Kanban {
     /// Ersetzt den Berichtsfilter; Listen ohne Doppelte. Ohne Änderung kein Commit.
     pub fn berichtsfilter_setzen(&self, wer: &Person, slug: &str, mut neu: Berichtsfilter) -> Result<bool, Fehler> {
-        neu.pruefen().map_err(Fehler::Ungueltig)?;
+        neu.pruefen().map_err(Fehler::from)?;
         for l in [&mut neu.ohne_farben, &mut neu.ohne_spalten, &mut neu.personen, &mut neu.labels] {
             let mut gesehen = std::collections::HashSet::new();
             l.retain(|x| gesehen.insert(x.clone()));

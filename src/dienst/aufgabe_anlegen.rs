@@ -186,7 +186,7 @@ impl Kanban {
                     // Eine Kopie behält die Klasse ihrer Quelle, auch eine auf dem Zielboard fremde: unverändert heißt ungeprüft.
                     a.klasse = g.klasse.clone();
                 }
-                a.aendern(&aenderung, &e, &klassen).map_err(|f| Fehler::ungueltig_mit_inhalt(format!("„{t}“: {f}"), format!("„{}“: {f}", crate::fehler::inhalt_laenge(t))))?;
+                a.aendern(&aenderung, &e, &klassen).map_err(|f| Fehler::ungueltig_mit_inhalt(format!("„{t}“: {}", f.meldung), format!("„{}“: {}", crate::fehler::inhalt_laenge(t), f.grund)))?;
                 let teile = g.teilaufgaben.iter().flatten().map(|x| x.trim().replace('\n', " ")).filter(|x| !x.is_empty());
                 a.teilaufgaben.extend(teile.map(|text| crate::modell::Teilaufgabe { text, erledigt: false }));
             }
@@ -237,7 +237,7 @@ impl Kanban {
                 None => b.spalten.first().map(|s| s.name.clone()).ok_or_else(|| Fehler::Ungueltig(format!("Board „{}“ hat keine Spalte", b.titel)))?,
             };
             let vorher = b.clone();
-            let spalte = b.spalte_mut(&spaltenname).ok_or_else(|| Fehler::Ungueltig(format!("Spalte „{spaltenname}“ gibt es auf „{slug}“ nicht")))?;
+            let spalte = b.spalte_mut(&spaltenname).ok_or_else(|| Fehler::ungueltig_mit_wert("Spalte „", &spaltenname, &format!("“ gibt es auf „{slug}“ nicht")))?;
             spalte.aufgaben.extend(aufgaben.iter().map(|a| a.nummer));
             for a in wieder {
                 b.oben_einordnen(a.nummer, Some(&spaltenname)).expect("Spalte geprüft");
@@ -307,7 +307,7 @@ fn schon_da(neue: &[Aufgabe], wieder: &[Aufgabe], vorhanden: &[Aufgabe], k: &Fre
         Schluesseltreffer::Keiner => Ok(Vorhanden::Keiner),
         Schluesseltreffer::Offen(nr) => Ok(Vorhanden::Offen(nr)),
         Schluesseltreffer::Archiviert(nr) => Ok(Vorhanden::Archiviert(nr)),
-        Schluesseltreffer::Mehrfach(nummern) => Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {}", k.text(), nummernliste(nummern.into_iter())))),
+        Schluesseltreffer::Mehrfach(nummern) => Err(Fehler::konflikt_mit_wert("Schlüssel „", k.text(), &format!("“ mehrfach vergeben: {}", nummernliste(nummern.into_iter())))),
     }
 }
 

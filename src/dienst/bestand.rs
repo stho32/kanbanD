@@ -3,13 +3,13 @@
 use super::{Kanban, Schritt};
 use crate::ablage::board_pfad;
 use crate::fehler::Fehler;
-use crate::modell::{Bestandseinstellung, Person};
+use crate::modell::{Bestandseinstellung, Meldung, Person, inhalt_laenge};
 
 impl Kanban {
     /// Ersetzt die Achsen; Präfixe ohne Rand-Leerzeichen. Ohne Änderung kein Commit.
     pub fn bestand_setzen(&self, wer: &Person, slug: &str, neu: Bestandseinstellung) -> Result<bool, Fehler> {
         let neu = Bestandseinstellung { zeilen: neu.zeilen.trim().to_string(), spalten: neu.spalten.trim().to_string() };
-        pruefen(&neu).map_err(Fehler::Ungueltig)?;
+        pruefen(&neu).map_err(Fehler::from)?;
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
         if b.bestand.as_ref() == Some(&neu) {
@@ -23,17 +23,18 @@ impl Kanban {
 }
 
 /// Ein Präfix ist nicht leer und ohne Doppelpunkt; Zeilen und Spalten sind auch ohne Groß/Klein verschieden.
-fn pruefen(e: &Bestandseinstellung) -> Result<(), String> {
+/// Die Präfixe sind Werte aus dem Rumpf; im Protokoll steht nur ihre Länge (R00258 FA 13).
+fn pruefen(e: &Bestandseinstellung) -> Result<(), Meldung> {
     for (achse, praefix) in [("zeilen", &e.zeilen), ("spalten", &e.spalten)] {
         if praefix.is_empty() {
-            return Err(format!("{achse}: Präfix fehlt"));
+            return Err(Meldung::ohne(format!("{achse}: Präfix fehlt")));
         }
         if praefix.contains(':') {
-            return Err(format!("{achse}: Präfix „{praefix}“ enthält einen Doppelpunkt"));
+            return Err(Meldung::mit(format!("{achse}: Präfix „{praefix}“ enthält einen Doppelpunkt"), format!("{achse}: Präfix „{}“ enthält einen Doppelpunkt", inhalt_laenge(praefix))));
         }
     }
     if e.zeilen.to_lowercase() == e.spalten.to_lowercase() {
-        return Err(format!("Zeilen und Spalten haben denselben Präfix „{}“", e.zeilen));
+        return Err(Meldung::mit(format!("Zeilen und Spalten haben denselben Präfix „{}“", e.zeilen), format!("Zeilen und Spalten haben denselben Präfix „{}“", inhalt_laenge(&e.zeilen))));
     }
     Ok(())
 }

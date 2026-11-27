@@ -76,11 +76,11 @@ impl Kanban {
     pub fn ziehen(&self, wer: &Person, instanz: &str, slug: &str, zug: &Zug) -> Result<Gezogen, Fehler> {
         let _sperre = self.gesperrt();
         let mut b = self.ordner().board(slug)?;
-        let reihe = b.spalten.iter().find(|s| s.name == zug.von).map(|s| s.aufgaben.clone()).ok_or_else(|| Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", zug.von, b.titel)))?;
+        let reihe = b.spalten.iter().find(|s| s.name == zug.von).map(|s| s.aufgaben.clone()).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Spalte „{}“ gibt es auf „{}“ nicht", zug.von, b.titel), format!("Spalte „{}“ gibt es auf „{}“ nicht", crate::fehler::inhalt_laenge(&zug.von), b.titel)))?;
         let nach = match &zug.nach {
             Some(n) if b.spalten.iter().any(|s| &s.name == n) => n.clone(),
-            Some(n) => return Err(Fehler::Ungueltig(format!("Spalte „{n}“ gibt es auf „{}“ nicht", b.titel))),
-            None => b.folgespalte(&zug.von).map(str::to_string).ok_or_else(|| Fehler::Ungueltig(format!("„{}“ ist die letzte Spalte — nach angeben", zug.von)))?,
+            Some(n) => return Err(Fehler::ungueltig_mit_inhalt(format!("Spalte „{n}“ gibt es auf „{}“ nicht", b.titel), format!("Spalte „{}“ gibt es auf „{}“ nicht", crate::fehler::inhalt_laenge(n), b.titel))),
+            None => b.folgespalte(&zug.von).map(str::to_string).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("„{}“ ist die letzte Spalte — nach angeben", zug.von), format!("„{}“ ist die letzte Spalte — nach angeben", crate::fehler::inhalt_laenge(&zug.von))))?,
         };
         let (aufgaben, _) = self.ordner().aufgaben()?;
         let nr = erste_freie(&reihe, &aufgaben, instanz).ok_or_else(|| Fehler::NichtGefunden("nichts zu ziehen".into()))?;

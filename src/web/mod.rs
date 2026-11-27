@@ -568,7 +568,7 @@ async fn aufgaben(State(app): State<App>, Abfrage(paare): Abfrage<Vec<(String, S
         k.braucht_eintragen_alle(&mut aufgaben)?;
         let board = filter.board.as_deref().map(|slug| k.ordner().board(slug)).transpose()?;
         if let Some(s) = filter.spalten.iter().find(|s| board.as_ref().is_some_and(|b| !b.spalten.iter().any(|x| &x.name == *s))) {
-            return Err(Fehler::Ungueltig(format!("Spalte „{s}“ gibt es auf diesem Board nicht")));
+            return Err(Fehler::ungueltig_mit_wert("Spalte „", s, "“ gibt es auf diesem Board nicht"));
         }
         let heute = crate::uhr::heute();
         Ok((aufgaben.into_iter().filter(|a| filter.passt(a, board.as_ref(), &heute)).collect::<Vec<_>>(), defekte))

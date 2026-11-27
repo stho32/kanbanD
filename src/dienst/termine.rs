@@ -31,7 +31,7 @@ impl Kanban {
     pub fn termine_setzen(&self, wer: &Person, slug: &str, mut neu: Vec<Termin>) -> Result<bool, Fehler> {
         for t in &mut neu {
             t.name = t.name.trim().to_string();
-            t.pruefen().map_err(Fehler::Ungueltig)?;
+            t.pruefen().map_err(Fehler::from)?;
         }
         if neu.iter().filter(|t| t.ziel).count() > 1 {
             return Err(Fehler::Ungueltig("Nur ein Termin kann Zieltermin sein".into()));

@@ -265,12 +265,12 @@ impl Kanban {
     /// für die ganze Suche, alle Git-Prozesse nacheinander bis `frist`, danach 503 — nie eine Teilantwort.
     pub fn nachfolger_suchen(&self, nr: u32, verweis: &str, bekannt: Option<&str>, frist: Instant) -> Result<Nachfolgerantwort, Fehler> {
         let aufgabe = self.ordner().aufgabe(nr)?;
-        let form = Verweisform::lesen(verweis).map_err(|f| Fehler::Verweis { meldung: f.meldung, verweis: f.verweis, fehlt: false })?;
+        let form = Verweisform::lesen(verweis).map_err(|f| Fehler::verweis_mit_inhalt(f.meldung, f.grund, f.verweis, false))?;
         let treffer: Vec<&String> = aufgabe.commits.iter().filter(|c| super::commits::passt(c, &form)).collect();
         let gespeichert = match treffer.as_slice() {
             [v] => v.as_str(),
-            [] => return Err(Fehler::Verweis { meldung: format!("#{nr} hat keinen Commit-Verweis „{}“", crate::nachricht::wert(verweis)), verweis: verweis.to_string(), fehlt: true }),
-            mehrere => return Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::nachricht::wert(verweis), mehrere.len()), verweis: verweis.to_string(), fehlt: false }),
+            [] => return Err(Fehler::verweis_mit_inhalt(format!("#{nr} hat keinen Commit-Verweis „{}“", crate::nachricht::wert(verweis)), format!("#{nr} hat keinen Commit-Verweis „{}“", crate::fehler::inhalt_laenge(verweis)), verweis.to_string(), true)),
+            mehrere => return Err(Fehler::verweis_mit_inhalt(format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::nachricht::wert(verweis), mehrere.len()), format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::fehler::inhalt_laenge(verweis), mehrere.len()), verweis.to_string(), false)),
         };
         let quellen = self.ordner().einstellungen()?.unwrap_or_default().quellen;
         let anwendungen = Anwendungen::aus(&quellen);
@@ -735,9 +735,9 @@ mod tests {
             anders => panic!("{anders:?}"),
         }
         let vorher = arbeitsrepo::aufrufe();
-        assert!(matches!(suchen(&k, &format!("kd:{}", s.g)), Err(Fehler::Verweis { fehlt: true, .. })));
-        assert!(matches!(suchen(&k, "kd:main"), Err(Fehler::Verweis { fehlt: false, .. })));
-        assert!(matches!(suchen(&k, &format!("kd:{}", &s.k[..6])), Err(Fehler::Verweis { fehlt: false, .. })));
+        assert!(matches!(suchen(&k, &format!("kd:{}", s.g)), Err(Fehler::Verweis { fehlt: true, .. }) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Fehlt, .. })));
+        assert!(matches!(suchen(&k, "kd:main"), Err(Fehler::Verweis { fehlt: false, .. }) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Eingabe, .. })));
+        assert!(matches!(suchen(&k, &format!("kd:{}", &s.k[..6])), Err(Fehler::Verweis { fehlt: false, .. }) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Eingabe, .. })));
         assert_eq!(arbeitsrepo::aufrufe(), vorher, "kein Git für eine Abweisung ohne Repository");
         std::fs::write(k.ordner().wurzel().join("aufgaben/0001-a.md"), "---\nid: 1\ntitle: [kaputt\n---\n").unwrap();
         assert!(matches!(suchen(&k, &format!("kd:{}", s.k)), Err(Fehler::Defekt(_)) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Defekt, .. })), "423");

@@ -78,7 +78,7 @@ impl Kanban {
     pub fn fieber_ergaenzen(&self, slug: &str, schluessel: &str, tage: Vec<Fiebertag>, heute: &str) -> Result<usize, Fehler> {
         fieber::schluessel_pruefen(schluessel).map_err(Fehler::Ungueltig)?;
         for t in &tage {
-            t.pruefen().map_err(Fehler::Ungueltig)?;
+            t.pruefen().map_err(Fehler::from)?;
             if t.datum.as_str() >= heute {
                 return Err(Fehler::ungueltig_mit_inhalt(format!("{}: nur Tage vor heute kommen in den Cache — der heutige ändert sich noch", t.datum), format!("{}: nur Tage vor heute kommen in den Cache — der heutige ändert sich noch", crate::fehler::inhalt_laenge(&t.datum))));
             }

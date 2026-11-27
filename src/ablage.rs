@@ -236,7 +236,7 @@ impl Ordner {
             return Err(Fehler::Ungueltig(board_name_ungueltig(slug)));
         }
         let rel = board_pfad(slug);
-        let text = self.lies(&rel)?.ok_or_else(|| Fehler::NichtGefunden(format!("Board „{slug}“ gibt es nicht")))?;
+        let text = self.lies(&rel)?.ok_or_else(|| Fehler::nicht_gefunden_mit_wert("Board „", slug, "“ gibt es nicht"))?;
         board::lesen(slug, &text).map_err(|e| Fehler::defekt_mit_inhalt(format!("{rel}: {e}"), format!("{rel}: {}", crate::fehler::inhalt_laenge(&e.to_string()))))
     }
 
@@ -410,7 +410,7 @@ mod tests {
             assert!(matches!(o.board(name), Err(Fehler::Ungueltig(_))), "{name:?}: {:?}", o.board(name));
         }
         assert!(!o.board("fabrik\0").unwrap_err().meldung().contains('\0'), "kein NUL in der Meldung");
-        assert!(matches!(o.board(&"a".repeat(40)), Err(Fehler::NichtGefunden(_))));
+        assert!(matches!(o.board(&"a".repeat(40)), Err(Fehler::NichtGefunden(_)) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Fehlt, .. })));
         assert_eq!(o.board("fabrik").unwrap().titel, "fabrik");
     }
 

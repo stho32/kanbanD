@@ -3,6 +3,7 @@
 //! Zeitpunkt in der Zukunft liegt, prüft nur das Schreiben über die Route: ein gelesener Eintrag ist eine Tatsache.
 
 use super::kosten::{Felder, dollar, hoechstens};
+use super::{Meldung, inhalt_laenge};
 use serde_yaml::Value;
 
 pub const ROLLE_HOECHSTENS_ZEICHEN: usize = 60;
@@ -57,13 +58,13 @@ impl Roheintrag {
     /// Rumpf einer Anfrage (roh, damit jeder Fehler 400 wird und nie 422): ein Objekt nur mit den Schlüsseln der
     /// Datei, sonst dieselbe Form. Was fehlt, bleibt `None` — `POST` verlangt es über [`Kosteneintrag::pruefen`],
     /// `PATCH` nimmt dafür den Wert des bestehenden Eintrags.
-    pub fn aus_anfrage(pfad: &str, v: &serde_json::Value) -> Result<Roheintrag, String> {
-        let keine_zuordnung = || format!("{pfad}: keine Zuordnung");
+    pub fn aus_anfrage(pfad: &str, v: &serde_json::Value) -> Result<Roheintrag, Meldung> {
+        let keine_zuordnung = || Meldung::ohne(format!("{pfad}: keine Zuordnung"));
         let m = v.as_object().ok_or_else(keine_zuordnung)?;
         if let Some(k) = m.keys().find(|k| !BEKANNT.contains(&k.as_str())) {
-            return Err(format!("{pfad}: unbekannter Schlüssel „{k}“"));
+            return Err(Meldung::mit(format!("{pfad}: unbekannter Schlüssel „{k}“"), format!("{pfad}: unbekannter Schlüssel „{}“", inhalt_laenge(k))));
         }
-        Roheintrag::lesen(pfad, &serde_yaml::to_value(v).map_err(|_| keine_zuordnung())?)
+        Roheintrag::lesen(pfad, &serde_yaml::to_value(v).map_err(|_| keine_zuordnung())?).map_err(Meldung::ohne)
     }
 }
 

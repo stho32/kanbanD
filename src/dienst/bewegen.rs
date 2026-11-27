@@ -28,7 +28,7 @@ impl Kanban {
         let vorher = b.clone();
         let geaendert = b.bewegen(bw.nummer, &bw.spalte, bw.index).map_err(|f| match f {
             Bewegfehler::NichtAufDemBoard => Fehler::NichtGefunden(format!("#{} liegt nicht auf „{}“", bw.nummer, b.titel)),
-            Bewegfehler::SpalteUnbekannt | Bewegfehler::SchonAufDemBoard => Fehler::Ungueltig(format!("Spalte „{}“ gibt es auf „{}“ nicht", bw.spalte, b.titel)),
+            Bewegfehler::SpalteUnbekannt | Bewegfehler::SchonAufDemBoard => Fehler::ungueltig_mit_wert("Spalte „", &bw.spalte, &format!("“ gibt es auf „{}“ nicht", b.titel)),
         })?;
         if !geaendert {
             return Ok(Bewegt { bewegt: false, warnungen: vec![] });

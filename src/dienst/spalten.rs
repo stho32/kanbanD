@@ -13,11 +13,11 @@ impl Kanban {
         let vorher = b.clone();
         let geaendert = b.spalten_setzen(neu).map_err(|f| match f {
             Spaltenfehler::NameLeer => Fehler::Ungueltig("Eine Spalte braucht einen Namen".into()),
-            Spaltenfehler::NameUngueltig(n) => Fehler::Ungueltig(format!("Spalte „{n}“ braucht 1–200 Zeichen ohne Zeilenumbruch")),
-            Spaltenfehler::NameDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ ist doppelt")),
-            Spaltenfehler::AltUnbekannt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ gibt es nicht")),
-            Spaltenfehler::AltDoppelt(n) => Fehler::Ungueltig(format!("Spalte „{n}“ wird zweimal übernommen")),
-            Spaltenfehler::EnthaeltAufgaben(n, z) => Fehler::Konflikt(format!("Spalte „{n}“ enthält {} — erst leeren", aufgaben_anzahl(z))),
+            Spaltenfehler::NameUngueltig(n) => Fehler::ungueltig_mit_wert("Spalte „", &n, "“ braucht 1–200 Zeichen ohne Zeilenumbruch"),
+            Spaltenfehler::NameDoppelt(n) => Fehler::ungueltig_mit_wert("Spalte „", &n, "“ ist doppelt"),
+            Spaltenfehler::AltUnbekannt(n) => Fehler::ungueltig_mit_wert("Spalte „", &n, "“ gibt es nicht"),
+            Spaltenfehler::AltDoppelt(n) => Fehler::ungueltig_mit_wert("Spalte „", &n, "“ wird zweimal übernommen"),
+            Spaltenfehler::EnthaeltAufgaben(n, z) => Fehler::konflikt_mit_wert("Spalte „", &n, &format!("“ enthält {} — erst leeren", aufgaben_anzahl(z))),
             Spaltenfehler::FarbeUngueltig(f) => Fehler::ungueltig_mit_inhalt(format!("Farbe „{f}“ ist kein #rrggbb"), format!("Farbe „{}“ ist kein #rrggbb", crate::fehler::inhalt_laenge(&f))),
             Spaltenfehler::EigentuemerUngueltig(e) => Fehler::ungueltig_mit_inhalt(format!("Eigentümer „{e}“ ist nicht human, agent oder null"), format!("Eigentümer „{}“ ist nicht human, agent oder null", crate::fehler::inhalt_laenge(&e))),
         })?;

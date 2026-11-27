@@ -11,6 +11,7 @@ mod commit_verweis;
 mod einstellungen;
 mod kosten;
 mod kosteneintrag;
+mod meldung;
 mod transkript;
 
 pub use anwendungen::{Anwendungen, Herkunftsschluessel, id_gueltig};
@@ -27,6 +28,7 @@ pub use kosteneintrag::{Kosteneintrag, ROLLE_HOECHSTENS_ZEICHEN, Roheintrag};
 pub use transkript::{Erfassung, GZIP_KENNBYTES, HOECHSTZAHL_TRANSKRIPTE, TRANSKRIPT_HOECHSTENS, TRANSKRIPTE_ORDNER, Transkripteintrag, Transkriptzeile, Transkriptzustand, erfassung};
 pub use kosten::{Gesamt, HOECHSTWERT_CENT, HOECHSTZAHL_POSITIONEN, Kosten, Position, Rohkosten, Rohposition, Wert};
 pub use einstellungen::{Anwendung, Art, Einstellungen, Klasse, Person, Quellen, SIGNAL_FAELLIG, Signal, kuerzel_gueltig};
+pub use meldung::{Meldung, inhalt_laenge};
 
 /// Dateiname aus einem Titel: Kleinbuchstaben, Umlaute als ae/oe/ue/ss, sonst Bindestriche; höchstens 40 Zeichen.
 pub fn slug(titel: &str) -> String {

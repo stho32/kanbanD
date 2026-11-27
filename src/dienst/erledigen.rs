@@ -50,7 +50,7 @@ impl Erledigung {
             return Err(Fehler::Ungueltig(format!("Text: 1–{TEXT_HOECHSTENS} Zeichen")));
         }
         if e.signal(&self.signal).is_none() {
-            return Err(Fehler::Ungueltig(signal_unbekannt(&self.signal)));
+            return Err(Fehler::from(signal_unbekannt(&self.signal)));
         }
         let board = self.board.trim();
         if board.is_empty() {
@@ -89,8 +89,8 @@ impl Kanban {
         let mut b = self.ordner().board(&g.board)?;
         let (aufgaben, _) = self.ordner().aufgaben()?;
         let nr = match Schluesseltreffer::suchen(&aufgaben, &g.schluessel) {
-            Schluesseltreffer::Keiner => return Err(Fehler::NichtGefunden(format!("Schlüssel „{}“ gibt es nicht", g.schluessel.text()))),
-            Schluesseltreffer::Mehrfach(nummern) => return Err(Fehler::Konflikt(format!("Schlüssel „{}“ mehrfach vergeben: {}", g.schluessel.text(), nummernliste(nummern.into_iter())))),
+            Schluesseltreffer::Keiner => return Err(Fehler::nicht_gefunden_mit_wert("Schlüssel „", g.schluessel.text(), "“ gibt es nicht")),
+            Schluesseltreffer::Mehrfach(nummern) => return Err(Fehler::konflikt_mit_wert("Schlüssel „", g.schluessel.text(), &format!("“ mehrfach vergeben: {}", nummernliste(nummern.into_iter())))),
             Schluesseltreffer::Offen(nr) | Schluesseltreffer::Archiviert(nr) => nr,
         };
         let archiviert = archivierte(&aufgaben);
@@ -176,7 +176,7 @@ mod tests {
 
     fn ungueltig(r: Result<GepruefteErledigung, Fehler>) -> String {
         match r {
-            Err(Fehler::Ungueltig(m)) => m,
+            Err(Fehler::Ungueltig(m)) | Err(Fehler::Inhalt { meldung: m, .. }) => m,
             anders => panic!("400 erwartet, war {anders:?}"),
         }
     }
@@ -203,7 +203,7 @@ mod tests {
         e.signal = "gibtsnicht".into();
         assert_eq!(ungueltig(e.pruefen(&einstellungen())), "Signal „gibtsnicht“ steht nicht in kanbanD.md");
         e.signal = String::new();
-        assert!(matches!(e.pruefen(&einstellungen()), Err(Fehler::Ungueltig(_))));
+        assert!(matches!(e.pruefen(&einstellungen()), Err(Fehler::Ungueltig(_)) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Eingabe, .. })));
     }
 
     // R00099 B0331: key über Fremdschluessel::pruefen, board nicht leer; fehlende Felder sind leer

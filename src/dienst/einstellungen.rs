@@ -21,16 +21,16 @@ pub fn klassen_pruefen(klassen: &[Klasse]) -> Result<(), Fehler> {
     let mut gesehen: Vec<&str> = vec![];
     for k in klassen {
         if !schluessel_gueltig(&k.schluessel) {
-            return Err(Fehler::Ungueltig(format!("Klassenschlüssel „{}“: Kleinbuchstaben, Ziffern, - und _", k.schluessel)));
+            return Err(Fehler::ungueltig_mit_wert("Klassenschlüssel „", &k.schluessel, "“: Kleinbuchstaben, Ziffern, - und _"));
         }
         if k.bezeichnung.trim().is_empty() {
-            return Err(Fehler::Ungueltig(format!("Klasse „{}“ braucht eine Bezeichnung", k.schluessel)));
+            return Err(Fehler::ungueltig_mit_wert("Klasse „", &k.schluessel, "“ braucht eine Bezeichnung"));
         }
         if !farbe_gueltig(&k.farbe) {
             return Err(Fehler::ungueltig_mit_inhalt(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", k.farbe), format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", crate::fehler::inhalt_laenge(&k.farbe))));
         }
         if gesehen.contains(&k.schluessel.as_str()) {
-            return Err(Fehler::Ungueltig(format!("Klasse „{}“ ist doppelt", k.schluessel)));
+            return Err(Fehler::ungueltig_mit_wert("Klasse „", &k.schluessel, "“ ist doppelt"));
         }
         gesehen.push(&k.schluessel);
     }
@@ -42,18 +42,18 @@ pub fn einstellungen_pruefen(alt: &Einstellungen, neu: &Einstellungen) -> Result
     let mut gesehen: Vec<&str> = vec![];
     for p in &neu.personen {
         if !kuerzel_gueltig(&p.kuerzel) {
-            return Err(Fehler::Ungueltig(format!("Kürzel „{}“: 1–8 Kleinbuchstaben oder Ziffern", p.kuerzel)));
+            return Err(Fehler::ungueltig_mit_wert("Kürzel „", &p.kuerzel, "“: 1–8 Kleinbuchstaben oder Ziffern"));
         }
         if p.name.trim().is_empty() {
-            return Err(Fehler::Ungueltig(format!("Für „{}“ fehlt der Name", p.kuerzel)));
+            return Err(Fehler::ungueltig_mit_wert("Für „", &p.kuerzel, "“ fehlt der Name"));
         }
         if gesehen.contains(&p.kuerzel.as_str()) {
-            return Err(Fehler::Ungueltig(format!("Kürzel „{}“ ist doppelt", p.kuerzel)));
+            return Err(Fehler::ungueltig_mit_wert("Kürzel „", &p.kuerzel, "“ ist doppelt"));
         }
         gesehen.push(&p.kuerzel);
     }
     if let Some(weg) = alt.personen.iter().find(|p| !gesehen.contains(&p.kuerzel.as_str())) {
-        return Err(Fehler::Konflikt(format!("„{}“ wird stillgelegt, nicht entfernt", weg.name)));
+        return Err(Fehler::konflikt_mit_wert("„", &weg.name, "“ wird stillgelegt, nicht entfernt"));
     }
     klassen_pruefen(&neu.klassen)?;
     signale_pruefen(&neu.signale)?;
@@ -65,19 +65,19 @@ fn signale_pruefen(signale: &[Signal]) -> Result<(), Fehler> {
     let mut gesehen: Vec<&str> = vec![];
     for g in signale {
         if !schluessel_gueltig(&g.schluessel) {
-            return Err(Fehler::Ungueltig(format!("Signalschlüssel „{}“: Kleinbuchstaben, Ziffern, - und _", g.schluessel)));
+            return Err(Fehler::ungueltig_mit_wert("Signalschlüssel „", &g.schluessel, "“: Kleinbuchstaben, Ziffern, - und _"));
         }
         if g.schluessel == SIGNAL_FAELLIG {
             return Err(Fehler::Ungueltig(format!("„{SIGNAL_FAELLIG}“ ist das Signal der Fälligkeit und wird gerechnet")));
         }
         if g.bezeichnung.trim().is_empty() {
-            return Err(Fehler::Ungueltig(format!("Signal „{}“ braucht eine Bedeutung", g.schluessel)));
+            return Err(Fehler::ungueltig_mit_wert("Signal „", &g.schluessel, "“ braucht eine Bedeutung"));
         }
         if !farbe_gueltig(&g.farbe) {
             return Err(Fehler::ungueltig_mit_inhalt(format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", g.farbe), format!("Farbe „{}“: einer der 16 Palettennamen oder #rrggbb", crate::fehler::inhalt_laenge(&g.farbe))));
         }
         if gesehen.contains(&g.schluessel.as_str()) {
-            return Err(Fehler::Ungueltig(format!("Signal „{}“ ist doppelt", g.schluessel)));
+            return Err(Fehler::ungueltig_mit_wert("Signal „", &g.schluessel, "“ ist doppelt"));
         }
         gesehen.push(&g.schluessel);
     }
@@ -89,13 +89,13 @@ fn register_pruefen(anwendungen: &[Anwendung]) -> Result<(), Fehler> {
     let mut gesehen: Vec<&str> = vec![];
     for a in anwendungen {
         if !kuerzel_gueltig(&a.kuerzel) {
-            return Err(Fehler::Ungueltig(format!("Anwendungskürzel „{}“: 1–8 Kleinbuchstaben oder Ziffern", a.kuerzel)));
+            return Err(Fehler::ungueltig_mit_wert("Anwendungskürzel „", &a.kuerzel, "“: 1–8 Kleinbuchstaben oder Ziffern"));
         }
         if a.name.trim().is_empty() {
-            return Err(Fehler::Ungueltig(format!("Für die Anwendung „{}“ fehlt der Name", a.kuerzel)));
+            return Err(Fehler::ungueltig_mit_wert("Für die Anwendung „", &a.kuerzel, "“ fehlt der Name"));
         }
         if gesehen.contains(&a.kuerzel.as_str()) {
-            return Err(Fehler::Ungueltig(format!("Anwendungskürzel „{}“ ist doppelt", a.kuerzel)));
+            return Err(Fehler::ungueltig_mit_wert("Anwendungskürzel „", &a.kuerzel, "“ ist doppelt"));
         }
         gesehen.push(&a.kuerzel);
     }
@@ -247,7 +247,7 @@ impl Kanban {
         let p = Person { kuerzel: n.kuerzel.trim().into(), name: n.name.trim().into(), art: n.art, aktiv: n.aktiv.unwrap_or(true) };
         let (_, p) = self.einstellungen_aendern(wer, Altform::Stehenlassen, |e| {
             if e.person(&p.kuerzel).is_some() {
-                return Err(Fehler::Konflikt(format!("Kürzel „{}“ gibt es schon", p.kuerzel)));
+                return Err(Fehler::konflikt_mit_wert("Kürzel „", &p.kuerzel, "“ gibt es schon"));
             }
             e.personen.push(p.clone());
             Ok((format!("Person „{}“ ({}) angelegt", crate::nachricht::wert(&p.name), crate::nachricht::wert(&p.kuerzel)), p))
@@ -258,7 +258,7 @@ impl Kanban {
     /// Name, Art oder aktiv einer Person ändern; unbekannt → 404.
     pub fn person_aendern(&self, wer: &Person, kuerzel: &str, a: &PersonAenderung) -> Result<Person, Fehler> {
         let (_, p) = self.einstellungen_aendern(wer, Altform::Stehenlassen, |e| {
-            let p = e.personen.iter_mut().find(|p| p.kuerzel == kuerzel).ok_or_else(|| Fehler::NichtGefunden(format!("Person „{kuerzel}“ steht nicht in kanbanD.md")))?;
+            let p = e.personen.iter_mut().find(|p| p.kuerzel == kuerzel).ok_or_else(|| Fehler::nicht_gefunden_mit_wert("Person „", kuerzel, "“ steht nicht in kanbanD.md"))?;
             let tat = if a.aktiv == Some(false) && p.aktiv { "stillgelegt" } else { "geändert" };
             a.anwenden(p);
             Ok((format!("Person „{}“ ({}) {}", crate::nachricht::wert(&p.name), crate::nachricht::wert(kuerzel), tat), p.clone()))
@@ -313,7 +313,7 @@ mod tests {
         for (k, name) in [("KD!", "x"), ("", "x"), ("neunzeich", "x"), ("kd", " ")] {
             let mut f = e.clone();
             f.quellen.anwendungen[0] = anwendung(k, name);
-            assert!(matches!(einstellungen_pruefen(&alt, &f), Err(Fehler::Ungueltig(_))), "{k}/{name}");
+            assert!(matches!(einstellungen_pruefen(&alt, &f), Err(Fehler::Ungueltig(_)) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Eingabe, .. })), "{k}/{name}");
         }
         let mut f = e;
         f.quellen.anwendungen[1].kuerzel = "kd".into();
@@ -341,7 +341,7 @@ mod tests {
         assert!(einstellungen_pruefen(&alt, &gut).is_ok());
         let mut f = gut.clone();
         f.personen.remove(0);
-        assert!(matches!(einstellungen_pruefen(&alt, &f), Err(Fehler::Konflikt(_))));
+        assert!(matches!(einstellungen_pruefen(&alt, &f), Err(Fehler::Konflikt(_)) | Err(Fehler::Inhalt { ursache: crate::fehler::Ursache::Konflikt, .. })));
         let mut f = gut.clone();
         f.personen[1].kuerzel = "M!".into();
         assert!(einstellungen_pruefen(&alt, &f).is_err());

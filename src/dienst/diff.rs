@@ -308,12 +308,12 @@ impl Kanban {
     pub fn diff_lesen(&self, nr: u32, anfrage: &Diffanfrage, frist: Instant) -> Result<Diffantwort, Fehler> {
         let Some(commit) = anfrage.commit.as_deref() else { return self.gesamt_diff_lesen(nr, anfrage, frist) };
         let aufgabe = self.ordner().aufgabe(nr)?;
-        let form = Verweisform::lesen(commit).map_err(|f| Fehler::Verweis { meldung: f.meldung, verweis: f.verweis, fehlt: false })?;
+        let form = Verweisform::lesen(commit).map_err(|f| Fehler::verweis_mit_inhalt(f.meldung, f.grund, f.verweis, false))?;
         let treffer: Vec<&String> = aufgabe.commits.iter().filter(|c| super::commits::passt(c, &form)).collect();
         let gespeichert = match treffer.as_slice() {
             [v] => v.as_str(),
-            [] => return Err(Fehler::Verweis { meldung: format!("#{nr} hat keinen Commit-Verweis „{}“", crate::nachricht::wert(commit)), verweis: commit.to_string(), fehlt: true }),
-            mehrere => return Err(Fehler::Verweis { meldung: format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::nachricht::wert(commit), mehrere.len()), verweis: commit.to_string(), fehlt: false }),
+            [] => return Err(Fehler::verweis_mit_inhalt(format!("#{nr} hat keinen Commit-Verweis „{}“", crate::nachricht::wert(commit)), format!("#{nr} hat keinen Commit-Verweis „{}“", crate::fehler::inhalt_laenge(commit)), commit.to_string(), true)),
+            mehrere => return Err(Fehler::verweis_mit_inhalt(format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::nachricht::wert(commit), mehrere.len()), format!("„{}“ passt zu {} Commit-Verweisen an #{nr} — längeren Hash nennen", crate::fehler::inhalt_laenge(commit), mehrere.len()), commit.to_string(), false)),
         };
         let quellen = self.ordner().einstellungen()?.unwrap_or_default().quellen;
         let anwendungen = Anwendungen::aus(&quellen);

@@ -40,7 +40,7 @@ impl Kanban {
     /// liegt er, wo angegeben (R00090). Gebucht für `n.wer` oder die handelnde Person; Autor des Commits bleibt sie.
     pub fn zeit_nachtragen(&self, wer: &Person, nr: u32, n: &Zeitnachtrag) -> Result<Aufgabe, Fehler> {
         let fuer = match n.wer.as_deref() {
-            Some(k) => self.ordner().einstellungen()?.and_then(|e| e.person(k).cloned()).ok_or_else(|| Fehler::Ungueltig(format!("Person „{k}“ steht nicht in kanbanD.md")))?,
+            Some(k) => self.ordner().einstellungen()?.and_then(|e| e.person(k).cloned()).ok_or_else(|| Fehler::ungueltig_mit_wert("Person „", k, "“ steht nicht in kanbanD.md"))?,
             None => wer.clone(),
         };
         let (beginn, ende) = match (&n.dauer, &n.beginn, &n.ende) {

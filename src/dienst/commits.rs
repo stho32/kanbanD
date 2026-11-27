@@ -142,8 +142,8 @@ fn verweise_aus(rumpf: &serde_json::Value) -> Result<Vec<String>, Fehler> {
 
 fn ersetzungsfehler(f: Ersetzungsfehler) -> Fehler {
     match f.verweis {
-        Some(verweis) => Fehler::Verweis { meldung: f.meldung, verweis, fehlt: false },
-        None => Fehler::Ungueltig(f.meldung),
+        Some(verweis) => Fehler::verweis_mit_inhalt(f.meldung, f.grund, verweis, false),
+        None => Fehler::ungueltig_mit_inhalt(f.meldung, f.grund),
     }
 }
 
@@ -205,7 +205,7 @@ fn ersetzen(a: &mut Aufgabe, plan: &Ersetzungsplan) -> Result<Option<String>, Fe
 }
 
 fn abweisung(f: Verweisfehler) -> Fehler {
-    Fehler::Verweis { meldung: f.meldung, verweis: f.verweis, fehlt: false }
+    Fehler::verweis_mit_inhalt(f.meldung, f.grund, f.verweis, false)
 }
 
 /// Was das Arbeits-Repository meldet, als Antwort: fehlendes Repository und kein Commit 400 mit Verweis, Zeitgrenze 503.
@@ -217,7 +217,7 @@ fn repo_fehler(f: Arbeitsrepofehler, text: &str, anwendung: &Anwendung) -> Fehle
     let verweis = |meldung: String| Fehler::Verweis { meldung, verweis: text.into(), fehlt: false };
     match f {
         Arbeitsrepofehler::RepositoryFehlt(grund) => verweis(format!("Repository {name} fehlt — {grund}")),
-        Arbeitsrepofehler::KeinCommit => verweis(format!("„{}“ ist im Repository {name} kein Commit — nicht vorhanden, mehrdeutig (längeren Hash nennen) oder ein anderes Objekt", nachricht::wert(text))),
+        Arbeitsrepofehler::KeinCommit => Fehler::verweis_mit_inhalt(format!("„{}“ ist im Repository {name} kein Commit — nicht vorhanden, mehrdeutig (längeren Hash nennen) oder ein anderes Objekt", nachricht::wert(text)), format!("„{}“ ist im Repository {name} kein Commit — nicht vorhanden, mehrdeutig (längeren Hash nennen) oder ein anderes Objekt", crate::fehler::inhalt_laenge(text)), text.into(), false),
         Arbeitsrepofehler::Zeitgrenze => Fehler::Zeitgrenze(format!("Git im Repository {name} antwortete nicht in {} s — nichts geschrieben", arbeitsrepo::ZEITGRENZE.as_secs())),
         Arbeitsrepofehler::ZuvielAusgabe(n) => Fehler::Zeitgrenze(format!("Git im Repository {name} lieferte mehr als {n} Zeilen — abgebrochen")),
         Arbeitsrepofehler::Start(grund) | Arbeitsrepofehler::ArgumenteZuLang(grund) => Fehler::Intern(format!("git: {grund}")),
@@ -366,7 +366,7 @@ mod tests {
         let kd = Anwendung { kuerzel: "kd".into(), name: "KD".into(), repository: String::new(), wbs: "/r/app.md".into(), anforderungen: String::new() };
         assert!(matches!(repo_fehler(Arbeitsrepofehler::Zeitgrenze, "kd:3f2a9c1", &kd), Fehler::Zeitgrenze(m) if m.contains("10 s") && m.contains("nichts geschrieben")));
         assert!(matches!(repo_fehler(Arbeitsrepofehler::RepositoryFehlt("Ordner fehlt: /r".into()), "kd:3f2a9c1", &kd), Fehler::Verweis { meldung, verweis, fehlt: false } if meldung.contains("/r") && meldung.contains("„kd“") && verweis == "kd:3f2a9c1"));
-        assert!(matches!(repo_fehler(Arbeitsrepofehler::KeinCommit, "kd:0000000", &kd), Fehler::Verweis { verweis, fehlt: false, .. } if verweis == "kd:0000000"));
+        assert!(matches!(repo_fehler(Arbeitsrepofehler::KeinCommit, "kd:0000000", &kd), Fehler::Verweis { verweis, fehlt: false, .. } | Fehler::Inhalt { verweis: Some(verweis), .. } if verweis == "kd:0000000"));
     }
 
     // AK 8: voller Hash oder eindeutiger Präfix ≥ 7 je Kürzel; unbekannt 404, mehrdeutig 400 — beides entfernt nichts

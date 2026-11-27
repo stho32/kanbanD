@@ -41,7 +41,7 @@ impl Kanban {
         let ergebnis = Ergebnis::lesen(n.ergebnis.trim()).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Ergebnis „{}“: bestanden, befund oder entfaellt", n.ergebnis), format!("Ergebnis „{}“: bestanden, befund oder entfaellt", crate::fehler::inhalt_laenge(&n.ergebnis))))?;
         let dauer_minuten = n.dauer.as_deref().map(|d| uhr::dauer_lesen(d).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Dauer „{d}“: z. B. 0:45, 1,5 oder 90 min"), format!("Dauer „{}“: z. B. 0:45, 1,5 oder 90 min", crate::fehler::inhalt_laenge(d))))).transpose()?;
         let fuer = match n.wer.as_deref() {
-            Some(k) => self.ordner().einstellungen()?.and_then(|e| e.person(k).cloned()).ok_or_else(|| Fehler::Ungueltig(format!("Person „{k}“ steht nicht in kanbanD.md")))?,
+            Some(k) => self.ordner().einstellungen()?.and_then(|e| e.person(k).cloned()).ok_or_else(|| Fehler::ungueltig_mit_inhalt(format!("Person „{k}“ steht nicht in kanbanD.md"), format!("Person „{}“ steht nicht in kanbanD.md", crate::fehler::inhalt_laenge(k))))?,
             None => wer.clone(),
         };
         // eine Zeile je Durchlauf: Umbrüche werden Leerzeichen
