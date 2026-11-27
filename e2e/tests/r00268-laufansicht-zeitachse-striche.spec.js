@@ -303,6 +303,9 @@ test.describe('R00268 Laufansicht: Striche in der Zeitachse', () => {
     }
     expect(schritte, 'die Gruppe ist mit der Tastatur erreichbar').toBeLessThan(40);
     expect(await page.locator(`${KNOPF}:focus`).count(), 'genau ein Knopf hat den Fokus').toBe(1);
+    const umriss = await page.locator(`${KNOPF}:focus`).evaluate(k => { const st = getComputedStyle(k); return { breite: parseFloat(st.outlineWidth), stil: st.outlineStyle }; });
+    expect(umriss.stil, 'der Fokusring ist sichtbar').not.toBe('none');
+    expect(umriss.breite, 'der Fokusring des Strich-Knopfs ist ≥ 2 px (ux-Sollte)').toBeGreaterThanOrEqual(2);
     expect(await tabStopps(), 'weiterhin genau ein Tab-Stopp').toBe(1);
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement.closest('[role="group"]') === null), 'der nächste Tab verlässt die Gruppe').toBe(true);
