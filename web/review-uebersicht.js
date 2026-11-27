@@ -398,6 +398,36 @@
     return streuwert.toString(16).padStart(8, '0');
   }
 
+  /* ── Zustand einer Datei in „Alle Änderungen“ (R00265, ADR-0042 N8.4 Punkt 2 und 3): gesehen, geändert oder offen ── */
+
+  /** Ein `alle`-Schlüssel an U+0000 in genau vier Felder `[alle, anwendung, pfad, fingerabdruck]`; null, wenn er nicht vier Felder
+      hat oder nicht mit `alle` beginnt. Ein fremder Schlüssel — auch der Ein-Commit-Schlüssel `<hash>\u0000<pfad>` — wird so nie
+      zerlegt, sondern nur auf Gleichheit geprüft (ADR-0042 N8.4 Punkt 2). */
+  function alleSchluesselTeile(schluessel) {
+    if (typeof schluessel !== 'string') return null;
+    const felder = schluessel.split('\u0000');
+    if (felder.length !== 4 || felder[0] !== 'alle') return null;
+    return felder;
+  }
+
+  /** Der Zustand einer Datei aus der Gesehen-Menge (ADR-0042 N8.4 Punkt 3): `gesehen` — ihr genauer Schlüssel steht darin; `geaendert`
+      — nur ein Schlüssel **derselben** (Anwendung, Pfad) mit **anderem** Fingerabdruck steht darin (seit dem Haken verändert); `offen`
+      — sonst. `gesehen` schließt `geaendert` aus; eine andere Anwendung oder ein anderer Pfad ergibt `offen`. `gesehen` ist eine
+      Menge oder ein Feld von Schlüsseln. */
+  function gesehenZustand(gesehen, anwendung, d) {
+    const app = String(anwendung);
+    const aktuell = alleDateiSchluessel(app, d);
+    const pfad = dateiPfad(d);
+    let geaendert = false;
+    for (const schluessel of gesehen) {
+      if (schluessel === aktuell) return 'gesehen';
+      const felder = alleSchluesselTeile(schluessel);
+      if (!felder) continue;
+      if (felder[1] === app && felder[2] === pfad) geaendert = true;
+    }
+    return geaendert ? 'geaendert' : 'offen';
+  }
+
   /* ── Wortmarke (R00247, ADR-0042 Punkt 4, W1): gleiches Präfix und Suffix je Zeilenpaar, auf Wortgrenzen erweitert ── */
 
   /** Zeilen aus `patchZeilen` → je Zeile die Marke `[von, bis)` im Zeilentext oder null. Gepaart wird ein Lauf gelöschter Zeilen mit
@@ -550,6 +580,7 @@
   Object.assign(ziel, { UMBRECHEN_SCHLUESSEL, umbrechenLesen, umbrechenSchreiben, umbrechenSchalterHtml, NEBENEINANDER_SCHLUESSEL, schalterLesen, schalterSchreiben, nebeneinanderSchalterHtml });
 
   Object.assign(ziel, { GESEHEN_HOECHSTENS, gesehenSchluessel, gesehenLesen, gesehenSchreiben, commitDateiSchluessel, alleDateiSchluessel, fingerabdruck });
+  Object.assign(ziel, { alleSchluesselTeile, gesehenZustand });
 
   Object.assign(ziel, { commitChips, chipText, zweigVerdichtung, zweigeWort, commitsWort, mitDiff, zeitKurz, leistenFolge, leistenRollstand, leistenAlleName, leistenEintragName });
 
