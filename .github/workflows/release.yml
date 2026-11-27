@@ -146,7 +146,7 @@ jobs:
           set -euo pipefail
           name="kanbanD-${VERSION}-${ZIEL}"
           mkdir -p "ausgabe/${name}"
-          cp "target/release/${PROGRAMM}" README.md "ausgabe/${name}/"
+          cp "target/release/${PROGRAMM}" README.md web/LIZENZEN.md "ausgabe/${name}/"
           cd ausgabe
           if [ "${ENDUNG}" = "zip" ]; then
             7z a -tzip -bso0 "${name}.zip" "${name}"

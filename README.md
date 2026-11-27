@@ -249,6 +249,13 @@ GET /api/aufgaben/2/diff
 - `&datei=<pfad>` liefert genau diesen Eintrag (bei einer Folge alle Schritte, bis 8 MB Patch) — auch hinter dem Schnitt der Liste und bei sehr großen Kartencommits, solange die Liste der Änderungen mit `datei=` (bis 20 MB statt 1 MB ohne) lesbar ist; sonst 404 mit Hinweis auf `commit=`. Steht der Pfad in keinem Kartencommit (das wird nur bei vollständig gelesenen Namen gesagt), ergibt das 404; steht er in Kartencommits, hat im Gesamtbild aber keinen Eintrag, ebenfalls 404, mit eigenem Text („… hat im Gesamtbild aber keine Änderung …“), und ist die Liste der Änderungen auch mit `datei=` zu groß, um zu sagen, ob er im Gesamtbild eine Änderung hat, 404 mit einem dritten Text, der auf `commit=` und `datei=` verweist. `&format=patch` liefert Text: je Hinweis eine Zeile `# kanbanD: <art> …`, vor jedem Schritt `# kanbanD: Folge <pfad> — Schritt i von n, Commit <verweis>`; ohne Hinweise und Folge ist er bytegleich zu `git diff --full-index -M50% -l1000 --submodule=short <basis> <letzter>`.
 - Grenzen und Antwortbudget wie beim Diff je Commit (4 MB Patch für Netto und Folge zusammen). Sind die Namen der Kartencommits länger als 4 MB (etwa 40.000 Dateien), zeigt eine Spanne ohne fremden Commit nur die Netto-Einträge bis zur Kappe; sonst bleibt `dateien` leer, und `dateien_gekappt` nennt als `gesamt` die Dateien der Kartencommits zusammen (Obergrenze) — die Dateien dann über `?commit=` je Commit laden; `datei=` findet einen Pfad auch hinter dem Schnitt der Namen (bis 20 MB), und nur bei vollständig gelesenen Namen sagt ein 404 „in keinem Kartencommit“. `ETag` gilt, solange sich kein Zweig im Repository bewegt. Keine Verweise dieser Anwendung → 404; `anwendung` zusammen mit `commit` → 400.
 
+## Lizenzhinweise
+
+kanbanD bettet die Oberfläche in das Programm ein und gibt damit auch die Rust-Pakete
+weiter, aus denen es gebaut ist (MIT, Apache-2.0 und andere). Ihre Lizenz- und
+Urheberhinweise stehen in [`web/LIZENZEN.md`](web/LIZENZEN.md) — im laufenden Programm
+unter `/web/LIZENZEN.md`, im Release-Archiv als Datei neben dem Programm.
+
 ## Tests
 
 ```bash
