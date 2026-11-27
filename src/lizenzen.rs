@@ -232,6 +232,78 @@ pub fn auswahl(komplett: &Metadaten, plattformen: &[&Metadaten]) -> Auswahl {
     Auswahl { enthalten, ausnahmen }
 }
 
+/// Ein enthaltenes Paket mit allem, was in die Hinweisdatei kommt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Paket {
+    pub name: String,
+    pub version: String,
+    pub lizenz: String,
+    pub urhebertext: String,
+}
+
+/// Liest den Urheber- und Lizenztext eines Pakets aus seinem Ordner im Cache.
+///
+/// Ist `lizenz_datei` gesetzt, wird genau diese Datei gelesen. Sonst werden alle
+/// Dateien gelesen, deren Name mit `LICENSE`, `LICENCE`, `COPYING`, `NOTICE` oder
+/// `UNLICENSE` beginnt (in Namensordnung zusammengefügt).
+pub fn lizenztext_lesen(ordner: &std::path::Path, lizenz_datei: Option<&str>) -> Result<String, Fehler> {
+    let mut dateien: Vec<std::path::PathBuf> = Vec::new();
+    match lizenz_datei {
+        Some(name) => dateien.push(ordner.join(name)),
+        None => {
+            let eintraege =
+                std::fs::read_dir(ordner).map_err(|e| Fehler::Io(format!("{}: {e}", ordner.display())))?;
+            let mut gefunden: Vec<std::path::PathBuf> = eintraege
+                .filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|p| p.is_file() && ist_lizenzdatei(p.file_name().and_then(|n| n.to_str()).unwrap_or("")))
+                .collect();
+            gefunden.sort();
+            dateien.extend(gefunden);
+        }
+    }
+
+    let mut teile = Vec::new();
+    for datei in &dateien {
+        let text = std::fs::read_to_string(datei)
+            .map_err(|_| Fehler::KeinLizenztext { paket: datei.display().to_string() })?;
+        teile.push(text);
+    }
+    let gesamt = teile.join("\n");
+    if gesamt.trim().is_empty() {
+        return Err(Fehler::KeinLizenztext { paket: ordner.display().to_string() });
+    }
+    Ok(gesamt)
+}
+
+fn ist_lizenzdatei(name: &str) -> bool {
+    let oben = name.to_ascii_uppercase();
+    ["LICENSE", "LICENCE", "COPYING", "NOTICE", "UNLICENSE"]
+        .iter()
+        .any(|praefix| oben.starts_with(praefix))
+}
+
+/// Baut die Einträge der enthaltenen Pakete mit Lizenz und Urhebertext.
+///
+/// Ein Paket ohne Lizenzangabe und ohne Lizenzdatei ist ein Fehler (`PaketOhneLizenz`).
+pub fn enthaltene(komplett: &Metadaten, auswahl: &Auswahl) -> Result<Vec<Paket>, Fehler> {
+    let mut pakete = Vec::new();
+    for id in &auswahl.enthalten {
+        let info = komplett.pakete.get(id).ok_or_else(|| Fehler::Metadaten(format!("Paket {id} fehlt")))?;
+        if info.lizenz.is_none() && info.lizenz_datei.is_none() {
+            return Err(Fehler::PaketOhneLizenz { paket: format!("{} {}", info.name, info.version) });
+        }
+        let urhebertext = lizenztext_lesen(std::path::Path::new(&info.ordner), info.lizenz_datei.as_deref())
+            .map_err(|_| Fehler::KeinLizenztext { paket: format!("{} {}", info.name, info.version) })?;
+        pakete.push(Paket {
+            name: info.name.clone(),
+            version: info.version.clone(),
+            lizenz: info.lizenz.clone().unwrap_or_else(|| "siehe Urhebertext".to_string()),
+            urhebertext,
+        });
+    }
+    Ok(pakete)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -311,5 +383,85 @@ mod tests {
     #[test]
     fn kaputte_metadaten_sind_ein_fehler() {
         assert!(matches!(lesen("{").unwrap_err(), Fehler::Metadaten(_)));
+    }
+
+    fn graph_mit_a(ordner: &std::path::Path, lizenz: &str) -> Metadaten {
+        let json = format!(
+            r#"{{
+                "packages":[
+                  {{"id":"ws","name":"ws","version":"0.1.0","source":null,"manifest_path":"{o}/Cargo.toml"}},
+                  {{"id":"a","name":"a","version":"1.0.0","source":"registry+x","manifest_path":"{o}/a/Cargo.toml"{l}}}
+                ],
+                "resolve":{{"root":"ws","nodes":[
+                  {{"id":"ws","deps":[{{"pkg":"a","dep_kinds":[{{"kind":null}}]}}]}},
+                  {{"id":"a","deps":[]}}]}}
+            }}"#,
+            o = ordner.display(),
+            l = lizenz,
+        );
+        lesen(&json).unwrap()
+    }
+
+    fn nur_a() -> Auswahl {
+        Auswahl { enthalten: vec!["a".to_string()], ausnahmen: vec![] }
+    }
+
+    #[test]
+    fn lizenztext_liest_datei_im_ordner() {
+        let ordner = tempfile::tempdir().unwrap();
+        std::fs::write(ordner.path().join("LICENSE-MIT"), "MIT TEXT\n").unwrap();
+        std::fs::write(ordner.path().join("README.md"), "kein Lizenztext\n").unwrap();
+
+        let text = lizenztext_lesen(ordner.path(), None).unwrap();
+        assert!(text.contains("MIT TEXT"), "gelesener Text: {text}");
+        assert!(!text.contains("kein Lizenztext"), "README wird nicht gelesen");
+    }
+
+    #[test]
+    fn lizenztext_nimmt_lizenz_datei_wenn_gesetzt() {
+        let ordner = tempfile::tempdir().unwrap();
+        std::fs::write(ordner.path().join("LICENSE-MIT"), "MIT TEXT\n").unwrap();
+        std::fs::write(ordner.path().join("NOTICE"), "NOTICE TEXT\n").unwrap();
+
+        let text = lizenztext_lesen(ordner.path(), Some("NOTICE")).unwrap();
+        assert!(text.contains("NOTICE TEXT"));
+        assert!(!text.contains("MIT TEXT"), "nur die benannte Datei: {text}");
+    }
+
+    #[test]
+    fn fehlender_lizenztext_ist_ein_fehler() {
+        let ordner = tempfile::tempdir().unwrap();
+        std::fs::write(ordner.path().join("README.md"), "kein Lizenztext\n").unwrap();
+        assert!(matches!(
+            lizenztext_lesen(ordner.path(), None).unwrap_err(),
+            Fehler::KeinLizenztext { .. }
+        ));
+    }
+
+    #[test]
+    fn enthaltene_baut_vier_felder() {
+        let ordner = tempfile::tempdir().unwrap();
+        let paket_ordner = ordner.path().join("a");
+        std::fs::create_dir(&paket_ordner).unwrap();
+        std::fs::write(paket_ordner.join("LICENSE"), "Copyright 2026 Ada\n").unwrap();
+
+        let md = graph_mit_a(ordner.path(), r#", "license":"MIT""#);
+        let pakete = enthaltene(&md, &nur_a()).unwrap();
+        assert_eq!(pakete.len(), 1);
+        assert_eq!(pakete[0].name, "a");
+        assert_eq!(pakete[0].version, "1.0.0");
+        assert_eq!(pakete[0].lizenz, "MIT");
+        assert!(pakete[0].urhebertext.contains("Copyright 2026 Ada"));
+    }
+
+    #[test]
+    fn paket_ohne_lizenzangabe_ist_ein_fehler_mit_namen() {
+        let ordner = tempfile::tempdir().unwrap();
+        std::fs::create_dir(ordner.path().join("a")).unwrap();
+        let md = graph_mit_a(ordner.path(), "");
+        match enthaltene(&md, &nur_a()).unwrap_err() {
+            Fehler::PaketOhneLizenz { paket } => assert_eq!(paket, "a 1.0.0"),
+            andere => panic!("erwartet PaketOhneLizenz, war {andere:?}"),
+        }
     }
 }
