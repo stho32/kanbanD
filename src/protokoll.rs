@@ -167,7 +167,7 @@ impl Protokoll {
             Senke::Sammler(sammler) => sammler.lock().unwrap_or_else(|e| e.into_inner()).push(text),
             Senke::Betrieb(senke) => {
                 // stderr läuft weiter, auch wenn die Datei ruht (N1.2 Regel 3)
-                eprintln!("{text}");
+                stderr_zeile(&text);
                 senke.lock().unwrap_or_else(|e| e.into_inner()).schreiben(self.uhr.heute(), &text);
             }
             Senke::Stumm => {}
@@ -178,6 +178,12 @@ impl Protokoll {
     pub fn panik_hook_installieren(&self) {
         panik_hook(self.clone());
     }
+}
+
+/// Eine Zeile auf stderr; ein Fehler der Ausgabe (EPIPE bei geschlossenem Kanal, EIO, ENOSPC) wird verworfen — das
+/// Protokoll stoppt nie (N1.2 Regel 3). `eprintln!` würde dort panicken und den Dienst (und den Panik-Hook) mitnehmen.
+fn stderr_zeile(text: &str) {
+    let _ = writeln!(std::io::stderr().lock(), "{text}");
 }
 
 /// Setzt den Panik-Hook, der genau eine `EXCEPTION Panik`-Zeile mit dem Ort schreibt (N1.2 Regel 4, AK 21).
@@ -260,7 +266,7 @@ impl Dateisenke {
         }
         if self.tag != Some(heute) {
             if let Err(e) = self.wechseln(heute) {
-                eprintln!("Protokoll: Log-Ordner {} ist nicht schreibbar ({e}) — bis zur nächsten Rotation ruht die Datei-Senke", self.ordner.display());
+                stderr_zeile(&format!("Protokoll: Log-Ordner {} ist nicht schreibbar ({e}) — bis zur nächsten Rotation ruht die Datei-Senke", self.ordner.display()));
                 self.ruht = true;
                 return;
             }
@@ -270,7 +276,7 @@ impl Dateisenke {
             None => return,
         };
         if let Err(e) = ergebnis {
-            eprintln!("Protokoll: Log-Ordner {} ist nicht schreibbar ({e}) — bis zur nächsten Rotation ruht die Datei-Senke", self.ordner.display());
+            stderr_zeile(&format!("Protokoll: Log-Ordner {} ist nicht schreibbar ({e}) — bis zur nächsten Rotation ruht die Datei-Senke", self.ordner.display()));
             self.ruht = true;
         }
     }
