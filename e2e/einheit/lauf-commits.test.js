@@ -755,7 +755,7 @@ test('R00268 AK 2 · B1465: der zusammengefasste Knopf behält Stelle, Sprungmar
   assert.deepStrictEqual([knoepfe[1].anteil, knoepfe[1].anzahl, knoepfe[1].ziel], [0.5, 4, 'lv-cm3']);
 });
 
-test('R00268 AK 2 · B1465: Randform — wo die Beschriftung sonst aus der Achse ragte, steht die Stelle an ihrer eigenen Strichstelle', () => {
+test('R00268 AK 2 · B1465: Randform — wo die Beschriftung sonst aus der Achse ragt, steht die Stelle an ihrer eigenen Strichstelle', () => {
   const knoepfe = stricheVerdichten([strich(0), strich(0.5), strich(1)], [60, 60, 60], 300);
   assert.deepStrictEqual(knoepfe.map(k => k.rand), ['links', null, 'rechts']);
 });

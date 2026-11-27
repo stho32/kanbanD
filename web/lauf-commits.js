@@ -301,7 +301,7 @@
    * der Randform mitgerechnet (`.an` dehnt die Beschriftung am Anfang nach rechts, `.re` am Ende nach links). Der
    * zusammengefasste Knopf behält Stelle (`anteil` des ersten Strichs), Sprungmarke, Kurzhash und Titel, zählt `anzahl` = Summe
    * der Marker und `strichZahl` = Zahl der zusammengefassten Striche; seine Breite ist die größte der zusammengefassten. `rand`
-   * nennt die Stelle, deren Beschriftung sonst aus der Achse ragte (`'links'` für den Anfang, `'rechts'` für den Spiegel). Nach
+   * nennt die Stelle, deren Beschriftung sonst aus der Achse ragt (`'links'` für den Anfang, `'rechts'` für den Spiegel). Nach
    * `STRICHE` Knöpfen endet die Liste.
    */
   function stricheVerdichten(striche, breitenPx, achsenBreitePx) {
@@ -338,7 +338,7 @@
     return { links: mitte - breite / 2, rechts: mitte + breite / 2 };
   }
 
-  /** Wo die mittige Beschriftung aus der Achse ragte, wird sie an ihre eigene Strichstelle gelegt: `'links'` (Anfang) oder
+  /** Wo die mittige Beschriftung aus der Achse ragt, wird sie an ihre eigene Strichstelle gelegt: `'links'` (Anfang) oder
       `'rechts'` (Spiegel); sonst `null`. */
   function randForm(mitte, breite, achsenBreitePx) {
     if (mitte - breite / 2 < 0) return 'links';
