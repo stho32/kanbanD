@@ -345,7 +345,7 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     await expect(datei(page, pfad).locator('.df-k')).toHaveAttribute('aria-expanded', 'true');
   }
 
-  test('AK 1: feindlich.md, feindlich.html, feindlich.js — Text sofort, Ende ohne Farbe, kein Long Task über 150 ms; danach gut.rs gefärbt', async ({ page }) => {
+  test('AK 1: feindlich.md, feindlich.html, feindlich.js — Text sofort, Ende ohne Farbe; danach gut.rs gefärbt', async ({ page }) => {
     test.setTimeout(60000);
     const b = beobachten(page);
     await langeAufgabenBeobachten(page);
@@ -362,7 +362,8 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
       expect(texte.every(t => t.length === 'hinzugefügt: '.length + 999), pfad).toBe(true);
       expect(await farbeAbwarten(page, pfad), pfad).toBe('nein');
       expect(await bereich(page, pfad).locator('[class^="tk-"]').count(), pfad).toBe(0);
-      expect(await langeSeit(page, t0, pfad), `${pfad}: Long Tasks über 150 ms`).toEqual([]);
+      // Long Tasks als Beobachtung ohne Grenze (R00260): das Wanduhr-Maß misst die Lastprobe, nicht das Gate
+      await langeSeit(page, t0, pfad);
     }
     expect(await aufklappenUndWarten(page, 'gut.rs')).toBe('ja');
     await expect(bereich(page, 'gut.rs').locator('.tk-keyword', { hasText: 'fn' })).toHaveCount(1);
@@ -370,7 +371,7 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     expect(b.fehler).toEqual([]);
   });
 
-  test('AK 1: lang.rs (10.000 Zeilen über „Änderungen anzeigen“) endet gefärbt, `let` in Zeile 1 und 10.000, kein Long Task über 150 ms', async ({ page }) => {
+  test('AK 1: lang.rs (10.000 Zeilen über „Änderungen anzeigen“) endet gefärbt, `let` in Zeile 1 und 10.000', async ({ page }) => {
     test.setTimeout(60000);
     await langeAufgabenBeobachten(page);
     await page.goto(reviewAdresse(k, 4));
@@ -390,7 +391,8 @@ test.describe('R00217 Syntaxfarben in der Review-Seite', () => {
     });
     // 10.000 Zeilen und der Hunk-Kopf sind 10.001 Patch-Zeilen, also 21 Blöcke zu höchstens 500
     expect(ersteUndLetzte).toEqual([10000, ['let'], ['let'], 21]);
-    expect(await langeSeit(page, tLaeuft, 'lang.rs ab laeuft'), 'Long Tasks über 150 ms ab data-farbe="laeuft"').toEqual([]);
+    // Long Tasks ab `data-farbe="laeuft"` als Beobachtung ohne Grenze (R00260): das Wanduhr-Maß misst die Lastprobe
+    await langeSeit(page, tLaeuft, 'lang.rs ab laeuft');
   });
 
   /** Eine Rust-Datei mit genau `laenge` Zeichen Patch, Zeilen höchstens 1.000 Zeichen, jede beginnt mit `fn`. */
