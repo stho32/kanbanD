@@ -282,6 +282,23 @@ fn letzte_zeile(probe: &Probe) -> String {
     probe.zeilen().last().cloned().unwrap_or_default()
 }
 
+// ---- AK 4: ein gescheiterter Commit ist genau eine ERROR-Zeile ---------------------------------------------
+
+#[tokio::test]
+async fn ak4_ein_gescheiterter_commit_ist_genau_eine_error_zeile() {
+    let probe = Probe::neu();
+    // Das Board-Repository unbrauchbar machen: `git add` scheitert, die schreibende Aktion meldet 500 (intern).
+    std::fs::remove_dir_all(probe.ordner().join(".git")).unwrap();
+    let (status, rumpf) = probe.rufen("PATCH", "api/aufgaben/1", "cl", Some(json!({"titel": "neu"}))).await;
+    assert_eq!(status, 500, "{}", rumpf);
+    let zeilen = probe.zeilen();
+    assert_eq!(zeilen.iter().filter(|z| z.contains(" ERROR fehlgeschlagen ")).count(), 1, "{zeilen:?}");
+    assert_eq!(zeilen.iter().filter(|z| z.contains(" WARN abgewiesen ")).count(), 0, "{zeilen:?}");
+    let zeile = zeilen.iter().find(|z| z.contains(" ERROR fehlgeschlagen ")).unwrap();
+    assert!(zeile.contains("status=500") && zeile.contains("ursache=intern"), "{zeile}");
+    assert!(zeile.contains("wer=cl") && zeile.contains("methode=PATCH") && zeile.contains("aufgabe=#1"), "{zeile}");
+}
+
 // ---- AK 5: Abweisung ohne Fehler von kanbanD ---------------------------------------------------------------
 
 #[tokio::test]

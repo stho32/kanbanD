@@ -2274,18 +2274,21 @@ mod tests {
         assert!(!felder.iter().any(|(n, _)| *n == "wer"), "ohne Header kein wer: {felder:?}");
     }
 
-    // R00258 AK 3: drei Abweisungen an der Zeitgrenze ergeben drei Zeilen mit derselben Ursache
+    // R00258 AK 3: je 503-Grund (Zeitgrenze, Lesegrenze, Antwortbudget) drei Abweisungen → drei Zeilen mit der Ursache
+    // aus `Fehler::ursache()`, nie aus dem Meldungstext.
     #[test]
-    fn ak3_drei_abweisungen_an_der_zeitgrenze_ergeben_drei_zeilen() {
+    fn ak3_drei_abweisungen_je_503_grund_ergeben_drei_zeilen() {
         use crate::fehler::Ursache;
-        let (protokoll, sammler) = crate::protokoll::Protokoll::sammler();
-        let g = Abweisungsgrund { ursache: Ursache::Zeitgrenze, grund: "Git antwortete nicht in 10 s".to_string() };
-        for _ in 0..3 {
-            let (stufe, ereignis, felder) = abweisungszeile(StatusCode::SERVICE_UNAVAILABLE, "GET", Some("/api/aufgaben/{nr}/commits"), Some(1), Some("cl"), None, Anfragezettel::default(), Some(&g)).unwrap();
-            protokoll.schreiben(stufe, ereignis, &felder);
+        for (ursache, text) in [(Ursache::Zeitgrenze, "zeitgrenze"), (Ursache::Lesegrenze, "lesegrenze"), (Ursache::Antwortbudget, "antwortbudget")] {
+            let (protokoll, sammler) = crate::protokoll::Protokoll::sammler();
+            let g = Abweisungsgrund { ursache, grund: "Git antwortete nicht in 10 s".to_string() };
+            for _ in 0..3 {
+                let (stufe, ereignis, felder) = abweisungszeile(StatusCode::SERVICE_UNAVAILABLE, "GET", Some("/api/aufgaben/{nr}/commits"), Some(1), Some("cl"), None, Anfragezettel::default(), Some(&g)).unwrap();
+                protokoll.schreiben(stufe, ereignis, &felder);
+            }
+            let zeilen = sammler.lock().unwrap();
+            assert_eq!(zeilen.iter().filter(|z| z.contains(" WARN abgewiesen ") && z.contains("status=503") && z.contains(&format!("ursache={text}"))).count(), 3, "{text}: {zeilen:?}");
         }
-        let zeilen = sammler.lock().unwrap();
-        assert_eq!(zeilen.iter().filter(|z| z.contains(" WARN abgewiesen ") && z.contains("status=503") && z.contains("ursache=zeitgrenze")).count(), 3, "{zeilen:?}");
     }
 
     // R00258 AK 12: der Kopfwert wird vor dem Schreiben auf 32 Zeichen gekürzt

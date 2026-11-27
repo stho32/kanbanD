@@ -1244,3 +1244,4 @@ Nie vom User erfragen.
 | 2026-11-26 | Karte #235 R00259 | B1392 Mutanten m1/m2 getötet, Abnahme-Probe S2 im echten Programm, volles Gate | Standard | 1-2h | 1,0h | 1,0h | autonom |
 | 2026-11-27 | Karte #239 R00258 | Nacharbeit 1: Werte aus Rumpf/Query im Log nur als Länge (Meldung-Typ, modell+dienst) | Standard | 1-2h | 1,5h | 1,5h | autonom |
 | 2026-11-27 | Karte #239 R00258 | Nacharbeit 1: geschlossener stderr-Kanal stürzt den Dienst nicht ab (stderr_zeile) | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #239 R00258 | Nacharbeit 1: AK 4 über den Router (500/ERROR/intern), AK 3 auf drei 503-Gründe erweitert | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
