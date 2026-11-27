@@ -1513,7 +1513,7 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
    Blättern und Summe rollen in `#review`. */
 .rv-kopf{position:relative;flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3) var(--kd-s4);padding:var(--kd-s3) var(--kd-s5);background:var(--kd-surface);border-bottom:1px solid var(--kd-line-strong)}
 .rv-leiste{display:flex;flex-wrap:wrap;align-items:center;gap:var(--kd-s3) var(--kd-s4);padding:var(--kd-s3) var(--kd-s5);background:var(--kd-surface);border-bottom:1px solid var(--kd-line-strong)}
-.rv .btn{height:auto;min-block-size:max(var(--kd-row),var(--kd-ziel))}
+.rv .btn,.rv-kopf .btn{height:auto;min-block-size:max(var(--kd-row),var(--kd-ziel))}
 .bl{display:grid;grid-template-columns:96px minmax(0,1fr) 96px;align-items:center;gap:var(--kd-s3);min-width:0;flex:1 1 360px;max-width:600px}
 .bl .bl-k{justify-content:center;inline-size:100%;padding:0 var(--kd-s3)}
 .bl-s{font-size:16px;line-height:1;color:var(--kd-text)}
@@ -1694,6 +1694,11 @@ mark.wm{color:inherit;padding:0;background:none}
 .rv-ce .t{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .rv-ce .z2{font:11.5px/1.3 var(--kd-mono);color:var(--kd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rv-chip{display:inline-flex;align-items:center;flex:none;max-width:100%;min-block-size:18px;padding:0 5px;border:1px solid var(--kd-accent);background:var(--kd-accent-weak);color:var(--kd-accent-ink);font:500 11px/1 var(--kd-mono);white-space:nowrap;overflow:hidden;box-sizing:border-box}
+/* „Zum Code“ (R00245 FA 14, R00266 FA 2): seit der Karte #270 das **erste** Element des angehefteten Kopfs, nur bei Tastaturfokus
+   sichtbar — als Schicht über dem Kopf, damit die Höhe nie vom Fokus abhängt (PO Z. 738). */
+.rv-kopf .rv-zc{position:absolute;z-index:3;inset-block-start:var(--kd-s3);inset-inline-start:var(--kd-s5);display:inline-flex;align-items:center;min-block-size:max(26px,var(--kd-ziel));padding:0 var(--kd-s3);background:var(--kd-surface);border:1px solid var(--kd-line-strong);font-size:12px;font-weight:500;color:var(--kd-accent-ink);text-decoration:underline;text-underline-offset:2px}
+.rv-kopf .rv-zc:not(:focus-visible){inline-size:1px;block-size:1px;min-block-size:0;min-inline-size:0;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.rv-kopf .rv-zc:focus-visible{outline:2px solid var(--kd-accent);outline-offset:-2px;box-shadow:var(--kd-shadow)}
 @media (max-width:599.98px){
   .rv-ls{padding:var(--kd-s2) var(--kd-s4)}
   .rv-ls ul{flex-direction:column;flex-wrap:nowrap}
@@ -1745,6 +1750,8 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
   .rv-rail{border-right:0;border-bottom:1px solid var(--kd-line)}
 }
 @media (max-width:640px){
+  .rv-kopf{padding:var(--kd-s3) var(--kd-s4)}
+  .rv-kopf .rv-zc{inset-inline-start:var(--kd-s4)}
   .rv-leiste{padding:var(--kd-s3) var(--kd-s4)}
   .bl{grid-template-columns:max(var(--kd-row),var(--kd-ziel)) minmax(0,1fr) max(var(--kd-row),var(--kd-ziel));flex:1 1 100%;max-width:none}
   .bl .bl-k{padding:0}
