@@ -204,3 +204,25 @@ test('R00268 FA 1: mehr als 100 Stellen werden gekürzt — die Ansage nennt gez
   assert.strictEqual((html.match(/class="lv-ckb"/g) || []).length, 100);
   assert.match(html, /aria-label="Zeitachse: Werkzeuge [^"]*, 100 von 101 Commits"/);
 });
+
+test('R00268 FA 1 · AK 8: die Kürzungsansage trennt die Marker der gezeigten Stellen von allen Markern — „102 von 103“', () => {
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', um(1)), e(2, 'werkzeugergebnis', 'werkzeug', um(2))], false);
+  const stellen = Array.from({ length: 101 }, (_, i) => ({ schrittNr: i + 1, anteil: i / 101, art: 'link', kurzhash: 'abc1234', titel: 'Titel', anzahl: i === 0 ? 3 : 1, ziel: `lv-cm${i + 1}` }));
+  const anzeige = stricheAnzeigen(stellen);
+  assert.strictEqual(anzeige.stellen.length, 100, 'höchstens 100 gezeigte Stellen');
+  assert.strictEqual(anzeige.gezeigt, 102, 'die Marker der gezeigten Stellen: 3 an Stelle 1, je 1 an den übrigen 99');
+  assert.strictEqual(anzeige.gesamt, 103, 'alle Marker einschließlich der weggelassenen Stelle');
+  assert.match(laufZeitachseHtml(a, anzeige), /aria-label="Zeitachse: Werkzeuge [^"]*, 102 von 103 Commits"/);
+});
+
+test('R00268 FA 1 · AK 8: eine Stelle mit 101 Markern — gezeigt = gesamt = 101, genau ein Knopf, „101 Commits“', () => {
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', um(1)), e(2, 'werkzeugergebnis', 'werkzeug', um(2))], false);
+  const stellen = [{ schrittNr: 2, anteil: 0.5, art: 'link', kurzhash: 'abc1234', titel: 'Titel', anzahl: 101, ziel: 'lv-cm1' }];
+  const anzeige = stricheAnzeigen(stellen);
+  assert.strictEqual(anzeige.gezeigt, 101, 'die Marker der einen gezeigten Stelle');
+  assert.strictEqual(anzeige.gesamt, 101);
+  const html = laufZeitachseHtml(a, anzeige);
+  assert.strictEqual((html.match(/class="lv-ckb"/g) || []).length, 1, 'genau ein Knopf');
+  assert.match(html, /aria-label="Zeitachse: Werkzeuge [^"]*, 101 Commits"/);
+  assert.doesNotMatch(html, /101 von 101/);
+});
