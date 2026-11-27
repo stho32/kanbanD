@@ -186,6 +186,21 @@ fn stderr_zeile(text: &str) {
     let _ = writeln!(std::io::stderr().lock(), "{text}");
 }
 
+/// Öffnet die laufende Protokolldatei zum Anhängen. Auf Unix nur für den Eigentümer lesbar und schreibbar (0600) und
+/// ohne einem Symlink zu folgen (`O_NOFOLLOW`) — sonst könnte ein Symlink im Log-Ordner die Protokolldatei umlenken
+/// (Sicherheitsbefund #239, Optional). Kein `libc` im Baum (ADR-0001 N1.1); `O_NOFOLLOW` ist auf allen Linux-ABIs
+/// `0o400000`.
+fn datei_oeffnen(pfad: &std::path::Path) -> std::io::Result<std::fs::File> {
+    let mut optionen = std::fs::OpenOptions::new();
+    optionen.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        optionen.mode(0o600).custom_flags(0o400000);
+    }
+    optionen.open(pfad)
+}
+
 /// Setzt den Panik-Hook, der genau eine `EXCEPTION Panik`-Zeile mit dem Ort schreibt (N1.2 Regel 4, AK 21).
 /// Der Text der Panik steht nie darin (er kann Inhalt tragen).
 pub fn panik_hook(protokoll: Protokoll) {
@@ -224,6 +239,11 @@ pub fn im_format(wert: &str) -> String {
             '\n' => s.push_str("\\n"),
             '\r' => s.push_str("\\u{d}"),
             '\t' => s.push_str("\\u{9}"),
+            // Unicode-Zeilentrenner (brechen die Zeile in manchen Lesern) und das Bidi-Override (spoofing): escaped,
+            // obwohl sie keine Steuerzeichen sind (Sicherheitsbefund #239, Optional).
+            '\u{2028}' => s.push_str("\\u{2028}"),
+            '\u{2029}' => s.push_str("\\u{2029}"),
+            '\u{202e}' => s.push_str("\\u{202e}"),
             c if c.is_control() => s.push_str(&format!("\\u{{{:x}}}", c as u32)),
             c => s.push(c),
         }
@@ -232,9 +252,10 @@ pub fn im_format(wert: &str) -> String {
     s
 }
 
-/// Muss dieser Wert in Anführungszeichen und escaped werden? Leerzeichen (auch geschützte), Steuerzeichen, `"` und `\`.
+/// Muss dieser Wert in Anführungszeichen und escaped werden? Leerzeichen (auch geschützte), Steuerzeichen, `"` und `\`
+/// sowie die Zeilentrenner U+2028/U+2029 und das Bidi-Override U+202E.
 fn muss_escaped_werden(c: char) -> bool {
-    c.is_whitespace() || c.is_control() || c == '"' || c == '\\'
+    c.is_whitespace() || c.is_control() || c == '"' || c == '\\' || matches!(c, '\u{2028}' | '\u{2029}' | '\u{202e}')
 }
 
 /// `…` auf höchstens `grenze` Zeichen; ein Wert an der Grenze bleibt unverändert.
@@ -294,7 +315,7 @@ impl Dateisenke {
         }
         std::fs::create_dir_all(&self.ordner)?;
         self.aufraeumen(heute);
-        self.datei = Some(std::fs::OpenOptions::new().create(true).append(true).open(&self.pfad)?);
+        self.datei = Some(datei_oeffnen(&self.pfad)?);
         self.tag = Some(heute);
         Ok(())
     }
@@ -346,6 +367,9 @@ mod tests {
             ("a\rb", "\"a\\u{d}b\""),
             ("a\tb", "\"a\\u{9}b\""),
             ("a\u{1b}b", "\"a\\u{1b}b\""),
+            ("a\u{2028}b", "\"a\\u{2028}b\""),
+            ("a\u{2029}b", "\"a\\u{2029}b\""),
+            ("a\u{202e}b", "\"a\\u{202e}b\""),
         ] {
             assert_eq!(im_format(eingabe), erwartet, "{eingabe:?}");
         }
@@ -429,6 +453,26 @@ mod tests {
         protokoll.schreiben(Stufe::Info, Ereignis::Gestartet, &[("ordner", "/b".into())]);
         assert!(!ordner.join("kanbanD.log.2026-11-12").exists(), "27 − 12 = 15 Tage → weg");
         assert!(ordner.join("kanbanD.log.2026-11-13").exists(), "27 − 13 = 14 Tage → bleibt");
+    }
+
+    // Sicherheitsbefund #239 (Optional): die Datei entsteht mit 0600; einem Symlink an ihrer Stelle wird nicht gefolgt
+    #[cfg(unix)]
+    #[test]
+    fn die_logdatei_ist_privat_und_folgt_keinem_symlink() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let ordner = tmp.path().join("log");
+        std::fs::create_dir_all(&ordner).unwrap();
+        Protokoll::betrieb(Stufe::Info, &ordner).schreiben(Stufe::Info, Ereignis::Gestartet, &[]);
+        let rechte = std::fs::metadata(ordner.join(DATEINAME)).unwrap().permissions().mode() & 0o777;
+        assert_eq!(rechte, 0o600, "nur der Eigentümer liest und schreibt");
+        // Ein Symlink an der Stelle der Datei: die Senke folgt ihm nicht, die fremde Datei bleibt leer.
+        let fremd = tmp.path().join("fremd.log");
+        std::fs::write(&fremd, "").unwrap();
+        std::fs::remove_file(ordner.join(DATEINAME)).unwrap();
+        std::os::unix::fs::symlink(&fremd, ordner.join(DATEINAME)).unwrap();
+        Protokoll::betrieb(Stufe::Info, &ordner).schreiben(Stufe::Info, Ereignis::Gestartet, &[]);
+        assert_eq!(std::fs::read_to_string(&fremd).unwrap(), "", "dem Symlink wird nicht gefolgt");
     }
 
     // AK 21: der Panik-Hook schreibt genau eine Zeile mit dem Ort, ohne den Text der Panik
