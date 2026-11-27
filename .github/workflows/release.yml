@@ -131,10 +131,13 @@ jobs:
           VERSION: ${{ needs.vorbereiten.outputs.version }}
         run: sed -i "0,/^version = .*/s//version = \"${VERSION}\"/" Cargo.toml
 
+      # Die committete Hinweisdatei darf nicht veralten (ADR-0045 Q1): neu erzeugen und vergleichen.
+      - name: Lizenzhinweise prüfen
+        run: cargo run --features lizenzen --example lizenzen -- --pruefen
+
       # Die Oberfläche ist per include_bytes! eingebettet — das Programm ist eine einzige Datei.
       - name: Bauen
         run: cargo build --release
-
       - name: Archiv packen
         id: packen
         env:

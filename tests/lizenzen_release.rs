@@ -29,3 +29,16 @@ fn readme_nennt_den_ort_der_hinweise() {
     let readme = lies("README.md");
     assert!(readme.contains("/web/LIZENZEN.md"), "README.md nennt /web/LIZENZEN.md");
 }
+
+#[test]
+fn release_hat_den_pruefschritt() {
+    let yml = lies(".github/workflows/release.yml");
+    let schritt = yml
+        .lines()
+        .find(|z| z.contains("--pruefen"))
+        .expect("der Release-Ablauf ruft lizenzen --pruefen auf");
+    assert!(
+        schritt.contains("lizenzen"),
+        "der Prüfschritt ruft den Generator: {schritt}"
+    );
+}

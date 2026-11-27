@@ -327,6 +327,75 @@ pub fn ausnahmen(komplett: &Metadaten, auswahl: &Auswahl) -> Vec<Ausnahme> {
         .collect()
 }
 
+/// Die Paketmengen einer Hinweisdatei.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Mengen {
+    enthalten: BTreeSet<(String, String)>,
+    ausgenommen: BTreeSet<(String, String)>,
+}
+
+/// Liest die Abschnitte „Enthaltene Pakete“ und „Ausgenommene Pakete“ einer Hinweisdatei.
+fn mengen(text: &str) -> Mengen {
+    let mut mengen = Mengen::default();
+    let mut abschnitt = "";
+    for zeile in text.lines() {
+        if zeile.starts_with("## Enthaltene Pakete") {
+            abschnitt = "enthalten";
+            continue;
+        }
+        if zeile.starts_with("## Ausgenommene Pakete") {
+            abschnitt = "ausgenommen";
+            continue;
+        }
+        if abschnitt == "ausgenommen" {
+            if let Some(rest) = zeile.strip_prefix("| ") {
+                let felder: Vec<&str> = rest.split('|').map(str::trim).collect();
+                if felder.len() >= 4 && !felder[0].is_empty() && felder[0] != "Paket" && !felder[0].starts_with("---") {
+                    mengen.ausgenommen.insert((felder[0].to_string(), felder[1].to_string()));
+                }
+            }
+        } else if abschnitt == "enthalten" {
+            if let Some(kopf) = zeile.strip_prefix("### ") {
+                let teile: Vec<&str> = kopf.split_whitespace().collect();
+                if teile.len() == 2 {
+                    mengen.enthalten.insert((teile[0].to_string(), teile[1].to_string()));
+                }
+            }
+        }
+    }
+    mengen
+}
+
+/// Vergleicht die committete Hinweisdatei mit dem frisch erzeugten Inhalt.
+///
+/// Sind die Inhalte verschieden, nennt der Fehler, welche Pakete in der einen Fassung
+/// fehlen bzw. unerwartet stehen — ein veralteter Stand wird so ohne Nachzählen sichtbar
+/// (R00263 AK 6, ADR-0045 Q1).
+pub fn pruefen(datei: &str, frisch: &str) -> Result<(), Vec<String>> {
+    if datei == frisch {
+        return Ok(());
+    }
+    let alt = mengen(datei);
+    let neu = mengen(frisch);
+    let mut namen = Vec::new();
+    for (n, v) in neu.enthalten.difference(&alt.enthalten) {
+        namen.push(format!("fehlt in der Datei: {n} {v}"));
+    }
+    for (n, v) in alt.enthalten.difference(&neu.enthalten) {
+        namen.push(format!("unerwartet in der Datei: {n} {v}"));
+    }
+    for (n, v) in neu.ausgenommen.difference(&alt.ausgenommen) {
+        namen.push(format!("fehlt in den Ausnahmen: {n} {v}"));
+    }
+    for (n, v) in alt.ausgenommen.difference(&neu.ausgenommen) {
+        namen.push(format!("unerwartet in den Ausnahmen: {n} {v}"));
+    }
+    if namen.is_empty() {
+        namen.push("Inhalt weicht ab (Lizenztext, Reihenfolge oder Format)".to_string());
+    }
+    Err(namen)
+}
+
 /// Formt die enthaltenen und ausgenommenen Pakete zu `web/LIZENZEN.md`.
 pub fn formatiere(pakete: &[Paket], ausnahmen: &[Ausnahme]) -> String {
     let mut text = String::new();
@@ -563,5 +632,47 @@ mod tests {
         assert!(text.contains("Copyright 2026 Ada"), "Urhebertext");
         assert!(text.contains("## Ausgenommene Pakete"), "Ausnahmenabschnitt");
         assert!(text.contains("| b | 2.0.0 | dev |"), "Ausnahmenzeile: {text}");
+    }
+
+    const FRISCH: &str = concat!(
+        "## Enthaltene Pakete\n\n",
+        "### a 1.0.0\nLizenz: MIT\nUrhebertext:\n\ntext a\n\n",
+        "### b 2.0.0\nLizenz: MIT\nUrhebertext:\n\ntext b\n\n",
+        "## Ausgenommene Pakete\n\n",
+        "| Paket | Version | Grund |\n| --- | --- | --- |\n",
+        "| c | 3.0.0 | dev |\n",
+    );
+
+    #[test]
+    fn pruefen_gleich_ist_ok() {
+        assert!(pruefen(FRISCH, FRISCH).is_ok());
+    }
+
+    #[test]
+    fn pruefen_nennt_fehlendes_paket() {
+        // M1-Form: ein Eintrag fehlt in der committeten Datei.
+        let datei = FRISCH.replace("### b 2.0.0\nLizenz: MIT\nUrhebertext:\n\ntext b\n\n", "");
+        assert_ne!(datei, FRISCH, "die Mutation muss greifen");
+
+        let namen = pruefen(&datei, FRISCH).unwrap_err();
+        assert!(
+            namen.iter().any(|n| n.contains("fehlt in der Datei: b 2.0.0")),
+            "der fehlende Name steht in der Meldung: {namen:?}"
+        );
+    }
+
+    #[test]
+    fn pruefen_nennt_paket_in_den_ausnahmen() {
+        // M2-Form: ein enthaltenes Paket steht von Hand in der Ausnahmetabelle.
+        let datei = FRISCH
+            .replace("### b 2.0.0\nLizenz: MIT\nUrhebertext:\n\ntext b\n\n", "")
+            .replace("| c | 3.0.0 | dev |", "| b | 2.0.0 | dev |\n| c | 3.0.0 | dev |");
+        assert_ne!(datei, FRISCH, "die Mutation muss greifen");
+
+        let namen = pruefen(&datei, FRISCH).unwrap_err();
+        assert!(
+            namen.iter().any(|n| n.contains("unerwartet in den Ausnahmen: b 2.0.0")),
+            "das falsch ausgenommene Paket steht in der Meldung: {namen:?}"
+        );
     }
 }

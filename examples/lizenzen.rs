@@ -6,7 +6,7 @@
 //! Das Beispiel ist absichtlich kein installiertes Kommando: `cargo install --path`
 //! und ein Release-Bau ohne das Feature `lizenzen` sehen es nicht.
 
-use kanband::lizenzen::{ausnahmen, auswahl, enthaltene, formatiere, lesen, Metadaten};
+use kanband::lizenzen::{ausnahmen, auswahl, enthaltene, formatiere, lesen, pruefen, Metadaten};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -16,6 +16,7 @@ const ZIELE: &[&str] = &["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"];
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let wurzel = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let nur_pruefen = std::env::args().any(|a| a == "--pruefen");
 
     let komplett = metadaten(&cargo, &[])?;
     let mut plattformen = Vec::new();
@@ -26,9 +27,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auswahl = auswahl(&komplett, &plattformen.iter().collect::<Vec<_>>());
     let pakete = enthaltene(&komplett, &auswahl)?;
     let ausnahmen = ausnahmen(&komplett, &auswahl);
+    let inhalt = formatiere(&pakete, &ausnahmen);
 
     let ziel = wurzel.join("web").join("LIZENZEN.md");
-    std::fs::write(&ziel, formatiere(&pakete, &ausnahmen))?;
+    if nur_pruefen {
+        let datei = std::fs::read_to_string(&ziel)
+            .map_err(|e| format!("{} nicht lesbar: {e}", ziel.display()))?;
+        if let Err(namen) = pruefen(&datei, &inhalt) {
+            eprintln!("web/LIZENZEN.md ist veraltet — neu erzeugen mit");
+            eprintln!("  cargo run --features lizenzen --example lizenzen");
+            for name in namen {
+                eprintln!("  {name}");
+            }
+            std::process::exit(1);
+        }
+        eprintln!("web/LIZENZEN.md ist aktuell ({} Pakete, {} Ausnahmen).", pakete.len(), ausnahmen.len());
+        return Ok(());
+    }
+
+    std::fs::write(&ziel, inhalt)?;
     eprintln!("{} Pakete, {} Ausnahmen → {}", pakete.len(), ausnahmen.len(), ziel.display());
     Ok(())
 }
