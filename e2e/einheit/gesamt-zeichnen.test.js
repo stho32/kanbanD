@@ -179,10 +179,12 @@ test('Leiste: verwaist mit der Marke „auf keinem Zweig“ nach dem Kurz-Hash u
   assert.match(html, /aria-label="Commit kd:ddddddd, V, 22.11. 03:19, 1 Zeile hinzugefügt, 0 entfernt, auf keinem Zweig, zählt nicht in den Zahlen von Alle Änderungen"/);
 });
 
-test('Leiste: „Zum Code“ erst ab 9 Einträgen, als erstes Element der Leiste', () => {
+test('Kopf: „Zum Code“ erst ab 9 Einträgen, als erstes Element des angehefteten Kopfs (R00266 FA 2)', () => {
   const viele = n => Array.from({ length: n }, (_, i) => listenEintrag(String.fromCharCode(97 + i), 'auf_zweig', 1, 0, `T${i}`));
-  assert.doesNotMatch(leiste(folgeDa(viele(7)), null), /Zum Code/);
-  assert.match(leiste(folgeDa(viele(8)), null), /<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite"><a class="rv-zc" id="rv-zc" href="#rv-insel" data-act="review-zum-code">Zum Code<\/a><ul>/);
+  assert.doesNotMatch(leiste(folgeDa(viele(7)), null), /Zum Code/, 'die Commit-Leiste traegt den Sprung nicht mehr');
+  assert.strictEqual(g.zumCodeHtml({ status: 'da', folge: folgeDa(viele(7)).folge }), '');
+  assert.strictEqual(g.zumCodeHtml({ status: 'laedt' }), '');
+  assert.strictEqual(g.zumCodeHtml({ status: 'da', folge: folgeDa(viele(8)).folge }), '<a class="rv-zc" id="rv-zc" href="#rv-insel" data-act="review-zum-code">Zum Code</a>');
 });
 
 test('Leiste: Chip über 16 Zeichen gekürzt mit vollem title; fremder Text nur als Text; die Ansage im einen Statusbereich', () => {

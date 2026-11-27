@@ -23,7 +23,8 @@ function seite(page) {
     /** Je Eintrag Zeile 1 und Zeile 2 als Text, mit „ · “ verbunden. */
     texte: async () => (await eintraege.evaluateAll(as => as.map(a => [...a.querySelectorAll(':scope > .z1, :scope > .z2')].map(z => z.textContent).join(' · ')))).map(leer),
     gezeigt: async () => eintraege.evaluateAll(as => as.flatMap((a, i) => (a.getAttribute('aria-current') === 'page' ? [i] : []))),
-    zumCode: () => leiste.getByRole('link', { name: 'Zum Code', exact: true }),
+    // R00266: „Zum Code“ ist das erste Element des angehefteten Kopfs, nicht mehr der Commit-Leiste
+    zumCode: () => page.locator('#rv-zc'),
     blaettern: () => page.getByRole('navigation', { name: 'Commits der Aufgabe, ältester zuerst' }),
     kopf: () => page.locator('.rv-commit'),
     ueberschrift: () => page.locator('.rv-commit h2'),
@@ -214,11 +215,12 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
     await commitOeffnen(page, k, 5, h.c2);
     await page.locator('#rv-rueckweg').focus();
     const folge = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 9; i++) {
       await page.keyboard.press('Tab');
       folge.push(await page.evaluate(() => document.activeElement.id));
     }
-    expect(folge).toEqual(['rv-u-alle', 'rv-l1', 'rv-l2', 'rv-l3', 'rv-zurueck', 'rv-vor', 'rv-alle']);
+    // R00266: der angeheftete Kopf steht vor der Commit-Leiste
+    expect(folge).toEqual(['rv-alle', 'rv-umbr', 'rv-nb', 'rv-u-alle', 'rv-l1', 'rv-l2', 'rv-l3', 'rv-zurueck', 'rv-vor']);
     await s.eintrag(h.c1).focus();
     await page.keyboard.press('Enter');
     await expect(s.pos()).toHaveText('1 von 3');

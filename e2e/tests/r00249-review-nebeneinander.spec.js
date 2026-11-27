@@ -17,9 +17,9 @@ const exakt = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const N = () => nebeneinanderRepository();
 
 function seite(page) {
-  const schalter = page.locator('#review .rv-leiste label.ru-sch').filter({ has: page.locator('#rv-nb') });
-  const eingabe = page.locator('#review .rv-leiste #rv-nb');
-  const umbrechen = page.locator('#review .rv-leiste #rv-umbr');
+  const schalter = page.locator('#rv-kopf label.ru-sch').filter({ has: page.locator('#rv-nb') });
+  const eingabe = page.locator('#rv-kopf #rv-nb');
+  const umbrechen = page.locator('#rv-kopf #rv-umbr');
   const datei = pfad => page.locator('#rv-insel section.df').filter({ has: page.locator('.df-k .p', { hasText: exakt(pfad) }) });
   const bereich = pfad => datei(pfad).locator('.df-sc');
   /** Die Tabellenzeile (ohne Kopf), deren Zelle genau `text` zeigt (ohne Lesetext). */
@@ -135,8 +135,8 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
       await s.datei('src/weg.rs').getByRole('checkbox', { name: /Gesehen/ }).check();
       await expect(page.locator('.rv-ges')).toContainText('1 von');
       await expect(s.bereich('src/n.rs').locator('td.c[data-z]').first()).toBeVisible();
-      await page.evaluate(() => { for (const e of [document.querySelector('#rv-insel .df-k'), document.querySelector('#rv-insel input[type=checkbox]'), document.getElementById('rv-nb'), document.querySelector('.rv-leiste')]) e.kdMarke = 'vorab'; });
-      const marker = () => page.evaluate(() => [document.querySelector('#rv-insel .df-k'), document.querySelector('#rv-insel input[type=checkbox]'), document.getElementById('rv-nb'), document.querySelector('.rv-leiste')].map(e => e.kdMarke));
+      await page.evaluate(() => { for (const e of [document.querySelector('#rv-insel .df-k'), document.querySelector('#rv-insel input[type=checkbox]'), document.getElementById('rv-nb'), document.querySelector('#rv-kopf')]) e.kdMarke = 'vorab'; });
+      const marker = () => page.evaluate(() => [document.querySelector('#rv-insel .df-k'), document.querySelector('#rv-insel input[type=checkbox]'), document.getElementById('rv-nb'), document.querySelector('#rv-kopf')].map(e => e.kdMarke));
       const vorher = await s.zustand();
       const textVorher = await s.tabellenText();
       const anfragen = [];
@@ -525,7 +525,7 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
     await page.keyboard.press('Tab');
     await expect(s.eingabe).toBeFocused();
     await expect(page.getByRole('switch', { name: 'Nebeneinander', exact: true })).not.toBeChecked();
-    const messen = () => s.eingabe.evaluate(e => { const st = getComputedStyle(e); return { form: st.backgroundPosition, farbe: st.backgroundColor, rand: st.borderTopColor, grund: getComputedStyle(e.closest('.rv-leiste')).backgroundColor }; });
+    const messen = () => s.eingabe.evaluate(e => { const st = getComputedStyle(e); return { form: st.backgroundPosition, farbe: st.backgroundColor, rand: st.borderTopColor, grund: getComputedStyle(e.closest('#rv-kopf')).backgroundColor }; });
     const aus = await messen();
     await page.keyboard.press('Space');
     await expect(page.getByRole('switch', { name: 'Nebeneinander', exact: true })).toBeChecked();
@@ -534,7 +534,8 @@ test.describe('R00249 Review-Seite — Ansicht nebeneinander', () => {
     expect(an.form).not.toBe(aus.form);
     for (const m of [aus, an]) expect(await kontrastFarben(page, m.rand, m.grund)).toBeGreaterThanOrEqual(3);
     const ring = await s.eingabe.evaluate(e => {
-      const st = getComputedStyle(e), r = e.getBoundingClientRect(), a = document.getElementById('review').getBoundingClientRect();
+      // der Schalter liegt jetzt im angehefteten Kopf (R00266); der Ring muss in dessen Flaeche liegen
+      const st = getComputedStyle(e), r = e.getBoundingClientRect(), a = document.getElementById('rv-kopf').getBoundingClientRect();
       const aussen = (parseFloat(st.outlineOffset) || 0) + (parseFloat(st.outlineWidth) || 0);
       return { stil: st.outlineStyle, drin: r.left - aussen >= a.left && r.right + aussen <= a.right && r.top - aussen >= a.top && r.bottom + aussen <= a.bottom };
     });

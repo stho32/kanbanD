@@ -891,7 +891,8 @@ test.describe('R00207 Review-Seite eines Commits', () => {
       await page.keyboard.press('Tab');
       reihe.push(await page.evaluate(() => { const e = document.activeElement, st = getComputedStyle(e); return { id: e.id || e.className, ring: st.outlineStyle !== 'none' && parseFloat(st.outlineWidth) > 0 }; }));
     }
-    expect(reihe.map(r => r.id)).toEqual(['rv-u-alle', 'rv-l1', 'rv-l2', 'rv-l3', 'rv-l4', 'rv-zurueck', 'rv-vor', 'rv-alle', 'rv-umbr', 'rv-nb', 'dn-e', 'rv-gk-code', 'rv-dk0', 'rv-pk0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'rv-gs0', 'df-sc']);
+    // R00266: der angeheftete Kopf steht in der Tab-Folge vor der Commit-Leiste und den Blaettern
+    expect(reihe.map(r => r.id)).toEqual(['rv-alle', 'rv-umbr', 'rv-nb', 'rv-u-alle', 'rv-l1', 'rv-l2', 'rv-l3', 'rv-l4', 'rv-zurueck', 'rv-vor', 'dn-e', 'rv-gk-code', 'rv-dk0', 'rv-pk0', 'btn ru-k1 ru-vsc', 'btn ru-k1 ru-patch', 'rv-gs0', 'df-sc']);
     for (const r of reihe) expect(r.ring, `Fokusring an ${r.id}`).toBe(true);
     await expect(page.locator('#rv-zurueck')).toHaveAttribute('aria-label', 'Zurück, voriger Commit 2 von 4');
     await expect(page.locator(POS)).toHaveAttribute('aria-live', 'polite');
@@ -976,7 +977,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
   test('AK 9: jeder Knopf der Seite und der Liste trägt .btn mit der Randfarbe eines .btn außerhalb der Seite', async ({ page }) => {
     const randVon = sel => page.evaluate(sel => [...document.querySelectorAll(sel)].map(e => [e.textContent.trim().slice(0, 30), e.classList.contains('btn'), getComputedStyle(e).borderTopColor]), sel);
     const bezug = () => page.evaluate(() => { const b = document.createElement('button'); b.className = 'btn'; document.body.append(b); const f = getComputedStyle(b).borderTopColor; b.remove(); return f; });
-    const KNOEPFE = '#review .rv-leiste button, #review .rv-meld button, #review .df-hin button, #review .rv-randb button, #review .rv-lfehl button, #fenster .cl-alle';
+    const KNOEPFE = '#rv-kopf button, #review .rv-leiste button, #review .rv-meld button, #review .df-hin button, #review .rv-randb button, #review .rv-lfehl button, #fenster .cl-alle';
     await page.route('**/api/aufgaben/1/commits', async route => { const a = await route.fetch(); const json = await a.json(); json.commits = json.commits.filter(e => e.hash !== rep.w1); await route.fulfill({ response: a, json }); });
     const proben = [[reviewAdresse(k, 9, `kd:${rep.f}`), '#rv-d25'], [reviewAdresse(k, 1, `kd:${rep.w1}`), '.rv-randb'], [reviewAdresse(k, 1, 'zz'), '.rv-meld'], [reviewAdresse(k, 6, null), '#rv-a0']];
     let gezaehlt = 0;
@@ -1075,7 +1076,7 @@ test.describe('R00207 Review-Seite eines Commits', () => {
     test('AK 9/AK 1: bei grobem Zeiger ist jedes Ziel der Seite mindestens 48 × 48 px, jede Zeile der Liste mindestens 48 px hoch', async ({ page }) => {
       await page.goto(reviewAdresse(k, 1, `kd:${rep.v1}`));
       await expect(page.locator(POS)).toHaveText('3 von 4');
-      const klein = await page.evaluate(() => [...document.querySelectorAll('#kopf a[href], #review button, #review a[href]')].filter(e => e.checkVisibility()).map(e => { const r = e.getBoundingClientRect(); return [e.id || e.className, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 48 || h < 48));
+      const klein = await page.evaluate(() => [...document.querySelectorAll('#kopf a[href], #rv-kopf button, #rv-kopf a[href], #review button, #review a[href]')].filter(e => e.checkVisibility()).map(e => { const r = e.getBoundingClientRect(); return [e.id || e.className, Math.round(r.width), Math.round(r.height)]; }).filter(([, b, h]) => b < 48 || h < 48));
       expect(klein).toEqual([]);
       expect(await zieleMessen(page, { zeiger: 'touch', ansicht: 'Review 414' })).toEqual([]);
       await page.goto(`${k.adresse}#/board/entwicklung/aufgabe/1`);

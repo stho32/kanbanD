@@ -17,7 +17,7 @@ const alleAdresse = (k, nr) => `${k.adresse}#/aufgaben/aufgabe/${nr}/review`;
 const exakt = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 
 function seite(page) {
-  const schalter = page.locator('#review .rv-leiste label.ru-sch').filter({ has: page.locator('#rv-umbr') });
+  const schalter = page.locator('#rv-kopf label.ru-sch').filter({ has: page.locator('#rv-umbr') });
   const eingabe = schalter.locator('input[type=checkbox][role=switch]');
   const datei = pfad => page.locator('#rv-insel section.df').filter({ has: page.locator('.df-k .p', { hasText: exakt(pfad) }) });
   const bereich = pfad => datei(pfad).locator('.df-sc');
@@ -149,8 +149,8 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       const zeile = s.bereich('src/kurz.rs').locator('tr.add').first();
       await expect(zeile).toBeVisible();
       await zeile.evaluate(tr => { tr.kdMarke = 'vorab'; });
-      await page.evaluate(() => { for (const e of [document.getElementById('review'), document.getElementById('rv-umbr'), document.getElementById('rv-alle'), document.querySelector('.rv-leiste'), document.querySelector('#rv-insel')]) e.kdMarke = 'vorab'; });
-      const knotenGleich = () => page.evaluate(() => [document.getElementById('review'), document.getElementById('rv-umbr'), document.getElementById('rv-alle'), document.querySelector('.rv-leiste'), document.querySelector('#rv-insel')].map(e => e.kdMarke));
+      await page.evaluate(() => { for (const e of [document.getElementById('review'), document.getElementById('rv-umbr'), document.getElementById('rv-alle'), document.querySelector('#rv-kopf'), document.querySelector('#rv-insel')]) e.kdMarke = 'vorab'; });
+      const knotenGleich = () => page.evaluate(() => [document.getElementById('review'), document.getElementById('rv-umbr'), document.getElementById('rv-alle'), document.querySelector('#rv-kopf'), document.querySelector('#rv-insel')].map(e => e.kdMarke));
       const vorher = await s.zustand();
       const anfragen = [];
       page.on('request', r => { if (new URL(r.url()).pathname.startsWith('/api/')) anfragen.push(r.url()); });
@@ -184,7 +184,8 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
     await expect(page.getByRole('switch', { name: 'Umbrechen', exact: true })).toBeChecked();
     await expect(s.eingabe).toBeFocused();
     const ring = await s.eingabe.evaluate(e => {
-      const st = getComputedStyle(e), r = e.getBoundingClientRect(), a = document.getElementById('review').getBoundingClientRect();
+      // der Schalter liegt jetzt im angehefteten Kopf (R00266); der Ring muss in dessen Flaeche liegen
+      const st = getComputedStyle(e), r = e.getBoundingClientRect(), a = document.getElementById('rv-kopf').getBoundingClientRect();
       const aussen = (parseFloat(st.outlineOffset) || 0) + (parseFloat(st.outlineWidth) || 0);
       return { stil: st.outlineStyle, aussen, drin: r.left - aussen >= a.left && r.right + aussen <= a.right && r.top - aussen >= a.top && r.bottom + aussen <= a.bottom };
     });
@@ -201,7 +202,7 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
       await s.commitOeffnen(k, 9, umbrechenRepository().u1);
       const messen = () => s.eingabe.evaluate(e => {
         const st = getComputedStyle(e);
-        return { form: st.backgroundPosition, farbe: st.backgroundColor, rand: st.borderTopColor, randBreite: st.borderTopWidth, grund: getComputedStyle(e.closest('.rv-leiste')).backgroundColor };
+        return { form: st.backgroundPosition, farbe: st.backgroundColor, rand: st.borderTopColor, randBreite: st.borderTopWidth, grund: getComputedStyle(e.closest('#rv-kopf')).backgroundColor };
       });
       await expect.poll(async () => (await messen()).randBreite, 'der Schalter ist gezeichnet').toMatch(/px$/);
       const aus = await messen();
