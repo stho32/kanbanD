@@ -240,5 +240,84 @@
     return { marker: gekappt, mehrAlsGrenze };
   }
 
-  Object.assign(ziel, { commitMarker, COMMIT_GRENZEN });
+  /* ── Zeitachse (R00268, ADR-0041 N8 Punkte 1, 2, 3, 6): je Stelle ein Strich, Verdichtung nach Abstand ── */
+
+  /** Abstand zweier Knopfmitten in px, unter dem ein Strich in den vorigen Knopf aufgeht. */
+  const MITTE_ABSTAND = 24;
+  /** Höchstens so viele Knöpfe zeigt die Zeitachse (N7 Punkt 6); die übrigen Stellen fallen weg. */
+  const STRICHE = 100;
+
+  /**
+   * Auswertung (`laufAuswerten`) und Marker (`commitMarker`) → die Stellen der Zeitachse von links nach rechts, je Stelle
+   * `{schrittNr, anteil, art, kurzhash, titel, anzahl, ziel}`. `anteil` ist die kumulierte Dauer bis zum Ergebnis des Schritts
+   * geteilt durch die Gesamtdauer — derselbe Maßstab wie die Stücke und Fächer, aus derselben Auswertung. Marker an einem
+   * Schritt verschmelzen zu einer Stelle (`anzahl` = Zahl der Marker, `kurzhash`/`titel`/`ziel` des ersten); ein Marker ohne
+   * gültige Zeit entfällt, ohne Zeitachse ist die Liste leer.
+   */
+  function zeitachseStriche(auswertung, marker) {
+    if (!auswertung || !auswertung.zeitachse || !marker || typeof marker.get !== 'function') return [];
+    const gesamt = auswertung.zeitachse.gesamt;
+    const schrittAm = new Map(auswertung.schritte.map(s => [s.nr, s]));
+    const ziele = markerZiele(marker);
+    const stellen = [];
+    for (const nr of [...marker.keys()].sort((a, b) => a - b)) {
+      const schritt = schrittAm.get(nr), eigene = marker.get(nr);
+      if (!eigene || !eigene.length || !schritt || !Number.isFinite(schritt.bisErgebnis)) continue;
+      const anzahl = eigene.length;
+      stellen.push({ schrittNr: nr, anteil: schritt.bisErgebnis / gesamt, art: eigene[0].art, kurzhash: eigene[0].kurzhash, titel: eigene[0].titel, anzahl, ziel: ziele.get(nr)[0] });
+    }
+    return stellen;
+  }
+
+  /** Je Marker seine Sprungmarke in der Reihenfolge des Laufs: Link-Marker `lv-cm1`, `lv-cm2`, …; Text-Marker `lv-cmt`
+      (der erste) bzw. `lv-cmt2`, … — nur Markenwort und Zahlen, nichts aus dem Transkript. */
+  function markerZiele(marker) {
+    const ziele = new Map();
+    let links = 0, texte = 0;
+    for (const nr of [...marker.keys()].sort((a, b) => a - b)) {
+      ziele.set(nr, marker.get(nr).map(m => {
+        if (m.art === 'link') { links++; return `lv-cm${links}`; }
+        texte++;
+        if (texte === 1) return 'lv-cmt';
+        return `lv-cmt${texte}`;
+      }));
+    }
+    return ziele;
+  }
+
+  /**
+   * Striche (`zeitachseStriche`), ihre im Browser gemessenen Beschriftungsbreiten in px und die Achsenbreite in px → die Knöpfe
+   * von links nach rechts. Ein Strich geht in den vorigen Knopf auf, wenn ihre Mitten weniger als `MITTE_ABSTAND` auseinander
+   * lägen **oder** ihre Beschriftungen sich überschneiden würden (Mittenabstand < halbe Summe der Beschriftungsbreiten); der
+   * zusammengefasste Knopf behält Stelle (`anteil` des ersten Strichs), Sprungmarke, Kurzhash und Titel, zählt `anzahl` = Summe
+   * der Marker und `strichZahl` = Zahl der zusammengefassten Striche. `rand` nennt die Stelle, deren Beschriftung sonst aus der
+   * Achse ragte (`'links'` für den Anfang, `'rechts'` für den Spiegel). Nach `STRICHE` Knöpfen endet die Liste.
+   */
+  function stricheVerdichten(striche, breitenPx, achsenBreitePx) {
+    const knopf = [];
+    for (let i = 0; i < striche.length; i++) {
+      const breite = breitenPx[i] || 0;
+      const mitte = striche[i].anteil * achsenBreitePx;
+      const voriger = knopf[knopf.length - 1];
+      if (voriger && (mitte - voriger.mitte < MITTE_ABSTAND || mitte - voriger.mitte < (voriger.breite + breite) / 2)) {
+        voriger.anzahl += striche[i].anzahl;
+        voriger.strichZahl++;
+        voriger.breite = Math.max(voriger.breite, breite);
+        continue;
+      }
+      if (knopf.length >= STRICHE) break;
+      knopf.push({ ...striche[i], strichZahl: 1, breite, mitte });
+    }
+    return knopf.map(({ breite, mitte, ...rest }) => ({ ...rest, rand: randForm(mitte, breite, achsenBreitePx) }));
+  }
+
+  /** Wo die mittige Beschriftung aus der Achse ragte, wird sie an ihre eigene Strichstelle gelegt: `'links'` (Anfang) oder
+      `'rechts'` (Spiegel); sonst `null`. */
+  function randForm(mitte, breite, achsenBreitePx) {
+    if (mitte - breite / 2 < 0) return 'links';
+    if (mitte + breite / 2 > achsenBreitePx) return 'rechts';
+    return null;
+  }
+
+  Object.assign(ziel, { commitMarker, zeitachseStriche, stricheVerdichten, markerZiele, COMMIT_GRENZEN, MITTE_ABSTAND, STRICHE });
 })(typeof module !== 'undefined' ? module.exports : window);

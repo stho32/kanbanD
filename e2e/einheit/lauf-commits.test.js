@@ -3,7 +3,7 @@
 process.env.TZ = 'Europe/Berlin';
 const test = require('node:test');
 const assert = require('node:assert');
-const { commitMarker, COMMIT_GRENZEN } = require('../../web/lauf-commits.js');
+const { commitMarker, zeitachseStriche, stricheVerdichten, COMMIT_GRENZEN, MITTE_ABSTAND, STRICHE } = require('../../web/lauf-commits.js');
 const { laufAuswerten, eintragPruefen } = require('../../web/lauf.js');
 const { T17, T17_COMMITS } = require('../tests/laufansicht-t17.js');
 
@@ -292,7 +292,7 @@ test('web/lauf-commits.js überschreibt im Browser keinen Namen eines anderen Mo
   const namen = datei => [...fs.readFileSync(path.join(ordner, datei), 'utf8').matchAll(/Object\.assign\(ziel, \{([^}]*)\}\);/g)]
     .flatMap(m => m[1].split(',').map(n => n.trim().split(':')[0].trim()).filter(Boolean));
   const eigene = namen('lauf-commits.js');
-  assert.deepStrictEqual(eigene, ['commitMarker', 'COMMIT_GRENZEN']);
+  assert.deepStrictEqual(eigene, ['commitMarker', 'zeitachseStriche', 'stricheVerdichten', 'markerZiele', 'COMMIT_GRENZEN', 'MITTE_ABSTAND', 'STRICHE']);
   for (const datei of fs.readdirSync(ordner).filter(d => d.endsWith('.js') && d !== 'lauf-commits.js')) assert.deepStrictEqual(namen(datei).filter(n => eigene.includes(n)), [], datei);
   const global = fs.readFileSync(path.join(ordner, 'ansicht.js'), 'utf8') + fs.readFileSync(path.join(ordner, 'app.js'), 'utf8');
   for (const n of eigene) assert.doesNotMatch(global, new RegExp(`^(function|const|let|async function) ${n}\\b`, 'm'), n);
@@ -631,4 +631,117 @@ test('Nacharbeit 3 (Security Muss 4): echte Titel bleiben Marker — 12, 60 und 
     assert.deepStrictEqual(r.marker.get(1), [{ art: 'text', kurzhash: '3f2a9c1', titel }], `${laenge} Zeichen`);
     assert.strictEqual(r.belegTitelZeichen, Math.min(laenge, COMMIT_GRENZEN.titel), `${laenge} Zeichen: gesucht wird der Kopf`);
   }
+});
+
+/* ── R00268 B1465: Striche an ihrer Stelle und Verdichtung nach Abstand (ADR-0041 N8 Punkte 1, 2, 3, 6) ──
+   Getrieben wie die Marker: Einträge → Zeilen und Auswertung wie in der Laufansicht, Marker aus der Karte; Länge und Breite
+   kommen als Zahlen (im Browser gemessen), gerechnet wird hier ohne DOM. */
+
+/** Zeilen, die Auswertung und die Striche der Zeitachse zu einem Lauf. */
+function stricheVon(eintraege, karte) {
+  const zeilen = eintraege.map((o, i) => ({ nr: i + 1, eintrag: eintragPruefen(o) }));
+  const auswertung = laufAuswerten(zeilen, false);
+  const { marker } = commitMarker(zeilen, auswertung.schritte, karte);
+  return { auswertung, striche: zeitachseStriche(auswertung, marker) };
+}
+
+/** Ein Strich mit `anteil`; ansonsten die Werte, die `zeitachseStriche` liefert. */
+const strich = (anteil, { anzahl = 1, kurzhash = 'abc1234', titel = 'Titel im Befehl', ziel = 'lv-cm1' } = {}) =>
+  ({ schrittNr: 1, anteil, art: 'link', kurzhash, titel, anzahl, ziel });
+
+const mitteVon = (knopf, achsenBreite) => knopf.anteil * achsenBreite;
+
+test('R00268 AK 1 · AK 9: T17 — fünf Stellen an den Ergebnissen 3, 7, 9, 13 und 15, „2 Commits“ am Ergebnis 7, Marker ohne Zeit entfallen', () => {
+  const { auswertung, striche } = stricheVon(T17, T17_KARTE);
+  assert.strictEqual(Math.round(auswertung.gesamt), 120000, 'T17 dauert 11:00:00 bis 11:02:00');
+  assert.deepStrictEqual(striche.map(s => s.schrittNr), [2, 6, 8, 12, 14]);
+  assert.deepStrictEqual(striche.map(s => s.anzahl), [1, 2, 1, 1, 1], 'C2 und C3 stehen am selben Schritt');
+  assert.deepStrictEqual(striche.map(s => Math.round(s.anteil * auswertung.gesamt)),
+    [12900, 31600, 41000, 65300, 100200], 'kumulierte Dauer bis zum Ergebnis des Schritts');
+  assert.deepStrictEqual(striche.map(s => s.art), ['link', 'link', 'text', 'link', 'link']);
+  assert.deepStrictEqual(striche.map(s => s.kurzhash),
+    [T17_KARTE[0].hash.slice(0, 7), T17_KARTE[2].hash.slice(0, 7), 'e5f6a7b', T17_KARTE[3].hash.slice(0, 7), T17_KARTE[4].hash.slice(0, 7)]);
+  assert.deepStrictEqual(striche.map(s => s.ziel), ['lv-cm1', 'lv-cm2', 'lv-cmt', 'lv-cm4', 'lv-cm5'], 'Sprungmarken der ersten Marker-Zeile');
+});
+
+test('R00268 AK 1 Rechenbeispiel: 100 s Gesamtdauer, Ergebnis bei 25 s — der Strich steht bei 25 %', () => {
+  const lauf = paar([
+    aufruf('2026-11-22T11:00:00+01:00', 'git commit -q -m "Titel im Befehl"'),
+    ergebnis('2026-11-22T11:00:25+01:00'),
+    aufruf('2026-11-22T11:00:50+01:00', 'cargo test -q'),
+    ergebnis('2026-11-22T11:01:40+01:00'),
+  ], { 1: 0, 3: 2 });
+  const { striche } = stricheVon(lauf, [karteneintrag('Titel im Befehl', EPOCH_11 + 25)]);
+  assert.strictEqual(striche.length, 1);
+  assert.strictEqual(striche[0].anteil, 0.25);
+});
+
+test('R00268 FA 1 · AK 9: drei Marker am selben Schritt verschmelzen zu einer Stelle „3 Commits“, der erste trägt Sprungmarke und Kurzhash', () => {
+  const karte = ['Titel A', 'Titel B', 'Titel C'].map(t => karteneintrag(t, EPOCH_11 + 10, { name: t }));
+  const lauf = paar([aufruf(T(0), 'git commit -q -m "Titel A" && git commit -q -m "Titel B" && git commit -q -m "Titel C"'), ergebnis(T(12))], { 1: 0 });
+  const { striche } = stricheVon(lauf, karte);
+  assert.strictEqual(striche.length, 1);
+  assert.strictEqual(striche[0].anzahl, 3);
+  assert.strictEqual(striche[0].kurzhash, karte[0].hash.slice(0, 7));
+  assert.strictEqual(striche[0].ziel, 'lv-cm1');
+});
+
+test('R00268 AK 9: Marker ohne gültige Zeit entfallen und ohne Zeitachse ist die Liste leer', () => {
+  const ohneZeit = paar([aufruf(T(0), 'git commit -q -m "Titel im Befehl"'), { zeit: 'gestern', art: 'werkzeugergebnis', wer: 'werkzeug', text: '' }, { zeit: T(30), art: 'nachricht', wer: 'agent', text: 'Weiter.' }], { 1: 0 });
+  const einer = stricheVon(ohneZeit, [karteneintrag('Titel im Befehl', EPOCH_11 + 5)]);
+  assert.strictEqual(einer.auswertung.zeitachse.gesamt, 30000, 'die Zeitachse steht');
+  assert.deepStrictEqual(einer.striche, [], 'das Ergebnis trägt keine Zeit');
+  const nurEineZeit = stricheVon([aufruf(T(0), 'git commit -q -m "Titel im Befehl"')], [karteneintrag('Titel im Befehl', EPOCH_11 + 5)]);
+  assert.strictEqual(nurEineZeit.auswertung.zeitachse, null);
+  assert.deepStrictEqual(nurEineZeit.striche, []);
+});
+
+test('R00268 AK 2 · B1465: 40 gleichmäßige Striche, Beschriftungen 20 px, Achse 300 px — Mitten ≥ 24 px, keine Überschneidung, Σn = 40', () => {
+  const striche = Array.from({ length: 40 }, (_, i) => strich(i / 40));
+  const knoepfe = stricheVerdichten(striche, Array(40).fill(20), 300);
+  assert.strictEqual(knoepfe.reduce((summe, k) => summe + k.anzahl, 0), 40, 'die Summe der Marker bleibt 40');
+  assert.ok(knoepfe.length < 40, 'verdichtet, nicht 40 Knöpfe');
+  for (let i = 0; i < knoepfe.length; i++) {
+    if (i > 0) {
+      const abstand = mitteVon(knoepfe[i], 300) - mitteVon(knoepfe[i - 1], 300);
+      assert.ok(abstand >= MITTE_ABSTAND, `Mitten ${abstand} px auseinander`);
+      assert.ok(abstand >= 20, `Beschriftungen überschneiden sich bei ${abstand} px nicht`);
+    }
+  }
+  assert.deepStrictEqual(knoepfe.map(k => k.anzahl).filter(n => n !== 4), [], 'je Knopf vier Striche bei 7,5 px Abstand');
+});
+
+test('R00268 AK 2 · B1465: überschneiden sich die Beschriftungen bei 24-px-Mittenabstand, geht der Strich auf (zweite Bedingung)', () => {
+  const knoepfe = stricheVerdichten([strich(0), strich(24 / 300)], [60, 60], 300);
+  assert.strictEqual(knoepfe.length, 1);
+  assert.strictEqual(knoepfe[0].anzahl, 2);
+});
+
+test('R00268 AK 2 · B1465: Grenzen — 24 px bleibt getrennt, 23,9 px geht auf; genau die halbe Summe bleibt, ein Pixel weniger geht auf', () => {
+  const abstand = (px, breite) => stricheVerdichten([strich(0), strich(px / 300)], [breite, breite], 300);
+  assert.strictEqual(abstand(24, 20).length, 2, 'genau 24 px');
+  assert.strictEqual(abstand(23.9, 20).length, 1, '23,9 px');
+  assert.strictEqual(abstand(40, 40).length, 2, 'genau die halbe Summe von 40 px und 40 px');
+  assert.strictEqual(abstand(39, 40).length, 1, 'ein Pixel weniger');
+});
+
+test('R00268 AK 2 · B1465: der zusammengefasste Knopf behält Stelle, Sprungmarke und Kurzhash des ersten Strichs und summiert die Marker', () => {
+  const striche = [strich(0.1), strich(0.11, { ziel: 'lv-cm2', kurzhash: 'def5678' }), strich(0.5, { ziel: 'lv-cm3', anzahl: 4 })];
+  const knoepfe = stricheVerdichten(striche, [20, 20, 20], 300);
+  assert.strictEqual(knoepfe.length, 2);
+  assert.deepStrictEqual([knoepfe[0].anteil, knoepfe[0].anzahl, knoepfe[0].ziel, knoepfe[0].kurzhash], [0.1, 2, 'lv-cm1', 'abc1234']);
+  assert.deepStrictEqual([knoepfe[1].anteil, knoepfe[1].anzahl, knoepfe[1].ziel], [0.5, 4, 'lv-cm3']);
+});
+
+test('R00268 AK 2 · B1465: Randform — wo die Beschriftung sonst aus der Achse ragte, steht die Stelle an ihrer eigenen Strichstelle', () => {
+  const knoepfe = stricheVerdichten([strich(0), strich(0.5), strich(1)], [60, 60, 60], 300);
+  assert.deepStrictEqual(knoepfe.map(k => k.rand), ['links', null, 'rechts']);
+});
+
+test('R00268 AK 9 · B1465: höchstens 100 Knöpfe, die ersten der Reihenfolge nach; keine Striche ergeben keine Knöpfe', () => {
+  const weit = Array.from({ length: 101 }, (_, i) => strich(i / 101));
+  const knoepfe = stricheVerdichten(weit, Array(101).fill(10), 10100);
+  assert.strictEqual(knoepfe.length, STRICHE);
+  assert.strictEqual(Math.round(knoepfe[knoepfe.length - 1].anteil * 101), 99, 'die ersten 100 Stellen');
+  assert.deepStrictEqual(stricheVerdichten([], [], 300), []);
 });

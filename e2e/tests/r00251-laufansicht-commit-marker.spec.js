@@ -255,8 +255,7 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
 
   /* ── B1328: Zielflächen, Kontrast, 320 px, Zeitachse byte-gleich ── */
 
-  test('AK 8 · AK 11: 1280 px hell und dunkel — Zielfläche ≥ --kd-ziel, Text ≥ 4,5 : 1, Titel kürzt mit „…“, Zeitachse byte-gleich ohne „Commit“', async ({ page }) => {
-    const { laufZeitachseHtml, laufAuswerten, eintragPruefen } = require('../../web/lauf.js');
+  test('AK 8 · AK 11: 1280 px hell und dunkel — Zielfläche ≥ --kd-ziel, Text ≥ 4,5 : 1, Titel kürzt mit „…“, kein Querscrollen', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await s.oeffnen();
     await s.gelesen();
@@ -267,11 +266,9 @@ test.describe('R00251 Laufansicht: Commit-Marker', () => {
       await thema(page, name);
       for (const teil of await s.markerTexte().all()) expect(await kontrastAm(teil), `${name}: ${await teil.textContent()}`).toBeGreaterThanOrEqual(4.5);
     }
-    process.env.TZ = 'Europe/Berlin';
-    const zeilen = T17.map((o, i) => ({ nr: i + 1, eintrag: eintragPruefen(o) }));
-    const ohneMarker = await page.evaluate(html => { const t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild.outerHTML; }, laufZeitachseHtml(laufAuswerten(zeilen, false)));
-    expect(await s.zeitachse(), 'wie ohne Commit-Marker gerechnet').toBe(ohneMarker);
-    expect(await s.zeitachse()).not.toContain('Commit');
+    // R00251 AK 11 (Zeitachse byte-gleich wie vor der Karte) ist mit R00268 FA 8 überholt: ein Lauf mit Commits trägt Striche
+    // (Probe in r00268-laufansicht-zeitachse-striche.spec.js AK 8); byte-gleich gilt nur für einen Lauf ohne Strich.
+    expect(await s.zeitachse()).toContain('lv-ck');
     expect(await s.quer()).toBe(false);
   });
 

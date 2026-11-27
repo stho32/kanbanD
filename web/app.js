@@ -2614,7 +2614,9 @@ async function transkriptLesen(pfad, abbruchSignal, quelle) {
     // einmal je erfolgreichem Lesen ausgewertet (R00234 FA 11); Live zeichnet Kopf und Kennzahlen aus dieser Auswertung neu
     const auswertung = laufAuswerten(gelesen.zeilen, gelesen.grenze);
     const commits = laufCommitMarker(gelesen.zeilen, auswertung, await quelle.karte, quelle.adresse);
-    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, commits, bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung, commits) };
+    laufZeitachseSchriftenGeprueft = false;
+    LAUF_ZEITACHSE_GEMERKT.clear();
+    return { art: 'eintraege', grenze: gelesen.grenze, zeilen: gelesen.zeilen, auswertung, commits, striche: zeitachseStriche(auswertung, commits.marker), bericht: laufBerichtHtml(auswertung, esc), html: laufHtml(gelesen.zeilen, gelesen.grenze, esc, auswertung, commits) };
   } catch (g) {
     // FA 8: Server, Verbindung, Entpacken, `fehlt` — jede andere Ausnahme beim Lesen oder Zeichnen heißt „verarbeiten“ (PO Z. 495)
     const fehler = laufFehlerArt(g);
@@ -2709,7 +2711,7 @@ function vLauf() {
   if (e && e.art === 'eintraege') insel = `<div class="lv-rumpf2">${e.bericht}${laufTopHtml(e.auswertung, esc, laufFilterHtml(v.filter), laufSeitenfeldBreit())}<div class="lv-haupt">${laufKeineFehlerHtml(e.auswertung, v.filter)}${laufInselGehalten ? LAUF_INSEL_PLATZHALTER : laufInselText(e)}</div></div>`;
   const kopf = laufKopfHtml({ zustand: laufKopfZustand(v), auswertung: e && e.auswertung, kosten: zeile && zeile.kosten, commits: e && e.commits }, esc);
   let zeitachse = '';
-  if (e && e.art === 'eintraege') zeitachse = laufZeitachseHtml(e.auswertung);
+  if (e && e.art === 'eintraege') zeitachse = laufZeitachseHtml(e.auswertung, e.striche);
   let leiste = '';
   if (zeile) leiste = laeufeLeisteHtml(zeile, esc, groesse, laeufeBlaetternHtml(laufFolge(v), kennung => laufAdresseBilden({ basis: v.basis, slug: v.slug, nummer: v.nr, kennung }), esc));
   return `<div class="lv" id="lauf">${leiste}${kopf}${zeitachse}${laufRumpfHtml(v, insel, esc)}</div>`;
@@ -2761,6 +2763,89 @@ function laufFilterAnInsel(knoten, filter) {
 /** Der Text der Einträge: einmal beim Lesen gebaut; nach dem Einsetzen nur noch aus den Einträgen, wenn die Insel neu entsteht. */
 function laufInselText(e) {
   return e.html === null ? laufHtml(e.zeilen, e.grenze, esc, e.auswertung, e.commits) : e.html;
+}
+
+/* ── Zeitachse: zwei Durchläufe im selben Vorgang, Breitenwechsel ohne Neuzeichnen (R00268 FA 3, ADR-0041 N8 Punkte 2, 3) ──
+   Beim Zeichnen werden die Knöpfe unverdichtet gesetzt; unmittelbar danach, in derselben Aufgabe, misst der Browser ihre
+   Beschriftungen, `stricheVerdichten` rechnet die Knöpfe und nur die Knopfleiste wird ersetzt. Nach den geladenen Schriften folgt
+   eine zweite Messung. Ein Fenstergröße-Wechsel wiederholt nur Messen und Verdichten — ohne `render()` und ohne Anfrage. */
+
+/** Der Stand der gezeichneten Zeitachse: Knopfleiste, Balkenbereich, gerundete Achsenbreite, Striche, Beobachter. */
+let laufZeitachseStand = null;
+/** Die verdichteten Knöpfe je „Achsenbreite|Strichzahl“: ein laufender Beobachter rechnet nicht je Bild neu. */
+const LAUF_ZEITACHSE_GEMERKT = new Map();
+/** Hat dieser Lauf schon nach den geladenen Schriften gemessen? Ein Durchlauf je gelesenem Lauf, nicht je Neuzeichnen. */
+let laufZeitachseSchriftenGeprueft = false;
+
+/** Nach jedem Zeichnen: die Zeitachse des Laufs aufnehmen, einmal durchlaufen, die Schriften nachmessen und den Balken beobachten. */
+function laufZeitachseNachher() {
+  const v = S.ui.lauf, e = v && v.ergebnis;
+  const leiste = S.ui.view === 'lauf' && e && e.art === 'eintraege' ? document.querySelector('#lauf .lv-ck') : null;
+  if (!leiste) { laufZeitachseAbraeumen(); return; }
+  if (laufZeitachseStand && laufZeitachseStand.leiste === leiste) return;
+  laufZeitachseAbraeumen();
+  const stand = { leiste, mess: document.querySelector('#lauf .lv-mess'), bereich: leiste.closest('.lv-bw'), striche: e.striche || [], breite: 0, beobachter: null };
+  stand.beobachter = new ResizeObserver(() => laufZeitachseBreiteGeaendert());
+  stand.beobachter.observe(stand.bereich);
+  laufZeitachseStand = stand;
+  laufStrichDurchlauf(false);
+  if (laufZeitachseSchriftenGeprueft) return;
+  laufZeitachseSchriftenGeprueft = true;
+  document.fonts.ready.then(() => { if (laufZeitachseStand === stand) laufStrichDurchlauf(true); });
+}
+
+/** Der Balken der Zeitachse hat seine Breite geändert: messen, verdichten, Knopfleiste ersetzen — sonst nichts. */
+function laufZeitachseBreiteGeaendert() {
+  const stand = laufZeitachseStand;
+  if (!stand || !stand.bereich.isConnected) return;
+  if (Math.round(stand.bereich.getBoundingClientRect().width) === stand.breite) return;
+  laufStrichDurchlauf(false);
+}
+
+/** Ein Durchlauf: (neu) messen, verdichten, nur die Knopfleiste ersetzen. */
+function laufStrichDurchlauf(neuMessen) {
+  const stand = laufZeitachseStand;
+  if (!stand) return;
+  stand.breite = Math.round(stand.bereich.getBoundingClientRect().width);
+  stand.leiste.innerHTML = strichLeisteHtml(laufZeitachseKnopfe(stand, neuMessen));
+}
+
+/** Die verdichteten Knöpfe der Achse: aus dem Merker für dieselbe Achsenbreite und Strichzahl, sonst aus den an der Messleiste
+    gemessenen Beschriftungsbreiten. Ein verdichteter Knopf heißt „<n> Commits“ und ist breiter als ein Kurzhash: darum wird nach
+    dem ersten Verdichten mit den Breiten der wirklichen Knopfbeschriftungen nachgemessen, bis sich die Knopfzahl nicht mehr ändert.
+    Positionen rechnet `stricheVerdichten`. */
+function laufZeitachseKnopfe(stand, neuMessen) {
+  const schluessel = `${stand.breite}|${stand.striche.length}`;
+  const gemerkt = LAUF_ZEITACHSE_GEMERKT.get(schluessel);
+  if (gemerkt && !neuMessen) return gemerkt;
+  stand.mess.innerHTML = strichLeisteHtml(stand.striche);
+  let knoepfe = stricheVerdichten(stand.striche, beschriftungsbreiten(stand.mess), stand.breite);
+  for (let runde = 0; runde < 4; runde++) {
+    const feiner = stricheVerdichten(stand.striche, breitenJeKnopf(stand, knoepfe), stand.breite);
+    const gruppenGleich = feiner.length === knoepfe.length && feiner.every((knopf, i) => knopf.strichZahl === knoepfe[i].strichZahl);
+    knoepfe = feiner;
+    if (gruppenGleich) break;
+  }
+  LAUF_ZEITACHSE_GEMERKT.set(schluessel, knoepfe);
+  return knoepfe;
+}
+
+/** Die gemessenen Beschriftungsbreiten (`getBoundingClientRect`) der Kinder einer Leiste, der Reihe nach. */
+const beschriftungsbreiten = leiste => [...leiste.children].map(kind => kind.querySelector('.t').getBoundingClientRect().width);
+
+/** Je Strich die Breite der Beschriftung, die sein Knopf trägt: die Messleiste zeigt die Knöpfe, gemessen wird am ersten Kind
+    jedes Knopfes, die übrigen Striche des Knopfes erben seinen Wert. */
+function breitenJeKnopf(stand, knoepfe) {
+  stand.mess.innerHTML = strichLeisteHtml(knoepfe);
+  const knopfBreite = beschriftungsbreiten(stand.mess);
+  return knoepfe.flatMap((knopf, i) => Array(knopf.strichZahl).fill(knopfBreite[i]));
+}
+
+/** Die Zeitachse ist fort (andere Ansicht, anderer Lauf): den Beobachter abhängen und den Stand vergessen. */
+function laufZeitachseAbraeumen() {
+  if (!laufZeitachseStand) return;
+  laufZeitachseStand.beobachter.disconnect();
+  laufZeitachseStand = null;
 }
 
 /** Öffnet die Laufansicht aus „Läufe“ mit einem neuen Verlaufseintrag samt Marke (ADR-0041 Punkt 2). */
@@ -3354,6 +3439,7 @@ function render() {
     $('#kopf').innerHTML = vKopf();
     const gehaltenGeblieben = hauptbereichErsetzen($('#main'), vMain(), personenwahlVorher, inselGehalten || laufInselGehalten);
     laufInselNachher(laufInselGehalten, gehaltenGeblieben);
+    laufZeitachseNachher();
     laeufeKnotenBehalten(laufKnotenVorher);
     $('#main').dataset.sicht = sicht;
     const laeufeInsel = laeufeInselVergleichenUndMerken();

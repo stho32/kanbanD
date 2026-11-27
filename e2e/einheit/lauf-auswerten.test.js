@@ -9,9 +9,11 @@ const { T1_ZEILEN } = require('../tests/laufansicht-t1.js');
 const { laufAuswerten, dauerText, DENKZEILE_AB_MS } = lauf;
 const e = (nr, art, wer, zeit, text = 'x', name = null) => ({ nr, eintrag: { art, wer, text, zeit, name } });
 const um = s => `2026-11-21T08:00:${String(s).padStart(2, '0')}+01:00`;
-/** R00240 ergänzt an jedem Eintrag von „Längste“ und „Teuerste Schritte“ die Beschriftung (geprüft in lauf-zeichnen.test.js). */
+/** R00240 ergänzt an jedem Eintrag von „Längste“ und „Teuerste Schritte“ die Beschriftung (geprüft in lauf-zeichnen.test.js);
+    R00268 an jedem Schritt `bisErgebnis` (die kumulierte Dauer bis zum Ergebnis, geprüft in lauf-commits.test.js). */
 const ohneB = ({ beschriftung, ...t }) => t;
-const ohneBeschriftung = a => ({ ...a, top3: a.top3.map(ohneB), teuer3: a.teuer3.map(ohneB) });
+const ohneZusatz = ({ bisErgebnis, ...s }) => s;
+const ohneBeschriftung = a => ({ ...a, schritte: a.schritte.map(ohneZusatz), top3: a.top3.map(ohneB), teuer3: a.teuer3.map(ohneB) });
 
 test('AK 1: dauerText rundet ab auf ganze Sekunden — < 1 s, n s, m min s s, h h m min', () => {
   const tabelle = [[0, '< 1 s'], [999, '< 1 s'], [1000, '1 s'], [4999, '4 s'], [59999, '59 s'], [60000, '1 min 0 s'], [71000, '1 min 11 s'],

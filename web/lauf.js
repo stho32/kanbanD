@@ -654,7 +654,8 @@
   /** Gelesene Zeilen `[{nr, eintrag}]` und `grenze` → Dauer in ms je Art und gesamt, die Denk- und Wartelücken ab
       `DENKZEILE_AB_MS` (`luecken: [{vorNr, art, dauer}]`) und die Schritte (`schritte`, je Aufruf samt Ergebnis oder je Ergebnis
       ohne Aufruf, an der Stelle seiner ersten Zeile). Jede Lücke gehört dem späteren Eintrag mit Zeit, negativ zählt 0;
-      `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. */
+      `bekannt` ist falsch, wenn weniger als zwei Einträge eine Zeit tragen. Ein Schritt, dessen Ergebnis eine Zeit trägt, führt in
+      `bisErgebnis` die kumulierte Dauer bis zu diesem Ergebnis in ms (R00268: derselbe Maßstab wie die Zeitachse). */
   function laufAuswerten(zeilen, grenze) {
     const summe = { werkzeug: 0, denken: 0, warten: 0 };
     const luecken = [], schritte = [], offen = offeneAufrufe(), tokens = tokenZaehlung(), achse = zeitachseBeginnen(), arten = artenBeginnen();
@@ -680,6 +681,7 @@
         if (art !== 'werkzeug' && dauer >= DENKZEILE_AB_MS && schritt) vorSchritt.set(nr, schritt);
         if (art === 'warten' && dauer >= DENKZEILE_AB_MS) tokens.wartenSeit = dauer;
       } else achse.erste = ms;
+      if (ergebnisSchritt) ergebnisSchritt.bisErgebnis = achse.bisher;
       vorher = ms;
     }
     const gesamt = summe.werkzeug + summe.denken + summe.warten, bekannt = mitZeit >= 2;
@@ -1217,9 +1219,11 @@
   const stueckHtml = s => `<span class="${LUECKE_KLASSE[s.art]}" style="flex-grow:${s.dauer}" title="${ACHSEN_WORT[s.art]} ${dauerText(s.dauer)} ab ${uhrzeitAusMs(s.ab)}"><i></i></span>`;
   const fachHtml = f => `<span class="${LUECKE_KLASSE[f.art]}" title="überwiegend ${ACHSEN_WORT[f.art]}, ${uhrzeitAusMs(f.ab)}–${uhrzeitAusMs(f.bis)}"><i></i></span>`;
 
-  /** Die Zeitachse aus der Auswertung (FA 3): Überschrift, Legende immer mit drei Arten, Balken als Bild mit Lesetext, darunter
-      erste und letzte Zeit. Ohne Zeitachse (FA 4) leer. Gerechnet wird hier nichts. */
-  function laufZeitachseHtml(a) {
+  /** Die Zeitachse aus der Auswertung (FA 3) und den Strichen (`zeitachseStriche`): Überschrift, Legende immer mit drei Arten,
+      Balken als Bild mit Lesetext, darunter erste und letzte Zeit. Mit Strichen steht neben dem Balken die Knopfleiste
+      (`.lv-ck`, beim Zeichnen unverdichtet, gleich danach ersetzt) und dahinter die unverdichtete Messleiste (`.lv-mess`, unsichtbar,
+      aus ihr misst der Browser die Beschriftungsbreiten); ohne Striche bleibt die Zeitachse wie vor R00268. Gerechnet wird hier nichts. */
+  function laufZeitachseHtml(a, striche = []) {
     if (!a || !a.zeitachse) return '';
     const z = a.zeitachse;
     let teile = z.stuecke.map(stueckHtml), klasse = 'lv-balken';
@@ -1228,9 +1232,27 @@
       klasse += ' faecher';
     }
     const balken = `<div class="${klasse}" role="img" aria-label="${zeitachseLesetext(a)}">${teile.join('')}</div>`;
+    const mitte = striche.length ? `<div class="lv-bw">${balken}<div class="lv-ck">${strichLeisteHtml(striche)}</div><div class="lv-mess" aria-hidden="true">${strichLeisteHtml(striche)}</div></div>` : balken;
     const zeiten = `<div class="lv-za-zeit" aria-hidden="true"><span>${uhrzeitAusMs(z.erste)}</span><span>${uhrzeitAusMs(z.erste + z.gesamt)}</span></div>`;
-    return `<section class="lv-za" aria-labelledby="lv-za-t"><div class="lv-za-kopf"><h2 id="lv-za-t">Zeitachse</h2>${LEGENDE}</div>${balken}${zeiten}</section>`;
+    return `<section class="lv-za" aria-labelledby="lv-za-t"><div class="lv-za-kopf"><h2 id="lv-za-t">Zeitachse</h2>${LEGENDE}</div>${mitte}${zeiten}</section>`;
   }
+
+  /* ── Die Strich-Knöpfe (R00268; D0009 `#laufansicht` Bild 15, CSS `.lv-ck`/`.lv-ckb`) ── */
+
+  /** Ein Knopf je Stelle: Beschriftung `.t` (Kurzhash bzw. „<n> Commits“) über dem Strich `i`; `anteil` setzt die Stelle
+      (`left`), `rand` die Randform (`.an` am Anfang, `.re` als Spiegel). Kurzhash und Zahl kommen aus der Karte bzw. aus dem
+      Lauf und tragen nur Hex-Zeichen und Ziffern. */
+  function strichKnopfHtml(k) {
+    let form = '';
+    if (k.rand === 'links') form = ' an';
+    if (k.rand === 'rechts') form = ' re';
+    const beschriftung = k.anzahl > 1 ? `${k.anzahl} Commits` : `<span class="mono">${k.kurzhash}</span>`;
+    const dicker = k.anzahl > 1 ? ' class="mehr"' : '';
+    return `<div class="lv-ckz${form}" style="left:${(k.anteil * 100).toFixed(4)}%"><button type="button" class="lv-ckb"><span class="t">${beschriftung}</span><i${dicker}></i></button></div>`;
+  }
+
+  /** Die Knöpfe der Zeitachse als Inhalt einer Leiste; nach dem Messen ersetzt der Browser die Knopfleiste durch die verdichteten. */
+  const strichLeisteHtml = knoepfe => knoepfe.map(strichKnopfHtml).join('');
 
   /* ── Zustände der Seite (FA 7, FA 8, FA 11; Bilder 2, 4, 5): Meldungen, Ansage und Rumpf ── */
 
@@ -1288,5 +1310,5 @@
     return `<div class="lv-rumpf">${status}${inhalt}</div>`;
   }
 
-  Object.assign(ziel, { laufZeitachseHtml, FILTER_VORGABE, laufFilterHtml, laufZeigenWert, laufFilterAnsage, laufSprungFilter, laufKeineFehlerHtml, tokenKurz, tokenLesetext, tokenVoll, tokenZahlHtml, neueTokensText, neueTokensHtml, laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
+  Object.assign(ziel, { laufZeitachseHtml, strichLeisteHtml, FILTER_VORGABE, laufFilterHtml, laufZeigenWert, laufFilterAnsage, laufSprungFilter, laufKeineFehlerHtml, tokenKurz, tokenLesetext, tokenVoll, tokenZahlHtml, neueTokensText, neueTokensHtml, laufKopfHtml, laufBerichtHtml, laufTopHtml, laufAuswerten, dauerText, kurzbefehl, fehlerErkennen, DENKZEILE_AB_MS, zeilenLesen, eintragPruefen, laufHtml, laufFehlerText, laufFehlerArt, laufAnsage, laufRumpfHtml, zeichenBuchen, LAUF_GRENZEN, ZEICHEN_JE_TEXT, ZEICHEN_JE_LAUF });
 })(typeof module !== 'undefined' ? module.exports : window);

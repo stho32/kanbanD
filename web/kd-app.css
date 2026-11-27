@@ -2102,6 +2102,23 @@ a.fs-l:hover{color:var(--kd-accent-ink);text-decoration:underline;text-underline
 @container (min-width:3px){.lv-balken:not(.faecher)>span>i{box-shadow:inset -1px 0 0 var(--kd-surface)}}
 @container (min-width:6px){.lv-balken>span.t>i{background:repeating-linear-gradient(135deg,var(--kd-mensch) 0 4px,var(--kd-mensch-weak) 4px 6px)}}
 .lv-za-zeit{display:flex;justify-content:space-between;margin-top:3px;font:11.5px var(--kd-mono);color:var(--kd-muted);font-variant-numeric:tabular-nums}
+/* Striche je Commit in der Zeitachse (R00268, ADR-0041 N8; D0009 `#laufansicht` Bild 15, CSS `.lv-ck`/`.lv-ckb`): die Knopfleiste
+   liegt über dem Balken, je Stelle ein Knopf mit Beschriftung über dem Strich. `.an` ist der Anfang (Beschriftung an der eigenen
+   Strichstelle, wie der Spiegel `.re` am Ende), `.mehr` der dickere Strich für mehrere Commits. Die Höhe der Knöpfe traegt --kd-ziel. */
+.lv-bw{position:relative;margin-top:20px}
+.lv-ck,.lv-mess{position:absolute;inset:0;pointer-events:none}
+.lv-mess{visibility:hidden;overflow:hidden}
+.lv-ckz{position:absolute;top:-20px;bottom:-3px;transform:translateX(-50%)}
+.lv-ckz.an{transform:translateX(0)}
+.lv-ckz.re{transform:translateX(-100%)}
+.lv-ckb{pointer-events:auto;display:flex;flex-direction:column;align-items:center;height:100%;min-block-size:var(--kd-ziel);padding:0;border:0;background:none;color:var(--kd-text);font-family:inherit;font-weight:600;font-size:11.5px;line-height:17px;cursor:pointer}
+.lv-ckz.an .lv-ckb{align-items:flex-start}
+.lv-ckz.re .lv-ckb{align-items:flex-end}
+.lv-ckb .t{flex:none;height:17px;white-space:nowrap;padding:0 2px}
+.lv-ckb .t .mono{font-size:11.5px}
+.lv-ckb i{flex:1;width:2px;background:var(--kd-text);box-shadow:0 0 0 1px var(--kd-surface)}
+.lv-ckb i.mehr{width:4px}
+.lv-ckb:hover .t{text-decoration:underline}
 @media (max-width:640px){
   .lv-za{padding:var(--kd-s3) var(--kd-s4)}
   .lv-leg{margin-left:0}

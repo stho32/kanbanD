@@ -1294,3 +1294,4 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #283 R00267 | B1462 Gate-Teile von ak09 und ak09_gesamtgrenze ohne Dauer-Zusicherung | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #283 R00267 | B1463 Lastproben der ak09-Spannen | Standard | 0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #283 R00267 | B1464 Probe unter Last, Mutanten M1/M2, Gate | Standard | 1h | 1,0h | 1,0h | autonom |
+| 2026-11-27 | Karte #271 R00268 | B1465 Lage der Striche und Verdichtung nach Abstand, rein | Standard | 1-2h | 0,5h | 0,5h | autonom |
