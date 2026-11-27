@@ -371,12 +371,17 @@ fn mengen(text: &str) -> Mengen {
 /// Sind die Inhalte verschieden, nennt der Fehler, welche Pakete in der einen Fassung
 /// fehlen bzw. unerwartet stehen — ein veralteter Stand wird so ohne Nachzählen sichtbar
 /// (R00263 AK 6, ADR-0045 Q1).
+///
+/// Die **Version des Workspace-Pakets** zählt nicht mit: der Release-Ablauf setzt sie
+/// vor diesem Schritt per `sed` auf die Auslieferungsversion (B1, #250 Nacharbeit).
 pub fn pruefen(datei: &str, frisch: &str) -> Result<(), Vec<String>> {
+    let datei = workspace_entkoppeln(datei);
+    let frisch = workspace_entkoppeln(frisch);
     if datei == frisch {
         return Ok(());
     }
-    let alt = mengen(datei);
-    let neu = mengen(frisch);
+    let alt = mengen(&datei);
+    let neu = mengen(&frisch);
     let mut namen = Vec::new();
     for (n, v) in neu.enthalten.difference(&alt.enthalten) {
         namen.push(format!("fehlt in der Datei: {n} {v}"));
@@ -394,6 +399,27 @@ pub fn pruefen(datei: &str, frisch: &str) -> Result<(), Vec<String>> {
         namen.push("Inhalt weicht ab (Lizenztext, Reihenfolge oder Format)".to_string());
     }
     Err(namen)
+}
+
+/// Ersetzt die Versionsspalte jeder `workspace`-Zeile durch einen festen Platzhalter,
+/// damit die Versionsnummer des Programms selbst den Vergleich nicht stört.
+fn workspace_entkoppeln(text: &str) -> String {
+    let mut aus = String::with_capacity(text.len());
+    for (i, zeile) in text.lines().enumerate() {
+        if i > 0 {
+            aus.push('\n');
+        }
+        let felder: Vec<&str> = zeile.split('|').map(str::trim).collect();
+        if felder.len() >= 5 && felder[0].is_empty() && !felder[1].is_empty() && felder[3] == "workspace" {
+            aus.push_str(&format!("| {} | - | {} |", felder[1], felder[3]));
+        } else {
+            aus.push_str(zeile);
+        }
+    }
+    if text.ends_with('\n') {
+        aus.push('\n');
+    }
+    aus
 }
 
 /// Formt die enthaltenen und ausgenommenen Pakete zu `web/LIZENZEN.md`.
@@ -641,6 +667,7 @@ mod tests {
         "## Ausgenommene Pakete\n\n",
         "| Paket | Version | Grund |\n| --- | --- | --- |\n",
         "| c | 3.0.0 | dev |\n",
+        "| kanband | 0.1.0 | workspace |\n",
     );
 
     #[test]
@@ -673,6 +700,27 @@ mod tests {
         assert!(
             namen.iter().any(|n| n.contains("unerwartet in den Ausnahmen: b 2.0.0")),
             "das falsch ausgenommene Paket steht in der Meldung: {namen:?}"
+        );
+    }
+
+    #[test]
+    fn pruefen_ueberlebt_den_versionswechsel_des_workspace_pakets() {
+        // B1: Der Release-Ablauf setzt die Version des Workspace-Pakets per `sed`;
+        // die Datei bleibt sonst gleich und gilt weiter als aktuell.
+        let datei = FRISCH.replace("| kanband | 0.1.0 | workspace |", "| kanband | 1.2.3 | workspace |");
+        assert_ne!(datei, FRISCH, "die Mutation muss greifen");
+        assert!(pruefen(&datei, FRISCH).is_ok(), "die Version des Workspace-Pakets zählt nicht");
+    }
+
+    #[test]
+    fn pruefen_bricht_bei_veralteter_paketversion() {
+        // Gegenstück: eine geänderte Version eines fremden Pakets bleibt ein Fehler.
+        let datei = FRISCH.replace("| c | 3.0.0 | dev |", "| c | 2.9.0 | dev |");
+        assert_ne!(datei, FRISCH, "die Mutation muss greifen");
+        let namen = pruefen(&datei, FRISCH).unwrap_err();
+        assert!(
+            namen.iter().any(|n| n.contains("unerwartet in den Ausnahmen: c 2.9.0")),
+            "die veraltete Fremdversion wird gemeldet: {namen:?}"
         );
     }
 }
