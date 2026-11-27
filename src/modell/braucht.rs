@@ -46,10 +46,11 @@ pub fn deuten(label: &str) -> Deutung {
 const PRAEFIX: &str = "braucht:";
 
 /// Die gedeuteten Nummern in der Reihenfolge der Labels; dieselbe Nummer einmal (beim ersten Vorkommen).
-/// Linear in der Zahl der Labels (AK 16): die Menge prüft, die Liste hält die Reihenfolge.
+/// Linear in der Zahl der Labels (AK 16): die Menge prüft, die Liste hält die Reihenfolge. Die Arbeit je Label zählt
+/// `zaehler` (Test; R00261 AK 4).
 pub fn braucht_nummern(labels: &[String]) -> Vec<u32> {
     let mut gesehen: HashSet<u32> = HashSet::new();
-    labels.iter().filter_map(|l| if let Deutung::Nummer(n) = deuten(l) { Some(n) } else { None }).filter(|n| gesehen.insert(*n)).collect()
+    labels.iter().filter_map(|l| if let Deutung::Nummer(n) = deuten(l) { Some(n) } else { None }).filter(|n| { zaehler::schritt(); gesehen.insert(*n) }).collect()
 }
 
 /// Die Nummern, die auf einem der Boards in dessen letzter Spalte liegen — einmal gerechnet, je Aufgabe nachgeschlagen.
@@ -91,10 +92,10 @@ pub fn unbekannt_meldung(nummer: u32) -> String {
 
 /// Die neu hinzukommenden Labels mit dem Präfix `braucht:` — „neu“ heißt: in der gespeicherten Liste steht es nicht,
 /// verglichen ohne Groß/Klein. Unverändert mitgeschickte Labels prüft die Tür nie (wie `klasse`, R00195).
-/// Linear in der Zahl der Labels (AK 16).
+/// Linear in der Zahl der Labels (AK 16). Die Arbeit je Label zählt `zaehler` (Test; R00261 AK 4).
 pub fn neue_braucht_labels<'a>(vorher: &[String], nachher: &'a [String]) -> Vec<&'a str> {
     let gespeichert: HashSet<String> = vorher.iter().map(|l| l.trim().to_lowercase()).collect();
-    nachher.iter().map(|l| l.as_str()).filter(|l| deuten(l) != Deutung::Keine && !gespeichert.contains(&l.trim().to_lowercase())).collect()
+    nachher.iter().map(|l| l.as_str()).filter(|l| { zaehler::schritt(); deuten(l) != Deutung::Keine && !gespeichert.contains(&l.trim().to_lowercase()) }).collect()
 }
 
 /// Prüft die neuen `braucht:`-Labels der Aufgabe `nummer` der Reihe nach — Form, Selbstbezug, unbekannte Nummer; der
@@ -104,6 +105,7 @@ pub fn an_der_tuer(nummer: u32, neue: &[&str], gibt_es: impl Fn(u32) -> bool) ->
     let mut ziele = vec![];
     let mut gesehen: HashSet<u32> = HashSet::new();
     for label in neue {
+        zaehler::schritt();
         let n = match deuten(label) {
             Deutung::Nummer(n) => n,
             Deutung::Falsch | Deutung::Keine => return Err(FORM_MELDUNG.into()),
@@ -155,6 +157,7 @@ struct Komponenten<'k> {
 
 impl<'k> Komponenten<'k> {
     fn rechnen(kanten: &'k BTreeMap<u32, Vec<u32>>) -> HashMap<u32, usize> {
+        zaehler::suche();
         let mut t = Komponenten { kanten, index: HashMap::new(), tiefst: HashMap::new(), stapel: vec![], auf_stapel: HashSet::new(), komponente: HashMap::new() };
         for &start in kanten.keys() {
             if !t.index.contains_key(&start) {
@@ -239,6 +242,48 @@ fn weg(kanten: &BTreeMap<u32, Vec<u32>>, von: u32, nach: u32) -> Option<Vec<u32>
     None
 }
 
+/// Zählernähte der Arbeit (R00261 AK 4, Frage 1): statt einer Wanduhr-Grenze zählt der Test die Schritte. `schritte`
+/// zählt die betrachteten Einträge der Mengenarbeit (`braucht_nummern`, `neue_braucht_labels`, `an_der_tuer`), `suchen`
+/// die Läufe der Komponentenrechnung in `kreis_suchen`. Thread-lokal, damit parallele Tests nicht mitzählen; nur unter
+/// `cfg(test)` übersetzt — im Programm kostet die Naht nichts.
+#[cfg(test)]
+mod zaehler {
+    use std::cell::Cell;
+
+    thread_local! {
+        static SCHRITTE: Cell<usize> = const { Cell::new(0) };
+        static SUCHEN: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub(super) fn zuruecksetzen() {
+        SCHRITTE.with(|c| c.set(0));
+        SUCHEN.with(|c| c.set(0));
+    }
+
+    pub(super) fn schritte() -> usize {
+        SCHRITTE.with(Cell::get)
+    }
+
+    pub(super) fn suchen() -> usize {
+        SUCHEN.with(Cell::get)
+    }
+
+    pub(super) fn schritt() {
+        SCHRITTE.with(|c| c.set(c.get() + 1));
+    }
+
+    pub(super) fn suche() {
+        SUCHEN.with(|c| c.set(c.get() + 1));
+    }
+}
+
+/// Im Programm sind die Zählernähte leer; `cfg(not(test))` hält die Aufrufe in den Funktionen ohne `#[cfg]`-Streuung.
+#[cfg(not(test))]
+mod zaehler {
+    pub(super) fn schritt() {}
+    pub(super) fn suche() {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,9 +308,10 @@ mod tests {
     }
 
     // R00214 B1095 (Sollte des security- und architektur-reviewers): eine Suche je Aufruf, nicht je neuer Kante — Kette
-    // aus 20.000 Aufgaben, jede Kante neu; der Kreis schließt erst an der letzten Kante der Prüfreihenfolge
+    // aus 20.000 Aufgaben, jede Kante neu; der Kreis schließt erst an der letzten Kante der Prüfreihenfolge.
+    // Die Arbeit zählt die Naht (`zaehler::suchen`, R00261 AK 4) statt einer Wanduhr-Grenze.
     #[test]
-    fn kreis_suche_linear_in_den_neuen_kanten() {
+    fn kreis_suche_eine_suche_je_aufruf() {
         const N: u32 = 20_000;
         type Kanten = BTreeMap<u32, Vec<u32>>;
         let kette = |rueck: bool| -> (Kanten, Vec<(u32, u32)>) {
@@ -277,16 +323,14 @@ mod tests {
             }
             (kanten, neue)
         };
-        let ohne = binnen("Kette ohne Kreis", GRENZE, move || {
-            let (k, n) = kette(false);
-            kreis_suchen(&k, &n)
-        });
-        assert_eq!(ohne, None);
-        let mit = binnen("Kreis an der letzten Kante", GRENZE, move || {
-            let (k, n) = kette(true);
-            kreis_suchen(&k, &n)
-        });
-        assert_eq!(mit, Some((N - 1, N, vec![N - 1, N, N - 1])), "die erste Kante der Prüfreihenfolge, die ihn schließt");
+        let (k, n) = kette(false);
+        super::zaehler::zuruecksetzen();
+        assert_eq!(kreis_suchen(&k, &n), None);
+        assert_eq!(super::zaehler::suchen(), 1, "ohne Kreis eine Suche je Aufruf, nicht je neuer Kante");
+        let (k, n) = kette(true);
+        super::zaehler::zuruecksetzen();
+        assert_eq!(kreis_suchen(&k, &n), Some((N - 1, N, vec![N - 1, N, N - 1])), "die erste Kante der Prüfreihenfolge, die ihn schließt");
+        assert_eq!(super::zaehler::suchen(), 1, "mit Kreis eine Suche je Aufruf, nicht je neuer Kante");
     }
 
     // B1095: dasselbe Ergebnis wie die Suche je neuer Kante (Referenz) — 2.000 Zufallsgraphen mit 2–12 Knoten
@@ -354,53 +398,59 @@ mod tests {
         assert_eq!(an_der_tuer(5, &[], gibt_es), Ok(vec![]));
     }
 
-    // ---- AK 16 (B1095): linear in der Zahl der Labels — die Prüfung läuft unter der Schreibsperre ----------------------
+    // ---- AK 16 (B1095, R00261): linear in der Zahl der Labels — die Arbeit gezählt, ohne Wanduhr-Grenze --------------
 
-    /// Führt `f` in eigenem Faden aus und bricht nach `grenze` ab — ein quadratischer Lauf hält den Test nicht minutenlang auf.
-    fn binnen<T: Send + 'static>(was: &str, grenze: std::time::Duration, f: impl FnOnce() -> T + Send + 'static) -> T {
-        let (senden, empfangen) = std::sync::mpsc::channel();
-        std::thread::spawn(move || senden.send(f()));
-        empfangen.recv_timeout(grenze).unwrap_or_else(|_| panic!("{was}: länger als {grenze:?}"))
+    /// Führt `f` aus und misst die Schritte der Mengenarbeit (R00261 AK 4): vorher zurücksetzen, nachher lesen.
+    fn arbeit<T>(f: impl FnOnce() -> T) -> (T, usize) {
+        super::zaehler::zuruecksetzen();
+        let ergebnis = f();
+        (ergebnis, super::zaehler::schritte())
     }
 
-    const GRENZE: std::time::Duration = std::time::Duration::from_secs(1);
+    /// Die Schranke der Arbeit je Label: ein Nachschlag ist ein Schritt; ein quadratischer Vergleich wäre ein Vielfaches.
+    const JE_LABEL: usize = 4;
 
-    fn viele(form: impl Fn(usize) -> String) -> Vec<String> {
-        (0..100_000).map(form).collect()
-    }
-
-    #[test]
-    fn ak16_neue_braucht_labels_100_000_unter_einer_sekunde() {
-        let neu = binnen("q gespeichert, braucht:<n> geschickt", GRENZE, || neue_braucht_labels(&viele(|i| format!("q{i}")), &viele(|i| format!("braucht:{}", i + 10))).len());
-        assert_eq!(neu, 100_000);
-        let neu = binnen("dieselben gespeichert und geschickt", GRENZE, || {
-            let l = viele(|i| format!("braucht:{}", i + 10));
-            neue_braucht_labels(&l, &l).len()
-        });
-        assert_eq!(neu, 0);
-        let neu = binnen("gespeichert groß, geschickt klein, umgekehrte Reihenfolge", GRENZE, || {
-            let mut geschickt = viele(|i| format!("braucht:{}", i + 10));
-            geschickt.reverse();
-            neue_braucht_labels(&viele(|i| format!("BRAUCHT:{}", i + 10)), &geschickt).len()
-        });
-        assert_eq!(neu, 0);
+    /// Prüft Ergebnis und Arbeit eines Falls: höchstens `JE_LABEL × n` Schritte für `n` Labels.
+    fn linear<T: PartialEq + std::fmt::Debug>(was: String, n: usize, erwartet: T, f: impl FnOnce() -> T) {
+        let (ergebnis, schritte) = arbeit(f);
+        assert_eq!(ergebnis, erwartet, "{was}: Ergebnis");
+        assert!(schritte <= JE_LABEL * n, "{was}: {schritte} Schritte bei n = {n} (linear wären höchstens {})", JE_LABEL * n);
     }
 
     #[test]
-    fn ak16_braucht_nummern_100_000_unter_einer_sekunde() {
-        let nummern = binnen("verschiedene Nummern", GRENZE, || braucht_nummern(&viele(|i| format!("braucht:{}", i + 1))));
-        assert_eq!((nummern.len(), nummern.first(), nummern.last()), (100_000, Some(&1), Some(&100_000)), "Reihenfolge der Labels");
-        let nummern = binnen("dieselbe Nummer", GRENZE, || braucht_nummern(&viele(|_| "braucht:7".into())));
-        assert_eq!(nummern, vec![7]);
+    fn ak16_neue_braucht_labels_arbeit_ist_linear() {
+        for n in [1_000, 10_000, 100_000] {
+            let gespeichert: Vec<String> = (0..n).map(|i| format!("q{i}")).collect();
+            let braucht: Vec<String> = (0..n).map(|i| format!("braucht:{}", i + 10)).collect();
+            let gross: Vec<String> = (0..n).map(|i| format!("BRAUCHT:{}", i + 10)).collect();
+            let mut umgekehrt = braucht.clone();
+            umgekehrt.reverse();
+            linear(format!("verschiedene, n = {n}"), n, n, || neue_braucht_labels(&gespeichert, &braucht).len());
+            linear(format!("dieselben, n = {n}"), n, 0, || neue_braucht_labels(&braucht, &braucht).len());
+            linear(format!("umgekehrt, n = {n}"), n, 0, || neue_braucht_labels(&gross, &umgekehrt).len());
+        }
     }
 
     #[test]
-    fn ak16_tuer_100_000_neue_unter_einer_sekunde() {
-        let ziele = binnen("verschiedene Ziele", GRENZE, || {
-            let l = viele(|i| format!("braucht:{}", i + 2));
-            an_der_tuer(1, &l.iter().map(String::as_str).collect::<Vec<_>>(), |_| true)
-        });
-        assert_eq!(ziele.map(|z| (z.len(), z[0], z[99_999])), Ok((100_000, 2, 100_001)), "Reihenfolge der Labels");
+    fn ak16_braucht_nummern_arbeit_ist_linear() {
+        for n in [1_000, 10_000, 100_000] {
+            let braucht: Vec<String> = (0..n).map(|i| format!("braucht:{}", i + 1)).collect();
+            let dieselbe: Vec<String> = (0..n).map(|_| "braucht:7".to_string()).collect();
+            let mut umgekehrt = braucht.clone();
+            umgekehrt.reverse();
+            linear(format!("verschiedene, n = {n}"), n, n, || braucht_nummern(&braucht).len());
+            linear(format!("dieselbe, n = {n}"), n, 1, || braucht_nummern(&dieselbe).len());
+            linear(format!("umgekehrt, n = {n}"), n, n, || braucht_nummern(&umgekehrt).len());
+        }
+    }
+
+    #[test]
+    fn ak16_tuer_arbeit_ist_linear() {
+        for n in [1_000, 10_000, 100_000] {
+            let l: Vec<String> = (0..n).map(|i| format!("braucht:{}", i + 2)).collect();
+            let neue = l.iter().map(String::as_str).collect::<Vec<_>>();
+            linear(format!("verschiedene Ziele, n = {n}"), n, Ok(n), || an_der_tuer(1, &neue, |_| true).map(|z| z.len()));
+        }
     }
 
     /// Statisch (AK 16): außerhalb der Tests wird `.contains` nur auf Mengen gerufen — jeder Empfänger ist als
