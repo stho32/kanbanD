@@ -1284,3 +1284,8 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #268 R00265 | B1441 Hinweis in Dateiliste und Dateikopf zeichnen | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #268 R00265 | B1442 Gewand `.ru-hg` (Breite, Themen, Kontrast, Zugänglichkeit) | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #268 R00265 | B1443 Probe im echten Programm, Mutanten (a)–(e), volles Gate | Standard | 0,5-1h | 0,7h | 0,7h | autonom |
+| 2026-11-27 | Karte #270 R00266 | B1450 Abnahme-Proben rot am heutigen Stand | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #270 R00266 | B1451 Kopf ausserhalb des Rollbehaelters zeichnen und halten | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #270 R00266 | B1452 Stil des angehefteten Kopfs (Hintergrund, Hoehe, 320 px, `.rv `-Regeln) | Standard | 1h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #270 R00266 | B1453 Sprungziele, Leseanker und bestehende Proben nachziehen | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #270 R00266 | B1454 Probe im echten Programm, Mutant P4, Gate, Verweiszeilen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |

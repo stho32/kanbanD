@@ -41,6 +41,14 @@ const obersteZeile = page => page.evaluate(() => {
   return null;
 });
 
+/** Die Unterkante der Kopfzeile — und zugleich die Oberkante von `#review` (ADR-0042 N9.6). */
+const kopfUnten = async page => {
+  const m = await page.evaluate(() => { const k = document.querySelector('#rv-kopf'); const r = document.getElementById('review'); return { k: k ? k.getBoundingClientRect().bottom : null, r: r.getBoundingClientRect().top }; });
+  expect(m.k, 'die Kopfzeile ist gezeichnet').not.toBeNull();
+  expect(Math.abs(m.k - m.r), 'die Unterkante des Kopfs ist die Oberkante von #review (kein Spalt)').toBeLessThanOrEqual(0.5);
+  return m.r;
+};
+
 /** Rollt `#review` so, dass die Oberkante des Knotens `ziel` px unter der Oberkante der Rolle steht. */
 const rollenAuf = (knoten, ziel) => knoten.evaluate((e, z) => { const r = document.getElementById('review'); r.scrollTop += e.getBoundingClientRect().top - r.getBoundingClientRect().top - z; }, ziel);
 
@@ -99,7 +107,9 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
     await expect(ziel).toHaveCount(1);
     await page.locator('#rv-liste button.dn-e[data-act="review-datei"]').filter({ hasText: 'z.rs' }).click();
     expect(await s.kopfImBild(), 'die Kopfzeile steht dabei im Bild').toBe(true);
-    await expect.poll(async () => (await lage('#rv-dk2')(page)).oben).toBeGreaterThanOrEqual((await lage('#review')(page)).rollen - 0.5);
+    // ADR-0042 N9.6: die Unterkante des Kopfs ist die Oberkante von #review — dieselbe Zahl, aber sie toetet den Mutanten
+    // „Kopf mit position:sticky in #review“ (dort steht das Ziel hinter dem Kopf).
+    await expect.poll(async () => (await lage('#rv-dk2')(page)).oben).toBeGreaterThanOrEqual(await kopfUnten(page));
   });
 
   /* ── P3 (AK 3): „Zum Code“ unter dem Kopf ── */
@@ -112,8 +122,7 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
     await page.keyboard.press('Enter');
     expect(await s.kopfImBild(), 'die Kopfzeile steht dabei im Bild').toBe(true);
     const insel = await lage('#rv-insel')(page);
-    const rolle = await lage('#review')(page);
-    expect(insel.oben).toBeGreaterThanOrEqual(rolle.rollen - 0.5);
+    expect(insel.oben).toBeGreaterThanOrEqual(await kopfUnten(page));
   });
 
   /* ── P5 (AK 4): Der Leseanker greift ── */
