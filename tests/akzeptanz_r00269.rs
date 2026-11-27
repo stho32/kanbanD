@@ -256,7 +256,7 @@ async fn ak8_tagprobe_sigterm_schliesst_die_episode() {
     drop(g); // die gehaltenen Verbindungen schließen, damit das geordnete Beenden nicht auf sie wartet
     gemeinsam::geordnet_beenden(&mut lauf.kind);
     let text = std::fs::read_to_string(&log).unwrap_or_default();
-    let letzte = text.lines().filter(|z| !z.trim().is_empty()).next_back().unwrap_or_default().to_string();
+    let letzte = text.lines().rfind(|z| !z.trim().is_empty()).unwrap_or_default().to_string();
     assert!(letzte.contains(" INFO Episode beendet ") && letzte.contains("ursache=antwortbudget"), "letzte Zeile: {letzte}\n---\n{text}");
 }
 
@@ -294,4 +294,55 @@ async fn ak10_messwert_nur_im_log_antworten_unveraendert() {
     assert_eq!(sortiert.len(), paare.len(), "keine doppelte Route");
     assert!(paare.iter().all(|(_, p)| !p.contains("episod")), "keine Episoden-Route: {paare:?}");
     assert_eq!(paare.iter().filter(|(m, p)| m == "GET" && p == "/api/aufgaben/{nr}/commits").count(), 1, "die Commits-Route bleibt einmal");
+}
+
+// ---- AK 12 Lastprobe: die Ruhe-Spanne mit echter Uhr -------------------------------------------------------
+
+/// Der 1-Minuten-Wert aus `/proc/loadavg` (ADR-0026 N7 Regel 13).
+fn last_1min() -> f64 {
+    std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or_default().parse().unwrap_or(f64::MAX)
+}
+
+/// Lastprobe (`#[ignore]`): die Episode endet nach 10 s echter Ruhe; die nächste Anfrage schreibt die Ende-Zeile,
+/// und die gemessene Ruhe `d` liegt zwischen 10 s und 15 s (Obergrenze 50 % über dem Sollwert). Bei Last ab 2
+/// meldet sie „keine Messung: Last < 2 nötig“. **Nachts nicht fahren.**
+#[tokio::test]
+#[ignore = "Lastprobe: echte Uhr, 10 s Ruhe; nur bei Last unter 2, nachts nicht fahren"]
+async fn ak12_lastprobe_der_ruhe_spanne() {
+    let last = last_1min();
+    if last >= 2.0 {
+        eprintln!("AK 12: keine Messung: Last < 2 nötig (Last {last})");
+        return;
+    }
+    // eigene Instanz mit der Ortsuhr (echte Zeit); die Probe-Standardinstanz nutzt die gestellte Uhr
+    let (_arbeit, arbeit) = gemeinsam::arbeits_repository("# App\n");
+    let commit = gemeinsam::git(&arbeit, &["rev-parse", "HEAD"]);
+    let tmp = tempfile::tempdir().unwrap();
+    lage(tmp.path(), &arbeit, &commit);
+    let (protokoll, sammler) = Protokoll::sammler();
+    let kanban = Arc::new(Kanban::neu_mit_protokoll(tmp.path().to_path_buf(), protokoll.clone()).mit_gesamtgrenze(Duration::from_millis(30)));
+    let app = kanband::web::router_mit_kanban(kanban.clone(), 0, protokoll);
+    let fern = Instant::now() + Duration::from_secs(30);
+    let plaetze: Vec<_> = (0..kanband::dienst::LESEN_HOECHSTENS).map(|_| kanban.lesegrenze_betreten(fern).unwrap()).collect();
+    assert_eq!(hole(&app, "api/aufgaben/1/commits").await, 503);
+    drop(plaetze);
+    let beginn = Instant::now();
+    let mut d = None;
+    for _ in 0..200 {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert_eq!(hole(&app, "api/aufgaben/2").await, 200);
+        if sammler.lock().unwrap().iter().filter(|z| z.contains(" INFO Episode beendet ")).count() == 1 {
+            d = Some(beginn.elapsed());
+            break;
+        }
+    }
+    let d = d.expect("Ende-Zeile nach 10 s Ruhe");
+    eprintln!("AK 12: Last {last}, gemessene Ruhe d = {d:?}");
+    assert!(d >= Duration::from_secs(10) && d <= Duration::from_secs(15), "d = {d:?}, erwartet zwischen 10 s und 15 s");
+}
+
+/// Eine `GET`-Anfrage an einen Router, nur der Status (für die Lastprobe mit eigener Instanz).
+async fn hole(app: &axum::Router, pfad: &str) -> u16 {
+    let r = Request::builder().method("GET").uri(format!("/{pfad}")).header("X-KanbanD-Wer", "cl").body(Body::empty()).unwrap();
+    app.clone().oneshot(r).await.unwrap().status().as_u16()
 }

@@ -1303,3 +1303,8 @@ Nie vom User erfragen.
 | 2026-11-28 | Karte #274 R00270 | B1478 Abnahme-Proben rot am heutigen Stand (Schätzung kennt die 13 px nicht) | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-28 | Karte #274 R00270 | B1479 Fensterklasse .dz → .pop-dz (4 Stellen), Ausgleich entfernt, Schrift der Zeile gehalten | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-28 | Karte #274 R00270 | B1480 Probe im echten Programm, Mutanten m1/m2, Gate, Verweiszeile in R00249 | Standard | 0,5-1h | 1,0h | 0,9h | autonom |
+| 2026-11-27 | Karte #272 R00269 | B1467 Abnahme-Proben rot (P3 Lesegrenze, Antwortbudget) und Seams | Standard | 1-1,5h | 0,5h | 0,5h | autonom |
+| 2026-11-27 | Karte #272 R00269 | B1468 Episodenzustand und beobachten je Ursache | Standard | 1-2h | 0,5h | 0,5h | autonom |
+| 2026-11-27 | Karte #272 R00269 | B1469 Middleware: Messwert, Beginn/Ende, Ruhe bei jeder Anfrage | Standard | 1,5-3h | 0,6h | 0,6h | autonom |
+| 2026-11-27 | Karte #272 R00269 | B1470 Episoden enden beim geordneten Beenden | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #272 R00269 | B1471 Mutanten (a)-(f), Lastprobe, Tagprobe, Gate | Standard | 1-1,5h | 0,7h | 0,7h | autonom |

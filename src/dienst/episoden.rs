@@ -112,11 +112,11 @@ impl Episoden {
     pub fn ruhe(&mut self, jetzt: DateTime<FixedOffset>) -> Vec<Zeile> {
         let mut zeilen = vec![];
         for (ursache, feld) in [(Ursache::Lesegrenze, &mut self.lesegrenze), (Ursache::Antwortbudget, &mut self.antwortbudget)] {
-            if let Some(episode) = feld.as_ref() {
-                if (jetzt - episode.letzte).num_milliseconds() >= RUHE_MS {
-                    zeilen.push(episode.ende(ursache));
-                    *feld = None;
-                }
+            if let Some(episode) = feld.as_ref()
+                && (jetzt - episode.letzte).num_milliseconds() >= RUHE_MS
+            {
+                zeilen.push(episode.ende(ursache));
+                *feld = None;
             }
         }
         zeilen
