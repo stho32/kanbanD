@@ -634,8 +634,8 @@ test('Nacharbeit 3 (Security Muss 4): echte Titel bleiben Marker — 12, 60 und 
 });
 
 /* ── R00268 B1465: Striche an ihrer Stelle und Verdichtung nach Abstand (ADR-0041 N8 Punkte 1, 2, 3, 6) ──
-   Getrieben wie die Marker: Einträge → Zeilen und Auswertung wie in der Laufansicht, Marker aus der Karte; Länge und Breite
-   kommen als Zahlen (im Browser gemessen), gerechnet wird hier ohne DOM. */
+   Getrieben wie die Marker: Einträge → Zeilen und Auswertung wie in der Laufansicht, Marker aus der Karte; die
+   Beschriftungsbreiten kommen als Zahlen (im Browser gemessen), gerechnet wird hier ohne DOM. */
 
 /** Zeilen, die Auswertung und die Striche der Zeitachse zu einem Lauf. */
 function stricheVon(eintraege, karte) {
@@ -650,6 +650,15 @@ const strich = (anteil, { anzahl = 1, kurzhash = 'abc1234', titel = 'Titel im Be
   ({ schrittNr: 1, anteil, art: 'link', kurzhash, titel, anzahl, ziel });
 
 const mitteVon = (knopf, achsenBreite) => knopf.anteil * achsenBreite;
+
+/** Die linke und rechte Kante der Beschriftung eines Knopfs in px, wie das CSS sie setzt (`.lv-ckz.an`/`.re`): am Anfang liegt
+    die Beschriftung an ihrer eigenen Strichstelle (nach rechts ausgedehnt), am Ende gespiegelt (nach links), sonst mittig. */
+function kanten(knopf, achsenBreite) {
+  const mitte = mitteVon(knopf, achsenBreite);
+  if (knopf.rand === 'links') return { links: mitte, rechts: mitte + knopf.breite };
+  if (knopf.rand === 'rechts') return { links: mitte - knopf.breite, rechts: mitte };
+  return { links: mitte - knopf.breite / 2, rechts: mitte + knopf.breite / 2 };
+}
 
 test('R00268 AK 1 · AK 9: T17 — fünf Stellen an den Ergebnissen 3, 7, 9, 13 und 15, „2 Commits“ am Ergebnis 7, Marker ohne Zeit entfallen', () => {
   const { auswertung, striche } = stricheVon(T17, T17_KARTE);
@@ -701,14 +710,25 @@ test('R00268 AK 2 · B1465: 40 gleichmäßige Striche, Beschriftungen 20 px, Ach
   const knoepfe = stricheVerdichten(striche, Array(40).fill(20), 300);
   assert.strictEqual(knoepfe.reduce((summe, k) => summe + k.anzahl, 0), 40, 'die Summe der Marker bleibt 40');
   assert.ok(knoepfe.length < 40, 'verdichtet, nicht 40 Knöpfe');
-  for (let i = 0; i < knoepfe.length; i++) {
-    if (i > 0) {
-      const abstand = mitteVon(knoepfe[i], 300) - mitteVon(knoepfe[i - 1], 300);
-      assert.ok(abstand >= MITTE_ABSTAND, `Mitten ${abstand} px auseinander`);
-      assert.ok(abstand >= 20, `Beschriftungen überschneiden sich bei ${abstand} px nicht`);
-    }
+  for (let i = 1; i < knoepfe.length; i++) {
+    const abstand = mitteVon(knoepfe[i], 300) - mitteVon(knoepfe[i - 1], 300);
+    assert.ok(abstand >= MITTE_ABSTAND, `Mitten ${abstand} px auseinander`);
+    const vor = kanten(knoepfe[i - 1], 300), hier = kanten(knoepfe[i], 300);
+    assert.ok(vor.rechts <= hier.links + 0.5, `Beschriftungen bei ${vor.rechts} px / ${hier.links} px schneiden sich nicht`);
   }
   assert.deepStrictEqual(knoepfe.map(k => k.anzahl).filter(n => n !== 4), [], 'je Knopf vier Striche bei 7,5 px Abstand');
+});
+
+test('R00268 AK 2 · B1465 · Muss U1: 40 gleichmäßig verteilte Striche bei 296 px, Beschriftungen 64 px — die Rechtecke benachbarter Beschriftungen schneiden sich nicht', () => {
+  const striche = Array.from({ length: 40 }, (_, i) => strich(i / 40));
+  const knoepfe = stricheVerdichten(striche, Array(40).fill(64), 296);
+  assert.strictEqual(knoepfe.reduce((summe, k) => summe + k.anzahl, 0), 40);
+  for (let i = 1; i < knoepfe.length; i++) {
+    const abstand = mitteVon(knoepfe[i], 296) - mitteVon(knoepfe[i - 1], 296);
+    assert.ok(abstand >= MITTE_ABSTAND, `Mitten ${abstand} px auseinander`);
+    const vor = kanten(knoepfe[i - 1], 296), hier = kanten(knoepfe[i], 296);
+    assert.ok(vor.rechts <= hier.links + 0.5, `Beschriftungen ${i - 1}/${i}: ${vor.rechts.toFixed(2)} px ragt bis ${hier.links.toFixed(2)} px`);
+  }
 });
 
 test('R00268 AK 2 · B1465: überschneiden sich die Beschriftungen bei 24-px-Mittenabstand, geht der Strich auf (zweite Bedingung)', () => {
@@ -717,12 +737,14 @@ test('R00268 AK 2 · B1465: überschneiden sich die Beschriftungen bei 24-px-Mit
   assert.strictEqual(knoepfe[0].anzahl, 2);
 });
 
-test('R00268 AK 2 · B1465: Grenzen — 24 px bleibt getrennt, 23,9 px geht auf; genau die halbe Summe bleibt, ein Pixel weniger geht auf', () => {
-  const abstand = (px, breite) => stricheVerdichten([strich(0), strich(px / 300)], [breite, breite], 300);
-  assert.strictEqual(abstand(24, 20).length, 2, 'genau 24 px');
-  assert.strictEqual(abstand(23.9, 20).length, 1, '23,9 px');
-  assert.strictEqual(abstand(40, 40).length, 2, 'genau die halbe Summe von 40 px und 40 px');
-  assert.strictEqual(abstand(39, 40).length, 1, 'ein Pixel weniger');
+test('R00268 AK 2 · B1465: Grenzen der Verdichtung — Mitten unter 24 px und überlappende Rechtecke gehen auf, die Kante bleibt', () => {
+  const bei = (px, breite, start = 0) => stricheVerdichten([strich(start / 300), strich((start + px) / 300)], [breite, breite], 300);
+  assert.strictEqual(bei(24, 20, 150).length, 2, 'mittig: genau 24 px Mitten bei 20-px-Beschriftungen');
+  assert.strictEqual(bei(23.9, 20, 150).length, 1, 'ein Zehntel weniger');
+  assert.strictEqual(bei(29.5, 20).length, 2, 'am linken Rand: die ausgedehnte Beschriftung trifft die nächste bei 0,5 px Abstand');
+  assert.strictEqual(bei(29.4, 20).length, 1, 'ein Zehntel weniger überlappt');
+  assert.strictEqual(bei(59.5, 60, 150).length, 2, 'mittig: genau die halbe Summe von 60 px und 60 px bleibt getrennt');
+  assert.strictEqual(bei(59.4, 60, 150).length, 1, 'ein Zehntel weniger geht auf');
 });
 
 test('R00268 AK 2 · B1465: der zusammengefasste Knopf behält Stelle, Sprungmarke und Kurzhash des ersten Strichs und summiert die Marker', () => {

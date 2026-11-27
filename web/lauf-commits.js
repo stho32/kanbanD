@@ -317,7 +317,7 @@
       if (knopf.length >= STRICHE) break;
       knopf.push({ ...striche[i], strichZahl: 1, breite, mitte });
     }
-    return knopf.map(({ breite, mitte, ...rest }) => ({ ...rest, rand: randForm(mitte, breite, achsenBreitePx) }));
+    return knopf.map(({ mitte, ...rest }) => ({ ...rest, rand: randForm(rest.anteil * achsenBreitePx, rest.breite, achsenBreitePx) }));
   }
 
   /** Wo die mittige Beschriftung aus der Achse ragte, wird sie an ihre eigene Strichstelle gelegt: `'links'` (Anfang) oder

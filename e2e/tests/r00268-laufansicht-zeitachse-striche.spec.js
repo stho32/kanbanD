@@ -84,7 +84,8 @@ const sprache = (page, k) => ({
   achse: () => page.locator('#lauf .lv-bw'),
   knopfleiste: () => page.locator('#lauf .lv-ck'),
   knoepfe: () => page.locator('#lauf .lv-ck .lv-ckb'),
-  /** Je Knopf: die sichtbare Beschriftung, die Mitte des Strichs `i` in px der Achse, die Mitte in % und die Breite der Beschriftung. */
+  /** Je Knopf: die sichtbare Beschriftung, die Mitte des Strichs `i` in px der Achse, die Mitte in % und das Rechteck der
+      Beschriftung (linke und rechte Kante in px der Achse). */
   striche: () => page.locator('#lauf .lv-bw').evaluate(bw => {
     const achse = bw.getBoundingClientRect();
     return [...bw.querySelectorAll('.lv-ck .lv-ckb')].map(knopf => {
@@ -92,7 +93,8 @@ const sprache = (page, k) => ({
       const beschriftung = knopf.querySelector('.t').getBoundingClientRect();
       const mitte = strich.left + strich.width / 2 - achse.left;
       return { text: knopf.querySelector('.t').textContent.trim(), mittePx: mitte,
-        mitteProzent: mitte / achse.width * 100, breitePx: beschriftung.width };
+        mitteProzent: mitte / achse.width * 100, breitePx: beschriftung.width,
+        links: beschriftung.left - achse.left, rechts: beschriftung.right - achse.left };
     });
   }),
   /** Die Antwort der Trefferprobe: Mitte jedes Strichs in Dokumentkoordinaten, getroffen über `elementFromPoint`. */
@@ -190,7 +192,7 @@ test.describe('R00268 Laufansicht: Striche in der Zeitachse', () => {
   });
 
   for (const breite of [1280, 320]) {
-    test(`AK 2 · US-3 · M1 wörtlich: 40 Commit-Schritte, gleichmäßig verteilt, bei ${breite} px — Mitten ≥ 24 px, keine Überschneidung, Σn = 40, jede Mitte trifft ihren Knopf`, async ({ page }) => {
+    test(`AK 2 · US-3 · M1 wörtlich: 40 Commit-Schritte, gleichmäßig verteilt, bei ${breite} px — Mitten ≥ 24 px, die Rechtecke der Beschriftungen schneiden sich nicht, Σn = 40, jede Mitte trifft ihren Knopf`, async ({ page }) => {
       await page.setViewportSize({ width: breite, height: 900 });
       const kennung = `schritte-${breite}@2026-11-22T12:00+01:00`;
       await page.route(url => istCommits(url.href), route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ commits: schrittKarte(40) }) }));
@@ -204,8 +206,8 @@ test.describe('R00268 Laufansicht: Striche in der Zeitachse', () => {
       for (let i = 1; i < striche.length; i++) {
         const abstand = striche[i].mittePx - striche[i - 1].mittePx;
         expect(abstand, `Mitten ${striche[i - 1].text} und ${striche[i].text}`).toBeGreaterThanOrEqual(24);
-        expect(abstand, `Beschriftungen von ${striche[i - 1].text} und ${striche[i].text} überschneiden sich nicht`)
-          .toBeGreaterThanOrEqual((striche[i - 1].breitePx + striche[i].breitePx) / 2);
+        expect(striche[i - 1].rechts, `Rechtecke von ${striche[i - 1].text} (${striche[i - 1].rechts.toFixed(2)} px) und ${striche[i].text} (${striche[i].links.toFixed(2)} px) schneiden sich nicht`)
+          .toBeLessThanOrEqual(striche[i].links + 0.5);
       }
       for (const treffer of await s.treffer()) expect(treffer.trifft, `Mitte von „${treffer.text}“ trifft ihren Knopf`).toBe(true);
     });
