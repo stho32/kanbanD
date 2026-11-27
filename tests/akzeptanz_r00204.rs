@@ -371,6 +371,52 @@ async fn ak09_gesamtgrenze_statt_summe_der_prozessgrenzen() {
     assert_eq!(pids(&a).len(), 2, "Wurzel (9 s) und cat-file (abgebrochen bei 10 s), danach keiner mehr");
 }
 
+/// Lastprobe (R00267 AK 3): die Spanne der `ak09`-Frist (untere Schranke `10 s` und obere `15 s`) bei ruhiger Maschine
+/// (Last < 2) — ein Leistungsurteil, das nur ausdrücklich läuft. Vorbild `ak08_lastprobe_lesen_ohne_sperre`.
+#[tokio::test]
+#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+async fn ak09_lastprobe_zeitgrenze() {
+    let l = last();
+    eprintln!("ak09 Lastprobe: Last unter 2 nötig (Last jetzt {l:.2})");
+    if l >= 2.0 {
+        eprintln!("ak09 keine Messung: Last < 2 nötig (Last {l:.2}) — kein Wert gilt als bestanden");
+        return;
+    }
+    let a = ausgangslage_r00204();
+    a.von_hand(&a.verweise());
+    let (_schalter, pfad) = git_skript(&a, &format!("sleep 300 & echo $! >> {}; sleep 60", a.basis.join("pids").display()));
+    let lauf = starten(&a, &[("PATH", &pfad)]);
+    let start = Instant::now();
+    let (status, _, _) = liste_holen(&lauf.adresse, 1).await;
+    let d = start.elapsed();
+    eprintln!("ak09 Lastprobe: {status} nach {d:?}, Last {:.2}", last());
+    assert_eq!(status, 503, "die Frist greift");
+    assert!(d >= Duration::from_secs(10) && d <= Duration::from_secs(15), "{d:?}");
+}
+
+/// Lastprobe (R00267 AK 3): die obere Spanne der Gesamtgrenze (`d ≤ 15 s`) bei ruhiger Maschine (Last < 2).
+#[tokio::test]
+#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+async fn ak09_lastprobe_gesamtgrenze() {
+    let l = last();
+    eprintln!("ak09_gesamtgrenze Lastprobe: Last unter 2 nötig (Last jetzt {l:.2})");
+    if l >= 2.0 {
+        eprintln!("ak09_gesamtgrenze keine Messung: Last < 2 nötig (Last {l:.2}) — kein Wert gilt als bestanden");
+        return;
+    }
+    let a = ausgangslage_r00204();
+    let viele: Vec<String> = (0..30).map(|i| if i % 2 == 0 { format!("kd:{}", a.k3) } else { format!("kd:{}", a.w1) }).collect();
+    a.von_hand(&viele);
+    let (_schalter, pfad) = git_skript(&a, "sleep 9");
+    let lauf = starten(&a, &[("PATH", &pfad)]);
+    let start = Instant::now();
+    let (status, _, _) = liste_holen(&lauf.adresse, 1).await;
+    let d = start.elapsed();
+    eprintln!("ak09_gesamtgrenze Lastprobe: {status} nach {d:?}, Last {:.2}", last());
+    assert_eq!(status, 503);
+    assert!(d <= Duration::from_secs(15), "{d:?}");
+}
+
 // ---- AK 11: Cache (Git-Spur) ----------------------------------------------------------------------------------------
 
 #[tokio::test]
