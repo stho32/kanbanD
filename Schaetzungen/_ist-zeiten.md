@@ -1254,3 +1254,12 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #279 R00260 | B1397 Lastprobe R00217 AK 1 abgetrennt: je Datei die längste Aufgabe, `KD_LASTPROBE`, Last und Werte in Ausgabe und Datei; im Gate `1 skipped` | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-27 | Karte #279 R00260 | B1398 Probe/Mutanten/Gate: Mutant m5 tötet den R00248-Gate-Fall, Test-Mutant „Zustandsaussage entfernt“ überlebt m5, Unity-Mutant „alle Blöcke in einer Aufgabe“ tötet `farbe-auflage`; volles Gate grün; Verweiszeilen in R00248 und R00217 | Standard | 1-2h | 0,9h | 0,9h | autonom |
 | 2026-11-27 | Karte #276 R00261 | B1406 Reproduktion: Beleg aus den Gates #248/#260/#269/#279, keine eigene Last (Nachtbetrieb) | Standard | 0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1407 Gate-Fall Wortmarke AK 9 zählt Vergleiche ohne Uhr | Standard | 0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1408 Lastprobe-Fall Wortmarke + Last-Hilfe für alle Einheitentests | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1409 Zählernaht in neue_braucht_labels/braucht_nummern, Unit-Tests ohne binnen | Standard | 1h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1410 Integrationsfall ak16_viele_labels ohne Dauer-Grenze | Standard | 0,5-1h | 0,1h | 0,1h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1411 Lastprobe tests/lastprobe_r00214.rs | Standard | 1h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1412 Fundliste beider Suchmuster, je Stelle eingeordnet | Standard | 0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1413 Einheitentests bestand/markdown-tabellen/lauf-satz in Lastproben | Standard | 1-2h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1414 Rust r00204/r00206/verlauf/commits_lesen/diff ohne Dauer-Grenze, Zustand bleibt | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1415 Mutanten (m12, Vec-Linearsuche, ohne SPRUNG) rot, Gate cargo/node/Playwright, Suche | Standard | 0,5-1h | 0,4h | 0,4h | autonom |

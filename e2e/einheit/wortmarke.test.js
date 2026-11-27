@@ -168,6 +168,10 @@ test('AK 9: doppelte Zeilenzahl ergibt doppelt so viele Vergleiche, fünffache d
   assert.ok(vergleiche(1000) > 0, 'der Zähler zählt');
   assert.strictEqual(vergleiche(10000), 2 * vergleiche(5000));
   assert.strictEqual(vergleiche(5000), 5 * vergleiche(1000));
+  // dieselbe Aussage über die Zeilenlänge: „jedes Zeichen gegen jedes“ (quadratisch) fällt hier auf (unter der Grenze 1.000)
+  const laenge = m => { const z = { vergleiche: 0 }; u.wortMarke('a'.repeat(m) + '1', 'a'.repeat(m) + '2', z); return z.vergleiche; };
+  assert.ok(laenge(495) > 0, 'der Zähler zählt auch hier');
+  assert.ok(laenge(990) <= 2 * laenge(495) + 2, `${laenge(495)} → ${laenge(990)}`);
 });
 
 /** Kürzeste von mehreren Laufzeiten (ms) der Paarung über eine Zeilenliste — die kürzeste ist am wenigsten von fremder Last verfälscht. */
