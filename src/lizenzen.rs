@@ -1,6 +1,6 @@
 //! Lizenzhinweise der eingebetteten Rust-Pakete (R00263, ADR-0045).
 //!
-//! Der Generator löst den Abhängigkeitsgraph für die Release-Ziele auf, teilt die
+//! Der Generator löst den Abhängigkeitsgraphen für die Release-Ziele auf, teilt die
 //! Pakete aus `Cargo.lock` in enthaltene und ausgenommene (mit Grund) und formt daraus
 //! `web/LIZENZEN.md`. Alles hinter dem Cargo-Feature `lizenzen`, damit `cargo install`
 //! und `RUSTFLAGS=-D warnings` nichts Totes sehen (Auftrag #250, ADR-0045).
@@ -26,7 +26,7 @@ impl std::fmt::Display for Fehler {
         match self {
             Fehler::Metadaten(s) => write!(f, "Metadaten unlesbar: {s}"),
             Fehler::PaketOhneLizenz { paket } => write!(f, "Paket ohne Lizenzangabe: {paket}"),
-            Fehler::KeinLizenztext { paket } => write!(f, "kein Lizenztext im Cache: {paket}"),
+            Fehler::KeinLizenztext { paket } => write!(f, "Kein Lizenztext im Cache: {paket}"),
             Fehler::Io(s) => write!(f, "Dateizugriff: {s}"),
         }
     }
@@ -34,7 +34,7 @@ impl std::fmt::Display for Fehler {
 
 impl std::error::Error for Fehler {}
 
-/// Art einer Kante im aufgelösten Abhängigkeitsgraph.
+/// Art einer Kante im aufgelösten Abhängigkeitsgraphen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kantenart {
     /// Eine gewöhnliche Abhängigkeit (`kind` fehlt).
