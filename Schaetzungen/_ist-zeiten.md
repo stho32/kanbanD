@@ -1269,3 +1269,10 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #276 R00261 | Nacharbeit: src-Unit-Lastproben heraus (Wächter AK 22 verbietet Konsolenausgabe in src/), R00123-Zeit nach tests/lastprobe_r00261.rs | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-27 | Karte #254 R00264 | B1437 Rot belegen und den Live-Knoten der Seitenmeldung über die zweite Zeichnung halten | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-27 | Karte #254 R00264 | B1438 Nachbarübergänge, Neuladen, Mutant, Gate, Verweiszeile in R00230 | Standard | 0,5-1h | 0,6h | 0,6h | autonom |
+| 2026-11-27 | Karte #250 R00263 | B1430 Graph auflösen: `cargo metadata` voll + je Release-Ziel, `normal`+`build`, Einteilung in enthalten/ausgenommen mit Grund (`dev`, `plattformfremd`, `workspace`); 4 Unit-Tests | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #250 R00263 | B1431 Lizenz-/Urhebertext je Paket lesen: Lizenzdatei bzw. `LICENSE*`/`COPYING*`/`NOTICE*`/`UNLICENSE*` aus dem Cache-Ordner, Fehler mit Paketnamen | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #250 R00263 | B1432 `web/LIZENZEN.md` schreiben: Formatierung (vier Felder, Ausnahmentabelle), `examples/lizenzen.rs` hinter Feature `lizenzen`, Datei erzeugt und committet (97 enthalten, 64 Ausnahmen) | Standard | 1-2h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #250 R00263 | B1433 Einbetten und ausliefern: Zeile in `dateien!`, Test `GET /web/LIZENZEN.md` 200/Typ/bytegleich | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #250 R00263 | B1434 Release-Archiv und README: Kopierzeile in `release.yml`, README nennt `/web/LIZENZEN.md`, Test prüft beide Quellen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #250 R00263 | B1435 Gate-Test offline `tests/lizenzen.rs`: Menge = enthalten ∪ ausgenommen, Grund aus fester Liste, vier Felder, dev-only nicht enthalten; Mutanten M1/M3′/M4 rot | Standard | 1-2h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #250 R00263 | B1436 `--pruefen`: `pruefen()` nennt fehlende/unerwartete Pakete, Beispiel-Flag, Release-Schritt; Probe P3 und Mutant M2 Exit 1; volles Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
