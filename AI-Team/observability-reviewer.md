@@ -4,7 +4,7 @@ Ergänzt die Rolle `observability-reviewer` der Factory für dieses Projekt. Gil
 
 ## Projektregeln
 
-- Logging-Konzept: `AI-Team/umgebung.md`, Zeile „Logging“.
+- Logging-Konzept: `Dokumentation/ADRs/0001-logging-konzept.md` (ADR-0001 mit Nachträgen; `AI-Team/umgebung.md` gibt es nicht mehr).
 - Sparbetrieb (`AI-Team/prozess.md`): knapp arbeiten, nur lesen, was der Auftrag nennt.
 
 ## Spezialisierungen
