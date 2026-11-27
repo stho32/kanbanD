@@ -84,11 +84,11 @@ Die Mutante „zweites Einhängen“ — den Halter für den Meldungsknoten wied
 ### Bug behoben
 
 - [ ] **AK 1 404 `repository_fehlt` wird genau einmal angesagt (heute rot):** Gegeben die Ausgangslage oben. Wenn die Commit-Liste freigegeben wird und die zweite Zeichnung sichtbar ist, dann ist `document.querySelector('#review .rv-meld')` **derselbe Knoten** wie `window.kdRegion`, und `ansagenZaehlen` verzeichnet für die Seitenmeldung **keinen zweiten** Eintrag (über beide Zeichnungen zusammen genau **eine** Ansage). Heute: zwei Einträge mit demselben Text (rot, `etst-245/bericht.md` Z. 22).
-- [ ] **AK 2 Nachbarübergänge derselben Ansicht und Neuladen:** Mit demselben Zählfenster ergibt jeder der folgenden Fälle genau eine Ergebnisansage (höchstens ein Ladesatz):
+- [ ] **AK 2 Nachbarübergänge derselben Ansicht und Neuladen:** Mit demselben Zählfenster ergibt jeder der folgenden Fälle genau eine Ergebnisansage (höchstens ein Ladesatz). Die Knoten-Zusage („die Meldung bleibt derselbe Knoten“) gilt nur für die Fälle **ohne Ladephase** — die zweite Zeichnung (AK 1) und das Neuladen; wo ein Ladesatz dazwischen liegt, verlangt der Fall genau eine Ergebnisansage **nach dem Ladesatz**:
   - Diff endet mit 500 `{fehler: "kaputt"}`, mit 503 `{art: "antwortbudget"}` und mit 503 Zeitgrenze;
   - die Adresse nennt „Verweis ungültig“ (`web/app.js:2311`) und „Aufgabe gibt es nicht“ (`web/app.js:2312`);
-  - „Erneut versuchen“ mit erneutem Fehler (die Meldung bleibt derselbe Knoten, ihr Text ändert sich höchstens einmal);
-  - die Adresse **neu laden** an jeder Position (nach der ersten Zeichnung und nach der zweiten) — je genau eine Ergebnisansage.
+  - „Erneut versuchen“ mit erneutem Fehler: dazwischen liegt der erlaubte Ladesatz, der `.rv-meld` entfernt — es gilt genau eine Ergebnisansage **nach dem Ladesatz** (keine Knoten-Zusage);
+  - die Adresse **neu laden** an jeder Position (nach der ersten Zeichnung und nach der zweiten) — je genau eine Ergebnisansage, die Meldung bleibt derselbe Knoten.
 - [ ] **AK 3 Mutant „zweites Einhängen“ rot:** Wird der Halter für den Meldungsknoten wieder entfernt (in einer Kopie des Standes, nicht im Worktree), dann ist AK 1 rot — `ansagenZaehlen` zählt zwei Einträge mit demselben Text. Der Mutant wird **rot**; das ist der Wächter dieser Zusage. Der Gegenlauf (Text der Meldung zwischen den Zeichnungen geändert) bleibt bei genau einer Ansage grün.
 - [ ] **AK 4 Bestand und Abgrenzung:** Die Seitenmeldung behält `role="status"` (ADR-0018 N4 §2 — sie wird **nicht** entfernt); Wortlaut, Satz, `grund`, Symbol, Ton, „Zur Liste der Commits“ und der Fokus (`#rv-meld`) bleiben unverändert. „Alle Änderungen“ (R00230/I0220) und die 503/500-Fälle auf „Ein Commit“ (R00230 AK 6) sind unberührt. R00230 bleibt abgenommen; in ihren „Notizen“ steht höchstens **eine** Verweiszeile auf R00264. Die Probe führt kein Zeitmaß ein (ADR-0026 N5 Regel 12).
 
@@ -113,6 +113,7 @@ Die Mutante „zweites Einhängen“ — den Halter für den Meldungsknoten wied
 - Priorität: Mittel (Barrierefreiheit; die Bedienung selbst wirkt). Fünfter Fall derselben Klasse (ADR-0018 N4).
 - Betroffene Nutzer/Systeme: Mensch mit Bildschirmleser auf „Ein Commit“ der Review-Seite
 - Workaround: keiner. Die zweite Ansage ist redundant, aber nicht falsch.
+- **Berichtigung 2026-11-27 (#254):** AK 2 — die Knoten-Zusage („die Meldung bleibt derselbe Knoten“) gilt nur für die Fälle ohne Ladephase (zweite Zeichnung, Neuladen); „Erneut versuchen“ verlangt genau eine Ergebnisansage **nach dem Ladesatz** (Befund des entwicklertesters, `254-entwicklertester-1.md`, Anmerkung 1).
 - **Herkunft der Zahlen:** die zwei Einhängungen in 6–25 ms und „zwei Einträge“ stammen aus `etst-245/bericht.md` Z. 22 und `probe3.spec.js`; die Fundstellen (`web/app.js:1121/1229–1264/1389–1412/1420–1436/1597/1611–1620/2311/2312/2318/2804–2823/3311–3345`, `web/diff.js:722/742`, `e2e/tests/hilfen.js:341–347/349`) sind am Stand `74e00eb2` abgelesen (Belege: `gemeinsam/scratchpad/arch-254/bericht-detail.md`).
 - **Verworfene Alternativen** mit je einem Satz: siehe „Alternative Ansätze“ (B widerspricht N4 §2, C lässt die Leiste veralten).
 - Kein Feature-Knoten nötig: ein prüfbares Verhalten (eine Ansage je Ereignis dieser Ansicht); eine Interaction mit zwei Bubbles (Vorbild I0220/R00230, I0242/R00252).
