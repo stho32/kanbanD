@@ -294,14 +294,43 @@ async fn ak08_lesen_ohne_sperre() {
     let adresse = lauf.adresse.clone();
     let lesen = tokio::spawn(async move { liste_holen(&adresse, 1).await });
     tokio::time::sleep(Duration::from_millis(500)).await;
-    let start = Instant::now();
     let (status, rumpf) = senden(reqwest::Method::PATCH, &lauf.adresse, "api/aufgaben/1", "sh", json!({"titel": "Commit-Liste neu"})).await;
-    let dauer = start.elapsed();
     assert_eq!(status, 200, "{rumpf}");
-    assert!(dauer < Duration::from_secs(1), "PATCH wartete {dauer:?} auf das Lesen");
     assert!(!lesen.is_finished(), "das GET hängt noch (sonst prüft die Probe nichts)");
     let (status, _, rumpf) = lesen.await.unwrap();
     assert_eq!((status, rumpf["commits"].as_array().map(Vec::len)), (200, Some(3)));
+}
+
+/// Lastprobe (R00261 AK 8): der PATCH wartet unter einer Sekunde auf das lesende GET (5 s Schlaf im Skript).
+#[tokio::test]
+#[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+async fn ak08_lastprobe_lesen_ohne_sperre() {
+    let l = last();
+    eprintln!("AK 8 Lastprobe: Last unter 2 nötig (Last jetzt {l:.2})");
+    if l >= 2.0 {
+        eprintln!("AK 8 keine Messung: Last < 2 nötig (Last {l:.2}) — kein Wert gilt als bestanden");
+        return;
+    }
+    let a = ausgangslage_r00204();
+    a.von_hand(&a.verweise()[..3]);
+    let schalter = a.basis.join("schalter");
+    let (_schalter, pfad) = git_skript(&a, &format!("rm -f {}; sleep 5", schalter.display()));
+    let lauf = starten(&a, &[("PATH", &pfad)]);
+    let adresse = lauf.adresse.clone();
+    let lesen = tokio::spawn(async move { liste_holen(&adresse, 1).await });
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let start = Instant::now();
+    let (status, rumpf) = senden(reqwest::Method::PATCH, &lauf.adresse, "api/aufgaben/1", "sh", json!({"titel": "Commit-Liste neu"})).await;
+    let dauer = start.elapsed();
+    eprintln!("AK 8 Lastprobe: PATCH {} ms, Last {:.2}", dauer.as_millis(), last());
+    assert_eq!(status, 200, "{rumpf}");
+    assert!(dauer < Duration::from_secs(1), "PATCH wartete {dauer:?} auf das Lesen");
+    drop(lesen);
+}
+
+/// Die 1-Minuten-Last der Maschine aus `/proc/loadavg` (R00261).
+fn last() -> f64 {
+    std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or_default().parse().unwrap_or(f64::MAX)
 }
 
 #[tokio::test]

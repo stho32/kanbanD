@@ -309,26 +309,58 @@ mod tests {
         assert_eq!(zweige_von(&warm, &s.c1), (Commitzustand::AufZweig, Some(vec!["b".into(), "main".into()])));
     }
 
-    // R00204 AK 8: hält ein Schreiber die Sperre des Board-Ordners, antwortet das Lesen trotzdem, ohne auf ihn zu warten
-    #[test]
-    fn lesen_wartet_nicht_auf_die_sperre() {
+    /// R00204 AK 8: ein Schreiber hält die Sperre 3 s und setzt danach eine Marke; das Lesen läuft währenddessen.
+    /// Liefert (Lesezahl, Lesedauer, Marke gesetzt).
+    fn lesen_neben_sperre() -> (usize, Duration, bool) {
         let s = stand();
-        // ein Schreiber hält die Sperre 3 s lang; wer auf sie wartet, braucht mindestens so lange (und hängt nie)
-        let (anzahl, dauer) = std::thread::scope(|bereich| {
+        std::thread::scope(|bereich| {
             let (gehalten, warten) = std::sync::mpsc::channel();
             let k = &s.k;
+            let fertig = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let marke = fertig.clone();
             bereich.spawn(move || {
                 let _schreiber = k.sperre.lock().unwrap();
                 gehalten.send(()).unwrap();
                 std::thread::sleep(Duration::from_secs(3));
+                marke.store(true, std::sync::atomic::Ordering::SeqCst);
             });
             warten.recv().unwrap();
             let start = Instant::now();
             let anzahl = s.k.commits_lesen(1, frist()).unwrap().len();
-            (anzahl, start.elapsed())
-        });
+            let dauer = start.elapsed();
+            let marke_gesetzt = fertig.load(std::sync::atomic::Ordering::SeqCst);
+            (anzahl, dauer, marke_gesetzt)
+        })
+    }
+
+    // R00204 AK 8: hält ein Schreiber die Sperre des Board-Ordners, antwortet das Lesen trotzdem, ohne auf ihn zu warten.
+    // Die Aussage trägt die Marke des Schreibers statt der Uhr (R00261 AK 8).
+    #[test]
+    fn lesen_wartet_nicht_auf_die_sperre() {
+        let (anzahl, _dauer, marke_gesetzt) = lesen_neben_sperre();
+        assert_eq!(anzahl, 2);
+        assert!(!marke_gesetzt, "das Lesen wartete auf die Sperre (der Schreiber war schon fertig)");
+    }
+
+    // R00261 AK 8: die Zeit (Lesen < 2 s neben der 3-s-Sperre) läuft als Lastprobe, nur ausdrücklich und bei Last < 2.
+    #[test]
+    #[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+    fn lesen_wartet_nicht_auf_die_sperre_lastprobe() {
+        let l = last();
+        eprintln!("R00204 Lastprobe: Last unter 2 nötig (Last jetzt {l:.2})");
+        if l >= 2.0 {
+            eprintln!("R00204 keine Messung: Last < 2 nötig (Last {l:.2}) — kein Wert gilt als bestanden");
+            return;
+        }
+        let (anzahl, dauer, _marke_gesetzt) = lesen_neben_sperre();
+        eprintln!("R00204 Lastprobe: {anzahl} Einträge in {} ms, Last {:.2}", dauer.as_millis(), last());
         assert_eq!(anzahl, 2);
         assert!(dauer < Duration::from_secs(2), "Lesen wartete {dauer:?} auf die Sperre");
+    }
+
+    /// Die 1-Minuten-Last der Maschine aus `/proc/loadavg` (R00261).
+    fn last() -> f64 {
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or_default().parse().unwrap_or(f64::MAX)
     }
 
     // ADR-0032 N3.1: ist die Gesamtgrenze vorbei, kommt 503 und es startet kein Git; eine Karte ohne Verweise startet nie Git

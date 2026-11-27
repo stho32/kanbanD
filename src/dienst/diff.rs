@@ -560,17 +560,41 @@ mod tests {
     }
 
     // R00206 AK 20 (b), ADR-0032 N5.1 Regel 3: passt der Rumpf nicht mehr ins Budget, sofort 503 „Antwortbudget …“ —
-    // ohne auf frei werdenden Platz zu warten
+    // ohne auf frei werdenden Platz zu warten. Die Aussage trägt der Zustand (R00261 AK 8): wartete der Aufruf, käme
+    // nach der Frist `Zeitgrenze` statt `Ausgelastet`; die Uhr braucht es nicht.
     #[test]
     fn volles_budget_ist_sofort_503() {
         let (_tmp, k, c1) = stand();
         let alles = k.antwortbudget.belegen(vec![0; k.antwortbudget.frei()]).unwrap();
-        let start = Instant::now();
         let f = k.diff_lesen(1, &anfrage(&c1, Diffformat::Json), Instant::now() + Duration::from_secs(10)).unwrap_err();
         assert!(matches!(&f, Fehler::Ausgelastet { meldung: m, .. } if m == "Antwortbudget von 64 MB belegt — Diff in einigen Sekunden erneut laden"), "{f:?}");
-        assert!(start.elapsed() < Duration::from_secs(2), "ohne Warten: {:?}", start.elapsed());
         drop(alles);
         assert!(k.diff_lesen(1, &anfrage(&c1, Diffformat::Patch), Instant::now() + Duration::from_secs(10)).is_ok());
+    }
+
+    // R00261 AK 8: die Zeit („sofort“ < 2 s) läuft als Lastprobe, nur ausdrücklich und bei Last < 2.
+    #[test]
+    #[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+    fn volles_budget_ist_sofort_503_lastprobe() {
+        let l = last();
+        eprintln!("R00206 Lastprobe: Last unter 2 nötig (Last jetzt {l:.2})");
+        if l >= 2.0 {
+            eprintln!("R00206 keine Messung: Last < 2 nötig (Last {l:.2}) — kein Wert gilt als bestanden");
+            return;
+        }
+        let (_tmp, k, c1) = stand();
+        let _alles = k.antwortbudget.belegen(vec![0; k.antwortbudget.frei()]).unwrap();
+        let start = Instant::now();
+        let f = k.diff_lesen(1, &anfrage(&c1, Diffformat::Json), Instant::now() + Duration::from_secs(10)).unwrap_err();
+        let dauer = start.elapsed();
+        eprintln!("R00206 Lastprobe: 503 nach {} ms, Last {:.2}", dauer.as_millis(), last());
+        assert!(matches!(&f, Fehler::Ausgelastet { .. }), "{f:?}");
+        assert!(dauer < Duration::from_secs(2), "ohne Warten: {dauer:?}");
+    }
+
+    /// Die 1-Minuten-Last der Maschine aus `/proc/loadavg` (R00261).
+    fn last() -> f64 {
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or_default().parse().unwrap_or(f64::MAX)
     }
 
     // R00236 AK 2 (ADR-0042 N2.2 Punkt 1): ohne Änderung des Registers 304 ohne Git-Prozess, in beiden Formaten; der

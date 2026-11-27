@@ -427,9 +427,8 @@ mod tests {
         assert_eq!(v.eintraege.last().map(|e| e.art), Some(Kartenart::Erstellt));
     }
 
-    // R00123: Leistung — 100 Einträge über 5 Boards in unter 200 ms gerechnet (AK `< 200 ms`)
-    #[test]
-    fn kartenverlauf_leistung_100_eintraege() {
+    /// Die Boards des Leistungsfalls: 100 Einträge über 5 Boards.
+    fn verlauf_boards() -> Vec<(String, Vec<(NaiveDateTime, Board, crate::git::Autor)>)> {
         let mut boards: Vec<(String, Vec<(NaiveDateTime, Board, crate::git::Autor)>)> = vec![];
         for b in 0..5 {
             let staende = (0..20)
@@ -440,12 +439,39 @@ mod tests {
                 .collect();
             boards.push((format!("b{b}"), staende));
         }
+        boards
+    }
+
+    // R00123: 100 Einträge über 5 Boards — die zeitfreie Aussage bleibt im Gate (R00261 AK 8).
+    #[test]
+    fn kartenverlauf_100_eintraege() {
+        let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
+        let v = kartenverlauf(1, &aufgabe, &verlauf_boards(), None, vec![]);
+        assert!(v.eintraege.len() >= 100, "{} Einträge", v.eintraege.len());
+    }
+
+    // R00123 AK `< 200 ms` (R00261 AK 8): die Zeit läuft als Lastprobe, nur ausdrücklich und bei Last < 2.
+    #[test]
+    #[ignore = "Lastprobe: nur ausdrücklich, mit --release"]
+    fn kartenverlauf_100_eintraege_lastprobe() {
+        let l = last();
+        eprintln!("R00123 Lastprobe: Last unter 2 nötig (Last jetzt {l:.2})");
+        if l >= 2.0 {
+            eprintln!("R00123 keine Messung: Last < 2 nötig (Last {l:.2}) — kein Wert gilt als bestanden");
+            return;
+        }
         let aufgabe = [auf("2026-10-01 09:00", None, "sh")];
         let start = std::time::Instant::now();
-        let v = kartenverlauf(1, &aufgabe, &boards, None, vec![]);
+        let v = kartenverlauf(1, &aufgabe, &verlauf_boards(), None, vec![]);
         let dauer = start.elapsed();
+        eprintln!("R00123 Lastprobe: {} Einträge in {} ms, Last {:.2}", v.eintraege.len(), dauer.as_millis(), last());
         assert!(v.eintraege.len() >= 100, "{} Einträge", v.eintraege.len());
         assert!(dauer.as_millis() < 200, "{dauer:?}");
+    }
+
+    /// Die 1-Minuten-Last der Maschine aus `/proc/loadavg` (R00261).
+    fn last() -> f64 {
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().split(' ').next().unwrap_or_default().parse().unwrap_or(f64::MAX)
     }
 
     // R00123: keine Nummer — kein Eintrag

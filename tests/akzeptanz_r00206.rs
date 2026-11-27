@@ -506,10 +506,11 @@ async fn ak11_einzeln_nachladen() {
     let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}&datei=fehlt.txt"), None).await;
     assert_eq!(a.status, 404, "{}", a.text);
     assert!(a.json()["fehler"].as_str().unwrap().contains("Dateiliste des Commits ist zu groß"), "{}", a.text);
-    // auch die Liste liest die Dateiliste mit Grenze: der endlose Lauf endet bei 1 MB, nicht an der Gesamtgrenze
-    let start = Instant::now();
+    // auch die Liste liest die Dateiliste mit Grenze: der endlose Lauf endet bei 1 MB, nicht an der Gesamtgrenze.
+    // Der Zeitpunkt der Rückkehr trägt die Aussage nicht mehr (R00261 AK 8): dass die Anfrage überhaupt antwortet,
+    // während das Skript endlos schreibt, heißt, die Dateiliste-Grenze hat sie beendet — die Gesamtgrenze ergäbe 503.
     let a = holen(&lauf.adresse, 1, &format!("commit=kd:{h}"), None).await;
-    assert!(a.status != 503 && start.elapsed() < Duration::from_secs(5), "{} nach {:?}", a.status, start.elapsed());
+    assert!(a.status != 503, "{}", a.status);
 }
 
 // ---- AK 12: format=patch und ETag · US-8 ------------------------------------------------------------------------------
@@ -603,10 +604,10 @@ async fn ak14_lesen_ohne_sperre_und_nur_lesend() {
     let x1 = l.x1.clone();
     let lesen = tokio::spawn(async move { holen(&adresse, 1, &format!("commit=kd:{x1}"), None).await });
     tokio::time::sleep(Duration::from_millis(500)).await;
-    let start = Instant::now();
     let (status, rumpf) = senden(reqwest::Method::PATCH, &lauf.adresse, "api/aufgaben/1", "sh", json!({"titel": "Diff neu"})).await;
     assert_eq!(status, 200, "{rumpf}");
-    assert!(start.elapsed() < Duration::from_secs(1), "PATCH wartete {:?}", start.elapsed());
+    // Das lesende GET hängt 5 s (Skript); kam der PATCH zurück, bevor es fertig ist, hat er nicht auf die Sperre
+    // gewartet — die Aussage trägt der Zustand, nicht die Uhr (R00261 AK 8).
     assert!(!lesen.is_finished(), "das GET hängt noch");
     let a = lesen.await.unwrap();
     assert_eq!((a.status, dateien(&a.json()).len()), (200, 3));
