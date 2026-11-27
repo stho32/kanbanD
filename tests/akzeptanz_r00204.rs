@@ -629,58 +629,88 @@ async fn muss1_lazy_fetch_startet_kein_programm() {
 /// Ein Enkel von Git (`vorher` im Shim, danach `exec` auf das echte Git) — wie er läuft und welche Ausgaben er erbt.
 struct Enkel {
     name: &'static str,
-    befehl: &'static str,
     /// in Gittes Prozessgruppe: stirbt mit ihr, die Antwort kommt ohne Warten
     in_der_gruppe: bool,
+    /// was der Halter nach dem Markieren tut; die Umleitung entscheidet, welchen Strom er offen hält (`""` erbt beide)
+    umleitung: &'static str,
 }
 
 const ENKEL: [Enkel; 4] = [
-    Enkel { name: "in der Gruppe", befehl: "sleep 60", in_der_gruppe: true },
-    Enkel { name: "setsid", befehl: "setsid sleep 60", in_der_gruppe: false },
-    Enkel { name: "hält stdout", befehl: "setsid sleep 60 2>/dev/null", in_der_gruppe: false },
-    Enkel { name: "hält nur stderr", befehl: "setsid sleep 60 >/dev/null", in_der_gruppe: false },
+    Enkel { name: "in der Gruppe", in_der_gruppe: true, umleitung: "" },
+    Enkel { name: "setsid", in_der_gruppe: false, umleitung: "" },
+    Enkel { name: "hält stdout", in_der_gruppe: false, umleitung: " 2>/dev/null" },
+    Enkel { name: "hält nur stderr", in_der_gruppe: false, umleitung: " >/dev/null" },
 ];
 
-/// Eine Variante: zwei GETs nacheinander, je Status und Dauer; danach die PIDs der Enkel.
-async fn mit_enkel(enkel: &Enkel) -> (Vec<(u16, Duration)>, Vec<String>) {
+/// Eine Antwort: Status und **Dauer als Beobachtung** (R00267 AK 1: keine Zusicherung beurteilt eine Dauer).
+type Antwort = (u16, Duration);
+
+/// Der Enkel setzt vor Gits Lauf seine **Marke** (`<bereit>.<pid>`): er läuft, hat die Prozessgruppe verlassen (außer
+/// der Variante in der Gruppe) und hält die geerbten Ströme. Der Shim wartet auf die Marke, bevor er Git ausführt — so
+/// steht der Zustand „Enkel hält die Pipe“ **vor** dem Lesen fest und nicht erst nach der Antwort; sonst träfe die
+/// Gruppentötung den Enkel, bevor er `setsid` gerufen hat (der Runner-Wettlauf aus Karte #283).
+fn enkel_vorher(enkel: &Enkel, bereit: &Path, enkel_pids: &Path) -> String {
+    let setsid = if enkel.in_der_gruppe { "" } else { "setsid " };
+    format!(
+        "{setsid}sh -c 'echo > {b}.$$; exec sleep 60{u}' & k=$!; echo $k >> {e}; while [ ! -e {b}.$k ]; do sleep 0.005; done",
+        b = bereit.display(),
+        e = enkel_pids.display(),
+        u = enkel.umleitung,
+    )
+}
+
+/// Eine Variante: `runden` GETs nacheinander, je Status und Dauer; danach die PIDs der Enkel, die Zahl der gesetzten
+/// Marken und das Protokoll der Instanz (die Ursache der Abweisung, `Fehler::ursache()`).
+async fn mit_enkel(enkel: &Enkel, runden: usize) -> (Vec<Antwort>, Vec<String>, usize, String) {
     let a = ausgangslage_r00204();
     a.von_hand(&a.verweise()[..3]);
     let enkel_pids = a.basis.join("enkel");
-    let (_schalter, pfad) = git_skript(&a, &format!("{} & echo $! >> {}", enkel.befehl, enkel_pids.display()));
-    let lauf = starten(&a, &[("PATH", &pfad)]);
+    let bereit = a.basis.join("bereit");
+    let log = a.basis.join("log");
+    let (_schalter, pfad) = git_skript(&a, &enkel_vorher(enkel, &bereit, &enkel_pids));
+    let lauf = starten_mit(&a.board, &["--port", "0", "--log-ordner", log.to_str().unwrap()], &[("PATH", &pfad)]);
     let mut antworten = vec![];
-    for _ in 0..2 {
+    for _ in 0..runden {
         let start = Instant::now();
-        // 0: hängt noch nach 20 s
+        // 0: hängt noch nach 20 s (die Ausbleibe-Frist, das Doppelte der Frist — kein Leistungsurteil)
         let status = tokio::time::timeout(Duration::from_secs(20), liste_holen(&lauf.adresse, 1)).await.map_or(0, |(s, _, _)| s);
         antworten.push((status, start.elapsed()));
     }
     tokio::time::sleep(Duration::from_millis(300)).await;
     let pids: Vec<String> = lies(&a.basis, "enkel").split_whitespace().map(String::from).collect();
-    (antworten, pids)
+    let marken = pids.iter().filter(|p| Path::new(&format!("{}.{p}", bereit.display())).exists()).count();
+    (antworten, pids, marken, lies(&log, "kanbanD.log"))
 }
 
 #[tokio::test]
 async fn muss2_enkel_haelt_die_pipe() {
-    let laeufe: Vec<_> = ENKEL.iter().map(|e| tokio::spawn(mit_enkel(e))).collect();
+    let laeufe: Vec<_> = ENKEL.iter().map(|e| tokio::spawn(mit_enkel(e, 2))).collect();
     let mut befunde = vec![];
     for (enkel, lauf) in ENKEL.iter().zip(laeufe) {
-        let (antworten, pids) = lauf.await.unwrap();
+        let (antworten, pids, marken, protokoll) = lauf.await.unwrap();
         eprintln!("{}: {antworten:?}, Enkel {pids:?}", enkel.name);
         assert!(!pids.is_empty(), "{}: der Shim startete keinen Enkel", enkel.name);
+        assert!(marken >= 1, "{}: kein Enkel setzte seine Marke — der Zustand stand vor der Anfrage nicht fest", enkel.name);
         let lebend: Vec<&String> = pids.iter().filter(|p| lebt(p)).collect();
         if enkel.in_der_gruppe {
-            // Git endet normal, seine Gruppe mit ihm: die Liste kommt sofort, kein Enkel bleibt
-            if antworten.iter().any(|(s, d)| *s != 200 || *d > Duration::from_secs(5)) {
+            // Git endet normal, seine Gruppe mit ihm: die Liste kommt ohne Warten, kein Enkel bleibt
+            if antworten.iter().any(|(s, _)| *s != 200) {
                 befunde.push(format!("{}: {antworten:?}", enkel.name));
             }
             if !lebend.is_empty() {
                 befunde.push(format!("{}: Enkel lebt: {lebend:?}", enkel.name));
             }
         } else {
-            // außerhalb der Gruppe bleibt er — die Antwort wartet trotzdem nicht über die Frist hinaus
-            if antworten.iter().any(|(s, d)| *s != 503 || *d < Duration::from_secs(10) || *d > Duration::from_secs(15)) {
+            // außerhalb der Gruppe bleibt er — die Antwort wartet trotzdem nicht über die Ausbleibe-Frist hinaus; keine
+            // Zusicherung beurteilt eine Dauer: es gilt der Zustand (503, Ursache `zeitgrenze`, der Enkel lebt danach)
+            if antworten.iter().any(|(s, _)| *s != 503) {
                 befunde.push(format!("{}: {antworten:?}", enkel.name));
+            }
+            if lebend.is_empty() {
+                befunde.push(format!("{}: kein Enkel lebt nach der Antwort: {pids:?}", enkel.name));
+            }
+            if !(protokoll.contains("status=503") && protokoll.contains("ursache=zeitgrenze")) {
+                befunde.push(format!("{}: kein `503 … ursache=zeitgrenze` im Protokoll", enkel.name));
             }
         }
         for p in &pids {
