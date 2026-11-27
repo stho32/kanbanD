@@ -1267,3 +1267,4 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #276 R00261 | Nacharbeit: B3 Lastproben r00206 ak11/ak14 | Standard | 0,5h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #276 R00261 | Nacharbeit: B6 Gelerntes berichtigt (Zähler je Vergleich, realistischer Mutant) + Ist-Zeiten | Standard | 0,5h | 0,1h | 0,1h | autonom |
 | 2026-11-27 | Karte #276 R00261 | Nacharbeit: src-Unit-Lastproben heraus (Wächter AK 22 verbietet Konsolenausgabe in src/), R00123-Zeit nach tests/lastprobe_r00261.rs | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #254 R00264 | B1437 Rot belegen und den Live-Knoten der Seitenmeldung über die zweite Zeichnung halten | Standard | 1-2h | 0,3h | 0,3h | autonom |

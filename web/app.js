@@ -1125,6 +1125,22 @@ function ansageBehalten(vorher, id) {
   if (vorher.textContent !== neu.textContent) vorher.textContent = neu.textContent;
 }
 
+/** Die Seitenmeldung der Review-Seite trägt selbst die Live-Rolle (ADR-0018 N4 §2, weil „Ein Commit“ keinen Statusbereich hat).
+    `render()` hält ihren äußeren Knoten (N4 §1/§5): kehrt dieselbe Meldung zurück, bleibt es derselbe Knoten und `ansagenZaehlen`
+    verzeichnet keine zweite Ansage; ändert sie sich, wird derselbe Knoten neu gefüllt — je Ereignis genau eine Ansage. Das
+    Fokusziel `#rv-meld` der Überschrift bleibt, weil der innere Text unangetastet mitwandert. */
+function meldungBehalten(vorher) {
+  if (!vorher || vorher.isConnected) return;
+  const neu = document.querySelector('#review .rv-meld');
+  if (!neu) return;
+  if (vorher.outerHTML !== neu.outerHTML) {
+    for (const attr of [...vorher.attributes]) vorher.removeAttribute(attr.name);
+    for (const attr of [...neu.attributes]) vorher.setAttribute(attr.name, attr.value);
+    vorher.replaceChildren(...neu.childNodes);
+  }
+  neu.replaceWith(vorher);
+}
+
 /** Vor jedem Zeichnen: ist „Commits“ die gezeigte Ansicht und für diese Aufgabe noch nichts gelesen, beginnt das Lesen jetzt (einmal);
     ist es nicht die gezeigte Ansicht, fällt der Zustand weg — das nächste Öffnen liest neu. Ein Live-Ereignis liest nie neu. */
 function commitsAnstossen() {
@@ -3311,6 +3327,7 @@ function render() {
   const reviewAnsageVorher = document.getElementById('rv-ansage');
   const reviewWahlVorher = document.getElementById('rv-wahl');
   const reviewLaedtVorher = document.getElementById('rv-laedt');
+  const reviewMeldVorher = document.querySelector('#review .rv-meld');
   const reviewGesehenVorher = document.getElementById('rv-gesehen');
   const reviewSpeicherVorher = document.getElementById('rv-gesehen-speicher');
   // Die Auswahl gilt nur auf diesem Board und nur für Karten, die noch darauf liegen (R00065)
@@ -3341,6 +3358,7 @@ function render() {
     ansageBehalten(reviewWahlVorher, 'rv-wahl');
     // der Ladesatz der Seite ist ein Start-Ereignis: ein Neuzeichnen während des Ladens sagt ihn nicht ein zweites Mal an (R00230 S2)
     ansageBehalten(reviewLaedtVorher, 'rv-laedt');
+    meldungBehalten(reviewMeldVorher);
     gesehenAnsageBehalten(reviewGesehenVorher);
     ansageBehalten(reviewSpeicherVorher, 'rv-gesehen-speicher');
   } finally {
