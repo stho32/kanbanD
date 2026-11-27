@@ -463,6 +463,44 @@ function leisteVorbereiten(h) {
   };
 }
 
+/* ── Ausgangslage von R00266 (angehefteter Kopf): K-N mit langer Zeile (407 Zeichen, wie R00248 K-Lang) in `kd`, sieben Schritte
+   davor; Aufgabe #9 trägt neun Einträge, damit „Zum Code“ erscheint (LEISTE_OHNE_SPRUNG = 8) ── */
+
+/** `kd`: B0 mit den alten Fassungen, sieben kleine Schritte S1–S7, dann K-N (lange Zeile in src/l.rs, dazu src/a.rs über 250
+    Zeilen und die kurze Datei src/z.rs); `wb`: W0 und W1 für einen Nachbarzustand. */
+function kopfBauen(basis) {
+  const r = path.join(basis, 'KD'), s = path.join(basis, 'WB');
+  for (const ort of [r, s]) {
+    fs.mkdirSync(path.join(ort, 'Dokumentation/Planung'), { recursive: true });
+    fs.writeFileSync(path.join(ort, 'Dokumentation/Planung/app.md'), '# App\n');
+    gitAls(ort, ADA, '2026-08-01T08:00:00+00:00', 'init', '-q', '-b', 'main');
+  }
+  const h = { r, s };
+  aenderungsCommit(r, 'N0 Vorgänger', { 'src/a.rs': reihe(250, 'a alt'), 'src/l.rs': '// l alt\n', 'src/z.rs': 'z alt\n' });
+  h.schritte = [];
+  for (let i = 1; i <= 7; i++) h.schritte.push(aenderungsCommit(r, `S${i} Schritt ${i}`, { [`src/s${i}.rs`]: `fn s${i}() {}\n` }));
+  h.n = aenderungsCommit(r, 'K-N lange Zeile', { 'src/a.rs': reihe(250, 'a neu'), 'src/l.rs': `${UM_A}\n`, 'src/z.rs': 'z neu\n' });
+  aenderungsCommit(s, 'W0 Vorgänger', { 'docs/n.md': '# n\n\nEnde\n' });
+  h.w1 = aenderungsCommit(s, 'W1', { 'docs/n.md': '# n\n\nlet a = 2;\n\nEnde\n' });
+  return h;
+}
+
+let kopfGeteilt = null;
+/** Ein Satz Repositories je Prozess für R00266, am Prozessende entfernt. */
+function kopfRepository() {
+  if (!kopfGeteilt) {
+    const basis = basisAnlegen();
+    kopfGeteilt = kopfBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return kopfGeteilt;
+}
+
+/** Aufgaben: #9 K-N mit den sieben Schritten und W1 (neun Einträge), #10 K-N allein (zwei Einträge). Register `kd`, `wb`. */
+function kopfVorbereiten(h) {
+  return aufgabenVorbereiten(h, { 9: [...h.schritte.map(x => `kd:${x}`), `kd:${h.n}`, `wb:${h.w1}`], 10: [`kd:${h.n}`] });
+}
+
 /* ── Ausgangslage von R00246 (Gesehen): eigene Repositories nach R00235, dazu K3b (src/a.rs +1 Zeile, Kind von K3), KG (eine geänderte
    Datei über 3.000 Zeilen, `gross`), K5 (fünf Dateien in `kd`, darunter src/a.rs), W5 (drei Dateien in `wb`, darunter src/a.rs) und ein
    leerer Commit ── */
@@ -793,4 +831,4 @@ function nebeneinanderVorbereiten(h) {
   return aufgabenVorbereiten(h, { 9: [`kd:${h.n1}`, `wb:${h.n3}`], 10: [`kd:${h.n2}`], 11: [`kd:${h.n4}`], 12: [`kd:${h.leer}`] });
 }
 
-module.exports = { nebeneinanderRepository, nebeneinanderVorbereiten, umbrechenRepository, umbrechenVorbereiten, UM_A, UM_B, UM_FN, wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
+module.exports = { kopfRepository, kopfVorbereiten, nebeneinanderRepository, nebeneinanderVorbereiten, umbrechenRepository, umbrechenVorbereiten, UM_A, UM_B, UM_FN, wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
