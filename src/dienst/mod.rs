@@ -17,6 +17,7 @@ pub mod nachfolger;
 pub use commits_lesen::GESAMTGRENZE;
 pub mod antwortbudget;
 pub mod diff;
+pub mod episoden;
 mod gesamt_diff;
 pub use gesamt_diff::Gesamtdiff;
 mod zweigcache;

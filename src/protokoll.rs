@@ -66,6 +66,8 @@ pub enum Ereignis {
     BrowserNichtGeoeffnet,
     OrdnerNichtBeobachtet,
     ResteNachLoeschen,
+    /// Eine Episode einer Kapazitätsgrenze endet nach Ruhe (ADR-0001 N1.4 Regel 5, R00269).
+    EpisodeBeendet,
 }
 
 impl Ereignis {
@@ -79,6 +81,7 @@ impl Ereignis {
             Ereignis::BrowserNichtGeoeffnet => "Browser nicht geöffnet",
             Ereignis::OrdnerNichtBeobachtet => "Ordner nicht beobachtet",
             Ereignis::ResteNachLoeschen => "Reste nach dem Löschen",
+            Ereignis::EpisodeBeendet => "Episode beendet",
         }
     }
 }
