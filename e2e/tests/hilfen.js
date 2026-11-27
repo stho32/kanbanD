@@ -413,4 +413,7 @@ const masse = (page, selektor) => page.evaluate(s => {
   return { x: r.x, y: r.y, width: r.width, height: r.height, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, clientHeight: el.clientHeight };
 }, selektor);
 
-module.exports = { masse, ansagenZaehlen, mutanteEinsetzen, commitSteht, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };
+/** Die 1-Minuten-Last der Maschine aus `/proc/loadavg` (R00260 AK 7): die Lastproben lesen sie selbst und melden sie mit ihren Werten. */
+const lastLesen = () => Number(fs.readFileSync('/proc/loadavg', 'utf8').split(/\s+/)[0]);
+
+module.exports = { masse, lastLesen, ansagenZaehlen, mutanteEinsetzen, commitSteht, kanbanStarten, einrichten, alsPerson, reiter, liveBereit, bereit, breiteSetzen, filterOeffnen, filterSchalten, mehrOeffnen, ausMehr, thema, kontrastMessen, kontrastVerstoesse, kontrastAm, kontrastFarben, farbPixel, leuchtdichte };

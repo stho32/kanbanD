@@ -1,9 +1,13 @@
 // R00248 Review-Seite — lange Zeilen umbrechen (Karte #259, I0238, Scheibe S6 von ADR-0042 Punkt 8): AK 1–10 und US-1..US-6 im echten
 // Programm gegen echtes Git. Ausgangslage: review-hilfen.js (`umbrechenRepository`: U1 mit K-Lang und K-Kurz, U2 K-Zwei, U3 K-Last, U4 ohne Dateien).
 // Schichten: Testfälle → Testsprache (`seite`) → Treiber (Selektoren, Adressen, Messungen nur hier) → Programm.
+// AK 7 trägt kein Zeitmaß mehr im Gate (R00260): der Gate-Fall prüft 5.000 Zeilen, dieselben Zeilenknoten und keine Anfrage; das
+// Wanduhr-Maß (Long Task ≤ 150 ms) läuft als Lastprobe außerhalb des Gates, nur ausdrücklich mit `KD_LASTPROBE=1` und bei Last < 2
+// (`KD_LASTPROBE=1 npx playwright test tests/r00248-review-umbrechen.spec.js -g "AK 7 Lastprobe" --workers=1`, Last aus `/proc/loadavg`);
+// im Gate erscheint sie als `skipped`.
 const fs = require('fs');
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastFarben, farbPixel } = require('./hilfen');
+const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontrastFarben, farbPixel, lastLesen } = require('./hilfen');
 const { umbrechenRepository, umbrechenVorbereiten, UM_A, UM_B, WM_BREIT } = require('./review-hilfen');
 
 /* ── Treiber: Adressen, Selektoren, Messungen ── */
@@ -508,6 +512,68 @@ test.describe('R00248 Review-Seite — lange Zeilen umbrechen', () => {
     const knoten = await s.bereich('src/gross.rs').evaluate(b => { const z = b.querySelectorAll('tr'); return [z[0].kdMarke, z[z.length - 1].kdMarke]; });
     expect(knoten, 'dieselben Zeilenknoten').toEqual(['erste', 'letzte']);
     expect(anfragen, 'keine Anfrage').toEqual([]);
+  });
+
+  /* ── AK 7 Lastprobe (R00260): das Wanduhr-Maß außerhalb des Gates, nur ausdrücklich (KD_LASTPROBE=1) und bei Last < 2;
+        im Gate erscheint sie als `skipped`, ohne KD_LASTPROBE misst sie nicht ── */
+
+  test.describe('Lastprobe', () => {
+    test.skip(!process.env.KD_LASTPROBE, 'Lastprobe: nur ausdrücklich (KD_LASTPROBE=1), Last < 2');
+
+    /** Meldet Last und die vier Werte der Lastprobe in die Ausgabe, als Annotation und mit `KD_MESS_AUS` in eine Datei (R00260 AK 5, 7). */
+    function messungMelden(messung, last) {
+      const zeile = `AK 7 Lastprobe Last ${last.toFixed(2)} | scrollenAus ${messung.scrollenAus} ms | nachUmschalten ${messung.nachUmschalten} ms | beimScrollen ${messung.beimScrollen} ms | zurueck ${messung.zurueck} ms`;
+      console.log(zeile);
+      test.info().annotations.push({ type: 'AK 7 Lastprobe', description: zeile });
+      if (process.env.KD_MESS_AUS) fs.appendFileSync(process.env.KD_MESS_AUS, JSON.stringify({ last, ...messung }) + '\n');
+    }
+
+    test('AK 7 Lastprobe: Umschalten, Scrollen und Zurück ohne Long Task über 150 ms, 5.000 Zeilen', async ({ page }) => {
+      const last = lastLesen();
+      console.log(`AK 7 Lastprobe: Last ${last.toFixed(2)} — Grenze 150 ms, Messung nur bei Last < 2`);
+      test.skip(last >= 2, `keine Messung: Last < 2 nötig (Last ${last.toFixed(2)})`);
+      test.setTimeout(120000);
+      const s = seite(page);
+      await breiteSetzen(page, 980, 800);
+      await page.addInitScript(langeAufgabenSammeln);
+      await s.commitOeffnen(k, 10, umbrechenRepository().u3);
+      const anzeigen = s.datei('src/gross.rs').getByRole('button', { name: 'Änderungen anzeigen' });
+      await anzeigen.click();
+      await expect(s.bereich('src/gross.rs').locator('tr.add').first()).toBeVisible();
+      await farbeAbwarten(page, s.bereich('src/gross.rs'));
+      await expect(s.bereich('src/gross.rs').locator('tr.add')).toHaveCount(5000);
+      await zweiBilder(page);
+      const laengste = t => page.evaluate(von => Math.max(0, ...window.kdLang.filter(e => e.start >= von).map(e => e.dauer)), t);
+      const bisEnde = () => page.evaluate(() => new Promise(fertig => {
+        const r = document.getElementById('review');
+        r.scrollTop = 0;
+        const schritt = () => { const vorher = r.scrollTop; r.scrollTop += r.clientHeight * 0.8; if (r.scrollTop === vorher) fertig(); else requestAnimationFrame(schritt); };
+        requestAnimationFrame(schritt);
+      }));
+      // Vergleichswert: Scrollen bei „aus“ (kein Kriterium)
+      const tAus = await page.evaluate(() => performance.now());
+      await bisEnde();
+      await zweiBilder(page);
+      const scrollenAus = await laengste(tAus);
+      const t0 = await page.evaluate(() => performance.now());
+      await s.schalter.click();
+      await expect(s.eingabe).toBeChecked();
+      await zweiBilder(page);
+      const nachUmschalten = await laengste(t0);
+      // von oben bis zum Ende der Datei scrollen, ein Bild je Schritt
+      await s.bereich('src/gross.rs').scrollIntoViewIfNeeded();
+      const t1 = await page.evaluate(() => performance.now());
+      await bisEnde();
+      await zweiBilder(page);
+      const beimScrollen = await laengste(t1);
+      const t2 = await page.evaluate(() => performance.now());
+      await s.schalter.click();
+      await expect(s.eingabe).not.toBeChecked();
+      await zweiBilder(page);
+      const zurueck = await laengste(t2);
+      messungMelden({ scrollenAus, nachUmschalten, beimScrollen, zurueck, workers: test.info().config.workers }, last);
+      expect(Math.max(nachUmschalten, beimScrollen, zurueck), 'Long Task ≤ 150 ms').toBeLessThanOrEqual(150);
+    });
   });
 
   /* ── AK 7 (Erweiterung, PO Z. 679, ADR-0042 N7.4 P1/P2): Hinaufrollen nach frischem Laden springt nicht ── */
