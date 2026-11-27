@@ -1263,3 +1263,6 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #276 R00261 | B1413 Einheitentests bestand/markdown-tabellen/lauf-satz in Lastproben | Standard | 1-2h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #276 R00261 | B1414 Rust r00204/r00206/verlauf/commits_lesen/diff ohne Dauer-Grenze, Zustand bleibt | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-27 | Karte #276 R00261 | B1415 Mutanten (m12, Vec-Linearsuche, ohne SPRUNG) rot, Gate cargo/node/Playwright, Suche | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #276 R00261 | Nacharbeit: B1 Zählernaht je Vergleich/Nachschlag (Hülle Gesehen<T>), B2 (len, first, last), B4 statischer Test empfänger-lokal | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
+| 2026-11-27 | Karte #276 R00261 | Nacharbeit: B3 Lastproben r00206 ak11/ak14 | Standard | 0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #276 R00261 | Nacharbeit: B6 Gelerntes berichtigt (Zähler je Vergleich, realistischer Mutant) + Ist-Zeiten | Standard | 0,5h | 0,1h | 0,1h | autonom |
