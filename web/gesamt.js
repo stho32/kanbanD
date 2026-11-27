@@ -269,12 +269,14 @@
     return `<h3 class="rv-ue">COMMITS <span class="mono">${ein.length + aus.length}</span></h3><ul class="rv-cl" aria-label="Commits der Aufgabe">${ein.join('')}${aus.join('')}</ul>`;
   }
 
-  /** Dateiliste des Abschnitts, gruppiert wie der Hauptteil (R00235 FA 10): Folge-Dateien mit „Folge · n Commits“ statt Statuswort. */
+  /** Dateiliste des Abschnitts, gruppiert wie der Hauptteil (R00235 FA 10): Folge-Dateien mit „Folge · n Commits“ statt Statuswort.
+      Eine `geändert`-Datei trägt hier den Hinweis „Seit dem Haken verändert“ (R00265 FA 2). */
   function dateilisteHtml(a, dateien, esc, staende) {
     return diff.gruppierteListeHtml(dateien, (d, i) => {
       const gesehen = Boolean(staende[i] && staende[i].gesehen);
-      if (istFolge(d)) return { arg: `${a}:${i}`, pfad: d.pfad, wort: folgeWort(d.schritte.length), gesehen };
-      return { arg: `${a}:${i}`, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0], gesehen };
+      const geaendert = Boolean(staende[i] && staende[i].geaendert);
+      if (istFolge(d)) return { arg: `${a}:${i}`, pfad: d.pfad, wort: folgeWort(d.schritte.length), gesehen, geaendert };
+      return { arg: `${a}:${i}`, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0], gesehen, geaendert };
     }, esc);
   }
 

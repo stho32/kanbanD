@@ -1547,15 +1547,17 @@ function reviewGesehenNachziehen(r, ort) {
   }
   r.alle.abschnitte.forEach((ab, a) => {
     if (ab.status !== 'da') return;
-    let geaendert = false;
+    let neu = false;
     ab.staende.forEach((st, i) => {
-      const gesehen = r.gesehen.has(alleDateiSchluessel(ab.antwort.anwendung, ab.antwort.dateien[i]));
-      if ((a !== ort.a || i !== ort.i) && st.gesehen === gesehen) return;
+      const zustand = gesehenZustand(r.gesehen, ab.antwort.anwendung, ab.antwort.dateien[i]);
+      const gesehen = zustand === 'gesehen', geaendert = zustand === 'geaendert';
+      if ((a !== ort.a || i !== ort.i) && st.gesehen === gesehen && st.geaendert === geaendert) return;
       st.gesehen = gesehen;
-      geaendert = true;
+      st.geaendert = geaendert;
+      neu = true;
       reviewGesamtDateiNeu(r, a, i);
     });
-    if (geaendert) reviewAbschnittListeNeu(r, a);
+    if (neu) reviewAbschnittListeNeu(r, a);
   });
   const z = reviewAlleGesehen(r.alle);
   r.gesehenAnsage = gesehenAnsage(z.k, z.n);
@@ -1984,17 +1986,18 @@ function reviewAlleAusListe(r, alle) {
 function reviewAbschnittAufbauen(r, alle, antwort) {
   const dateien = antwort.dateien;
   reviewGesehenLesen(r);
-  const gesehen = dateien.map(d => r.gesehen.has(alleDateiSchluessel(antwort.anwendung, d)));
+  const zustaende = dateien.map(d => gesehenZustand(r.gesehen, antwort.anwendung, d));
+  const gesehen = zustaende.map(z => z === 'gesehen');
   const { offen, budgetZu, stand } = aufklappPlanSeite(dateien, antwort.hinweise, alle.plan, gesehen);
   alle.plan = stand;
   const gemerkt = r.klappenJe[`alle:${antwort.anwendung}`];
   const namen = dateien.map(d => (istFolge(d) ? d.pfad : d.neu ?? d.alt)).join('\n');
   const ohnePatch = d => !istFolge(d) && d.status !== 'D' && dateiZustand(d, antwort.hinweise) !== 'patch';
   const staende = dateien.map((d, i) => {
-    // gesehene beginnen zu (R00246 FA 5)
+    // gesehene beginnen zu (R00246 FA 5); geänderte sind nicht gesehen und verhalten sich wie ungesehene
     let auf = offen[i] || (!gesehen[i] && (ohnePatch(d) || (istFolge(d) && !d.schritte.some(s => dateiZustand(s, antwort.hinweise) === 'patch'))));
     if (gemerkt && gemerkt.namen === namen) auf = gemerkt.offen[i];
-    return { offen: auf, budgetZu: budgetZu[i], laden: null, fehler: null, wartetAuf: null, gesehen: gesehen[i] };
+    return { offen: auf, budgetZu: budgetZu[i], laden: null, fehler: null, wartetAuf: null, gesehen: gesehen[i], geaendert: zustaende[i] === 'geaendert' };
   });
   return { status: 'da', kuerzel: antwort.anwendung, antwort: { ...antwort, dateien: dateien.slice(), hinweise: (antwort.hinweise || []).slice() }, staende, namen, gruppen: gruppenAnfang() };
 }

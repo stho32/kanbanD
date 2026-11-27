@@ -554,15 +554,27 @@
     }
     const zuGross = hinweise.some(h => h.art === 'zu_gross_zum_anzeigen' && h.datei === pfad);
     if (!zuGross) teile.push(`<a class="btn ru-k1 ru-patch" href="${esc(patchAdresse(quelle.nr, quelle, pfad))}" download="${esc(patchName(pfad))}" title="Patch dieser Datei herunterladen">${symbol('laden')}Patch</a>`);
-    teile.push(gesehenKaestchenHtml(id, arg, pfad, stand.gesehen, esc));
+    teile.push(gesehenKaestchenHtml(id, arg, pfad, stand.gesehen, esc, stand.geaendert));
     return `<div class="ru-akt">${teile.join('')}</div>`;
   }
 
-  /** Das Kästchen „Gesehen“ (R00246 FA 1): zuletzt in der Tab-Folge, Name „Gesehen: <voller Pfad>“, sichtbarer Text „Gesehen“. */
-  function gesehenKaestchenHtml(id, arg, pfad, gesehen, esc) {
+  /** Das Kästchen „Gesehen“ (R00246 FA 1): zuletzt in der Tab-Folge, Name „Gesehen: <voller Pfad>“, sichtbarer Text „Gesehen“. Im
+      Zustand `geändert` steht daneben der Text-Hinweis (R00265 FA 2), am Kästchen per `aria-describedby` verbunden. */
+  function gesehenKaestchenHtml(id, arg, pfad, gesehen, esc, geaendert = false) {
     let haken = '';
     if (gesehen) haken = ' checked';
-    return `<label class="ru-ges"><input type="checkbox" class="ru-ges-k" id="rv-gs${id}" data-act="review-gesehen" data-arg="${arg}" aria-label="${esc(`Gesehen: ${sichtbarText(pfad)}`)}"${haken}>Gesehen</label>`;
+    const verbunden = geaendert ? ` aria-describedby="rv-hg${id}"` : '';
+    const hinweis = geaendert ? geaendertHinweisHtml(id) : '';
+    return `<label class="ru-ges"><input type="checkbox" class="ru-ges-k" id="rv-gs${id}" data-act="review-gesehen" data-arg="${arg}" aria-label="${esc(`Gesehen: ${sichtbarText(pfad)}`)}"${haken}${verbunden}>Gesehen</label>${hinweis}`;
+  }
+
+  /** Der sichtbare Text-Hinweis „Seit dem Haken verändert“ (R00265 FA 2, AK 2; Wortlaut PO Z. 735, ADR-0042 N8.4 Punkt 6): gewöhnlicher
+      Text, kein Bedienelement, sichtbarer Text und Tooltip gleich. Ohne `id` steht er in der Dateiliste im Zeilen-Knopf (dessen Name ihn
+      so von selbst enthält); mit `id` am Dateikopf, von dort per `aria-describedby` am Kästchen „Gesehen“. */
+  const HINWEIS_GEAENDERT = 'Seit dem Haken verändert';
+  function geaendertHinweisHtml(id = null) {
+    const kennung = id === null ? '' : ` id="rv-hg${id}"`;
+    return `<span class="ru-hg"${kennung} title="${HINWEIS_GEAENDERT}">${HINWEIS_GEAENDERT}</span>`;
   }
 
   /** Das schreibgeschützte Feld mit dem Pfad (FA 9); '' ohne Pfad. */
@@ -619,7 +631,8 @@
     return `<section class="rv-gr" id="rv-g${id}" aria-labelledby="rv-gk${id}">${kopf}<div class="rv-gc" id="rv-gc${id}"${verborgen}>${inhalt}</div></section>`;
   }
 
-  /** Dateiliste „Ein Commit“: gruppiert wie der Hauptteil; ein Eintrag springt zur Datei und klappt Gruppe und Datei auf. */
+  /** Dateiliste „Ein Commit“: gruppiert wie der Hauptteil; ein Eintrag springt zur Datei und klappt Gruppe und Datei auf. Hier gibt es
+      den Hinweis „Seit dem Haken verändert“ nie (R00265 FA 4): der Eintrag trägt kein `geaendert`. */
   function dateilisteHtml(dateien, esc, staende = []) {
     return gruppierteListeHtml(dateien, (d, i) => ({ arg: i, pfad: d.neu ?? d.alt, wort: (STATUSWORT[d.status] || [d.status])[0], gesehen: Boolean(staende[i] && staende[i].gesehen) }), esc);
   }
@@ -636,11 +649,14 @@
   }
 
   /** Eine Zeile der Dateiliste: Platz des Haken-Symbols (R00246 FA 3, leer bei ungesehenen, damit der Pfad an derselben Stelle
-      beginnt), Pfad, Größenbalken, Zahlen, darunter Statuswort und Test-Hinweis. */
-  function listenzeileHtml(d, { arg, pfad, wort, gesehen }, groesste, esc) {
+      beginnt), Pfad, Größenbalken, Zahlen, darunter Statuswort und Test-Hinweis. Eine `geändert`-Datei trägt den Hinweis „Seit dem
+      Haken verändert“ als gewöhnlichen Text hinter dem Pfad — im Knopf, so geht er von selbst in den zugänglichen Namen der Zeile ein
+      (R00265 FA 2, AK 6). */
+  function listenzeileHtml(d, { arg, pfad, wort, gesehen, geaendert = false }, groesste, esc) {
     let marke = '';
     if (gesehen) marke = `${symbol('haken')}<span class="vh">gesehen</span>`;
-    return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${arg}"><span class="rv-gm">${marke}</span><span class="p">${pfadHtml(pfad, esc)}</span>${balkenHtml(d, groesste)}<span class="z">${zahlenHtml(d)}</span><span class="s">${esc(wort)}${testHinweisHtml(d)}</span></button></li>`;
+    const hinweis = geaendert ? ` ${geaendertHinweisHtml()}` : '';
+    return `<li><button type="button" class="dn-e" data-act="review-datei" data-arg="${arg}"><span class="rv-gm">${marke}</span><span class="p">${pfadHtml(pfad, esc)}${hinweis}</span>${balkenHtml(d, groesste)}<span class="z">${zahlenHtml(d)}</span><span class="s">${esc(wort)}${testHinweisHtml(d)}</span></button></li>`;
   }
 
   /** Größenbalken (ADR-0042 Punkt 9): je Zahl über 0 ein Teil mit seinem Anteil an der größten Summe der Gruppe; Länge im CSS. */
