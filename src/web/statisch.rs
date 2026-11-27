@@ -16,6 +16,7 @@ macro_rules! dateien {
 
 dateien! {
     "index.html" => "text/html; charset=utf-8",
+    "LIZENZEN.md" => "text/plain; charset=utf-8",
     "app.js" => "text/javascript; charset=utf-8",
     "ansicht.js" => "text/javascript; charset=utf-8",
     "seitenname.js" => "text/javascript; charset=utf-8",
