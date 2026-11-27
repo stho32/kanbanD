@@ -6,6 +6,7 @@ pub mod openapi;
 mod statisch;
 pub mod strom;
 
+use crate::dienst::episoden::Episoden;
 use crate::dienst::{Angelegt, Bewegung, BoardVerwalten, Einrichtung, Kanban, NeueAufgabe, NeueAufgaben, NeuesBoard, Teilaufgabenaenderung, Zeitkorrektur, Zielort};
 use crate::fehler::{Fehler, Ursache};
 use crate::modell::{Aufgabenaenderung, Einstellungen, SpaltenAenderung};
@@ -38,14 +39,21 @@ pub struct App {
     protokoll: crate::protokoll::Protokoll,
     /// der gebundene Port der Instanz; 0, wenn der Router ohne Horcher gebaut ist
     port: u16,
+    /// die Episoden der Kapazitätsgrenzen dieser Instanz (ADR-0001 N1.4 Regel 5, R00269)
+    episoden: Arc<Mutex<Episoden>>,
     _waechter: Option<Arc<notify::RecommendedWatcher>>,
 }
 
 /// Router ohne Horcher und ohne Ende-Signal (Ereignisströme laufen, bis der Client geht); `GET /api/instanz` nennt Port 0.
+/// Der Episodenzustand einer neuen Instanz (ADR-0001 N1.4 Regel 5, R00269 FA 4: je Instanz, nie global).
+fn episoden_neu() -> Arc<Mutex<Episoden>> {
+    Arc::new(Mutex::new(Episoden::default()))
+}
+
 pub fn router(ordner: PathBuf) -> Router {
     let protokoll = crate::protokoll::Protokoll::stumm();
     let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
-    router_bauen(kanban, 0, watch::channel(false).1, protokoll)
+    router_bauen(kanban, 0, watch::channel(false).1, protokoll, episoden_neu())
 }
 
 /// `port` ist der Port, an den der Horcher gebunden ist (R00183) — nicht der verlangte: das Programm weicht aus.
@@ -53,30 +61,30 @@ pub fn router(ordner: PathBuf) -> Router {
 pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) -> Router {
     let protokoll = crate::protokoll::Protokoll::stumm();
     let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
-    router_bauen(kanban, port, ende, protokoll)
+    router_bauen(kanban, port, ende, protokoll, episoden_neu())
 }
 
 /// Wie [`router_mit_ende`], mit dem Protokoll der Instanz: der Betrieb reicht Datei+stderr herein, ein Test eine
 /// Sammler-Senke (N1.7 Regel 1, R00258 AK 1–12).
 pub fn router_mit_protokoll(ordner: PathBuf, port: u16, protokoll: crate::protokoll::Protokoll) -> Router {
     let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
-    router_bauen(kanban, port, watch::channel(false).1, protokoll)
+    router_bauen(kanban, port, watch::channel(false).1, protokoll, episoden_neu())
 }
 
 /// Wie [`router_mit_protokoll`], mit Ende-Signal: das Programm reicht hier seinen Endekanal herein, damit sich die
 /// Ereignisströme beim geordneten Beenden schließen.
 pub fn router_mit_ende_und_protokoll(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
     let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
-    router_bauen(kanban, port, ende, protokoll)
+    router_bauen(kanban, port, ende, protokoll, episoden_neu())
 }
 
 /// Wie [`router_mit_protokoll`], mit einem vorbereiteten `Kanban` — Proben füllen so die Lesegrenze oder verkleinern
 /// das Antwortbudget (R00269 AK 1/4).
 pub fn router_mit_kanban(kanban: Arc<Kanban>, port: u16, protokoll: crate::protokoll::Protokoll) -> Router {
-    router_bauen(kanban, port, watch::channel(false).1, protokoll)
+    router_bauen(kanban, port, watch::channel(false).1, protokoll, episoden_neu())
 }
 
-fn router_bauen(kanban: Arc<Kanban>, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
+fn router_bauen(kanban: Arc<Kanban>, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll, episoden: Arc<Mutex<Episoden>>) -> Router {
     let ordner = kanban.ordner().wurzel().to_path_buf();
     let (ereignisse, _) = broadcast::channel(256);
     let tx = ereignisse.clone();
@@ -90,7 +98,7 @@ fn router_bauen(kanban: Arc<Kanban>, port: u16, ende: watch::Receiver<bool>, pro
             None
         }
     };
-    let app = App { kanban, ereignisse, ende, protokoll, port, _waechter: waechter };
+    let app = App { kanban, ereignisse, ende, protokoll, port, episoden, _waechter: waechter };
     // Router und OpenAPI-Beschreibung aus einer Quelle (R00093): jeder Handler trägt sein #[utoipa::path]
     let (router, api) = OpenApiRouter::with_openapi(openapi::ApiDoc::openapi())
         .routes(routes!(ereignisstrom))
@@ -305,6 +313,7 @@ impl<S: Send + Sync> FromRequestParts<S> for Zettel {
 /// Die eine Stelle, die Abweisungen schreibt (ADR-0001 N1.4 Regel 1): nach dem Handler, bevor die Antwort zurückgeht.
 /// Je Anfrage ab 400 höchstens eine Zeile; 4xx und 503 als `WARN abgewiesen`, übrige 5xx als `ERROR fehlgeschlagen`.
 async fn abweisung_protokollieren(State(app): State<App>, anfrage: Request, next: Next) -> Response {
+    use crate::dienst::episoden::Zeile;
     let (mut teile, rumpf) = anfrage.into_parts();
     let endpunkt = teile.extensions.get::<axum::extract::MatchedPath>().map(|m| m.as_str().to_string());
     let methode = teile.method.as_str().to_string();
@@ -316,10 +325,55 @@ async fn abweisung_protokollieren(State(app): State<App>, anfrage: Request, next
     let antwort = next.run(Request::from_parts(teile, rumpf)).await;
     let grund = antwort.extensions().get::<Abweisungsgrund>().cloned();
     let zettel = *zettel.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some((stufe, ereignis, felder)) = abweisungszeile(antwort.status(), &methode, endpunkt.as_deref(), nr, wer.as_deref(), instanz.as_deref(), zettel, grund.as_ref()) {
-        app.protokoll.schreiben(stufe, ereignis, &felder);
+    // Episoden der Kapazitätsgrenzen (ADR-0001 N1.4 Regel 5, R00269): die Ruhe wird bei jeder Anfrage geprüft
+    // (auch einer erfolgreichen), eine Abweisung einer Grenze beginnt oder zählt ihre Episode. Die Zeit kommt aus
+    // der Uhr der Instanz (im Test gestellt), nie aus einer eigenen Uhr in der Logik.
+    let jetzt = app.protokoll.uhr().jetzt();
+    let episode = grund.as_ref().map(|g| g.ursache).filter(|u| matches!(u, Ursache::Lesegrenze | Ursache::Antwortbudget));
+    let (zeilen, beginn) = {
+        let mut episoden = app.episoden.lock().unwrap_or_else(|e| e.into_inner());
+        let mut zeilen = episoden.ruhe(jetzt);
+        if let Some(ursache) = episode {
+            let (belegt, frei_kb) = messwert(&app.kanban, ursache);
+            zeilen.extend(episoden.beobachten(ursache, jetzt, belegt, frei_kb));
+        }
+        let beginn = zeilen.iter().find_map(|z| match z {
+            Zeile::Beginn { belegt, frei_kb, .. } => Some((*belegt, *frei_kb)),
+            Zeile::Ende { .. } => None,
+        });
+        (zeilen, beginn)
+    };
+    // Zuerst die Ende-Zeilen (bei genau 10 s steht das Ende vor dem Beginn, R00269 AK 6), dann die Basiszeile.
+    for zeile in &zeilen {
+        zeile.schreiben(&app.protokoll);
+    }
+    if let Some((stufe, ereignis, mut felder)) = abweisungszeile(antwort.status(), &methode, endpunkt.as_deref(), nr, wer.as_deref(), instanz.as_deref(), zettel, grund.as_ref()) {
+        // Eine Abweisung einer Episodenursache schreibt nur beim Beginn eine Zeile; sonst wird sie nur gezählt.
+        let unterdruecken = episode.is_some() && beginn.is_none();
+        if !unterdruecken {
+            if let Some((belegt, frei_kb)) = beginn {
+                felder.push(("episode", "beginn".into()));
+                if let Some(belegt) = belegt {
+                    felder.push(("belegt", format!("{belegt}/{}", crate::dienst::LESEN_HOECHSTENS)));
+                }
+                if let Some(frei_kb) = frei_kb {
+                    felder.push(("frei_kb", frei_kb.to_string()));
+                }
+            }
+            app.protokoll.schreiben(stufe, ereignis, &felder);
+        }
     }
     antwort
+}
+
+/// Der Messwert einer Kapazitätsgrenze für die Beginn-Zeile (R00269 FA 1): belegte Plätze der Lesegrenze bzw. freie
+/// KB des Antwortbudgets.
+fn messwert(kanban: &Kanban, ursache: Ursache) -> (Option<usize>, Option<usize>) {
+    match ursache {
+        Ursache::Lesegrenze => (Some(kanban.lesegrenze_belegt()), None),
+        Ursache::Antwortbudget => (None, Some(kanban.antwortbudget_frei_kb())),
+        _ => (None, None),
+    }
 }
 
 /// Ein Kopfwert fürs Protokoll: `X-KanbanD-Wer` bzw. `-Instanz`, höchstens 32 Zeichen (N1.3, AK 12).

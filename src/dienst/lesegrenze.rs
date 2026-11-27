@@ -24,8 +24,7 @@ pub struct Lesegrenze {
 pub struct Platz<'a>(&'a Lesegrenze);
 
 impl Lesegrenze {
-    /// Wie viele Plätze belegt sind.
-    #[cfg(test)]
+    /// Wie viele Plätze belegt sind (R00269 FA 6: der Messwert der Episode, nur im Log).
     pub fn belegt(&self) -> usize {
         *self.belegt.lock().unwrap_or_else(|p| p.into_inner())
     }

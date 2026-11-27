@@ -302,6 +302,16 @@ impl Kanban {
         self.lesegrenze.betreten(frist)
     }
 
+    /// Wie viele Plätze der Lesegrenze belegt sind (R00269 FA 6, `belegt=` der Episodenzeile).
+    pub fn lesegrenze_belegt(&self) -> usize {
+        self.lesegrenze.belegt()
+    }
+
+    /// Wie viele KB des Antwortbudgets frei sind (R00269 FA 6, `frei_kb=` der Episodenzeile).
+    pub fn antwortbudget_frei_kb(&self) -> usize {
+        self.antwortbudget.frei() / 1024
+    }
+
     /// Eine Instanz mit verkleinerter Gesamtgrenze — Probe (R00269 AK 1): die belegte Lesegrenze wartet dann
     /// nicht die vollen 10 s.
     pub fn mit_gesamtgrenze(mut self, dauer: std::time::Duration) -> Kanban {

@@ -137,6 +137,49 @@ async fn ak1_fluten_der_lesegrenze_schreibt_eine_beginn_zeile() {
     }
 }
 
+// ---- AK 3: der ganze Sturm ist eine Zeile, das Ende meldet alle Abweisungen ---------------------------------
+
+#[tokio::test]
+async fn ak3_der_sturm_ist_eine_zeile_und_das_ende_zaehlt_alle() {
+    let probe = Probe::neu();
+    let plaetze = probe.lesegrenze_fuellen();
+    for _ in 0..23 {
+        let (status, _) = probe.rufen("GET", "api/aufgaben/1/commits", "cl", None).await;
+        assert_eq!(status, 503);
+    }
+    drop(plaetze);
+    assert_eq!(probe.zaehle(" WARN abgewiesen "), 1, "der Sturm ist eine Zeile: {:?}", probe.zeilen());
+    // das Ende nach 10 s Ruhe meldet alle 23
+    probe.weiter(10);
+    let (status, _) = probe.rufen("GET", "api/aufgaben/2", "cl", None).await;
+    assert_eq!(status, 200);
+    let ende = probe.zeilen().into_iter().find(|z| z.contains(" INFO Episode beendet ")).expect("Ende-Zeile");
+    assert!(ende.contains("ursache=lesegrenze") && ende.contains("abweisungen=23"), "{ende}");
+}
+
+// ---- AK 7: die Ruhe wird bei jeder Anfrage geprüft, vor der Antwort ----------------------------------------
+
+#[tokio::test]
+async fn ak7_die_ruhe_wird_bei_jeder_anfrage_geprueft() {
+    let probe = Probe::neu();
+    let plaetze = probe.lesegrenze_fuellen();
+    let (status, _) = probe.rufen("GET", "api/aufgaben/1/commits", "cl", None).await;
+    assert_eq!(status, 503);
+    drop(plaetze);
+    // bei t_letzte+9 s (gestellte Zeit): keine Ende-Zeile
+    probe.weiter(9);
+    let (status, _) = probe.rufen("GET", "api/aufgaben/2", "cl", None).await;
+    assert_eq!(status, 200);
+    assert_eq!(probe.zaehle(" INFO Episode beendet "), 0, "9 s Ruhe reichen nicht: {:?}", probe.zeilen());
+    // bei t_letzte+10 s: genau 1 Ende-Zeile, sie steht nach dem `await` der Antwort im Sammler
+    probe.weiter(1);
+    let (status, _) = probe.rufen("GET", "api/aufgaben/2", "cl", None).await;
+    assert_eq!(status, 200);
+    assert_eq!(probe.zaehle(" INFO Episode beendet "), 1, "genau eine Ende-Zeile: {:?}", probe.zeilen());
+    let ende = probe.zeilen().into_iter().find(|z| z.contains(" INFO Episode beendet ")).unwrap();
+    assert!(ende.contains("ursache=lesegrenze") && ende.contains("abweisungen=1"), "{ende}");
+}
+
 // ---- AK 4: das Fluten des Antwortbudgets, ohne belegt_max --------------------------------------------------
 
 #[tokio::test]
