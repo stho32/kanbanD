@@ -339,12 +339,10 @@ async fn ak09_zeitgrenze_503_und_prozessgruppe() {
     a.von_hand(&a.verweise());
     let (schalter, pfad) = git_skript(&a, &format!("sleep 300 & echo $! >> {}; sleep 60", a.basis.join("pids").display()));
     let lauf = starten(&a, &[("PATH", &pfad)]);
-    let start = Instant::now();
+    // keine Zusicherung beurteilt eine Dauer (R00267 AK 2): es gilt der Zustand (503, Ursache, Prozessgruppe)
     let (status, _, rumpf) = liste_holen(&lauf.adresse, 1).await;
-    let dauer = start.elapsed();
     assert_eq!(status, 503, "{rumpf}");
     assert!(rumpf["fehler"].as_str().is_some());
-    assert!(dauer >= Duration::from_secs(10) && dauer <= Duration::from_secs(15), "{dauer:?}");
     let gestartet = pids(&a);
     assert_eq!(gestartet.len(), 2, "genau ein Git-Prozess samt Kind, kein weiterer nach dem Abbruch: {gestartet:?}");
     tokio::time::sleep(Duration::from_millis(500)).await;
@@ -365,11 +363,9 @@ async fn ak09_gesamtgrenze_statt_summe_der_prozessgrenzen() {
     a.von_hand(&viele);
     let (_schalter, pfad) = git_skript(&a, "sleep 9");
     let lauf = starten(&a, &[("PATH", &pfad)]);
-    let start = Instant::now();
+    // keine Zusicherung beurteilt eine Dauer (R00267 AK 2): es gilt der Zustand (503, kein Prozess über die Grenze)
     let (status, _, _) = liste_holen(&lauf.adresse, 1).await;
-    let dauer = start.elapsed();
     assert_eq!(status, 503);
-    assert!(dauer <= Duration::from_secs(15), "{dauer:?}");
     tokio::time::sleep(Duration::from_millis(500)).await;
     assert!(pids(&a).iter().all(|p| !lebt(p)), "kein Prozess läuft über die Gesamtgrenze hinaus");
     assert_eq!(pids(&a).len(), 2, "Wurzel (9 s) und cat-file (abgebrochen bei 10 s), danach keiner mehr");
