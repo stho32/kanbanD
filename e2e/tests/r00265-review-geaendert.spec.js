@@ -7,6 +7,7 @@ const { kanbanStarten, alsPerson, mutanteEinsetzen, breiteSetzen, thema, kontras
 const { gesehenRepository, gesehenVorbereiten } = require('./review-hilfen');
 
 const HINWEIS = 'Seit dem Haken verändert';
+const SATZ_SPEICHER = 'Gesehen wird in diesem Browser nicht gespeichert und gilt nur bis zum Neuladen.';
 const exakt = text => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 const ANZ = 5;
 
@@ -25,11 +26,14 @@ function seite(page) {
   const kaestchen = (pfad, a = null) => datei(pfad, a).locator('input.ru-ges-k');
   return {
     zeile, datei, kaestchen,
+    offen: async (pfad, a = null) => (await datei(pfad, a).locator('.df-k').first().getAttribute('aria-expanded')) === 'true',
+    gruppenkopf: (art, a = null) => page.locator(a === null ? `#rv-gk-${art}` : `#rv-gk${a}-${art}`),
     zeileHinweis: (pfad, a = null) => zeile(pfad, a).locator('.ru-hg'),
     kopfHinweis: (pfad, a = null) => datei(pfad, a).locator('.ru-hg'),
     zeileText: () => page.locator('#rv-ges-z'),
     ganzeZeile: () => page.locator('#rv-ges-t'),
     live: () => page.locator('#rv-gesehen'),
+    speicherSatz: () => page.locator('#rv-gesehen-speicher'),
     kaestchenAlle: () => page.locator('#rv-insel input.ru-ges-k'),
     speicher: () => page.evaluate(() => Object.fromEntries(Object.keys(localStorage).filter(s => s.startsWith('kanbanD.gesehen.')).map(s => [s, localStorage.getItem(s)]))),
   };
@@ -45,10 +49,15 @@ async function neuLaden(page) {
   await page.locator('#rv-insel .rv-gk').first().waitFor();
 }
 
-/** Hängt K3b über die API an Aufgabe #3 (wie ein Agent, der einen Commit hinterlegt). */
-async function k3bAnhaengen(page, k, h) {
-  const antwort = await page.request.post(`${k.adresse}api/aufgaben/3/commits`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { commits: [`kd:${h.k3b}`] } });
+/** Hängt Commits über die API an eine Aufgabe (wie ein Agent, der einen Commit hinterlegt). */
+async function commitsAnhaengen(page, k, nr, hashes) {
+  const antwort = await page.request.post(`${k.adresse}api/aufgaben/${nr}/commits`, { headers: { 'X-KanbanD-Wer': 'cl' }, data: { commits: hashes.map(x => `kd:${x}`) } });
   expect(antwort.ok()).toBe(true);
+}
+
+/** Speicher gesperrt: schon der Zugriff auf `localStorage` wirft (privates Fenster, gesperrte Website-Daten). */
+function speicherGesperrt() {
+  Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new DOMException('gesperrt', 'SecurityError'); } });
 }
 
 /** Öffnet die Dateiliste hinter „Dateien (n) und Commit“, wo das Fenster sie verbirgt (unter 1100 px). */
@@ -77,7 +86,7 @@ test.describe('R00265 Hinweis „Seit dem Haken verändert“', () => {
     await alleOeffnen(page, k, 3);
     await s.kaestchen('src/a.rs').click();
     await expect(s.zeileText()).toHaveText(`1 von ${ANZ} gesehen`);
-    await k3bAnhaengen(page, k, h);
+    await commitsAnhaengen(page, k, 3, [h.k3b]);
     await neuLaden(page);
     await expect(s.zeileText()).toHaveText(`0 von ${ANZ} gesehen`);
     return s;
@@ -141,6 +150,147 @@ test.describe('R00265 Hinweis „Seit dem Haken verändert“', () => {
     for (const ort of [s.zeileHinweis('src/a.rs'), s.kopfHinweis('src/a.rs')]) {
       expect(await ort.evaluate(e => Boolean(e.closest('[aria-live],[role="status"],[role="alert"]')))).toBe(false);
     }
+    expect(fehler).toEqual([]);
+  });
+
+  /* ── AK 2 Grundfall, Zähler bleibt wahr (US-1) ── */
+
+  test('AK 2/US-1: ohne Änderung nie ein Hinweis; nach K3b „0 von 5“, Hinweis an Liste und Kopf, erneuter Haken „1 von 5“ und weg', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 3);
+    await expect(s.zeileText()).toHaveText(`0 von ${ANZ} gesehen`);
+    await expect(page.locator('.ru-hg')).toHaveCount(0);
+    await s.kaestchen('src/a.rs').click();
+    await expect(s.zeileText()).toHaveText(`1 von ${ANZ} gesehen`);
+    await expect(page.locator('.ru-hg')).toHaveCount(0, 'der aktuelle Fingerabdruck ist gespeichert: kein Hinweis');
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText(`1 von ${ANZ} gesehen`);
+    await expect(page.locator('.ru-hg')).toHaveCount(0);
+
+    await commitsAnhaengen(page, k, 3, [h.k3b]);
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText(`0 von ${ANZ} gesehen`, 'die geänderte Datei zählt nicht mit');
+    await expect(s.kaestchen('src/a.rs')).not.toBeChecked();
+    expect(await s.offen('src/a.rs'), 'nicht eingeklappt').toBe(true);
+    await expect(s.zeileHinweis('src/a.rs'), 'Hinweis in der Dateiliste').toHaveText(HINWEIS);
+    await expect(s.kopfHinweis('src/a.rs'), 'Hinweis am Dateikopf').toHaveText(HINWEIS);
+    await expect(s.kopfHinweis('src/a.rs')).toHaveAttribute('title', HINWEIS);
+    await expect(s.live()).toHaveText(`0 von ${ANZ} gesehen`);
+
+    await s.kaestchen('src/a.rs').click();
+    await expect(s.zeileText()).toHaveText(`1 von ${ANZ} gesehen`);
+    await expect(page.locator('.ru-hg')).toHaveCount(0, 'erneuter Haken nimmt den Hinweis weg');
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText(`1 von ${ANZ} gesehen`);
+    await expect(page.locator('.ru-hg')).toHaveCount(0);
+    expect(fehler).toEqual([]);
+  });
+
+  /* ── AK 3 Jede geänderte Datei, Nachbarn und Neuladen (Abtastung) ── */
+
+  test('AK 3/US-2: alle fünf gesehen, K3c ändert drei — jede der drei trägt den Hinweis, die zwei übrigen nicht, „2 von 5“', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 3);
+    await s.gruppenkopf('doku', 0).click();
+    await s.gruppenkopf('doku', 1).click();
+    for (const [pfad, a] of [['src/a.rs', 0], ['tests/a_test.rs', 0], ['README.md', 0], ['b.js', 1], ['docs/b.md', 1]]) {
+      await s.kaestchen(pfad, a).click();
+    }
+    await expect(s.zeileText()).toHaveText(`5 von ${ANZ} gesehen`);
+
+    await commitsAnhaengen(page, k, 3, [h.k3c]);
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText(`2 von ${ANZ} gesehen`);
+    for (const [pfad, a] of [['src/a.rs', 0], ['tests/a_test.rs', 0], ['README.md', 0]]) {
+      await expect(s.zeileHinweis(pfad, a), `geändert: ${pfad}`).toHaveText(HINWEIS);
+    }
+    for (const [pfad, a] of [['b.js', 1], ['docs/b.md', 1]]) {
+      await expect(s.zeileHinweis(pfad, a), `unverändert: ${pfad}`).toHaveCount(0);
+    }
+
+    // Nachbarübergänge: Neuladen, Klappen, Ansichtswechsel „Ein Commit“ und zurück
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText(`2 von ${ANZ} gesehen`);
+    await expect(s.zeileHinweis('src/a.rs', 0)).toHaveText(HINWEIS);
+    await page.locator('#rv-alle').click();
+    await page.locator('#rv-alle').click();
+    await expect(s.zeileHinweis('src/a.rs', 0)).toHaveText(HINWEIS, 'Klappen nimmt den Hinweis nicht weg');
+
+    await page.locator('#rv-l1').click();
+    await page.locator('#rv-insel').waitFor();
+    await expect(page.locator('.ru-hg'), 'in „Ein Commit“ nie').toHaveCount(0);
+    await page.locator('#rv-u-alle').click();
+    await page.locator('#rv-insel .rv-abs .rv-gk').first().waitFor();
+    await expect(s.zeileText()).toHaveText(`2 von ${ANZ} gesehen`);
+    await expect(s.zeileHinweis('src/a.rs', 0)).toHaveText(HINWEIS);
+    expect(fehler).toEqual([]);
+  });
+
+  test('AK 3: die gleichnamige Datei einer anderen Anwendung bleibt ohne Haken und ohne Hinweis; Nachladen eines Abschnitts lässt sie unberührt', async ({ page }) => {
+    const s = seite(page);
+    const wb = url => url.pathname === '/api/aufgaben/7/diff' && url.searchParams.get('anwendung') === 'wb' && !url.searchParams.has('datei');
+    await page.route(wb, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ fehler: 'Zeitgrenze' }) }));
+    await alleOeffnen(page, k, 7);
+    await expect(page.locator('#rv-a1 .rv-abs-f')).toBeVisible();
+    await expect(s.zeileText()).toHaveText('0 von 5 gesehen');
+    await s.kaestchen('src/a.rs', 0).click();
+    await expect(s.ganzeZeile()).toHaveText('1 von 5 gesehen · 1 Abschnitt nicht geladen');
+
+    await page.unroute(wb);
+    await page.locator('#rv-a1').getByRole('button', { name: 'Erneut versuchen' }).click();
+    await expect(s.ganzeZeile()).toHaveText(`1 von ${8} gesehen`);
+    await expect(s.kaestchen('src/a.rs', 0)).toBeChecked();
+    await expect(s.kaestchen('src/a.rs', 1), 'gleichnamige Datei der anderen Anwendung').not.toBeChecked();
+    await expect(s.zeileHinweis('src/a.rs', 0)).toHaveCount(0);
+    await expect(s.zeileHinweis('src/a.rs', 1)).toHaveCount(0);
+    expect(fehler.filter(f => !f.includes('503'))).toEqual([]);
+  });
+
+  /* ── AK 4 Kein Hinweis ohne Grund (Fehlerpfad, US-3) ── */
+
+  test('AK 4/FA 6: werfender Speicher — keine Datei gilt als geändert, kein Hinweis, kein Fehler in der Konsole', async ({ page }) => {
+    await page.addInitScript(speicherGesperrt);
+    const s = seite(page);
+    await alleOeffnen(page, k, 3);
+    await s.kaestchen('src/a.rs').click();
+    await expect(s.live()).toHaveText(`1 von ${ANZ} gesehen`);
+    await expect(s.datei('src/a.rs').locator('.df-inhalt')).toBeHidden();
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+
+    await commitsAnhaengen(page, k, 3, [h.k3b]);
+    await neuLaden(page);
+    await expect(s.zeileText()).toHaveText(`0 von ${ANZ} gesehen`);
+    await expect(page.locator('.ru-hg')).toHaveCount(0, 'ohne lesbaren Speicher kein Hinweis');
+    await expect(s.speicherSatz()).toHaveText(SATZ_SPEICHER);
+    expect(fehler).toEqual([]);
+  });
+
+  /* ── AK 6 Zugänglicher Name am Zeilen-Knopf (Muss der UX-Vorprüfung, Probe wörtlich) ── */
+
+  test('AK 6: der zugängliche Name des Zeilen-Knopfs enthält „Seit dem Haken verändert“, der unveränderter Dateien nicht', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 3);
+    await expect(s.zeile('src/a.rs')).not.toHaveAccessibleName(/Seit dem Haken verändert/);
+    await s.kaestchen('src/a.rs').click();
+    await commitsAnhaengen(page, k, 3, [h.k3b]);
+    await neuLaden(page);
+    await expect(s.zeile('src/a.rs')).toHaveAccessibleName(/Seit dem Haken verändert/);
+    for (const [pfad, a] of [['tests/a_test.rs', 0], ['b.js', 1]]) {
+      await expect(s.zeile(pfad, a), `offen: ${pfad}`).not.toHaveAccessibleName(/Seit dem Haken verändert/);
+    }
+    expect(fehler).toEqual([]);
+  });
+
+  /* ── AK 3/AK 7 „Änderungen anzeigen“ an einer großen Datei setzt keinen Hinweis ── */
+
+  test('AK 3/AK 7: „Änderungen anzeigen“ an einer großen Datei lässt den Haken und setzt keinen Hinweis', async ({ page }) => {
+    const s = seite(page);
+    await alleOeffnen(page, k, 2);
+    await s.kaestchen('src/grosse-antwort.json').click();
+    await s.datei('src/grosse-antwort.json').getByRole('button', { name: 'Änderungen anzeigen' }).click();
+    await expect(s.kaestchen('src/grosse-antwort.json')).toBeChecked();
+    await expect(s.zeileHinweis('src/grosse-antwort.json')).toHaveCount(0);
+    await expect(s.zeileText()).toHaveText(/^1 von \d+ gesehen$/);
     expect(fehler).toEqual([]);
   });
 });

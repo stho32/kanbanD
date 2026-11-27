@@ -470,6 +470,9 @@ function leisteVorbereiten(h) {
 function gesehenBauen(basis) {
   const h = uebersichtBauen(basis);
   h.k3b = aenderungsCommit(h.r, 'K3b', { 'src/a.rs': 'fn a() { neu() }\nfn b() {}\n' });
+  h.k3c = aenderungsCommit(h.r, 'K3c', {
+    'src/a.rs': 'fn a() { neu() }\nfn b() {}\nfn c() {}\n', 'tests/a_test.rs': 'fn t() {}\nfn u() {}\n', 'README.md': '# kd\nneu\nauch\nnoch\n',
+  });
   aenderungsCommit(h.r, 'G0 Vorgänger', { 'src/riesig.rs': '' });
   h.kg = aenderungsCommit(h.r, 'KG', { 'src/riesig.rs': reihe(3001, 'riesig') });
   h.k5 = aenderungsCommit(h.r, 'K5', { 'src/a.rs': 'fn a() { k5() }\n', ...Object.fromEntries([1, 2, 3, 4].map(i => [`src/k5-${i}.rs`, `fn k${i}() {}\n`])) });
