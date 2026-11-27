@@ -96,6 +96,12 @@ const ganzSichtbar = el => el.evaluate(e => {
   return r.top >= b.top + l.clientTop - 0.5 && r.bottom <= b.top + l.clientTop + l.clientHeight + 0.5;
 });
 
+/** Die Lage der Kopf-Überschrift: umgebrochen (mehr als eine Zeile) und in die Breite passend (AK 8). */
+const kopfLage = s => s.ueberschrift().evaluate(e => ({
+  zeilen: e.getClientRects().length > 1 || e.getBoundingClientRect().height > parseFloat(getComputedStyle(e).lineHeight) * 1.5,
+  passt: e.scrollWidth <= e.clientWidth,
+}));
+
 test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
   let k, h;
@@ -467,7 +473,10 @@ test.describe('R00245 Commit-Leiste und verdichteter Commit-Kopf', () => {
         const titel = s.eintrag(h.c2lang).locator('.t');
         expect(await titel.evaluate(e => ({ gekuerzt: e.scrollWidth > e.clientWidth, art: getComputedStyle(e).textOverflow }))).toEqual({ gekuerzt: true, art: 'ellipsis' });
         await commitOeffnen(page, k, 9, h.c2lang);
-        const kopf = await s.ueberschrift().evaluate(e => ({ zeilen: e.getClientRects().length > 1 || e.getBoundingClientRect().height > parseFloat(getComputedStyle(e).lineHeight) * 1.5, passt: e.scrollWidth <= e.clientWidth }));
+        // Die Hash-Adresse ist dieselbe Seite: `commitOeffnen` kehrt zurück, solange der Anker des vorigen Commits sichtbar ist,
+        // sonst misst der Fall dessen einzeilige Überschrift (R00262). Erst messen, wenn der neue Kopf gezeichnet und umgebrochen ist.
+        await expect.poll(() => kopfLage(s), { message: 'der neue Commit-Kopf ist gezeichnet und umgebrochen' }).toEqual({ zeilen: true, passt: true });
+        const kopf = await kopfLage(s);
         expect(kopf).toEqual({ zeilen: true, passt: true });
       } else {
         for (const x of lage) expect(x.breite).toBeLessThanOrEqual(lage[0].voll + 0.5);

@@ -1246,3 +1246,4 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #239 R00258 | Nacharbeit 1: geschlossener stderr-Kanal stürzt den Dienst nicht ab (stderr_zeile) | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-27 | Karte #239 R00258 | Nacharbeit 1: AK 4 über den Router (500/ERROR/intern), AK 3 auf drei 503-Gründe erweitert | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
 | 2026-11-27 | Karte #239 R00258 | Nacharbeit 1: Logdatei 0600 + O_NOFOLLOW, U+2028/2029/202E escapen (Optional) | Standard | 0,5h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #280 R00262 | B1416: AK-8-Probe wartet vor der Messung auf den umgebrochenen Commit-Kopf | Standard | 0,5h | 1,0h | 1,0h | autonom |
