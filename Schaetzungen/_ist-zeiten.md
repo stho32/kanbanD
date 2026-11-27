@@ -1253,3 +1253,4 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #279 R00260 | B1396 Gate-Fälle R00217 AK 1 ohne `toEqual([])` auf Dauern: `langeSeit` bleibt Beobachtung ohne Grenze, Text/`data-farbe`/10.000 Zeilen/21 Blöcke bleiben | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #279 R00260 | B1397 Lastprobe R00217 AK 1 abgetrennt: je Datei die längste Aufgabe, `KD_LASTPROBE`, Last und Werte in Ausgabe und Datei; im Gate `1 skipped` | Standard | 1-2h | 0,4h | 0,4h | autonom |
 | 2026-11-27 | Karte #279 R00260 | B1398 Probe/Mutanten/Gate: Mutant m5 tötet den R00248-Gate-Fall, Test-Mutant „Zustandsaussage entfernt“ überlebt m5, Unity-Mutant „alle Blöcke in einer Aufgabe“ tötet `farbe-auflage`; volles Gate grün; Verweiszeilen in R00248 und R00217 | Standard | 1-2h | 0,9h | 0,9h | autonom |
+| 2026-11-27 | Karte #276 R00261 | B1406 Reproduktion: Beleg aus den Gates #248/#260/#269/#279, keine eigene Last (Nachtbetrieb) | Standard | 0,5h | 0,1h | 0,1h | autonom |
