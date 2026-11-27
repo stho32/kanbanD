@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const u = require('../../web/review-uebersicht.js');
 const d = require('../../web/diff.js');
+const { messung, SPRUNG } = require('./hilfen/lastprobe.js');
 
 const minus = text => ({ art: 'minus', text });
 const plus = text => ({ art: 'plus', text });
@@ -167,6 +168,26 @@ test('AK 9: doppelte Zeilenzahl ergibt doppelt so viele Vergleiche, fünffache d
   assert.ok(vergleiche(1000) > 0, 'der Zähler zählt');
   assert.strictEqual(vergleiche(10000), 2 * vergleiche(5000));
   assert.strictEqual(vergleiche(5000), 5 * vergleiche(1000));
+});
+
+/** Kürzeste von mehreren Laufzeiten (ms) der Paarung über eine Zeilenliste — die kürzeste ist am wenigsten von fremder Last verfälscht. */
+const kuerzesteZeit = zeilen => {
+  let beste = Infinity;
+  for (let lauf = 0; lauf < 9; lauf++) {
+    const t0 = process.hrtime.bigint();
+    u.wortMarken(zeilen);
+    beste = Math.min(beste, Number(process.hrtime.bigint() - t0) / 1e6);
+  }
+  return beste;
+};
+
+test('AK 9 Lastprobe: doppelte Zeilenzahl in etwa doppelter Zeit (linear, keine Rechnung über das Paar hinaus)', SPRUNG, () => {
+  const [einfach, doppelt] = [lastZeilen(5000), lastZeilen(10000)];
+  kuerzesteZeit(einfach);
+  const [t1, t2] = [kuerzesteZeit(einfach), kuerzesteZeit(doppelt)];
+  const verhaeltnis = t2 / t1;
+  if (!messung('AK 9 Lastprobe Wortmarke 5.000 → 10.000 Zeilen', `${t1.toFixed(2)} ms → ${t2.toFixed(2)} ms, Verhältnis ${verhaeltnis.toFixed(2)} (linear 2, quadratisch 4)`)) return;
+  assert.ok(verhaeltnis >= 1.3 && verhaeltnis <= 3, `${t1.toFixed(2)} ms → ${t2.toFixed(2)} ms, Verhältnis ${verhaeltnis.toFixed(2)} (linear 2, quadratisch 4)`);
 });
 
 test('AK 9: über eine ganze Zeilenliste zählt die Paarung die Vergleiche aller Paare zusammen', () => {
