@@ -1289,3 +1289,8 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #270 R00266 | B1452 Stil des angehefteten Kopfs (Hintergrund, Hoehe, 320 px, `.rv `-Regeln) | Standard | 1h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #270 R00266 | B1453 Sprungziele, Leseanker und bestehende Proben nachziehen | Standard | 0,5-1h | 0,4h | 0,4h | autonom |
 | 2026-11-27 | Karte #270 R00266 | B1454 Probe im echten Programm, Mutant P4, Gate, Verweiszeilen | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #283 R00267 | B1460 Gate-Teil umbauen: Spanne heraus, Marke „Enkel lebt danach“ hinein | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #283 R00267 | B1461 Lastprobe der muss2-Spanne: nur ausdrücklich, Last und `d` | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #283 R00267 | B1462 Gate-Teile von ak09 und ak09_gesamtgrenze ohne Dauer-Zusicherung | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #283 R00267 | B1463 Lastproben der ak09-Spannen | Standard | 0,5h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #283 R00267 | B1464 Probe unter Last, Mutanten M1/M2, Gate | Standard | 1h | 1,0h | 1,0h | autonom |
