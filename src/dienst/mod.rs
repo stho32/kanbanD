@@ -63,6 +63,8 @@ pub use einrichten::{Einrichtung, NeuePerson};
 pub use schalter::{Schalterantwort, nur_menschen_schalten};
 pub use erledigen::{Erledigt, Erledigung, Erledigungsergebnis};
 pub use einstellungen::{Einstellungsvorschau, PALETTE, PersonAenderung, Personenangabe, farbe_gueltig};
+// R00269: die Lesegrenze wird außerhalb von Tests lesbar und Proben belegen ihre Plätze (FA 6, AK 1).
+pub use lesegrenze::{Platz as Leseplatz, LESEN_HOECHSTENS};
 
 use crate::ablage::{DefekteDatei, Ordner};
 use crate::fehler::Fehler;
@@ -87,6 +89,9 @@ pub struct Kanban {
     zweigcache: Mutex<zweigcache::Zweigcache>,
     /// höchstens 4 Lesevorgänge in Arbeits-Repositories gleichzeitig (Nacharbeit #211, Security Muss 3)
     lesegrenze: lesegrenze::Lesegrenze,
+    /// Die Gesamtgrenze einer Anfrage (ADR-0032 N3.1) — die Lesegrenze wartet höchstens so lange auf einen Platz;
+    /// Proben verkleinern sie, damit die belegte Grenze nicht 10 s wartet (R00269 AK 1).
+    gesamtgrenze: std::time::Duration,
     /// Platz aller Antworten 200 von `GET …/diff`, bis der Client sie gelesen hat (ADR-0032 N5.1)
     antwortbudget: antwortbudget::Antwortbudget,
     /// Bytegrenze des Namenslaufs im Gesamt-Diff (R00208, ADR-0032 N6.8); Tests verkleinern sie (AK 4)
@@ -161,7 +166,7 @@ impl Kanban {
 
     /// Wie [`Kanban::neu`], mit dem Protokoll der Instanz (Betrieb: Datei und stderr; Test: Sammler).
     pub fn neu_mit_protokoll(wurzel: PathBuf, protokoll: crate::protokoll::Protokoll) -> Kanban {
-        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), protokoll, timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN, grenze_netto_datei: crate::modell::GRENZE_DATEILISTE_EINZELN, grenze_folge_liste: crate::modell::GRENZE_DATEILISTE,
+        Kanban { ordner: Ordner::neu(wurzel), sperre: Mutex::new(()), eigene: Eigene::default(), protokoll, timer_beginn: Mutex::default(), zweigcache: Mutex::default(), lesegrenze: lesegrenze::Lesegrenze::default(), gesamtgrenze: GESAMTGRENZE, antwortbudget: antwortbudget::Antwortbudget::default(), grenze_namen: crate::modell::GRENZE_NAMEN, grenze_netto_datei: crate::modell::GRENZE_DATEILISTE_EINZELN, grenze_folge_liste: crate::modell::GRENZE_DATEILISTE,
             #[cfg(test)]
             nach_dem_belegen: Mutex::default(),
             #[cfg(test)]
@@ -283,6 +288,30 @@ impl Kanban {
 
     fn gesperrt(&self) -> std::sync::MutexGuard<'_, ()> {
         self.sperre.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Die Gesamtgrenze einer Anfrage (ADR-0032 N3.1) — die Handler setzen daraus die Frist.
+    pub fn gesamtgrenze(&self) -> std::time::Duration {
+        self.gesamtgrenze
+    }
+
+    /// Belegt einen Platz der Lesegrenze, bis der Rückgabewert fällt — Proben füllen so die Grenze (R00269 AK 1).
+    /// Im Betrieb ungenutzt: dort nimmt sich jeder Lesevorgang selbst einen Platz.
+    pub fn lesegrenze_betreten(&self, frist: std::time::Instant) -> Option<Leseplatz<'_>> {
+        self.lesegrenze.betreten(frist)
+    }
+
+    /// Eine Instanz mit verkleinerter Gesamtgrenze — Probe (R00269 AK 1): die belegte Lesegrenze wartet dann
+    /// nicht die vollen 10 s.
+    pub fn mit_gesamtgrenze(mut self, dauer: std::time::Duration) -> Kanban {
+        self.gesamtgrenze = dauer;
+        self
+    }
+
+    /// Eine Instanz mit verkleinertem Antwortbudget — Probe (R00269 AK 4).
+    pub fn mit_antwortbudget(mut self, bytes: usize) -> Kanban {
+        self.antwortbudget = antwortbudget::Antwortbudget::mit(bytes);
+        self
     }
 }
 

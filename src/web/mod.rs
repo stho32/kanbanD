@@ -43,29 +43,41 @@ pub struct App {
 
 /// Router ohne Horcher und ohne Ende-Signal (Ereignisströme laufen, bis der Client geht); `GET /api/instanz` nennt Port 0.
 pub fn router(ordner: PathBuf) -> Router {
-    router_mit_ende(ordner, 0, watch::channel(false).1)
+    let protokoll = crate::protokoll::Protokoll::stumm();
+    let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
+    router_bauen(kanban, 0, watch::channel(false).1, protokoll)
 }
 
 /// `port` ist der Port, an den der Horcher gebunden ist (R00183) — nicht der verlangte: das Programm weicht aus.
 /// Wird `ende` wahr, schließen sich die Ereignisströme — sonst wartet ein geordnetes Beenden ewig auf sie.
 pub fn router_mit_ende(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>) -> Router {
-    router_bauen(ordner, port, ende, crate::protokoll::Protokoll::stumm())
+    let protokoll = crate::protokoll::Protokoll::stumm();
+    let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
+    router_bauen(kanban, port, ende, protokoll)
 }
 
 /// Wie [`router_mit_ende`], mit dem Protokoll der Instanz: der Betrieb reicht Datei+stderr herein, ein Test eine
 /// Sammler-Senke (N1.7 Regel 1, R00258 AK 1–12).
 pub fn router_mit_protokoll(ordner: PathBuf, port: u16, protokoll: crate::protokoll::Protokoll) -> Router {
-    router_bauen(ordner, port, watch::channel(false).1, protokoll)
+    let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
+    router_bauen(kanban, port, watch::channel(false).1, protokoll)
 }
 
 /// Wie [`router_mit_protokoll`], mit Ende-Signal: das Programm reicht hier seinen Endekanal herein, damit sich die
 /// Ereignisströme beim geordneten Beenden schließen.
 pub fn router_mit_ende_und_protokoll(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
-    router_bauen(ordner, port, ende, protokoll)
+    let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner, protokoll.clone()));
+    router_bauen(kanban, port, ende, protokoll)
 }
 
-fn router_bauen(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
-    let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner.clone(), protokoll.clone()));
+/// Wie [`router_mit_protokoll`], mit einem vorbereiteten `Kanban` — Proben füllen so die Lesegrenze oder verkleinern
+/// das Antwortbudget (R00269 AK 1/4).
+pub fn router_mit_kanban(kanban: Arc<Kanban>, port: u16, protokoll: crate::protokoll::Protokoll) -> Router {
+    router_bauen(kanban, port, watch::channel(false).1, protokoll)
+}
+
+fn router_bauen(kanban: Arc<Kanban>, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
+    let ordner = kanban.ordner().wurzel().to_path_buf();
     let (ereignisse, _) = broadcast::channel(256);
     let tx = ereignisse.clone();
     let melder = protokoll.clone();
@@ -1379,8 +1391,8 @@ async fn kosteneintrag_loeschen(State(app): State<App>, Wer(wer): Wer, Pfad((nr,
     responses((status = 200, description = "Erfolg", body = crate::web::openapi::Commitliste), (status = 400, description = "ungültige Nummer", body = crate::web::openapi::Fehlerantwort), (status = 404, description = "Aufgabe nicht gefunden", body = crate::web::openapi::Fehlerantwort), (status = 423, description = "Datei defekt — nur lesbar", body = crate::web::openapi::Fehlerantwort), (status = 503, description = "Git in den Arbeits-Repositories über der Gesamtgrenze von 10 s — keine Liste; oder alle 4 Plätze der Lesegrenze bis zur Frist belegt (fehler beginnt mit „Lesegrenze“, Git nicht gestartet)", body = crate::web::openapi::Fehlerantwort), (status = 500, description = "Git oder Dateisystem", body = crate::web::openapi::Fehlerantwort))
 )]
 async fn commits_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>) -> Result<Response, Fehler> {
-    // die Gesamtgrenze zählt ab Eingang der Anfrage (ADR-0032 N3.1)
-    let frist = std::time::Instant::now() + crate::dienst::GESAMTGRENZE;
+    // die Gesamtgrenze zählt ab Eingang der Anfrage (ADR-0032 N3.1); die Instanz kann sie für Proben verkleinern
+    let frist = std::time::Instant::now() + app.kanban.gesamtgrenze();
     let commits = blockierend(&app, move |k| k.commits_lesen(nr, frist)).await?;
     Ok(Json(json!({ "commits": commits })).into_response())
 }
@@ -1397,7 +1409,7 @@ async fn diff_lesen(State(app): State<App>, Pfad(nr): Pfad<u32>, Abfrage(paare):
     use axum::http::header;
     use crate::dienst::diff::{Diffanfrage, Diffantwort, Diffformat};
     // die Gesamtgrenze zählt ab Eintritt in den Handler, vor dem Warten auf den Blocking-Pool (ADR-0032 N4.1)
-    let frist = std::time::Instant::now() + crate::dienst::GESAMTGRENZE;
+    let frist = std::time::Instant::now() + app.kanban.gesamtgrenze();
     let bekannt = kopf.get(header::IF_NONE_MATCH).and_then(|w| w.to_str().ok()).map(str::to_string);
     let anfrage = Diffanfrage::aus_paaren(&paare, bekannt)?;
     let antwort = blockierend(&app, move |k| k.diff_lesen(nr, &anfrage, frist)).await?;
@@ -1473,7 +1485,7 @@ async fn nachfolger_suchen(State(app): State<App>, Pfad((nr, verweis)): Pfad<(u3
     use axum::http::header;
     use crate::dienst::nachfolger::Nachfolgerantwort;
     // die Gesamtgrenze zählt ab Eintritt in den Handler, vor dem Warten auf den Blocking-Pool (ADR-0038 Punkt 2)
-    let frist = std::time::Instant::now() + crate::dienst::GESAMTGRENZE;
+    let frist = std::time::Instant::now() + app.kanban.gesamtgrenze();
     let bekannt = kopf.get(header::IF_NONE_MATCH).and_then(|w| w.to_str().ok()).map(str::to_string);
     let antwort = blockierend(&app, move |k| k.nachfolger_suchen(nr, &verweis, bekannt.as_deref(), frist)).await?;
     let (etag, mut r) = match antwort {
@@ -2274,20 +2286,34 @@ mod tests {
         assert!(!felder.iter().any(|(n, _)| *n == "wer"), "ohne Header kein wer: {felder:?}");
     }
 
-    // R00258 AK 3: je 503-Grund (Zeitgrenze, Lesegrenze, Antwortbudget) drei Abweisungen → drei Zeilen mit der Ursache
-    // aus `Fehler::ursache()`, nie aus dem Meldungstext.
+    // R00258 AK 3: `zeitgrenze` bleibt eine Zeile je Anfrage — drei Aufrufe der reinen Funktion ergeben drei Zeilen
+    // mit der Ursache aus `Fehler::ursache()`, nie aus dem Meldungstext, ohne `episode=`.
+    // R00269 AK 9: für `lesegrenze` und `antwortbudget` entscheidet die Episode (die Middleware) über die Zahl der
+    // Zeilen; `abweisungszeile` liefert unverändert je Aufruf die Basiszeile ohne `episode=` — die Episoden prüfen
+    // `tests/akzeptanz_r00269.rs` AK 1/3/4.
     #[test]
-    fn ak3_drei_abweisungen_je_503_grund_ergeben_drei_zeilen() {
+    fn ak3_zeitgrenze_drei_zeilen_episodenursachen_als_funktion() {
         use crate::fehler::Ursache;
-        for (ursache, text) in [(Ursache::Zeitgrenze, "zeitgrenze"), (Ursache::Lesegrenze, "lesegrenze"), (Ursache::Antwortbudget, "antwortbudget")] {
-            let (protokoll, sammler) = crate::protokoll::Protokoll::sammler();
-            let g = Abweisungsgrund { ursache, grund: "Git antwortete nicht in 10 s".to_string() };
-            for _ in 0..3 {
-                let (stufe, ereignis, felder) = abweisungszeile(StatusCode::SERVICE_UNAVAILABLE, "GET", Some("/api/aufgaben/{nr}/commits"), Some(1), Some("cl"), None, Anfragezettel::default(), Some(&g)).unwrap();
-                protokoll.schreiben(stufe, ereignis, &felder);
-            }
+        use crate::protokoll::{Ereignis, Stufe};
+        let (protokoll, sammler) = crate::protokoll::Protokoll::sammler();
+        let g = Abweisungsgrund { ursache: Ursache::Zeitgrenze, grund: "Git antwortete nicht in 10 s".to_string() };
+        for _ in 0..3 {
+            let (stufe, ereignis, felder) = abweisungszeile(StatusCode::SERVICE_UNAVAILABLE, "GET", Some("/api/aufgaben/{nr}/commits"), Some(1), Some("cl"), None, Anfragezettel::default(), Some(&g)).unwrap();
+            protokoll.schreiben(stufe, ereignis, &felder);
+        }
+        {
             let zeilen = sammler.lock().unwrap();
-            assert_eq!(zeilen.iter().filter(|z| z.contains(" WARN abgewiesen ") && z.contains("status=503") && z.contains(&format!("ursache={text}"))).count(), 3, "{text}: {zeilen:?}");
+            assert_eq!(zeilen.iter().filter(|z| z.contains(" WARN abgewiesen ") && z.contains("status=503") && z.contains("ursache=zeitgrenze")).count(), 3, "{zeilen:?}");
+            assert!(zeilen.iter().all(|z| !z.contains("episode=")), "zeitgrenze trägt kein episode=: {zeilen:?}");
+        }
+        // Die beiden Episodenursachen liefern je Aufruf weiterhin die Basiszeile; die Anzahl je Episode entscheidet
+        // die Middleware (AK 1/3/4), nicht diese reine Funktion.
+        for (ursache, text) in [(Ursache::Lesegrenze, "lesegrenze"), (Ursache::Antwortbudget, "antwortbudget")] {
+            let g = Abweisungsgrund { ursache, grund: "belegt".to_string() };
+            let (stufe, ereignis, felder) = abweisungszeile(StatusCode::SERVICE_UNAVAILABLE, "GET", Some("/api/aufgaben/{nr}/commits"), Some(1), Some("cl"), None, Anfragezettel::default(), Some(&g)).unwrap();
+            assert_eq!((stufe, ereignis), (Stufe::Warn, Ereignis::Abgewiesen));
+            assert!(felder.iter().any(|(n, w)| *n == "ursache" && w == text), "{felder:?}");
+            assert!(!felder.iter().any(|(n, _)| *n == "episode"), "die Episode ergänzt die Middleware: {felder:?}");
         }
     }
 
