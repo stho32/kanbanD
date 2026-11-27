@@ -1,10 +1,10 @@
 # ADR-0045: Lizenzhinweise der eingebetteten Rust-Pakete — erzeugt aus `Cargo.lock` und den Registrarlizenztexten, ausgeliefert als eingebettete Datei unter `/web/LIZENZEN.md`
 
-**Status**: Akzeptiert (belegt: Hausform `web/vendor/LICENSE-prism.txt`, bestehende Route `/web/{*name}`, Probe P0).
+**Status**: Akzeptiert (belegt: Hausform `web/vendor/LICENSE-prism.txt`, bestehende Route `/web/{*name}`, Probe P0); Nachtrag N1 (2026-11-27) Akzeptiert (in Kauf genommen: die Liste ist eine Obermenge des gebauten Graph).
 **Datum**: 2026-11-27
 **Entscheider**: Claude (autonom, architekt, Auftrag Director Karte #250, Lauf 250-architekt-1)
 **Kontext-Anforderung**: — (Karte #250, „Lizenzhinweise der eingebetteten Rust-Pakete mitliefern“; gefunden bei #243)
-**Erprobt durch**: Probe P0, 2026-11-27, Stand `69cb5590` (Lizenzabdeckung im Registrarcache, siehe Kontext); der Generator selbst ist noch nicht gebaut, seine erste Abnahme nennt „Folgeentscheidungen“.
+**Erprobt durch**: Probe P0, 2026-11-27, Stand `69cb5590` (Lizenzabdeckung im Registrarcache, siehe Kontext); der Generator selbst war beim Entscheid noch nicht gebaut, seine erste Abnahme nennt „Folgeentscheidungen“. Nachtrag N1 ergänzt: der Generator ist mit #250 gebaut (R00263), die drei Folgeentscheidungen sind erfüllt.
 
 ## Kontext
 
@@ -69,6 +69,20 @@ Der Vorteil, der überwiegt: die Hinweise haben `Cargo.lock` als einzige Quelle 
 - [ ] Generator, erzeugte Datei, Einbettung und Route (Karte/Anforderung; Abnahme: `GET /web/LIZENZEN.md` liefert 200 mit Name, Version, Lizenz und Urhebertext je enthaltenem Paket).
 - [ ] Gate-Test `tests/lizenzen.rs` (offline) und Release-Schritt `lizenzen --pruefen` — siehe Hinweise an den planer im Bericht.
 - [ ] `README.md` nennt den Ort des Hinweises (`/web/LIZENZEN.md`), damit das Archiv allein genügt.
+
+## Nachtrag 2026-11-27 N1: Die Liste ist eine Obermenge — `cargo metadata` nennt auch optional-nicht-aktivierte Kanten (Karte #250, Architektur-Review 250-1)
+
+**Status**: Akzeptiert (in Kauf genommen, Richtung unschädlich).
+
+Der Generator ist mit #250 gebaut (R00263); die drei Folgeentscheidungen oben sind erfüllt (`cargo run --features lizenzen --example lizenzen`, `tests/lizenzen.rs`, `README.md`).
+
+Der Kontext („Die Auswahl folgt dem aufgelösten Graph, nicht dem rohen `Cargo.lock`" und „sonst behauptet kanbanD eine Weitergabe, die es nicht gibt") verlangt eine genaue Auswahl. Die Umsetzung über `cargo metadata` (Kanten `normal`+`build`, für die zwei Release-Ziele) trifft das nicht wörtlich: `cargo metadata` führt auch **optional-nicht-aktivierte** Pakete als Knoten, deren Features im gebauten Binary nicht eingeschaltet sind. Die Liste ist damit eine **Obermenge** des gebauten Graph.
+
+Unabhängig gemessen (Architektur-Review 250-1: `cargo tree -e normal,build` der beiden Release-Ziele gegen die erzeugte Datei; Beleg `gemeinsam/scratchpad/arev-250/ueber-nb.txt` und `unter-nb.txt`): **97 enthalten, davon 6 ohne Kante im gebauten Graph** (`base64 0.23.1`, `futures-channel 0.3.34`, `futures-io 0.3.34`, `ipnet 2.12.2`, `try-lock 0.2.5`, `want 0.3.2`), **0 Unter-Aufnahmen**.
+
+**Entscheidung:** keine Änderung. Die Abweichung ist eine Über-Aufnahme und damit unschädlich — ein zu viel genannter Hinweis ist keine verschwiegene Weitergabe; die scharfe Warnung („behauptet kanbanD eine Weitergabe, die es nicht gibt") trifft die **Unter**-Aufnahme, und die ist 0. Ein Filter auf aktivierte Features würde die Auswahl-Logik ändern und bleibt offen, bis eine exakte Aussage gefordert wird.
+
+**Konsequenz:** „die Auswahl folgt dem aufgelösten Graph" ist als „… oder ist eine Obermenge davon" zu lesen. Die Durchsetzung (Gate-Test `tests/lizenzen.rs` und `--pruefen`) bleibt unverändert — sie prüft Vollständigkeit, nicht Gleichheit.
 
 ## Quellen / Bezuege
 

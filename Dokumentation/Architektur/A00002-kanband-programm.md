@@ -11,6 +11,7 @@ quellen:
   - src/
   - web/
   - Cargo.toml
+  - examples/
 ausgenommen:
   - src/main.rs
   - src/lib.rs
@@ -24,6 +25,8 @@ ausgenommen:
   - src/uhr.rs
   - src/wbs.rs
   - src/wbs_datei.rs
+  - src/lizenzen.rs
+  - examples/lizenzen.rs
 verwandt: []
 domaene: []
 ---
@@ -62,6 +65,7 @@ Ein Rust-Prozess (axum, tokio) bedient je gestartetem Ordner alle Kanäle — Ob
 ## Notizen / Quellen
 
 - `ausgenommen`: Start (`src/start/`), Ablage (`src/ablage.rs`, Lesen/Schreiben im Ordner), Fehlerarten und die Fachmodule Berichte, Herkunft, Phasen, Prüfungen, Uhr, WBS sind im Startmodell bewusst noch keinem Kind zugeordnet; sie werden Bausteine, sobald eine Karte sie ändert.
+- nachgeführt 2026-11-27 nach #250 (ADR-0045): `src/lizenzen.rs` (Erzeuger der Lizenzhinweise aus dem aufgelösten Abhängigkeitsgraph) und `examples/lizenzen.rs` (Beispiel-Einstieg) sind `ausgenommen` — dieselbe Form wie die einfileigen `src/`-Module darüber; `examples/` ist als `quellen`-Pfad aufgenommen. Der Lauf steht hinter dem Feature `lizenzen` (`Cargo.toml:16–24`, `src/lib.rs:9–10`). Die ausgelieferte `web/LIZENZEN.md` selbst ist eine `web/`-Datei und liegt damit unter [A00009 Oberfläche](A00009-oberflaeche.md).
 - nachgeführt 2026-11-12 nach R00123/R00124 (ADR-0021): `src/verlauf.rs` ist kein `ausgenommen`-Eintrag mehr, sondern der neue Baustein [A00010 Verlauf](A00010-verlauf.md) — der Karten-Verlauf (R00123) ändert ihn erheblich (neue Einträge `Kartenart`, `KartenEintrag`, `Kartenverlauf`), damit greift die Regel „Bausteine, sobald eine Karte sie ändert“.
 - Die Oberfläche `web/` ist per `include_bytes!` eingebettet (`src/web/statisch.rs`): eine Änderung an `web/` wird erst nach neuem Build sichtbar.
 - nachgeführt 2026-11-19 nach #207 (ADR-0032 N2): `src/git/arbeitsrepo.rs` ist der Baustein [A00011 Arbeits-Repository (lesend)](A00011-arbeitsrepo.md), verfeinert aus A00007.
