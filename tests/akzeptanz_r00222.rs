@@ -55,6 +55,7 @@ impl Instanz {
         let mut kind = Command::new(programm)
             .arg(ordner)
             .args(["--kein-browser", "--host", "127.0.0.1", "--port", "0"])
+            .env("XDG_STATE_HOME", log.parent().unwrap_or(std::path::Path::new("/tmp")))
             .stdout(Stdio::piped())
             .stderr(Stdio::from(std::fs::File::create(&log).unwrap()))
             .spawn()

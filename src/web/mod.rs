@@ -58,6 +58,12 @@ pub fn router_mit_protokoll(ordner: PathBuf, port: u16, protokoll: crate::protok
     router_bauen(ordner, port, watch::channel(false).1, protokoll)
 }
 
+/// Wie [`router_mit_protokoll`], mit Ende-Signal: das Programm reicht hier seinen Endekanal herein, damit sich die
+/// Ereignisströme beim geordneten Beenden schließen.
+pub fn router_mit_ende_und_protokoll(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
+    router_bauen(ordner, port, ende, protokoll)
+}
+
 fn router_bauen(ordner: PathBuf, port: u16, ende: watch::Receiver<bool>, protokoll: crate::protokoll::Protokoll) -> Router {
     let kanban = Arc::new(Kanban::neu_mit_protokoll(ordner.clone(), protokoll.clone()));
     let (ereignisse, _) = broadcast::channel(256);

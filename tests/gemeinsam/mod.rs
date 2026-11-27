@@ -11,6 +11,9 @@ pub struct Laufendes {
     pub adresse: String,
     /// stderr der Instanz, wenn `beobachtet_starten` es mitschneidet; erscheint beim Beenden in der Testausgabe.
     mitschnitt: Option<tempfile::NamedTempFile>,
+    /// Der Log-Ordner dieser Wegwerf-Instanz (`--log-ordner`): er bleibt außerhalb des Board-Ordners und außerhalb
+    /// von `~/.local/state/kanbanD` (R00258, ADR-0001 N1.2 Regel 1).
+    _log: Option<tempfile::TempDir>,
 }
 
 impl Drop for Laufendes {
@@ -105,9 +108,13 @@ fn gestartet(ordner: &Path, zusatz: &[&str], umgebung: &[(&str, &str)], stderr: 
 }
 
 fn aus_befehl(mut befehl: Command, ordner: &Path, zusatz: &[&str], stderr: Stdio) -> Laufendes {
+    // Jede Wegwerf-Instanz bekommt einen eigenen Log-Ordner im Wegwerf-Bereich — nie im Board-Ordner, nie im
+    // Zustandsordner des Benutzers (R00258 FA 2).
+    let log = tempfile::tempdir().expect("Log-Ordner der Wegwerf-Instanz");
     let mut kind = befehl
         .arg(ordner)
-        .args(["--kein-browser", "--host", "127.0.0.1"])
+        .args(["--kein-browser", "--host", "127.0.0.1", "--log-ordner"])
+        .arg(log.path())
         .args(zusatz)
         .stdout(Stdio::piped())
         .stderr(stderr)
@@ -116,7 +123,7 @@ fn aus_befehl(mut befehl: Command, ordner: &Path, zusatz: &[&str], stderr: Stdio
     let mut zeile = String::new();
     BufReader::new(kind.stdout.take().unwrap()).read_line(&mut zeile).unwrap();
     let adresse = zeile.split_whitespace().last().expect("Adresse in der Startzeile").to_string();
-    Laufendes { kind, adresse, mitschnitt: None }
+    Laufendes { kind, adresse, mitschnitt: None, _log: Some(log) }
 }
 
 /// R00215: Die Verzögerung je Aufruf für [`langsames_git`], gemessen in B1091: eine Einzelanfrage über `gross1.txt`

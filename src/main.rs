@@ -1,7 +1,9 @@
-use kanband::start::{Aufruffehler, Startauftrag, browser, ordner, server};
+use kanband::protokoll::{Ereignis, Protokoll, Stufe};
+use kanband::start::{Aufruffehler, Startauftrag, Umgebung, browser, ordner, server};
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
+    // Aufruffehler vor dem Start bleiben die einzige Ausgabe von `main` (ADR-0001 N1.2 Regel 5).
     let auftrag = match Startauftrag::aus_argumenten(std::env::args().skip(1)) {
         Ok(a) => a,
         Err(fehler) => {
@@ -9,16 +11,19 @@ fn main() -> ExitCode {
             return if fehler == Aufruffehler::HilfeGewuenscht { ExitCode::SUCCESS } else { ExitCode::from(2) };
         }
     };
+    let umgebung = Umgebung::aus_prozess();
+    let protokoll = Protokoll::betrieb(auftrag.log_stufe, auftrag.log_ordner(&auftrag.ordner, &umgebung));
+    protokoll.panik_hook_installieren();
     let ordner = match ordner::ordner_vorbereiten(&auftrag.ordner) {
         Ok(o) => o,
         Err(e) => {
-            eprintln!("Ordner {} lässt sich nicht vorbereiten: {e}", auftrag.ordner.display());
+            protokoll.schreiben(Stufe::Error, Ereignis::Fehlgeschlagen, &[("grund", format!("Ordner {} lässt sich nicht vorbereiten: {e}", auftrag.ordner.display()))]);
             return ExitCode::FAILURE;
         }
     };
     grosse_puffer_zurueckgeben();
     let laufzeit = tokio::runtime::Runtime::new().expect("Tokio-Laufzeit");
-    laufzeit.block_on(starten(auftrag, ordner))
+    laufzeit.block_on(starten(auftrag, ordner, protokoll))
 }
 
 /// Große Puffer (ab 256 KB: Git-Ausgaben, Rümpfe der Diff-Antworten) gehen immer als eigene Abbildung an das System
@@ -38,28 +43,35 @@ fn grosse_puffer_zurueckgeben() {
 #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
 fn grosse_puffer_zurueckgeben() {}
 
-async fn starten(auftrag: Startauftrag, ordner: std::path::PathBuf) -> ExitCode {
+async fn starten(auftrag: Startauftrag, ordner: std::path::PathBuf, protokoll: Protokoll) -> ExitCode {
     let listener = match server::freien_listener_binden(&auftrag.host, auftrag.port).await {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("Kein freier Port ab {}: {e}", auftrag.port);
+            protokoll.schreiben(Stufe::Error, Ereignis::Fehlgeschlagen, &[("grund", format!("Kein freier Port ab {}: {e}", auftrag.port))]);
             return ExitCode::FAILURE;
         }
     };
     let port = listener.local_addr().map(|a| a.port()).unwrap_or(auftrag.port);
     let adresse = server::browser_adresse(&auftrag.host, port);
+    // Die Adresse bleibt als funktionale Ausgabe auf stdout (Aufrufer und Proben lesen sie); das Protokoll führt
+    // dieselbe Aussage als `INFO gestartet` (R00258 AK 20).
     println!("kanbanD läuft für {} unter {adresse}", ordner.display());
+    protokoll.schreiben(
+        Stufe::Info,
+        Ereignis::Gestartet,
+        &[("ordner", ordner.display().to_string()), ("port", port.to_string()), ("log", protokoll.log_pfad().map(|p| p.display().to_string()).unwrap_or_else(|| "-".to_string()))],
+    );
     if auftrag.browser_oeffnen {
-        browser::oeffnen(&adresse);
+        browser::oeffnen(&protokoll, &adresse);
     }
     let (ende, ende_rx) = tokio::sync::watch::channel(false);
-    let router = kanband::web::router_mit_ende(ordner, port, ende_rx);
+    let router = kanband::web::router_mit_ende_und_protokoll(ordner, port, ende_rx, protokoll.clone());
     let signal = async move {
         beenden_verlangt().await;
         let _ = ende.send(true);
     };
     if let Err(e) = axum::serve(listener, router).with_graceful_shutdown(signal).await {
-        eprintln!("Server beendet mit Fehler: {e}");
+        protokoll.schreiben(Stufe::Error, Ereignis::Fehlgeschlagen, &[("grund", format!("Server beendet mit Fehler: {e}"))]);
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS

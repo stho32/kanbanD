@@ -213,7 +213,21 @@ fn felder(zeile: &str) -> Vec<(String, String)> {
     felder
 }
 
-// ---- AK 20: INFO commit (B1380) ---------------------------------------------------------------------------
+// ---- AK 20: INFO commit ------------------------------------------------------------------------------------
+
+#[tokio::test]
+async fn ak20_ein_commit_hinterlaesst_eine_info_zeile_ohne_text() {
+    let probe = Probe::neu();
+    let (status, _) = probe.rufen("PATCH", "api/aufgaben/1", "cl", Some(json!({"titel": "GEHEIM-NEU-239"}))).await;
+    assert_eq!(status, 200);
+    let zeilen = probe.zeilen();
+    assert_eq!(zeilen.iter().filter(|z| z.contains(" INFO commit ")).count(), 1, "{zeilen:?}");
+    let zeile = zeilen.iter().find(|z| z.contains(" INFO commit ")).unwrap();
+    assert!(zeile.contains("wer=cl"), "{zeile}");
+    let dateien = gemeinsam::git(probe.ordner(), &["show", "--name-only", "--format=", "HEAD"]).lines().filter(|z| !z.trim().is_empty()).count();
+    assert!(zeile.contains(&format!("dateien={dateien}")), "{zeile} erwartet dateien={dateien}");
+    assert_eq!(zeilen.iter().filter(|z| z.contains("GEHEIM-NEU-239")).count(), 0, "{zeilen:?}");
+}
 
 // ---- AK 2: Ursache je Abweisung, abgetastet über die ganze Liste --------------------------------------------
 

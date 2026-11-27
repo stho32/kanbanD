@@ -259,8 +259,12 @@ impl Kanban {
                 }
             }
         }
-        git::committen(self.ordner.wurzel(), &geaendert, autor, nachricht)?;
-        Ok(())
+        git::committen(self.ordner.wurzel(), &geaendert, autor, nachricht).map(|committet| {
+            // R00258 AK 20: je Commit eine Zeile mit wer und Anzahl Dateien, ohne Commit-Text
+            if committet {
+                self.protokoll.schreiben(crate::protokoll::Stufe::Info, crate::protokoll::Ereignis::Commit, &[("wer", autor.kuerzel.clone()), ("dateien", geaendert.len().to_string())]);
+            }
+        })
     }
 
     /// Text der Board-Datei; die Links zeigen auf die Dateinamen der Aufgaben (`neu` ist noch nicht auf der Platte).

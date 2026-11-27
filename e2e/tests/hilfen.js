@@ -36,7 +36,9 @@ process.env.TZ = 'Europe/Berlin';
 
 /** Startet kanbanD und liefert die Adresse aus der Startzeile; `umgebung` ergänzt die Umgebungsvariablen. */
 function programmStarten(ordner, port, umgebung) {
-  const kind = spawn(PROGRAMM, [ordner, '--kein-browser', '--host', '127.0.0.1', '--port', String(port)], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ...umgebung } });
+  // R00258: der Log-Ordner liegt im Wegwerf-Bereich des Tests — nie im Board-Ordner, nie in ~/.local/state/kanbanD
+  const logOrdner = path.join(path.dirname(ordner), 'log');
+  const kind = spawn(PROGRAMM, [ordner, '--kein-browser', '--host', '127.0.0.1', '--port', String(port), '--log-ordner', logOrdner], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ...umgebung } });
   const adresse = new Promise((ok, fehler) => {
     let puffer = '';
     kind.stdout.on('data', d => { puffer += d; const m = /(http:\/\/\S+)/.exec(puffer); if (m) ok(m[1]); });

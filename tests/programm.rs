@@ -30,7 +30,7 @@ fn ordner_der_sich_nicht_anlegen_laesst_endet_mit_fehler() {
     let tmp = tempfile::tempdir().unwrap();
     let datei = tmp.path().join("datei");
     std::fs::write(&datei, "x").unwrap();
-    let a = Command::new(env!("CARGO_BIN_EXE_kanbanD")).arg(datei.join("unter")).arg("--kein-browser").output().unwrap();
+    let a = Command::new(env!("CARGO_BIN_EXE_kanbanD")).arg(datei.join("unter")).arg("--kein-browser").env("XDG_STATE_HOME", tmp.path()).output().unwrap();
     assert_eq!(a.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&a.stderr).contains("lässt sich nicht vorbereiten"));
 }
@@ -71,6 +71,7 @@ fn ohne_kein_browser_wird_der_browser_mit_der_adresse_geoeffnet() {
         .arg(tmp.path().join("k"))
         .args(["--host", "127.0.0.1", "--port", "0"])
         .env("KANBAND_BROWSER", &skript)
+        .env("XDG_STATE_HOME", tmp.path())
         .stdout(std::process::Stdio::piped())
         .spawn()
         .unwrap();

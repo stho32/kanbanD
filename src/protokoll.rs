@@ -173,6 +173,22 @@ impl Protokoll {
             Senke::Stumm => {}
         }
     }
+
+    /// Setzt den Panik-Hook dieser Instanz (N1.2 Regel 4); nur `main` ruft ihn auf.
+    pub fn panik_hook_installieren(&self) {
+        panik_hook(self.clone());
+    }
+}
+
+/// Setzt den Panik-Hook, der genau eine `EXCEPTION Panik`-Zeile mit dem Ort schreibt (N1.2 Regel 4, AK 21).
+/// Der Text der Panik steht nie darin (er kann Inhalt tragen).
+pub fn panik_hook(protokoll: Protokoll) {
+    let vorher = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let ort = info.location().map(|l| format!("{}:{}", l.file(), l.line())).unwrap_or_else(|| "-".to_string());
+        protokoll.schreiben(Stufe::Exception, Ereignis::Panik, &[("ort", ort)]);
+        vorher(info);
+    }));
 }
 
 /// Eine Protokollzeile als Text (reine Funktion, N1.3): Zeitstempel, Stufe, Ereignis, Felder.
@@ -407,6 +423,22 @@ mod tests {
         protokoll.schreiben(Stufe::Info, Ereignis::Gestartet, &[("ordner", "/b".into())]);
         assert!(!ordner.join("kanbanD.log.2026-11-12").exists(), "27 − 12 = 15 Tage → weg");
         assert!(ordner.join("kanbanD.log.2026-11-13").exists(), "27 − 13 = 14 Tage → bleibt");
+    }
+
+    // AK 21: der Panik-Hook schreibt genau eine Zeile mit dem Ort, ohne den Text der Panik
+    #[test]
+    fn der_panik_hook_schreibt_ort_ohne_text() {
+        let (protokoll, sammler) = Protokoll::sammler();
+        let stumm = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        panik_hook(protokoll);
+        let _ = std::panic::catch_unwind(|| panic!("GEHEIM-PANIK-239"));
+        std::panic::set_hook(stumm);
+        let zeilen = sammler.lock().unwrap();
+        assert_eq!(zeilen.len(), 1, "{zeilen:?}");
+        assert!(zeilen[0].contains(" EXCEPTION Panik "), "{}", zeilen[0]);
+        assert!(zeilen[0].contains("ort="), "{}", zeilen[0]);
+        assert!(!zeilen[0].contains("GEHEIM-PANIK-239"), "{}", zeilen[0]);
     }
 
     // AK 17: ein nicht schreibbarer Log-Ordner stoppt nichts und nennt den Ordner

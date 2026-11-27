@@ -138,6 +138,7 @@ impl Instanz {
         let mut kind = Command::new(programm)
             .arg(board)
             .args(["--kein-browser", "--host", "127.0.0.1", "--port", "0"])
+            .env("XDG_STATE_HOME", log.parent().unwrap_or(std::path::Path::new("/tmp")))
             .stdout(Stdio::piped())
             .stderr(Stdio::from(std::fs::File::create(&log).unwrap()))
             .spawn()
@@ -151,8 +152,10 @@ impl Instanz {
     /// Zeilen des Logs, die nach Fehler oder Warnung aussehen; ausgenommen die erschöpften inotify-Instanzen des Rechners.
     fn auffaellige_zeilen(&self) -> Vec<String> {
         let auffaellig = |z: &str| ["fehler", "warn", "error", "defekt", "nicht beobachtet"].iter().any(|w| z.to_lowercase().contains(w));
+        // R00258: das Protokoll schreibt planmäßig nach stderr (ADR-0001 N1.2 Regel 1) — seine eigenen Zeilen sind keine Warnung des Tests
+        let protokollzeile = |z: &str| matches!(z.split_whitespace().nth(1), Some("DEBUG" | "INFO" | "WARN" | "ERROR" | "EXCEPTION"));
         let rechnergrenze = |z: &str| z.contains("nicht beobachtet (Too many open files (os error 24))");
-        std::fs::read_to_string(&self.log).unwrap_or_default().lines().filter(|z| auffaellig(z) && !rechnergrenze(z)).map(String::from).collect()
+        std::fs::read_to_string(&self.log).unwrap_or_default().lines().filter(|z| !protokollzeile(z) && auffaellig(z) && !rechnergrenze(z)).map(String::from).collect()
     }
 }
 
