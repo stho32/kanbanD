@@ -2323,7 +2323,7 @@ function reviewKopfHtml(r, b) {
   if (!dateien) return '';
   const liste = r.liste || { status: 'laedt' };
   const werte = liste.status === 'da' ? { status: 'da', folge: leistenFolge(liste.eintraege) } : { status: liste.status };
-  return `<header class="rv-kopf" id="rv-kopf" aria-label="Ansicht der Review-Seite">${zumCodeHtml(werte)}`
+  return `<header class="rv-kopf" id="rv-kopf" aria-label="Darstellung der Review-Seite">${zumCodeHtml(werte)}`
     + knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle')
     + umbrechenSchalterHtml(S.ui.umbrechen) + nebeneinanderSchalterHtml(S.ui.nebeneinander) + '</header>';
 }

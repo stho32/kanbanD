@@ -207,6 +207,21 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
     }
   }
 
+  /* ── AK 6 / FA 2: der Name des Kopfbereichs (B1455, PO Z. 745–747) ── */
+
+  test('AK 6: der Kopfbereich heisst „Darstellung der Review-Seite“ und ist von der Navigation unterscheidbar', async ({ page }) => {
+    const s = seite(page);
+    await s.commitOeffnen(k, 9, kopfRepository().n);
+    const kopf = page.locator('#rv-kopf');
+    await expect(kopf).toHaveCount(1);
+    // der berechnete Name (aria-label) — der Name, den der Kopfbereich fuer Hilfstechnik traegt
+    await expect(kopf).toHaveAccessibleName('Darstellung der Review-Seite');
+    // die Navigation behaelt ihren Namen (R00245 FA 1)
+    await expect(page.getByRole('navigation', { name: 'Ansicht der Review-Seite' })).toHaveCount(1);
+    // unterscheidbar: zwei Bereiche gleichen Namens waeren fuer Bildschirmleser nicht auseinanderzuhalten
+    expect(await kopf.getAttribute('aria-label')).not.toBe(await page.locator('nav#rv-ls').getAttribute('aria-label'));
+  });
+
   /* ── AK 6a: Flaeche im niedrigen Fenster und bei Zoom ── */
 
   test('AK 6a: 320 x 480 und 640 x 360 (200 % Zoom) — Kopf + .rv-kz <= halbe #main-Hoehe, #review >= 200 px', async ({ page }) => {
