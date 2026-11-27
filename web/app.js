@@ -2294,11 +2294,7 @@ function vReviewAlle(r, b) {
   else inhalt = gesamtInselHtml(r.nr, alle.abschnitte, reviewGesamtKontext(r), alle.vonListe);
   let summe = '';
   if (b.art === 'alle') {
-    const offen = alle.abschnitte.some(ab => ab.status === 'da' && ab.staende.some(st => st.offen));
-    const mitDateien = alle.abschnitte.some(ab => ab.status === 'da' && ab.antwort.dateien.length);
-    let knopfAlle = '';
-    if (mitDateien) knopfAlle = knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen) + nebeneinanderSchalterHtml(S.ui.nebeneinander);
-    summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span>${knopfAlle}</div>`;
+    summe = `<div class="sum"><span id="rv-summe">${summeHtml(alle.abschnitte, esc)}</span></div>`;
     const mitListe = alle.abschnitte.map((ab, a) => [ab, a]).filter(([ab]) => ab.status === 'da' && ab.antwort.dateien.length);
     if (mitListe.length) summe += reviewAufklapperHtml(r, abschnittSummen(alle.abschnitte).dateien, mitListe.map(([, a]) => `rv-a${a}-rail`).join(' '));
     const z = reviewAlleGesehen(alle);
@@ -2316,6 +2312,22 @@ function reviewListeFehltHtml(r) {
   return meldungHtml({ ton: satz.ton, rolle: 'alert', bild: zustandsSymbol(satz.symbol), zeilen: true, kopf: 'Das Repository einer Anwendung dieser Aufgabe ist nicht erreichbar.', rumpf: hinweis + liste, knoepfe: knopf('Erneut versuchen', 'review-erneut', 'alle', 'rv-erneut') });
 }
 
+/** Der angeheftete Kopf der Review-Seite (R00266, ADR-0042 N9.4, Vorgabe D0009 Bild 11): „Zum Code“ als erstes Element (nur ab
+    neun Einträgen), „Alle einklappen/Aufklappen“ (nur wo es Dateien gibt), „Umbrechen“ und „Nebeneinander“. Leer, wo die Seite
+    keine Schalter trägt — Laden, Liste- und Diff-Fehler, „keine Dateien“ und „Keine Änderungen zu zeigen.“ tragen keinen Kopf. */
+function reviewKopfHtml(r, b) {
+  const abschnitte = b.art === 'alle' ? ((r.alle && r.alle.abschnitte) || []) : [];
+  let dateien = 0, offen = false;
+  if (b.art === 'diff') { dateien = r.dateien.length; offen = r.staende.some(s => s.offen); }
+  else if (b.art === 'alle') { dateien = abschnitte.filter(ab => ab.status === 'da' && ab.antwort.dateien.length).length; offen = abschnitte.some(ab => ab.status === 'da' && ab.staende.some(st => st.offen)); }
+  if (!dateien) return '';
+  const liste = r.liste || { status: 'laedt' };
+  const werte = liste.status === 'da' ? { status: 'da', folge: leistenFolge(liste.eintraege) } : { status: liste.status };
+  return `<header class="rv-kopf" id="rv-kopf" aria-label="Ansicht der Review-Seite">${zumCodeHtml(werte)}`
+    + knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle')
+    + umbrechenSchalterHtml(S.ui.umbrechen) + nebeneinanderSchalterHtml(S.ui.nebeneinander) + '</header>';
+}
+
 /** Die Seite (Hauptbereich) aus dem Zustand; der Kopf steht in `#kopf` (vReviewKopf). */
 function vReview() {
   const r = S.ui.review;
@@ -2324,7 +2336,8 @@ function vReview() {
   let railKlasse = '';
   if (r.railOffen) railKlasse = ' rail-offen';
   if (S.ui.umbrechen) railKlasse += ' umbr';
-  const seite = inhalt => `<div class="rv${railKlasse}" id="review">${inhalt}</div>`;
+  // der Kopf liegt als `flex:none`-Geschwister **über** dem Rollbehälter (ADR-0042 N9.4): er bleibt beim Lesen sichtbar, weil er nicht mitrollt
+  const seite = inhalt => `${reviewKopfHtml(r, b)}<div class="rv${railKlasse}" id="review">${inhalt}</div>`;
   const erneut = ziel => knopf('Erneut versuchen', 'review-erneut', ziel, 'rv-erneut');
   const zurListe = knopf('Zur Liste der Commits', 'review-liste');
   if (b.art === 'ungueltig') return seite(meldungHtml({ rolle: 'status', kopf: 'Verweis ungültig.', text: 'Die Adresse nennt keinen Commit in gültiger Form.', knoepfe: zurListe }));
@@ -2378,9 +2391,7 @@ function reviewDiffHtml(r, b) {
   if (b.liste.status === 'fehler') navigation = `<div class="rv-lfehl" role="alert"><p>Die Liste der Commits ließ sich nicht lesen; das Blättern ist nicht möglich.</p>${knopf('Erneut versuchen', 'review-erneut', 'liste', 'rv-erneut')}</div>`;
   else if (b.folge && b.folge.art === 'folge') navigation = blaetternHtml(b.folge, esc(kurz), reviewSchmal(), Boolean(r.wahlAnsage));
   else if (b.folge) navigation = fremdHtml(kurz, esc);
-  const offen = r.staende.some(s => s.offen);
-  const alle = r.dateien.length ? knopf(offen ? 'Alle einklappen' : 'Alle aufklappen', 'review-alle', null, 'rv-alle') + umbrechenSchalterHtml(S.ui.umbrechen) + nebeneinanderSchalterHtml(S.ui.nebeneinander) : '';
-  const summe = `<div class="sum"><span>${dateienWort(c.dateien)} · <span class="pl">+${tausender(c.plus)}</span> <span class="mi">−${tausender(c.minus)}</span></span>${alle}</div>`;
+  const summe = `<div class="sum"><span>${dateienWort(c.dateien)} · <span class="pl">+${tausender(c.plus)}</span> <span class="mi">−${tausender(c.minus)}</span></span></div>`;
   const eintrag = b.liste.status === 'da' ? b.liste.eintraege.find(e => e.hash && e.hash.toLowerCase() === c.hash.toLowerCase()) : null;
   const leer = !r.dateien.length;
   let liste = '<p class="rv-leer">Dieser Commit ändert keine Dateien.</p>';

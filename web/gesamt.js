@@ -173,6 +173,13 @@
   /** Mehr Einträge verträgt die Leiste ohne den Verweis „Zum Code“ nicht (PO Z. 639): bis 8 Einträge gibt es ihn nicht. */
   const LEISTE_OHNE_SPRUNG = 8;
 
+  /** Der Sprung „Zum Code“ (R00245 FA 14, R00266 FA 2): seit der Karte #270 das **erste** Element des angehefteten Kopfs,
+      nicht mehr der Commit-Leiste; leer, solange die Folge höchstens acht Einträge hat. */
+  function zumCodeHtml(liste) {
+    if (liste.status !== 'da' || 1 + liste.folge.commits.length <= LEISTE_OHNE_SPRUNG) return '';
+    return '<a class="rv-zc" id="rv-zc" href="#rv-insel" data-act="review-zum-code">Zum Code</a>';
+  }
+
   /** Commit-Leiste (R00245 FA 1–5, 7, 12, 14; D0009 `#review-uebersicht`): die Navigation „Ansicht der Review-Seite“ mit einer Liste,
       erster Eintrag „Alle Änderungen“, danach je Commit mit Diff ein echter Verweis. `liste`: `{status: 'laedt' | 'fehler'}` oder
       `{status: 'da', folge}` (`leistenFolge`); `gezeigt`: `'alle'`, der volle Hash des gezeigten Commits oder null; `ansage` steht im
@@ -192,9 +199,7 @@
     }
     const alle = `<li><a class="rv-ce rv-ce-alle" id="rv-u-alle" href="${esc(alleHref)}" data-act="review-alle-zeigen"${aktuell(gezeigt === 'alle')}${name}><span class="z1"><span class="t">Alle Änderungen</span></span>${zeile}</a></li>`;
     const eintraege = commits.map((c, i) => leistenEintragHtml(c, i, gezeigt, adresse, esc)).join('');
-    let sprung = '';
-    if (1 + commits.length > LEISTE_OHNE_SPRUNG) sprung = '<a class="rv-zc" id="rv-zc" href="#rv-insel" data-act="review-zum-code">Zum Code</a>';
-    return `<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite"${busy}>${sprung}<ul>${alle}${eintraege}</ul></nav><p class="vh" id="rv-wahl" role="status">${esc(ansage || '')}</p>`;
+    return `<nav class="rv-ls" id="rv-ls" aria-label="Ansicht der Review-Seite"${busy}><ul>${alle}${eintraege}</ul></nav><p class="vh" id="rv-wahl" role="status">${esc(ansage || '')}</p>`;
   }
 
   function aktuell(ja) {
@@ -440,5 +445,5 @@
     return `${diff.dateienWort(s.dateien)} · <span class="pl">+${tausender(s.plus)}</span> <span class="mi">−${tausender(s.minus)}</span>${noch}`;
   }
 
-  Object.assign(ziel, { leisteHtml, abschnittListeHtml, abschnittHtml, abschnittDateiHtml, abschnittGruppeHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
+  Object.assign(ziel, { leisteHtml, zumCodeHtml, abschnittListeHtml, abschnittHtml, abschnittDateiHtml, abschnittGruppeHtml, gesamtInselHtml, seitenHinweiseHtml, summeHtml, istFolge, folgeWort, folgeKopf, schrittKoepfe, abschnittHinweise, seitenHinweise, weitereAnwendungen, leerSatz, abschnittSummen, ansageText, naechsteAnfrage, zuordnenGesamt, anwendungenAusListe, listenHinweise });
 })(typeof module !== 'undefined' ? module.exports : window);
