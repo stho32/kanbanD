@@ -48,7 +48,7 @@ Ohne diese Hinweise gibt kanbanD fremde Werk-MIT/Apache-2.0-Pakete weiter, ohne 
 ### Erzeugen und committen
 
 - [ ] **AK 1 (Scheibe 1, Probe P2a/P2b):** Gegeben `Cargo.lock`. Wenn der Generator läuft, dann entsteht `web/LIZENZEN.md`, und die Menge der Pakete aus `Cargo.lock` ist die **Vereinigung** der enthaltenen und der ausgenommenen; jede Ausnahme nennt einen Grund aus `dev`, `build`, `plattformfremd`, `workspace`. Je enthaltenem Paket stehen die vier Felder `Name`, `Version`, `Lizenz`, Urhebertext.
-- [ ] **AK 2 (Scheibe 1, Positivkontrolle P2c):** Gegeben dieselbe Ausgangslage. Wenn die Datei erzeugt ist, dann sind die dev-Abhängigkeiten `tower`, `tempfile`, `reqwest` **nicht** enthalten (Rechnung: dev-Kanten sind keine Weitergabe, #239).
+- [ ] **AK 2 (Scheibe 1, Positivkontrolle P2c):** Gegeben dieselbe Ausgangslage. Wenn die Datei erzeugt ist, dann sind die dev-**only**-Abhängigkeiten `tempfile` und `reqwest` **nicht** enthalten (Rechnung: dev-Kanten sind keine Weitergabe, #239; `cargo tree -e normal -i <paket> --offline` findet für beide keine normale Kante). `tower` gehört dagegen hinein: es ist normale Abhängigkeit von `axum` (`cargo tree -e normal -i tower` → `tower <- axum <- kanband`, ADR-0045 normal+build).
 
 ### Ausliefern
 
@@ -62,7 +62,7 @@ Ohne diese Hinweise gibt kanbanD fremde Werk-MIT/Apache-2.0-Pakete weiter, ohne 
 
 ### Mutanten (alle müssen rot werden; in eigener Kopie, nicht im Worktree)
 
-- [ ] **AK 5/6 Mutanten:** M1 Eintrag von Hand aus `web/LIZENZEN.md` gelöscht → AK 5 rot (P2a); M2 enthaltenes Paket von Hand in die Ausnahmetabelle → AK 6 rot; M3 `tower` aufgenommen → AK 2/AK 5 rot (P2c); M4 `Cargo.lock` um ein Paket erweitert, Datei nicht neu erzeugt → AK 5 rot (P2a).
+- [ ] **AK 5/6 Mutanten:** M1 Eintrag von Hand aus `web/LIZENZEN.md` gelöscht → AK 5 rot (P2a); M2 enthaltenes Paket von Hand in die Ausnahmetabelle → AK 6 rot; M3 `reqwest` aufgenommen → AK 2 rot (P2c); M4 `Cargo.lock` um ein Paket erweitert, Datei nicht neu erzeugt → AK 5 rot (P2a).
 
 ## Betroffene Verzeichnisstruktur
 
@@ -122,3 +122,4 @@ Auslöser ist der Fund bei #243: kanbanD liefert die eingebetteten fremden Paket
 - WBS-Einordnung des planers: neuer Knoten I0253 unter **D0001** (Start und Einrichtung), Geschwister der vorhandenen I0217 „Lizenz der eingebetteten Schriften (OFL) mit ausliefern“ (R00227) — dieselbe Auslieferung fremder Lizenzen über `/web/`. Der Hinweis des architekt nennt „D0003/D0004-nahe“; dem folgt der planer nicht, weil der einzige vorhandene Lizenz-Auslieferungs-Knoten I0217 unter D0001 sitzt (Begründung im Bericht).
 - Aufteilung in drei Scheiben (erzeugen/committen, ausliefern, wachen) vom architekt; als drei Features geplant, jedes für sich auslieferbar, F0191 und F0192 nach F0190 parallel.
 - Umfang (Zählung, Stand dieser Planung): 7 Bubbles; Richtwert 5,5–11 h ungemessen (Summe der Spannen, Hypothese des planers).
+- Berichtigung 2026-11-27 (#250): tower ist normale Abhängigkeit von axum.
