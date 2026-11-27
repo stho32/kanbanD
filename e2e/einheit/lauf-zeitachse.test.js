@@ -4,7 +4,7 @@ process.env.TZ = 'Europe/Berlin';
 const test = require('node:test');
 const assert = require('node:assert');
 const { laufAuswerten } = require('../../web/lauf.js');
-const { stricheAnzeigen } = require('../../web/lauf-commits.js');
+const { stricheAnzeigen, STRICHE } = require('../../web/lauf-commits.js');
 const { T1_ZEILEN } = require('../tests/laufansicht-t1.js');
 
 const e = (nr, art, wer, zeit, text = 'x') => ({ nr, eintrag: { art, wer, text, zeit, name: null } });
@@ -203,6 +203,16 @@ test('R00268 FA 1: mehr als 100 Stellen werden gekürzt — die Ansage nennt gez
   const html = laufZeitachseHtml(a, stricheAnzeigen(stellen));
   assert.strictEqual((html.match(/class="lv-ckb"/g) || []).length, 100);
   assert.match(html, /aria-label="Zeitachse: Werkzeuge [^"]*, 100 von 101 Commits"/);
+});
+
+test('R00268 FA 1 · AK 9: genau 100 Stellen — alle gezeigt, keine Ansage „von“', () => {
+  const a = laufAuswerten([e(1, 'nachricht', 'agent', um(1)), e(2, 'werkzeugergebnis', 'werkzeug', um(2))], false);
+  const stellen = Array.from({ length: STRICHE }, (_, i) => ({ schrittNr: i + 1, anteil: i / STRICHE, art: 'link', kurzhash: 'abc1234', titel: 'Titel', anzahl: 1, ziel: `lv-cm${i + 1}` }));
+  const anzeige = stricheAnzeigen(stellen);
+  assert.strictEqual(anzeige.stellen.length, 100, 'alle 100 Stellen gezeigt');
+  assert.strictEqual(anzeige.gezeigt, 100);
+  assert.strictEqual(anzeige.gesamt, 100);
+  assert.match(laufZeitachseHtml(a, anzeige), /aria-label="Zeitachse: Werkzeuge [^"]*, 100 Commits"/);
 });
 
 test('R00268 FA 1 · AK 8: die Kürzungsansage trennt die Marker der gezeigten Stellen von allen Markern — „102 von 103“', () => {

@@ -358,6 +358,17 @@ test.describe('R00268 Laufansicht: Striche in der Zeitachse', () => {
     expect(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'der zuletzt fokussierte Knopf').toBe(vorher);
   });
 
+  test('AK 5 · US-2 (Sollte ux): Enter und Leertaste am Strich-Knopf springen wie der Klick', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 700 });
+    await t17Oeffnen(page);
+    await page.locator(KNOPF).first().focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => document.activeElement.id), 'Enter').toBe('lv-cm1');
+    await page.locator(KNOPF).nth(1).focus();
+    await page.keyboard.press('Space');
+    await expect.poll(() => page.evaluate(() => document.activeElement.id), 'Leertaste').toBe('lv-cm2');
+  });
+
   test('AK 6 · US-2 · S2/S3: „2 Commits“ bringt die Zeile von C2 in den Blick mit Fokusumriss, Adresse unverändert; die Text-Marker-Zeile über lv-cmt', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 700 });
     await t17Oeffnen(page);
