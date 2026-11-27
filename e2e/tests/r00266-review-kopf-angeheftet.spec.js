@@ -217,9 +217,12 @@ test.describe('R00266 Review-Seite — Kopfzeile angeheftet', () => {
       await expect(s.kopf).toHaveCount(1);
       const m = await page.evaluate(() => {
         const main = document.getElementById('main'), rolle = document.getElementById('review'), kz = document.querySelector('.rv-kz');
+        // `.rv-kz` liegt in `#kopf`, ausserhalb von `#main`: `main.children` erreicht ihn nicht (B1, 270-code-reviewer-1)
         const geschwister = Array.from(main.children).filter(e => e !== rolle).reduce((s2, e) => s2 + e.getBoundingClientRect().height, 0);
-        return { kopfFlaeche: geschwister, main: main.clientHeight, rolle: rolle.clientHeight, scroll: rolle.scrollHeight };
+        const kopfFlaeche = geschwister + (kz ? kz.getBoundingClientRect().height : NaN);
+        return { kopfFlaeche, geschwister, kz: kz ? kz.getBoundingClientRect().height : null, main: main.clientHeight, rolle: rolle.clientHeight, scroll: rolle.scrollHeight };
       });
+      expect(m.kz, '.rv-kz ist gezeichnet').not.toBeNull();
       expect(m.kopfFlaeche, `Kopf + .rv-kz <= 50 % von #main (${breite}x${hoehe})`).toBeLessThanOrEqual(0.5 * m.main);
       expect(m.rolle, `#review >= 200 px (${breite}x${hoehe})`).toBeGreaterThanOrEqual(200);
       expect(m.scroll, 'Dateiliste und Code sind durch Rollen erreichbar').toBeGreaterThan(m.rolle);
