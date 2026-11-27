@@ -1276,3 +1276,7 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #250 R00263 | B1434 Release-Archiv und README: Kopierzeile in `release.yml`, README nennt `/web/LIZENZEN.md`, Test prüft beide Quellen | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-27 | Karte #250 R00263 | B1435 Gate-Test offline `tests/lizenzen.rs`: Menge = enthalten ∪ ausgenommen, Grund aus fester Liste, vier Felder, dev-only nicht enthalten; Mutanten M1/M3′/M4 rot | Standard | 1-2h | 0,3h | 0,3h | autonom |
 | 2026-11-27 | Karte #250 R00263 | B1436 `--pruefen`: `pruefen()` nennt fehlende/unerwartete Pakete, Beispiel-Flag, Release-Schritt; Probe P3 und Mutant M2 Exit 1; volles Gate | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-27 | Karte #250 R00263 | Nacharbeit B1 (Muss): `--pruefen` überlebt den Versions-`sed` des Release (Workspace-Version entkoppelt), zwei neue Tests, Probe nach Versionsbump grün | Standard | 0,5-1h | 0,5h | 0,5h | autonom |
+| 2026-11-27 | Karte #250 R00263 | Nacharbeit A1 (Sollte): `cargo build --all-targets --features lizenzen` + `cargo test --features lizenzen` im Release-Prüfjob | Standard | 0,2h | 0,1h | 0,1h | autonom |
+| 2026-11-27 | Karte #250 R00263 | Nacharbeit Optional: `web/LIZENZEN.md` nennt sich als Obermenge, tower-Pin im Ausliefer-Test gelöst, Ein-/Mehrzahl | Standard | 0,2h | 0,2h | 0,2h | autonom |
+| 2026-11-27 | Karte #250 R00263 | Nacharbeit Rechtschreibung (Sollte 1–4): Abhängigkeitsgraphen, Meldung groß, „eine normale Abhängigkeit“; Gelerntes-Zeile B1 | Standard | 0,2h | 0,1h | 0,1h | autonom |
