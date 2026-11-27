@@ -21,7 +21,10 @@ async fn lizenzhinweise_werden_ausgeliefert() {
         std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("web/LIZENZEN.md")).unwrap();
     assert_eq!(antwort.text, datei, "der Rumpf ist die committete Datei");
     assert!(antwort.text.contains("## Enthaltene Pakete"), "Abschnitt der enthaltenen Pakete");
-    assert!(antwort.text.contains("### tower 0.5.3"), "ein enthaltenes Paket mit den vier Feldern");
+    assert!(
+        antwort.text.lines().any(|z| z.starts_with("### tower ")),
+        "ein enthaltenes Paket mit den vier Feldern (tower, Version nicht gepinnt)"
+    );
     assert!(antwort.text.contains("Lizenz:"), "Lizenzfeld");
     assert!(antwort.text.contains("Urhebertext:"), "Urhebertextfeld");
 }

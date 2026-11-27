@@ -41,13 +41,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             std::process::exit(1);
         }
-        eprintln!("web/LIZENZEN.md ist aktuell ({} Pakete, {} Ausnahmen).", pakete.len(), ausnahmen.len());
+        eprintln!("web/LIZENZEN.md ist aktuell ({}).", umfang(pakete.len(), ausnahmen.len()));
         return Ok(());
     }
 
     std::fs::write(&ziel, inhalt)?;
-    eprintln!("{} Pakete, {} Ausnahmen → {}", pakete.len(), ausnahmen.len(), ziel.display());
+    eprintln!("{} → {}", umfang(pakete.len(), ausnahmen.len()), ziel.display());
     Ok(())
+}
+
+/// „97 Pakete, 64 Ausnahmen“ — mit richtiger Einzahl, falls es einmal nur eines ist.
+fn umfang(pakete: usize, ausnahmen: usize) -> String {
+    format!("{}, {}", anzahl(pakete, "Paket", "Pakete"), anzahl(ausnahmen, "Ausnahme", "Ausnahmen"))
+}
+
+fn anzahl(n: usize, einzahl: &str, mehrzahl: &str) -> String {
+    if n == 1 {
+        format!("1 {einzahl}")
+    } else {
+        format!("{n} {mehrzahl}")
+    }
 }
 
 fn metadaten(cargo: &str, zusatz: &[&str]) -> Result<Metadaten, Box<dyn std::error::Error>> {

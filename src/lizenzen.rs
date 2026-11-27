@@ -431,6 +431,9 @@ pub fn formatiere(pakete: &[Paket], ausnahmen: &[Ausnahme]) -> String {
         "damit auch die Rust-Pakete weiter, aus denen es gebaut ist. Diese Datei nennt sie mit\n",
         "Lizenz und Urhebertext. Quelle der Wahrheit ist `Cargo.lock`; erzeugt mit\n",
         "`cargo run --features lizenzen --example lizenzen` und geprüft von `tests/lizenzen.rs`.\n\n",
+        "Die Liste ist eine **Obermenge**: sie folgt dem aufgelösten Abhängigkeitsgraphen der\n",
+        "Release-Ziele (ADR-0045) und nennt auch Pakete, deren Merkmale (`features`) im\n",
+        "jeweiligen Bau nicht aktiviert sind. Kein eingebettetes Paket fehlt dadurch.\n\n",
         "## Enthaltene Pakete\n\n",
     ));
     for p in pakete {
@@ -444,8 +447,8 @@ pub fn formatiere(pakete: &[Paket], ausnahmen: &[Ausnahme]) -> String {
     }
     text.push_str(concat!(
         "## Ausgenommene Pakete\n\n",
-        "Nicht enthaltene Pakete aus `Cargo.lock` mit Grund: `dev` nur Testabhängigkeit,\n",
-        "`build` nur Bauabhängigkeit, `plattformfremd` nur für andere Ziele, `workspace` kanbanD selbst.\n\n",
+        "Nicht enthaltene Pakete aus `Cargo.lock` mit Grund: `dev`: nur Testabhängigkeit,\n",
+        "`build`: nur Bauabhängigkeit, `plattformfremd`: nur für andere Ziele, `workspace`: kanbanD selbst.\n\n",
         "| Paket | Version | Grund |\n",
         "| --- | --- | --- |\n",
     ));
