@@ -106,7 +106,7 @@ Anlass: Am 2026-11-15 war gut ein Drittel der Kosten Arbeit ohne Nutzen — Plan
 - **Fragen sammeln**: Der Director bündelt die Fragen einer Karte zu einem Lauf des product-owner je Station, statt je Frage einen Lauf zu starten; Bestätigungsfragen mit Empfehlung, die nichts aufhalten, entscheidet der Director nach der Empfehlung und nennt sie im Kartenkommentar.
 
 **B. Prüfen nach Risiko**
-- **Auswahl nach dem Diff**: In den Auto-Reviews läuft der `code-reviewer` immer. Jede weitere prüfende Rolle wählt der Director nach dem, was der Diff tatsächlich ändert — Oberfläche sichtbar geändert → `ux-reviewer`; Zugriffsgrenze, Eingabe von außen oder Abhängigkeit → `security-reviewer`; mehr als eine Handvoll neuer sichtbarer Texte → `rechtschreib-reviewer`; Server schreibt neue Fehlerpfade oder Protokollzeilen → `observability-reviewer`; Dateiformat oder API-Form → `legacy-reviewer`; neuer Schnitt, neue Abhängigkeitsrichtung oder ADR-Verstoß möglich → `architektur-reviewer`. Die Labels aus der Planung sind Hinweis, nicht Auslöser. Die Auswahl mit Grund steht im Zugkommentar.
+- **Auswahl nach dem Diff**: In den Auto-Reviews läuft der `code-reviewer` immer. Jede weitere prüfende Rolle wählt der Director nach dem, was der Diff tatsächlich ändert — neue oder geänderte sichtbare Bedienung (Bedienelement, Zustand, Layout, Stil) → `ux-reviewer` — korrigiert der Diff nur das Verhalten bestehender Bedienung, tragen die Vorprüfung der Detailplanung und der Entwicklertest den Oberflächenblick; Zugriffsgrenze, Eingabe von außen oder Abhängigkeit → `security-reviewer`; mehr als eine Handvoll neuer sichtbarer Texte → `rechtschreib-reviewer`; Server schreibt neue Fehlerpfade oder Protokollzeilen → `observability-reviewer`; Dateiformat oder API-Form → `legacy-reviewer`; neuer Schnitt, neue Abhängigkeitsrichtung oder ADR-Verstoß möglich → `architektur-reviewer`. Die Labels aus der Planung sind Hinweis, nicht Auslöser. Die Auswahl mit Grund steht im Zugkommentar.
 - **Wiederholung nach einer Nacharbeit prüft genau zwei Dinge**: Ist der eigene Befund geschlossen (Abnahme-Probe wörtlich erfüllt), und hat die Nacharbeit etwas kaputt gemacht, das der Nutzer bemerkt? Keine neue Durchsicht des ganzen Pakets, keine neuen Sollte.
 - **Ein Kriterium aus der Nacharbeit löst kein neues Muss aus**: Weicht das Programm vom Wortlaut eines Kriteriums ab, das erst während der Nacharbeit dieser Karte geschrieben wurde, ist das nur dann ein Muss, wenn dem Nutzer daraus ein Schaden entsteht (Datenverlust in Datei oder Git, falscher angezeigter Stand, Sperre, Sicherheitslücke). Sonst berichtigt der product-owner den Satz, und die Karte läuft weiter.
 - **Muss bleibt Muss**: Was über Oberfläche oder API im normalen Betrieb einen Fehler zeigt oder ein Kriterium der ursprünglichen Anforderung verletzt, geht wie bisher in die Nacharbeit.
@@ -269,7 +269,7 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
 - **Betritt die Karte die Spalte**: parallel am Stand des Kartenzweigs (Diff `main...karte/<nr>`, im Worktree nur lesend), je Rolle eine Teilaufgabe, abgehakt, wenn sie bestanden hat. Wissen im Auftrag: Befunde aus Reviews und Tests.
   - code-reviewer immer
   - security-reviewer, wenn Label `sicherheit`
-  - ux-reviewer, wenn Label `oberflaeche`
+  - ux-reviewer, wenn der Diff sichtbare Bedienung hinzufügt oder ändert (Label `oberflaeche` ist Hinweis; Auswahl nach dem Diff, Wissen B)
   - rechtschreib-reviewer, wenn Label `text`
   - architektur-reviewer, wenn Label `architektur`
   - legacy-reviewer, wenn Label `datenformat`
