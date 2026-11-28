@@ -1302,3 +1302,4 @@ Nie vom User erfragen.
 | 2026-11-28 | Karte #275 R00271 | B1483 Probe im echten Programm, Mutant „Messpunkt wieder in die Mitte“, Bestand (r00248/r00249), Gate, Gelerntes | Standard | 0,3-0,5h | 0,8h | 0,8h | autonom |
 | 2026-11-28 | Karte #274 R00270 | B1478 Abnahme-Proben rot am heutigen Stand (Schätzung kennt die 13 px nicht) | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
 | 2026-11-28 | Karte #274 R00270 | B1479 Fensterklasse .dz → .pop-dz (4 Stellen), Ausgleich entfernt, Schrift der Zeile gehalten | Standard | 0,5-1h | 0,2h | 0,2h | autonom |
+| 2026-11-28 | Karte #274 R00270 | B1480 Probe im echten Programm, Mutanten m1/m2, Gate, Verweiszeile in R00249 | Standard | 0,5-1h | 1,0h | 0,9h | autonom |

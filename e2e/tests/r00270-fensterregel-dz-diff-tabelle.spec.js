@@ -6,7 +6,7 @@
 // und misst gegen die Summe der Zeilenhöhen: die Schätzung `contain-intrinsic-block-size:auto n×18px` (`web/diff.js:405`) kennt die 13 px
 // der Fensterregel (6 px oben + 6 px unten + 1 px Unterlinie) nicht, und Hunk-/Kontextzeilen sind höher als 18 px — „±1 je Zeile“ wäre blind.
 const { test, expect } = require('@playwright/test');
-const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen, thema } = require('./hilfen');
+const { kanbanStarten, einrichten, alsPerson, liveBereit, breiteSetzen, thema, mutanteEinsetzen } = require('./hilfen');
 const { nebeneinanderRepository, nebeneinanderVorbereiten } = require('./review-hilfen');
 
 /* ── Treiber: Adressen, Selektoren, Messungen ── */
@@ -91,6 +91,7 @@ const VORHER = {
 
 test.describe('R00270 Review-Seite — Fensterregel `.dz` trifft die Diff-Tabelle', () => {
   let k;
+  test.beforeEach(async ({ context }) => { await mutanteEinsetzen(context); });
   test.afterEach(async () => { if (k) await k.stoppen(); });
 
   /* ── AK 1 / US-1: die Diff-Tabelle bei „aus“ ist wieder eine Tabelle ── */
