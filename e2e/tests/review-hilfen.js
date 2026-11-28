@@ -832,4 +832,57 @@ function nebeneinanderVorbereiten(h) {
   return aufgabenVorbereiten(h, { 9: [`kd:${h.n1}`, `wb:${h.n3}`], 10: [`kd:${h.n2}`], 11: [`kd:${h.n4}`], 12: [`kd:${h.leer}`] });
 }
 
-module.exports = { kopfRepository, kopfVorbereiten, nebeneinanderRepository, nebeneinanderVorbereiten, umbrechenRepository, umbrechenVorbereiten, UM_A, UM_B, UM_FN, wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
+
+/* ── Ausgangslage von R00271 (Leseanker von „Umbrechen“ in der Nummernspalte, Karte #275, ADR-0042 N10): L1 in `kd` mit K-Kurz
+   (`src/kurz.rs`, nur kurze Zeilen, eine Änderung) und einem zweigeteilten K-Lang (`src/u.rs`): der erste 500-Zeilen-Block trägt in
+   der neuen Fassung lange, beim Umbrechen umbrechende Zeilen, der zweite Block kurze Zeilen mit einer Änderung. Der Messpunkt in der
+   Nummernspalte trifft die schmale kurze Lesezeile; die Mitte der Rolle verfehlt sie und fällt auf den Dateikopf zurück. ── */
+
+/** Lange Zeile des zweigeteilten K-Lang: 209 Zeichen, bricht bei 980 px beim Umbrechen um (zwei Textzeilen). */
+const L_LANG = '// l ' + 'wort '.repeat(40) + 'ende';
+/** `src/u.rs` als [alt, neu]: 320 geänderte Zeilen — in `alt` kurz, in `neu` die ersten 15 lang — ergeben 640 Diffzeilen; der erste
+    500-Zeilen-Block trägt die 320 Löschungen (alle kurz) und die ersten 180 Hinzufügungen (darunter die 15 langen), der zweite Block die
+    restlichen kurzen Hinzufügungen. Eine solche kurze Zeile (`// u 186 b`) ist die oberste Lesezeile; die langen Zeilen stehen oberhalb
+    in einem früheren Block derselben Datei. */
+function leseankerU() {
+  const alt = [], neu = [];
+  for (let i = 1; i <= 320; i++) { alt.push(`// u ${i} a`); neu.push(i <= 15 ? `// u ${i} ${L_LANG}` : `// u ${i} b`); }
+  return [alt.join('\n') + '\n', neu.join('\n') + '\n'];
+}
+
+/** `src/kurz.rs` (K-Kurz): nur kurze Zeilen mit einer Änderung (`let a = 1;` → `let a = 2;`). */
+function leseankerKurz(ziffer) {
+  return ['// k anfang', '// k 2', '// k 3', '// k 4', `let a = ${ziffer};`, '// k 5', '// k 6', '// k 7', '// k ende'].join('\n') + '\n';
+}
+
+function leseankerBauen(basis) {
+  const r = path.join(basis, 'KD'), s = path.join(basis, 'WB');
+  for (const ort of [r, s]) {
+    fs.mkdirSync(path.join(ort, 'Dokumentation/Planung'), { recursive: true });
+    fs.writeFileSync(path.join(ort, 'Dokumentation/Planung/app.md'), '# App\n');
+    gitAls(ort, ADA, '2026-06-01T08:00:00+00:00', 'init', '-q', '-b', 'main');
+  }
+  const u = leseankerU(), h = { r, s };
+  aenderungsCommit(r, 'L0 Vorgänger', { 'src/u.rs': u[0], 'src/kurz.rs': leseankerKurz(1) });
+  h.l1 = aenderungsCommit(r, 'L1 Leseanker', { 'src/u.rs': u[1], 'src/kurz.rs': leseankerKurz(2) });
+  aenderungsCommit(s, 'L2 Vorgänger', { 'docs/l.md': '# l\n\nEnde\n' });
+  return h;
+}
+
+let leseankerGeteilt = null;
+/** Ein Satz Repositories je Prozess für R00271, am Prozessende entfernt. */
+function leseankerRepository() {
+  if (!leseankerGeteilt) {
+    const basis = basisAnlegen();
+    leseankerGeteilt = leseankerBauen(basis);
+    process.on('exit', () => fs.rmSync(basis, { recursive: true, force: true }));
+  }
+  return leseankerGeteilt;
+}
+
+/** Aufgaben: #9 L1 in `kd` (K-Kurz, zweigeteiltes K-Lang); Register `kd`, `wb`. */
+function leseankerVorbereiten(h) {
+  return aufgabenVorbereiten(h, { 9: [`kd:${h.l1}`] });
+}
+
+module.exports = { kopfRepository, kopfVorbereiten, nebeneinanderRepository, nebeneinanderVorbereiten, umbrechenRepository, umbrechenVorbereiten, leseankerRepository, leseankerVorbereiten, UM_A, UM_B, UM_FN, wortmarkeRepository, wortmarkeVorbereiten, WM_FAELLE, WM_BREIT, gesehenRepository, gesehenVorbereiten, reviewRepository, reviewVorbereiten, uebersichtRepository, uebersichtVorbereiten, pfadRepository, pfadVorbereiten, leisteRepository, leisteVorbereiten, BOESE, ZWEIG_60, LANGER_TITEL, KENNUNG_40, BIDI_ZWEIG, FEHLT };
