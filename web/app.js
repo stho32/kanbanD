@@ -2158,13 +2158,14 @@ function reviewLesepositionHalten(merk) {
   if (verschiebung) document.getElementById('review').scrollTop += verschiebung;
 }
 
-/** Die oberste im Bild stehende Zeile der Rolle samt ihrer Lage (R00248 FA 3, ADR-0042 N6.2): ein `elementFromPoint` an der Oberkante
-    von `#review`; trifft es keine Zeile, gilt der Kopf der Datei, sonst der erste Abschnitt. Gehalten wird sie mit `reviewLesepositionHalten`. */
+/** Die oberste im Bild stehende Zeile der Rolle samt ihrer Lage (R00248 FA 3, ADR-0042 N6.2, Nachtrag N10): ein `elementFromPoint`
+    an der Oberkante von `#review`, waagerecht in der Nummernspalte (`reviewNummernSpalte`, derselbe Punkt wie „Nebeneinander“); trifft
+    es keine Zeile, gilt der Kopf der Datei, sonst der erste Abschnitt. Gehalten wird sie mit `reviewLesepositionHalten`. */
 function reviewLeseZeileMerken() {
   const rolle = document.getElementById('review');
   if (!rolle) return null;
   const r = rolle.getBoundingClientRect();
-  const getroffen = document.elementFromPoint(r.left + r.width / 2, r.top + 1);
+  const getroffen = document.elementFromPoint(reviewNummernSpalte(rolle, r), r.top + 1);
   let anker = null;
   if (getroffen) anker = getroffen.closest('tr') || (getroffen.closest('section.df') || document.createElement('i')).querySelector('.df-k');
   if (!anker) return reviewLesepositionMerken();
