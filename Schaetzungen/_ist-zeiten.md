@@ -1297,3 +1297,6 @@ Nie vom User erfragen.
 | 2026-11-27 | Karte #271 R00268 | B1465 Lage der Striche und Verdichtung nach Abstand, rein | Standard | 1-2h | 0,5h | 0,5h | autonom |
 | 2026-11-27 | Karte #271 R00268 | B1466 Gruppe, Tastatur, Sprung, Zielfläche, Legende, Lesetext, Probe und Gate | Standard | 1-2h | 1,5h | 1,5h | autonom |
 | 2026-11-27 | Karte #271 R00268 | Nacharbeit U1/R1: Randform reserviert ihren Platz in der Verdichtung, Proben auf Rechtecke, Kürzungsansage | Standard | 0,5-1h | 0,4h | 0,0h | autonom |
+| 2026-11-28 | Karte #275 R00271 | B1481 Abnahme-Proben rot (P1 Anker, P2 sichtbar) und Ausgangslage leseankerRepository (zweigeteiltes K-Lang) | Standard | 0,5-1h | 0,3h | 0,3h | autonom |
+| 2026-11-28 | Karte #275 R00271 | B1482 reviewNummernSpalte teilen (Messpunkt in der Nummernspalte, Rückfall bleibt) | Standard | 0,3-0,5h | 0,1h | 0,1h | autonom |
+| 2026-11-28 | Karte #275 R00271 | B1483 Probe im echten Programm, Mutant „Messpunkt wieder in die Mitte“, Bestand (r00248/r00249), Gate, Gelerntes | Standard | 0,3-0,5h | 0,8h | 0,8h | autonom |
