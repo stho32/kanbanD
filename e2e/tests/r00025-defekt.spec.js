@@ -34,7 +34,7 @@ test.describe('R00025', () => {
     await expect(page.getByRole('alert')).toContainText('boards/entwicklung.md ist defekt');
     await expect(page.getByRole('alert')).toContainText('vor der ersten Spalte');
     await page.locator('#t-defekt').click();
-    await expect(page.locator('#pop .dz')).toContainText(['boards/entwicklung.md']);
+    await expect(page.locator('#pop .pop-dz')).toContainText(['boards/entwicklung.md']);
     await page.keyboard.press('Escape');
     await page.locator('#t-board').click();
     await page.getByRole('dialog', { name: 'Boards' }).locator('[data-act="board-wahl"][data-arg="test"]').click();

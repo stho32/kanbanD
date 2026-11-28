@@ -915,7 +915,7 @@ function vReservierungenPop() {
 
 function vDefektePop() {
   const ds = S.zustand.defekte || [];
-  return `<div class="pop" id="pop" data-for="t-defekt" data-al="l" style="width:520px" role="dialog" aria-label="Defekte Dateien"><h4 class="pop-kopf">DEFEKTE DATEIEN <span class="mono">${ds.length}</span></h4>${ds.map(d => `<div class="dz"><a class="mono" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}">${esc(d.pfad)}</a><span>${esc(d.fehler)}</span></div>`).join('')}<div class="fuss">Reparieren im Editor oder mit Git; kanbanD zeigt die Änderung sofort.</div></div>`;
+  return `<div class="pop" id="pop" data-for="t-defekt" data-al="l" style="width:520px" role="dialog" aria-label="Defekte Dateien"><h4 class="pop-kopf">DEFEKTE DATEIEN <span class="mono">${ds.length}</span></h4>${ds.map(d => `<div class="pop-dz"><a class="mono" href="vscode://file${esc(S.zustand.ordner)}/${esc(d.pfad)}">${esc(d.pfad)}</a><span>${esc(d.fehler)}</span></div>`).join('')}<div class="fuss">Reparieren im Editor oder mit Git; kanbanD zeigt die Änderung sofort.</div></div>`;
 }
 
 /** Erste offene Teilaufgabe als nächster Schritt; Kästchen und Text sind ein Ziel und haken sie ab (R00108). */

@@ -789,7 +789,7 @@ kbd{font-family:var(--kd-mono);font-size:10.5px;border:1px solid var(--kd-line-s
 .defektflaeche{margin:var(--kd-s6);padding:var(--kd-s5);border:1px dashed var(--kd-warn);background:var(--kd-c-red);max-width:760px}
 .defektflaeche h2{margin:0 0 var(--kd-s3);font-size:16px}
 .defektflaeche p{margin:0 0 var(--kd-s2)}
-.dz{display:flex;flex-direction:column;gap:2px;padding:6px var(--kd-s4);border-bottom:1px solid var(--kd-line);font-size:12px}
+.pop-dz{display:flex;flex-direction:column;gap:2px;padding:6px var(--kd-s4);border-bottom:1px solid var(--kd-line);font:12px/1.5 var(--kd-mono)}
 .stat .lnk.warn{color:var(--kd-warn);font-weight:600}
 .ka:focus{outline:2px solid var(--kd-accent);outline-offset:-1px}
 .hilfe-bg{align-items:flex-start;padding-top:80px}
@@ -1631,11 +1631,10 @@ tr[draggable]{cursor:grab}tr.zieht{opacity:.45}
 .umbr .dz{table-layout:auto;inline-size:100%}
 .umbr .dz .c,.umbr .dz tr.hk>td{white-space:pre-wrap;overflow-wrap:anywhere}
 .umbr mark.wm{-webkit-box-decoration-break:clone;box-decoration-break:clone}
-/* Nebeneinander (R00249, D0009 Bild 8 `.ru-nb`, ADR-0042 N6): eine echte Tabelle (die Regel `.dz` des Fensters „Defekte Dateien“ macht
-   sie sonst zur Flexbox), feste Spalten: Nummern 58 px (≤ 640 px: 34 px), beide Code-Spalten teilen den Rest gleich. Bei „Umbrechen“ aus
-   ist die Tabelle so breit wie `--bb` (2 × längste Zeile beider Seiten), mindestens der Bereich; der Code scrollt quer, nichts wird
-   abgeschnitten (PO Z. 653, 657). Die leere Seite ist eine Fläche `--kd-sunken` aus Nummer und Code ohne Rand dazwischen */
-.dz.ru-nb{display:table;padding:0;border-bottom:0;table-layout:fixed;inline-size:var(--bb)}
+/* Nebeneinander (R00249, D0009 Bild 8 `.ru-nb`, ADR-0042 N6): feste Spalten: Nummern 58 px (≤ 640 px: 34 px), beide Code-Spalten teilen
+   den Rest gleich. Bei „Umbrechen“ aus ist die Tabelle so breit wie `--bb` (2 × längste Zeile beider Seiten), mindestens der Bereich; der
+   Code scrollt quer, nichts wird abgeschnitten (PO Z. 653, 657). Die leere Seite ist eine Fläche `--kd-sunken` aus Nummer und Code ohne Rand */
+.dz.ru-nb{table-layout:fixed;inline-size:var(--bb)}
 .umbr .dz.ru-nb{table-layout:fixed;inline-size:100%}
 .ru-nb col.cn{inline-size:58px}
 .ru-nb thead th{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}

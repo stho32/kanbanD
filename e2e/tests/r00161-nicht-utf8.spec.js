@@ -16,6 +16,6 @@ test.describe('R00161', () => {
     await expect(page.locator('.ka[data-id="1"] .t')).toHaveText('eins');
     await expect(page.locator('#t-defekt')).toHaveText('1 defekte Datei');
     await page.locator('#t-defekt').click();
-    await expect(page.locator('#pop .dz')).toHaveText([DATEI + GRUND]);
+    await expect(page.locator('#pop .pop-dz')).toHaveText([DATEI + GRUND]);
   });
 });
