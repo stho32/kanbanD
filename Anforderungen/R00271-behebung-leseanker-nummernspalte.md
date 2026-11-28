@@ -1,6 +1,6 @@
 ---
 id: R00271
-status: Neu
+status: Erledigt
 datum: 2026-11-27
 ursprung: Bug-Report
 ursprungslauf: R00248
@@ -53,14 +53,14 @@ Nicht möglich: der Fehler ist eine Layout-Geometrie (`elementFromPoint` bei 128
 Ausgangslage: Repository R mit Anwendung `kd`, Aufgabe #9; Mensch `sh`, Browser headless; Breite 1280 px (P1) und 980 px (P2), hell. Kurzzeilen-Datei wie R00248 K-Kurz (`src/kurz.rs`, `let a = 1;` → `let a = 2;`), Langzeilen-Datei wie R00248 K-Lang (`src/u.rs`).
 
 ### Anker (P1, heute rot)
-- [ ] **AK 1 Anker ist eine Zeile:** Gegeben R bei 1280 px, eine **kurze** Zeile (R00248 K-Kurz) an die Oberkante von `#review` gerollt, wenn `reviewLeseZeileMerken()` aufgerufen wird, dann liefert es eine `tr` (heute `.df-k`).
-- [ ] **AK 2 Sichtbar bleibt die Lesezeile:** Gegeben R bei 980 px, lange Zeilen (R00248 K-Lang, `src/u.rs`) **über** der kurzen obersten Zeile, wenn `sh` „Umbrechen“ ein- und wieder ausschaltet, dann steht dieselbe Zeile (`data-z`) nach jedem Schalten mit `|top_danach − top_davor| ≤ 36` px an ihrer Stelle.
+- [x] **AK 1 Anker ist eine Zeile:** Gegeben R bei 1280 px, eine **kurze** Zeile (R00248 K-Kurz) an die Oberkante von `#review` gerollt, wenn `reviewLeseZeileMerken()` aufgerufen wird, dann liefert es eine `tr` (heute `.df-k`).
+- [x] **AK 2 Sichtbar bleibt die Lesezeile:** Gegeben R bei 980 px, lange Zeilen (R00248 K-Lang, `src/u.rs`) **über** der kurzen obersten Zeile, wenn `sh` „Umbrechen“ ein- und wieder ausschaltet, dann steht dieselbe Zeile (`data-z`) nach jedem Schalten mit `|top_danach − top_davor| ≤ 36` px an ihrer Stelle.
 
 ### Rückfall und Bestand (heute grün)
-- [ ] **AK 3 Rückfall unverändert:** Gegeben keine Zeile an der Oberkante (Dateikopf von `src/kurz.rs` oben), wenn umgeschaltet wird, dann gilt weiter der Rückfall (Kopf der Datei, dann `#rv-a0`); `r00248` AK 9 und `r00249` AK 1 bleiben unverändert grün.
+- [x] **AK 3 Rückfall unverändert:** Gegeben keine Zeile an der Oberkante (Dateikopf von `src/kurz.rs` oben), wenn umgeschaltet wird, dann gilt weiter der Rückfall (Kopf der Datei, dann `#rv-a0`); `r00248` AK 9 und `r00249` AK 1 bleiben unverändert grün.
 
 ### Schutz
-- [ ] **AK 4 Mutant:** Gegeben eine eigene Kopie mit dem Messpunkt wieder in der Mitte der Rolle, wenn die Probe gefahren wird, dann wird sie rot (über AK 1 oder AK 2); das Original wird auf dem committeten Stand zurückgelegt und ist wieder grün.
+- [x] **AK 4 Mutant:** Gegeben eine eigene Kopie mit dem Messpunkt wieder in der Mitte der Rolle, wenn die Probe gefahren wird, dann wird sie rot (über AK 1 oder AK 2); das Original wird auf dem committeten Stand zurückgelegt und ist wieder grün.
 
 ## Implementierungshinweise
 - `reviewNummernSpalte(rolle, r)` (`web/app.js:2270–2274`) gibt es schon (R00249); aus `reviewLeseZeileMerken` mitbenutzen, nicht kopieren. Dort bleibt der Rückfall auf `r.left + r.width / 2` für den Fall ohne `.dz-b` erhalten.
