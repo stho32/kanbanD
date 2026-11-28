@@ -246,7 +246,7 @@ Je Team-Spalte: was ausgelöst wird, wenn eine Karte sie betritt, und wie danach
 
 ### Detailplanung
 - **Betritt die Karte die Spalte**, nacheinander. Wissen im Auftrag: Freigabe von Artboards.
-  - planer verfeinert bis Bubble, schreibt die Anforderung und setzt die Labels
+  - planer verfeinert bis Bubble, schreibt die Anforderung und setzt die Labels — für eine **neue Interaction** gilt das Modell aus der Einsatz-Spalte der Rollentabelle (`beginne … --treiber claude --modell sonnet|opus`), nicht Flash (factory-optimizer #272: planer-1 auf Flash entartete, 3,10 $)
   - fachspezialist klärt neue Begriffe, wenn Label `begriffe`
   - ux-reviewer als Vorprüfung der Anforderung, wenn Label `oberflaeche`
 - **Entscheidung**
