@@ -1,6 +1,6 @@
 ---
 id: R00270
-status: Neu
+status: Erledigt
 datum: 2026-11-27
 ursprung: Bug-Report
 ursprungslauf: R00249
@@ -67,18 +67,18 @@ Entfällt.
 
 ### Diff-Tabelle (Abnahme-Probe des architekt, Hinweis 4, wörtlich)
 
-- [ ] **AK 1 Diff-Tabelle bei „aus“:** Gegeben eine geänderte Datei mit Patch auf der Review-Seite, wenn `sh` sie bei „Nebeneinander“ **aus** öffnet, dann ist im `.df-sc` `getComputedStyle(table.dz).display === 'table'`, `padding-block-start`/`padding-inline-start` sind `0px`, und `offsetHeight` eines im Bild stehenden `.dz-b` ist `18 × <Zahl der Zeilen im Block>` (±1 je Zeile). Heute: `display: flex`, `padding-block-start: 6px`, Blockhöhe +13 px.
+- [x] **AK 1 Diff-Tabelle bei „aus“:** Gegeben eine geänderte Datei mit Patch auf der Review-Seite, wenn `sh` sie bei „Nebeneinander“ **aus** öffnet, dann ist im `.df-sc` `getComputedStyle(table.dz).display === 'table'`, `padding-block-start`/`padding-inline-start` sind `0px`, und `offsetHeight` eines im Bild stehenden `.dz-b` ist `18 × <Zahl der Zeilen im Block>` (±1 je Zeile). Heute: `display: flex`, `padding-block-start: 6px`, Blockhöhe +13 px.
 
 ### Fenster „Defekte Dateien“ (Vorher/Nachher-Vergleich, Muster R00228 AK 2)
 
-- [ ] **AK 2 Fenster unverändert:** Gegeben eine defekte Board-Datei (Muster `r00025-defekt`), wenn `sh` das Fenster „Defekte Dateien“ öffnet, dann sind die berechneten Stile der Fensterzeile (`.pop-dz`) vorher und nachher gleich: `display`, `flex-direction`, `gap`, `padding-block-start`, `padding-block-end`, `padding-inline-start`, `padding-inline-end`, `border-bottom-width`, `border-bottom-style`, `border-bottom-color`, `font-size`, `font-family`, `line-height`; ebenso am Fehlertext `<span>` `color`, `font-size`, `font-family` und am Pfadverweis `<a class="mono">` `font-size`, `font-family`. „Vorher“ ist der Stand `main` vor der Karte, „nachher“ der Endstand; Zahl der Zeilen, Text und der VS-Code-Verweis bleiben unverändert. Heute grün (die Werte werden als Vorher-Daten in der Spec festgehalten).
+- [x] **AK 2 Fenster unverändert:** Gegeben eine defekte Board-Datei (Muster `r00025-defekt`), wenn `sh` das Fenster „Defekte Dateien“ öffnet, dann sind die berechneten Stile der Fensterzeile (`.pop-dz`) vorher und nachher gleich: `display`, `flex-direction`, `gap`, `padding-block-start`, `padding-block-end`, `padding-inline-start`, `padding-inline-end`, `border-bottom-width`, `border-bottom-style`, `border-bottom-color`, `font-size`, `font-family`, `line-height`; ebenso am Fehlertext `<span>` `color`, `font-size`, `font-family` und am Pfadverweis `<a class="mono">` `font-size`, `font-family`. „Vorher“ ist der Stand `main` vor der Karte, „nachher“ der Endstand; Zahl der Zeilen, Text und der VS-Code-Verweis bleiben unverändert. Heute grün (die Werte werden als Vorher-Daten in der Spec festgehalten).
 
 ### Mutanten und Bestand
 
-- [ ] **AK 3 Mutanten:** In einer eigenen Kopie (`mutanteEinsetzen` nur mit Pfaden unter `/web/…`, Lehre #247), je von einem benannten Test getötet:
+- [x] **AK 3 Mutanten:** In einer eigenen Kopie (`mutanteEinsetzen` nur mit Pfaden unter `/web/…`, Lehre #247), je von einem benannten Test getötet:
   - (m1) „Fensterregel wieder auf `.dz`“ (`web/kd-app.css`: `.pop-dz` → `.dz`) → AK 1 rot (die Diff-Tabelle ist wieder Flexbox, +13 px je Block).
   - (m2) „Fensterzeile ohne Schrift“ (die umbenannte Regel trägt nur `font-size:12px`, nicht `font:12px/1.5 var(--kd-mono)`) → AK 2 rot (die Fensterzeile verliert Monoschrift und 1.5-Zeilenhöhe).
-- [ ] **AK 4 Bestand:** Alle Tests aller Ebenen grün; `r00025` und `r00161` prüfen das Fenster weiter (Selektor `#pop .pop-dz`); die Diff-Specs `r00207`, `r00245`, `r00248`, `r00249`, `r00266` ohne geänderte Erwartung grün; R00249 unverändert bis auf höchstens eine Verweiszeile in „Notizen“.
+- [x] **AK 4 Bestand:** Alle Tests aller Ebenen grün; `r00025` und `r00161` prüfen das Fenster weiter (Selektor `#pop .pop-dz`); die Diff-Specs `r00207`, `r00245`, `r00248`, `r00249`, `r00266` ohne geänderte Erwartung grün; R00249 unverändert bis auf höchstens eine Verweiszeile in „Notizen“.
 
 ## Implementierungshinweise
 
@@ -100,6 +100,7 @@ Keine. Entschieden:
 Die doppelt belegte Klasse `.dz` macht aus jeder Diff-Tabelle bei „Nebeneinander“ aus eine Flexbox mit 6 px Innenabstand und 1 px Unterlinie (X). Weil die Höhenschätzung `contain-intrinsic-block-size:auto n×18px` diese 13 px nicht kennt und die Tabelle kein echtes Tabellenlayout mehr hat, ist jeder Block um 13 px zu hoch geschätzt und ein `elementFromPoint` in die Mitte läuft ins Leere (Y). Wer eine Änderung prüft, verliert damit die Leseposition und kann einzelne Zeilen nicht sicher treffen (Z). Der Hebel ist der Name der Fensterklasse, nicht die Diff-Seite: eine Umbenennung an vier Stellen (Markup, eine CSS-Regel, zwei Testselektoren) löst die Kollision an der Wurzel, lässt die 35 Selektorstellen der Review-Seite unberührt und macht den bisherigen Ausgleich `.dz.ru-nb{display:table;padding:0}` entbehrlich — die Tabelle ist wieder eine Tabelle, wie ADR-0042 N5/N6/N7 sie beschreiben.
 
 ## Notizen
+- Abschluss 2026-11-28 (Karte #274, Gate auf `main` grün): AK 1 ist am Programm erfüllt, aber die Höhenformel „18 × Zeilen (±1 je Zeile)“ ist ungenau — Hunk-Köpfe sind 23 px, einzelne Zeilen 19 px hoch. Geprüft wird `offsetHeight` eines `.dz-b` gleich der Summe seiner Zeilenhöhen (±2 px, Block `src/ende.rs`); so misst es auch die Spec `e2e/tests/r00270-fensterregel-dz-diff-tabelle.spec.js` (`kriterium_ungenau` des entwicklertester, Lauf 274-entwicklertester-1).
 
 - Priorität: Mittel. Betroffene Nutzer/Systeme: jeder, der die Review-Seite bei „Nebeneinander“ aus liest (Voreinstellung). Workaround: „Nebeneinander“ einschalten (dann greift `.dz.ru-nb`).
 - Verworfene Alternativen: siehe „Alternative Ansätze“ (O2 `.pop[data-for="t-defekt"] .dz`, O3 Diff-Seite umbenennen).
