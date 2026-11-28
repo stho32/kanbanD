@@ -2444,3 +2444,4 @@ Eine Zeile je Auftrag an eine Rolle und je Retrospektive.
 | 2026-11-28 | #274 | Entwicklung | entwickler | bestanden | 1 h 1 min | AK 1–4 rot→grün, Mutanten getötet, Gate grün · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 274-entwickler-1 · 0,18 $ · Karte gesamt 0,31 $ |
 | 2026-11-28 | #274 | Auto-Reviews | code-reviewer | bestanden | 6 min | keine Muss; 1 Sollte Buchhaltung, 2 Optional · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 274-code-reviewer-1 · 0,12 $ · Karte gesamt 0,43 $ |
 | 2026-11-28 | #274 | Auto-Reviews | ux-reviewer | bestanden | 26 min | kein Muss; 1 Sollte vorbestehend, 1 Optional · opencode · openrouter/deepseek/deepseek-v4.1-flash · Lauf 274-ux-reviewer-2 · 0,13 $ · Karte gesamt 0,56 $ |
+| 2026-11-28 | #275 | Kennzahlen | — | — | 3 h 46 min | Läufe 9 (abgebrochen 1, bestanden 8) · Rollenzeit 2 h 43 min · Wartezeit 1 min · Nacharbeiten 0 · Kosten 1,17 $ · Durchlauf 3 h 46 min |
